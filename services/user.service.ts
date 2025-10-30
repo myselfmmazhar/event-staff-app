@@ -1,18 +1,13 @@
 import { PrismaClient, UserRole } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import * as bcrypt from "bcryptjs";
+import { nanoid } from "nanoid";
+import type { CreateUserInput, UpdateUserInput as UpdateUserInputType, QueryUsersInput } from "@/lib/schemas/user.schema";
 
-export interface CreateUserInput {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole;
-  phone?: string;
-  address?: string;
-  emergencyContact?: string;
-}
+// Re-export types from schema for backwards compatibility
+export type { CreateUserInput, QueryUsersInput };
 
+// Update input type for service (Zod already validates, service receives validated data)
 export interface UpdateUserInput {
   email?: string;
   password?: string;
@@ -22,16 +17,6 @@ export interface UpdateUserInput {
   phone?: string;
   address?: string;
   emergencyContact?: string;
-}
-
-export interface QueryUsersInput {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sortBy?: "createdAt" | "updatedAt" | "firstName" | "lastName" | "email" | "role";
-  sortOrder?: "asc" | "desc";
-  role?: UserRole;
-  isActive?: boolean;
 }
 
 export interface PaginatedUsers {
@@ -66,43 +51,77 @@ export class UserService {
    * Create a new user
    */
   async create(data: CreateUserInput) {
-    // Check if user with email already exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: data.email },
-    });
+    try {
+      // Sanitize input data
+      const sanitizedData = {
+        email: data.email.trim().toLowerCase(),
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        role: data.role,
+        phone: data.phone?.trim(),
+        address: data.address?.trim(),
+        emergencyContact: data.emergencyContact?.trim(),
+      };
 
-    if (existingUser) {
+      // Check if user with email already exists
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: sanitizedData.email },
+      });
+
+      if (existingUser) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "A user with this email address already exists",
+        });
+      }
+
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(data.password, 12);
+
+      // Auto-generate name field from firstName + lastName (CRITICAL FIX)
+      const name = `${sanitizedData.firstName} ${sanitizedData.lastName}`;
+
+      // Generate unique ID (Better Auth uses nanoid)
+      const id = nanoid();
+
+      // Create the user
+      const user = await this.prisma.user.create({
+        data: {
+          id,
+          ...sanitizedData,
+          name,
+          password: hashedPassword,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          phone: true,
+          address: true,
+          emergencyContact: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return user;
+    } catch (error) {
+      // Re-throw TRPCError as is
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
+      // Log and throw formatted error for Prisma errors
+      console.error("Error creating user:", error);
       throw new TRPCError({
-        code: "CONFLICT",
-        message: "User with this email already exists",
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create user. Please try again.",
       });
     }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(data.password, 12);
-
-    // Create the user
-    const user = await this.prisma.user.create({
-      data: {
-        ...data,
-        password: hashedPassword,
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        phone: true,
-        address: true,
-        emergencyContact: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    return user;
   }
 
   /**
@@ -218,49 +237,78 @@ export class UserService {
    * Update a user
    */
   async update(id: string, data: UpdateUserInput) {
-    // Check if user exists
-    const user = await this.findOne(id);
+    try {
+      // Check if user exists
+      const user = await this.findOne(id);
 
-    // Check if email is being updated and if it's already taken
-    if (data.email && data.email !== user.email) {
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email: data.email },
+      // Sanitize input data
+      const sanitizedData: any = {};
+      if (data.email) sanitizedData.email = data.email.trim().toLowerCase();
+      if (data.firstName) sanitizedData.firstName = data.firstName.trim();
+      if (data.lastName) sanitizedData.lastName = data.lastName.trim();
+      if (data.role) sanitizedData.role = data.role;
+      if (data.phone !== undefined) sanitizedData.phone = data.phone?.trim();
+      if (data.address !== undefined) sanitizedData.address = data.address?.trim();
+      if (data.emergencyContact !== undefined) sanitizedData.emergencyContact = data.emergencyContact?.trim();
+
+      // Check if email is being updated and if it's already taken
+      if (sanitizedData.email && sanitizedData.email !== user.email) {
+        const existingUser = await this.prisma.user.findUnique({
+          where: { email: sanitizedData.email },
+        });
+
+        if (existingUser) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "A user with this email address already exists",
+          });
+        }
+      }
+
+      // Hash password if it's being updated
+      if (data.password) {
+        sanitizedData.password = await bcrypt.hash(data.password, 12);
+      }
+
+      // Auto-generate name field if firstName or lastName is being updated
+      const updatedFirstName = sanitizedData.firstName || user.firstName;
+      const updatedLastName = sanitizedData.lastName || user.lastName;
+      sanitizedData.name = `${updatedFirstName} ${updatedLastName}`;
+
+      // Update the user
+      const updatedUser = await this.prisma.user.update({
+        where: { id },
+        data: sanitizedData,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          phone: true,
+          address: true,
+          emergencyContact: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
 
-      if (existingUser) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "User with this email already exists",
-        });
+      return updatedUser;
+    } catch (error) {
+      // Re-throw TRPCError as is
+      if (error instanceof TRPCError) {
+        throw error;
       }
+
+      // Log and throw formatted error for Prisma errors
+      console.error("Error updating user:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to update user. Please try again.",
+      });
     }
-
-    // Hash password if it's being updated
-    let updateData: any = { ...data };
-    if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 12);
-    }
-
-    // Update the user
-    const updatedUser = await this.prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        phone: true,
-        address: true,
-        emergencyContact: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    return updatedUser;
   }
 
   /**

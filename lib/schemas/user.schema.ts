@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { UserRole } from "@prisma/client";
+import { emailValidation, phoneValidation, passwordValidation } from "@/lib/utils/validation";
+import { FieldErrors } from "@/lib/utils/error-messages";
 
 /**
  * User Zod Schemas for validation
@@ -9,36 +11,130 @@ export class UserSchema {
    * Create User Schema
    */
   static create = z.object({
-    email: z.string().email("Invalid email address"),
+    email: z
+      .string()
+      .min(1, FieldErrors.email.required)
+      .email({ message: FieldErrors.email.invalid })
+      .transform((val) => val.trim().toLowerCase())
+      .refine(
+        (email) => emailValidation.hasValidDomain(email),
+        { message: FieldErrors.email.disposable }
+      ),
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
-      .max(128, "Password must not exceed 128 characters"),
-    firstName: z.string().min(1, "First name is required"),
-    lastName: z.string().min(1, "Last name is required"),
+      .min(8, FieldErrors.password.minLength)
+      .max(128, FieldErrors.password.maxLength)
+      .refine(
+        (pwd) => passwordValidation.hasUpperCase(pwd),
+        { message: FieldErrors.password.uppercase }
+      )
+      .refine(
+        (pwd) => passwordValidation.hasLowerCase(pwd),
+        { message: FieldErrors.password.lowercase }
+      )
+      .refine(
+        (pwd) => passwordValidation.hasNumber(pwd),
+        { message: FieldErrors.password.number }
+      )
+      .refine(
+        (pwd) => passwordValidation.hasSpecialChar(pwd),
+        { message: FieldErrors.password.special }
+      ),
+    firstName: z
+      .string()
+      .min(1, FieldErrors.firstName.required)
+      .max(50, FieldErrors.firstName.maxLength)
+      .transform((val) => val.trim()),
+    lastName: z
+      .string()
+      .min(1, FieldErrors.lastName.required)
+      .max(50, FieldErrors.lastName.maxLength)
+      .transform((val) => val.trim()),
     role: z.nativeEnum(UserRole),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-    emergencyContact: z.string().optional(),
+    phone: z
+      .string()
+      .optional()
+      .transform((val) => val?.trim())
+      .refine(
+        (phone) => !phone || phoneValidation.isValid(phone),
+        { message: FieldErrors.phone.invalid }
+      ),
+    address: z
+      .string()
+      .optional()
+      .transform((val) => val?.trim()),
+    emergencyContact: z
+      .string()
+      .optional()
+      .transform((val) => val?.trim()),
   });
 
   /**
    * Update User Schema (all fields optional except ID)
    */
   static update = z.object({
-    id: z.string().uuid("Invalid user ID"),
-    email: z.string().email("Invalid email address").optional(),
+    id: z.string().min(1, "Invalid user ID"),
+    email: z
+      .string()
+      .email({ message: FieldErrors.email.invalid })
+      .transform((val) => val.trim().toLowerCase())
+      .refine(
+        (email) => emailValidation.hasValidDomain(email),
+        { message: FieldErrors.email.disposable }
+      )
+      .optional(),
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
-      .max(128, "Password must not exceed 128 characters")
+      .min(8, FieldErrors.password.minLength)
+      .max(128, FieldErrors.password.maxLength)
+      .refine(
+        (pwd) => passwordValidation.hasUpperCase(pwd),
+        { message: FieldErrors.password.uppercase }
+      )
+      .refine(
+        (pwd) => passwordValidation.hasLowerCase(pwd),
+        { message: FieldErrors.password.lowercase }
+      )
+      .refine(
+        (pwd) => passwordValidation.hasNumber(pwd),
+        { message: FieldErrors.password.number }
+      )
+      .refine(
+        (pwd) => passwordValidation.hasSpecialChar(pwd),
+        { message: FieldErrors.password.special }
+      )
       .optional(),
-    firstName: z.string().min(1, "First name is required").optional(),
-    lastName: z.string().min(1, "Last name is required").optional(),
-    role: z.nativeEnum(UserRole).optional(),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-    emergencyContact: z.string().optional(),
+    firstName: z
+      .string()
+      .min(1, FieldErrors.firstName.required)
+      .max(50, FieldErrors.firstName.maxLength)
+      .transform((val) => val.trim())
+      .optional(),
+    lastName: z
+      .string()
+      .min(1, FieldErrors.lastName.required)
+      .max(50, FieldErrors.lastName.maxLength)
+      .transform((val) => val.trim())
+      .optional(),
+    role: z
+      .nativeEnum(UserRole)
+      .optional(),
+    phone: z
+      .string()
+      .transform((val) => val?.trim())
+      .refine(
+        (phone) => !phone || phoneValidation.isValid(phone),
+        { message: FieldErrors.phone.invalid }
+      )
+      .optional(),
+    address: z
+      .string()
+      .transform((val) => val?.trim())
+      .optional(),
+    emergencyContact: z
+      .string()
+      .transform((val) => val?.trim())
+      .optional(),
   });
 
   /**
@@ -61,7 +157,7 @@ export class UserSchema {
    * User ID Schema (for get, delete, activate, deactivate)
    */
   static id = z.object({
-    id: z.string().uuid("Invalid user ID"),
+    id: z.string().min(1, "Invalid user ID"),
   });
 }
 

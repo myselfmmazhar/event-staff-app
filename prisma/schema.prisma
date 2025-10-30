@@ -31,19 +31,19 @@ enum EventStatus {
 // Main User Model (compatible with existing TypeORM schema)
 model User {
   id               String    @id // Better Auth generates its own IDs
-  email            String    @unique
+  email            String    @unique // User's email address (must be unique)
   emailVerified    Boolean   @default(false)
-  name             String    // Better Auth expects this field
+  name             String    // Auto-generated from firstName + lastName (required by Better Auth)
   password         String?   // Optional: Better Auth stores passwords in accounts table
-  firstName        String
-  lastName         String
-  role             UserRole  @default(STAFF)
-  isActive         Boolean   @default(true)
-  phone            String?
-  profilePhoto     String?
-  address          String?
-  emergencyContact String?
-  lastLoginAt      DateTime? @db.Timestamp(6)
+  firstName        String    // User's first name (required, max 50 chars)
+  lastName         String    // User's last name (required, max 50 chars)
+  role             UserRole  @default(STAFF) // User's role in the system
+  isActive         Boolean   @default(true) // Whether the user account is active
+  phone            String?   // Phone number (optional, validated format)
+  profilePhoto     String?   // URL to user's profile photo
+  address          String?   // User's physical address (optional)
+  emergencyContact String?   // Emergency contact information (optional)
+  lastLoginAt      DateTime? @db.Timestamp(6) // Last login timestamp
   createdAt        DateTime  @default(now()) @db.Timestamp(6)
   updatedAt        DateTime  @updatedAt @db.Timestamp(6)
 

@@ -24,7 +24,7 @@ export class EventSchema {
     specialInstructions: z.string().optional(),
     budget: z.number().positive().optional(),
     clientName: z.string().optional(),
-    clientEmail: z.string().email("Invalid client email").optional(),
+    clientEmail: z.string().email({ message: "Invalid client email" }).optional(),
     clientPhone: z.string().optional(),
   }).refine(
     (data) => data.endDate >= data.startDate,
@@ -54,7 +54,7 @@ export class EventSchema {
     specialInstructions: z.string().optional(),
     budget: z.number().positive().optional(),
     clientName: z.string().optional(),
-    clientEmail: z.string().email("Invalid client email").optional(),
+    clientEmail: z.string().email({ message: "Invalid client email" }).optional(),
     clientPhone: z.string().optional(),
   }).refine(
     (data) => {

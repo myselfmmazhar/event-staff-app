@@ -13,16 +13,94 @@ import { Label } from '@/components/ui/label';
 import { UserSchema } from '@/lib/schemas/user.schema';
 import { UserRole } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon } from '@/components/ui/icons';
+import { PasswordStrength } from '@/components/ui/password-strength';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { FieldErrors } from '@/lib/utils/error-messages';
+import { passwordValidation, emailValidation, phoneValidation } from '@/lib/utils/validation';
 
-const formSchema = UserSchema.create.extend({
-  password: z.string().min(8, 'Password must be at least 8 characters').optional().or(z.literal('')),
+// Extended schema for create mode (with password confirmation)
+const createFormSchema = UserSchema.create.extend({
+  passwordConfirm: z.string().min(1, FieldErrors.passwordConfirm.required),
+}).refine((data) => data.password === data.passwordConfirm, {
+  message: FieldErrors.passwordConfirm.mismatch,
+  path: ['passwordConfirm'],
 });
 
-type FormData = z.infer<typeof formSchema>;
+// Extended schema for edit mode (password optional)
+// Build on UserSchema to ensure consistent validation with backend
+const editFormSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, FieldErrors.firstName.required)
+    .max(50, FieldErrors.firstName.maxLength)
+    .transform((val) => val.trim()),
+  lastName: z
+    .string()
+    .min(1, FieldErrors.lastName.required)
+    .max(50, FieldErrors.lastName.maxLength)
+    .transform((val) => val.trim()),
+  email: z
+    .string()
+    .min(1, FieldErrors.email.required)
+    .email({ message: FieldErrors.email.invalid })
+    .transform((val) => val.trim().toLowerCase())
+    .refine(
+      (email) => emailValidation.hasValidDomain(email),
+      { message: FieldErrors.email.disposable }
+    ),
+  password: z.string().optional().or(z.literal('')),
+  passwordConfirm: z.string().optional().or(z.literal('')),
+  role: z.nativeEnum(UserRole),
+  phone: z
+    .string()
+    .optional()
+    .transform((val) => val?.trim())
+    .refine(
+      (phone) => !phone || phoneValidation.isValid(phone),
+      { message: FieldErrors.phone.invalid }
+    ),
+  address: z
+    .string()
+    .optional()
+    .transform((val) => val?.trim()),
+  emergencyContact: z
+    .string()
+    .optional()
+    .transform((val) => val?.trim()),
+}).refine(
+  (data) => {
+    // If password is provided, it must meet complexity requirements
+    if (data.password && data.password.length > 0) {
+      return passwordValidation.meetsComplexityRequirements(data.password);
+    }
+    return true;
+  },
+  {
+    message: FieldErrors.password.complexity,
+    path: ['password'],
+  }
+).refine(
+  (data) => {
+    // If password is provided, confirmation must match
+    if (data.password && data.password.length > 0) {
+      return data.password === data.passwordConfirm;
+    }
+    return true;
+  },
+  {
+    message: FieldErrors.passwordConfirm.mismatch,
+    path: ['passwordConfirm'],
+  }
+);
+
+// Use input types (before transforms) for form compatibility
+type CreateFormData = z.input<typeof createFormSchema>;
+type EditFormData = z.input<typeof editFormSchema>;
+type FormData = CreateFormData | EditFormData;
 
 interface User {
   id: string;
@@ -39,8 +117,9 @@ interface UserFormModalProps {
   user: User | null;
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: FormData) => void;
+  onSubmit: (data: any) => void;
   isSubmitting: boolean;
+  backendErrors?: Array<{ field: string; message: string }>;
 }
 
 const ROLES: Array<{ value: UserRole; label: string }> = [
@@ -56,27 +135,36 @@ export function UserFormModal({
   onClose,
   onSubmit,
   isSubmitting,
+  backendErrors = [],
 }: UserFormModalProps) {
   const isEdit = !!user;
+  const [password, setPassword] = useState('');
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
+    setError,
+    setValue,
   } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
       email: '',
       password: '',
+      passwordConfirm: '',
       role: 'STAFF',
       phone: '',
       address: '',
       emergencyContact: '',
     },
   });
+
+  // Watch password field for strength indicator
+  const watchedPassword = watch('password');
 
   useEffect(() => {
     if (user) {
@@ -85,6 +173,7 @@ export function UserFormModal({
         lastName: user.lastName,
         email: user.email,
         password: '',
+        passwordConfirm: '',
         role: user.role,
         phone: user.phone || '',
         address: user.address || '',
@@ -96,21 +185,37 @@ export function UserFormModal({
         lastName: '',
         email: '',
         password: '',
+        passwordConfirm: '',
         role: 'STAFF',
         phone: '',
         address: '',
         emergencyContact: '',
       });
     }
+    setPassword('');
   }, [user, reset, open]);
 
+  // Map backend errors to form fields
+  useEffect(() => {
+    if (backendErrors && backendErrors.length > 0) {
+      backendErrors.forEach((error) => {
+        setError(error.field as any, {
+          type: 'manual',
+          message: error.message,
+        });
+      });
+    }
+  }, [backendErrors, setError]);
+
   const handleFormSubmit = (data: FormData) => {
-    // Remove password if empty (for edit mode)
+    // Remove password and passwordConfirm if empty (for edit mode)
     if (isEdit && !data.password) {
-      const { password, ...rest } = data;
-      onSubmit(rest as FormData);
+      const { password, passwordConfirm, ...rest } = data as EditFormData;
+      onSubmit(rest);
     } else {
-      onSubmit(data);
+      // Remove passwordConfirm before submitting (not needed in backend)
+      const { passwordConfirm, ...submitData } = data as any;
+      onSubmit(submitData);
     }
   };
 
@@ -197,6 +302,31 @@ export function UserFormModal({
               {errors.password && (
                 <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
               )}
+              
+              {/* Password Strength Indicator */}
+              {watchedPassword && watchedPassword.length > 0 && (
+                <div className="mt-3">
+                  <PasswordStrength password={watchedPassword} />
+                </div>
+              )}
+            </div>
+
+            {/* Password Confirmation */}
+            <div className="md:col-span-2">
+              <Label htmlFor="passwordConfirm" required={!isEdit || Boolean(watchedPassword && watchedPassword.length > 0)}>
+                Confirm Password
+              </Label>
+              <Input
+                id="passwordConfirm"
+                type="password"
+                {...register('passwordConfirm')}
+                error={!!errors.passwordConfirm}
+                disabled={isSubmitting}
+                placeholder={isEdit ? 'Confirm new password if changing' : 'Re-enter password'}
+              />
+              {errors.passwordConfirm && (
+                <p className="text-sm text-destructive mt-1">{errors.passwordConfirm.message}</p>
+              )}
             </div>
 
             {/* Role */}
@@ -224,12 +354,12 @@ export function UserFormModal({
             {/* Phone */}
             <div>
               <Label htmlFor="phone">Phone</Label>
-              <Input
+              <PhoneInput
                 id="phone"
-                type="tel"
                 {...register('phone')}
                 error={!!errors.phone}
                 disabled={isSubmitting}
+                onChange={(value) => setValue('phone', value)}
               />
               {errors.phone && (
                 <p className="text-sm text-destructive mt-1">{errors.phone.message}</p>

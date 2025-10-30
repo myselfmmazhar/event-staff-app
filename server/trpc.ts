@@ -4,6 +4,8 @@ import { getOptionalAuth } from "@/lib/server/auth-utils";
 import { UserRole, hasRole } from "@/lib/server/auth-utils";
 import superjson from "superjson";
 import type { Session } from "@/lib/server/auth";
+import { ZodError } from "zod";
+import { extractZodFieldErrors, mapPrismaError } from "@/lib/utils/error-handler";
 
 /**
  * Create context for each request
@@ -26,7 +28,36 @@ export type Context = Awaited<ReturnType<typeof createContext>>;
  */
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
-  errorFormatter({ shape }) {
+  errorFormatter({ shape, error }) {
+    // Extract field-level errors from Zod validation errors
+    if (error.cause instanceof ZodError) {
+      const fieldErrors = extractZodFieldErrors(error.cause);
+      return {
+        ...shape,
+        data: {
+          ...shape.data,
+          fieldErrors,
+          zodError: error.cause.flatten(),
+        },
+      };
+    }
+
+    // Map Prisma errors to user-friendly messages
+    if (error.cause && typeof error.cause === 'object' && 'code' in error.cause) {
+      const prismaError = error.cause as any;
+      if (prismaError.code && prismaError.code.startsWith('P')) {
+        const mappedError = mapPrismaError(prismaError);
+        return {
+          ...shape,
+          message: mappedError.message,
+          data: {
+            ...shape.data,
+            prismaCode: prismaError.code,
+          },
+        };
+      }
+    }
+
     return shape;
   },
 });
