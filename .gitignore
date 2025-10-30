@@ -42,3 +42,6 @@ next-env.d.ts
 
 /lib/generated/prisma
 *.md
+
+# quick commands
+quick-commands.txt

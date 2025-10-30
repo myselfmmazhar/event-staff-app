@@ -5,9 +5,15 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database with Better Auth (scrypt)...\n');
 
+  // Get credentials from environment variables or use defaults
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Super';
+  const adminLastName = process.env.ADMIN_LAST_NAME || 'Admin';
+
   // Check if admin user already exists
   const existingAdmin = await prisma.user.findUnique({
-    where: { email: 'admin@example.com' },
+    where: { email: adminEmail },
   });
 
   if (existingAdmin) {
@@ -23,11 +29,11 @@ async function main() {
     // Use Better Auth's sign-up method which handles scrypt hashing automatically
     const result = await auth.api.signUpEmail({
       body: {
-        email: 'admin@example.com',
-        password: 'admin123',
-        name: 'Super Admin',
-        firstName: 'Super',
-        lastName: 'Admin',
+        email: adminEmail,
+        password: adminPassword,
+        name: `${adminFirstName} ${adminLastName}`,
+        firstName: adminFirstName,
+        lastName: adminLastName,
       },
     });
 
@@ -39,8 +45,8 @@ async function main() {
     const admin = await prisma.user.update({
       where: { id: result.user.id },
       data: {
-        firstName: 'Super',
-        lastName: 'Admin',
+        firstName: adminFirstName,
+        lastName: adminLastName,
         role: UserRole.SUPER_ADMIN,
         isActive: true,
         phone: '+1234567890',
@@ -56,8 +62,8 @@ async function main() {
     });
 
     console.log('\n📋 Login credentials:');
-    console.log('   Email: admin@example.com');
-    console.log('   Password: admin123');
+    console.log(`   Email: ${adminEmail}`);
+    console.log(`   Password: ${adminPassword}`);
     console.log('\n🔒 Password Security: scrypt (Better Auth default)');
     console.log('🎉 Database seeding completed successfully!');
   } catch (error) {
