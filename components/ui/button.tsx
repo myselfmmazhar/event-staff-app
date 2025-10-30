@@ -6,27 +6,27 @@ type Variant = 'default' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'premi
 type Size = 'sm' | 'md' | 'lg'
 
 const base =
-  'inline-flex items-center justify-center gap-2 font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none relative overflow-hidden group active:scale-[0.98]'
+  'inline-flex flex-row items-center justify-center gap-0.5 font-semibold transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed relative overflow-hidden group active:scale-[0.97] will-change-transform'
 
 const variants: Record<Variant, string> = {
   default:
-    'bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:bg-primary/90 hover:-translate-y-0.5',
+    'bg-primary text-primary-foreground shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/95 hover:-translate-y-0.5 hover:scale-[1.02] after:absolute after:inset-0 after:bg-gradient-to-br after:from-white/20 after:via-transparent after:to-transparent after:opacity-0 hover:after:opacity-100 after:transition-opacity after:duration-200',
   premium:
-    'bg-gradient-to-br from-primary via-primary to-primary/80 text-primary-foreground shadow-xl hover:shadow-2xl hover:-translate-y-1 before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/30 before:via-transparent before:to-white/10 before:opacity-0 hover:before:opacity-100 before:transition-all before:duration-500',
+    'bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-1 hover:scale-[1.03] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/25 before:via-white/10 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300 after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/10 after:to-transparent after:-translate-x-full hover:after:translate-x-full after:transition-transform after:duration-700 after:ease-in-out',
   secondary:
-    'bg-secondary text-secondary-foreground shadow-md hover:shadow-lg hover:bg-secondary/90 hover:-translate-y-0.5',
+    'bg-secondary text-secondary-foreground shadow-sm shadow-secondary/20 hover:shadow-md hover:shadow-secondary/25 hover:bg-secondary/95 hover:-translate-y-0.5 hover:scale-[1.02] after:absolute after:inset-0 after:bg-gradient-to-br after:from-white/15 after:via-transparent after:to-transparent after:opacity-0 hover:after:opacity-100 after:transition-opacity after:duration-200',
   outline:
-    'border-2 border-primary/30 bg-background text-primary shadow-sm hover:shadow-md hover:border-primary/50 hover:bg-accent hover:-translate-y-0.5',
+    'border-2 border-primary/40 bg-background/50 backdrop-blur-sm text-primary shadow-sm shadow-primary/10 hover:shadow-md hover:shadow-primary/20 hover:border-primary/60 hover:bg-accent/50 hover:-translate-y-0.5 hover:scale-[1.02] transition-all duration-200',
   ghost:
-    'bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground shadow-none',
+    'bg-transparent text-foreground hover:bg-accent/50 hover:text-accent-foreground shadow-none hover:shadow-sm rounded-xl transition-all duration-200',
   danger:
-    'bg-destructive text-destructive-foreground shadow-lg hover:shadow-xl hover:bg-destructive/90 hover:-translate-y-0.5',
+    'bg-destructive text-destructive-foreground shadow-md shadow-destructive/25 hover:shadow-lg hover:shadow-destructive/30 hover:bg-destructive/95 hover:-translate-y-0.5 hover:scale-[1.02] after:absolute after:inset-0 after:bg-gradient-to-br after:from-white/20 after:via-transparent after:to-transparent after:opacity-0 hover:after:opacity-100 after:transition-opacity after:duration-200',
 }
 
 const sizes: Record<Size, string> = {
-  sm: 'h-9 px-4 text-xs font-semibold tracking-wide rounded-xl',
-  md: 'h-11 px-6 text-sm font-semibold rounded-xl',
-  lg: 'h-12 px-8 text-base font-bold rounded-2xl',
+  sm: 'h-9 px-2 text-xs font-semibold tracking-wide rounded-lg',
+  md: 'h-11 px-3 text-sm font-semibold rounded-xl',
+  lg: 'h-14 px-4 text-base font-bold rounded-2xl',
 }
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -46,13 +46,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       {isLoading ? (
         <>
           <svg
-            className="h-4 w-4 animate-spin"
+            className="h-4 w-4 animate-spin shrink-0"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
           >
             <circle
-              className="opacity-25"
+              className="opacity-20"
               cx="12"
               cy="12"
               r="10"
@@ -60,15 +60,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
               strokeWidth="4"
             />
             <path
-              className="opacity-75"
+              className="opacity-80"
               fill="currentColor"
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <span className="relative z-10">Loading...</span>
+          <span className="relative z-10 opacity-90 whitespace-nowrap">Loading...</span>
         </>
       ) : (
-        <span className="relative z-10">{children}</span>
+        <span className="relative z-10 inline-flex items-center gap-0.5">{children}</span>
       )}
     </button>
   ),

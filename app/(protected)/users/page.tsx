@@ -39,6 +39,7 @@ export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [backendErrors, setBackendErrors] = useState<Array<{ field: string; message: string }>>([]);
 
   // tRPC queries
   const { data, isLoading, refetch } = trpc.user.getAll.useQuery({
@@ -53,48 +54,75 @@ export default function UsersPage() {
   const createMutation = trpc.user.create.useMutation({
     onSuccess: () => {
       toast({
-        title: 'Success',
-        description: 'User created successfully',
-        variant: 'success',
+        message: 'User created successfully',
+        type: 'success',
       });
       setIsFormOpen(false);
+      setBackendErrors([]);
       refetch();
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'error',
-      });
+      // Extract field errors from error response
+      const fieldErrors = (error.data as any)?.fieldErrors || [];
+
+      if (fieldErrors.length > 0) {
+        // Set field errors to be displayed on the form
+        setBackendErrors(fieldErrors);
+        // Show general error toast
+        toast({
+          message: 'Please check the form for errors',
+          type: 'error',
+        });
+      } else {
+        // Show specific error message for non-validation errors
+        setBackendErrors([]);
+        toast({
+          message: error.message,
+          type: 'error',
+        });
+      }
     },
   });
 
   const updateMutation = trpc.user.update.useMutation({
     onSuccess: () => {
       toast({
-        title: 'Success',
-        description: 'User updated successfully',
-        variant: 'success',
+        message: 'User updated successfully',
+        type: 'success',
       });
       setIsFormOpen(false);
       setSelectedUser(null);
+      setBackendErrors([]);
       refetch();
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'error',
-      });
+      // Extract field errors from error response
+      const fieldErrors = (error.data as any)?.fieldErrors || [];
+
+      if (fieldErrors.length > 0) {
+        // Set field errors to be displayed on the form
+        setBackendErrors(fieldErrors);
+        // Show general error toast
+        toast({
+          message: 'Please check the form for errors',
+          type: 'error',
+        });
+      } else {
+        // Show specific error message for non-validation errors
+        setBackendErrors([]);
+        toast({
+          message: error.message,
+          type: 'error',
+        });
+      }
     },
   });
 
   const deleteMutation = trpc.user.delete.useMutation({
     onSuccess: () => {
       toast({
-        title: 'Success',
-        description: 'User deleted successfully',
-        variant: 'success',
+        message: 'User deleted successfully',
+        type: 'success',
       });
       setIsDeleteOpen(false);
       setSelectedUser(null);
@@ -102,9 +130,8 @@ export default function UsersPage() {
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'error',
+        message: error.message,
+        type: 'error',
       });
     },
   });
@@ -112,17 +139,15 @@ export default function UsersPage() {
   const activateMutation = trpc.user.activate.useMutation({
     onSuccess: () => {
       toast({
-        title: 'Success',
-        description: 'User activated successfully',
-        variant: 'success',
+        message: 'User activated successfully',
+        type: 'success',
       });
       refetch();
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'error',
+        message: error.message,
+        type: 'error',
       });
     },
   });
@@ -130,17 +155,15 @@ export default function UsersPage() {
   const deactivateMutation = trpc.user.deactivate.useMutation({
     onSuccess: () => {
       toast({
-        title: 'Success',
-        description: 'User deactivated successfully',
-        variant: 'success',
+        message: 'User deactivated successfully',
+        type: 'success',
       });
       refetch();
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'error',
+        message: error.message,
+        type: 'error',
       });
     },
   });
@@ -148,11 +171,13 @@ export default function UsersPage() {
   // Handlers
   const handleCreate = () => {
     setSelectedUser(null);
+    setBackendErrors([]);
     setIsFormOpen(true);
   };
 
   const handleEdit = (user: User) => {
     setSelectedUser(user);
+    setBackendErrors([]);
     setIsFormOpen(true);
   };
 
@@ -273,9 +298,11 @@ export default function UsersPage() {
         onClose={() => {
           setIsFormOpen(false);
           setSelectedUser(null);
+          setBackendErrors([]);
         }}
         onSubmit={handleFormSubmit}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
+        backendErrors={backendErrors}
       />
 
       <DeleteUserDialog
