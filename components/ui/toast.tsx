@@ -24,8 +24,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
   return (
     <div
       className={cn(
-        'pointer-events-auto overflow-hidden rounded-2xl border border-slate-200/60 bg-card shadow-lg backdrop-blur-xl transition-all duration-300 animate-slide-in hover:shadow-xl',
-        'dark:border-slate-800/60 dark:bg-card/90',
+        'pointer-events-auto overflow-hidden rounded-2xl border border-border bg-card shadow-lg backdrop-blur-xl transition-all duration-300 animate-slide-in hover:shadow-xl',
       )}
     >
       <div className="relative flex items-start gap-3 px-4 py-3.5">
@@ -69,17 +68,17 @@ const TOAST_THEMES: Record<
 > = {
   success: {
     icon: CheckIcon,
-    background: 'linear-gradient(135deg, #10b981, #059669)',
+    background: 'linear-gradient(135deg, hsl(var(--success)), hsl(var(--success)) 80%)',
     badge: 'Success',
   },
   error: {
     icon: ErrorIcon,
-    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+    background: 'linear-gradient(135deg, hsl(var(--destructive)), hsl(var(--destructive)) 80%)',
     badge: 'Error',
   },
   info: {
     icon: InfoIcon,
-    background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+    background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)) 80%)',
     badge: 'Info',
   },
 }

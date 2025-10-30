@@ -18,7 +18,7 @@ export const Label = forwardRef<HTMLLabelElement, LabelProps>(
       {...props}
     >
       {children}
-      {(requiredMark || required) && <span className="text-red-600 dark:text-red-400 ml-1">*</span>}
+      {(requiredMark || required) && <span className="text-destructive ml-1">*</span>}
     </label>
   ),
 )

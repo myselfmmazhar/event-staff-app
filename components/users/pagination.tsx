@@ -65,11 +65,11 @@ export function Pagination({
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
       {/* Items per page */}
       <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600 dark:text-gray-400">Items per page:</span>
+        <span className="text-sm text-muted-foreground">Items per page:</span>
         <select
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="rounded-lg border-2 border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary"
         >
           {ITEMS_PER_PAGE_OPTIONS.map((option) => (
             <option key={option} value={option}>
@@ -80,10 +80,10 @@ export function Pagination({
       </div>
 
       {/* Page info */}
-      <div className="text-sm text-gray-600 dark:text-gray-400">
-        Showing <span className="font-medium text-gray-900 dark:text-gray-100">{startItem}</span> to{' '}
-        <span className="font-medium text-gray-900 dark:text-gray-100">{endItem}</span> of{' '}
-        <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span> results
+      <div className="text-sm text-muted-foreground">
+        Showing <span className="font-medium text-foreground">{startItem}</span> to{' '}
+        <span className="font-medium text-foreground">{endItem}</span> of{' '}
+        <span className="font-medium text-foreground">{totalItems}</span> results
       </div>
 
       {/* Page navigation */}
@@ -101,7 +101,7 @@ export function Pagination({
         {getPageNumbers().map((page, index) => (
           <div key={index}>
             {page === '...' ? (
-              <span className="px-2 text-gray-400">...</span>
+              <span className="px-2 text-muted-foreground">...</span>
             ) : (
               <Button
                 variant={currentPage === page ? 'default' : 'outline'}

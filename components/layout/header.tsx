@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+    <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="flex h-16 items-center gap-4 px-4 sm:px-6">
         {/* Mobile Menu Button */}
         <Button

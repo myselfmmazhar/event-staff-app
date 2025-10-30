@@ -66,13 +66,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-rose-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <div className="w-full max-w-md">
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600 to-purple-700 shadow-lg mb-4">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg mb-4">
             <svg
-              className="h-8 w-8 text-white"
+              className="h-8 w-8 text-primary-foreground"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -85,7 +85,7 @@ export default function LoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-purple-900 dark:text-purple-300">
+          <h1 className="text-3xl font-bold text-foreground">
             Event Manager
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -118,7 +118,7 @@ export default function LoginPage() {
                   {...form.register('email')}
                 />
                 {form.formState.errors.email && (
-                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                  <p className="text-sm text-destructive mt-1">
                     {form.formState.errors.email.message}
                   </p>
                 )}
@@ -142,7 +142,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     tabIndex={-1}
                   >
                     {showPassword ? (
@@ -153,7 +153,7 @@ export default function LoginPage() {
                   </button>
                 </div>
                 {form.formState.errors.password && (
-                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                  <p className="text-sm text-destructive mt-1">
                     {form.formState.errors.password.message}
                   </p>
                 )}
@@ -165,7 +165,7 @@ export default function LoginPage() {
                   <input
                     type="checkbox"
                     {...form.register('rememberMe')}
-                    className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                   />
                   <span className="text-sm text-muted-foreground">
                     Remember me
@@ -174,7 +174,7 @@ export default function LoginPage() {
 
                 <button
                   type="button"
-                  className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
+                  className="text-sm text-primary hover:text-primary/80 font-medium"
                 >
                   Forgot password?
                 </button>
@@ -198,7 +198,7 @@ export default function LoginPage() {
               Don't have an account?{' '}
               <button
                 type="button"
-                className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
+                className="text-primary hover:text-primary/80 font-medium"
               >
                 Contact your administrator
               </button>

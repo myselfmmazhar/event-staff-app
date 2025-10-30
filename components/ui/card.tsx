@@ -4,9 +4,8 @@ import { cn } from '@/lib/utils'
 export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      'group relative rounded-3xl border border-slate-200/60 bg-card shadow-lg backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:border-slate-300',
-      'dark:border-slate-800/60 dark:bg-card/60 dark:hover:border-slate-700',
-      'before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-br before:from-white/40 before:to-transparent before:opacity-0 before:transition-opacity hover:before:opacity-100 dark:before:from-white/5',
+      'group relative rounded-3xl border border-border bg-card shadow-lg backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:border-border/80',
+      'before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-br before:from-primary/5 before:to-transparent before:opacity-0 before:transition-opacity hover:before:opacity-100',
       className,
     )}
     {...props}

@@ -54,22 +54,22 @@ export function UserDropdown() {
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+        className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
       >
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-rose-500 text-xs font-bold text-white">
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-xs font-bold text-primary-foreground">
           {user.firstName?.[0]}
           {user.lastName?.[0]}
         </div>
         <div className="hidden sm:block text-left">
-          <div className="text-sm font-medium text-gray-900 dark:text-white">
+          <div className="text-sm font-medium text-card-foreground">
             {user.firstName} {user.lastName}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="text-xs text-muted-foreground">
             {user.role?.replace('_', ' ')}
           </div>
         </div>
         <ChevronDownIcon
-          className={`h-4 w-4 text-gray-400 transition-transform ${
+          className={`h-4 w-4 text-muted-foreground transition-transform ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -77,18 +77,18 @@ export function UserDropdown() {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 origin-top-right rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div className="absolute right-0 mt-2 w-64 origin-top-right rounded-lg border border-border bg-card shadow-lg">
           {/* User Info */}
-          <div className="border-b border-gray-200 p-3 dark:border-gray-700">
+          <div className="border-b border-border p-3">
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
+              <span className="text-sm font-medium text-card-foreground">
                 {user.firstName} {user.lastName}
               </span>
               <Badge variant={getRoleBadgeVariant(user.role)} size="sm">
                 {user.role?.replace('_', ' ')}
               </Badge>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {user.email}
             </p>
           </div>
@@ -98,7 +98,7 @@ export function UserDropdown() {
             <Link
               href="/profile"
               onClick={() => setIsOpen(false)}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
             >
               <UserIcon className="h-4 w-4" />
               <span>My Profile</span>
@@ -109,7 +109,7 @@ export function UserDropdown() {
                 setIsOpen(false);
                 handleLogout();
               }}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
             >
               <LogoutIcon className="h-4 w-4" />
               <span>Logout</span>

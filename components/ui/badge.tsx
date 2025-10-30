@@ -6,21 +6,21 @@ type Size = 'sm' | 'md' | 'lg'
 
 const variants: Record<Variant, string> = {
   default:
-    'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 border-slate-300/50 dark:from-slate-800 dark:to-slate-900 dark:text-slate-300 dark:border-slate-700/50',
+    'bg-muted text-muted-foreground border-border',
   success:
-    'bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200/50 dark:from-emerald-950/50 dark:to-emerald-900/50 dark:text-emerald-300 dark:border-emerald-800/50',
+    'bg-success/10 text-success border-success/20',
   warning:
-    'bg-gradient-to-br from-amber-50 to-amber-100 text-amber-700 border-amber-200/50 dark:from-amber-950/50 dark:to-amber-900/50 dark:text-amber-300 dark:border-amber-800/50',
+    'bg-warning/10 text-warning-foreground border-warning/20',
   danger:
-    'bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border-rose-200/50 dark:from-rose-950/50 dark:to-rose-900/50 dark:text-rose-300 dark:border-rose-800/50',
+    'bg-destructive/10 text-destructive border-destructive/20',
   info:
-    'bg-gradient-to-br from-sky-50 to-sky-100 text-sky-700 border-sky-200/50 dark:from-sky-950/50 dark:to-sky-900/50 dark:text-sky-300 dark:border-sky-800/50',
+    'bg-info/10 text-info border-info/20',
   purple:
-    'bg-gradient-to-br from-purple-50 to-purple-100 text-purple-700 border-purple-200/50 dark:from-purple-950/50 dark:to-purple-900/50 dark:text-purple-300 dark:border-purple-800/50',
+    'bg-primary/10 text-primary border-primary/20',
   primary:
-    'bg-gradient-to-br from-purple-50 to-purple-100 text-purple-700 border-purple-200/50 dark:from-purple-950/50 dark:to-purple-900/50 dark:text-purple-300 dark:border-purple-800/50',
+    'bg-primary/10 text-primary border-primary/20',
   secondary:
-    'bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border-rose-200/50 dark:from-rose-950/50 dark:to-rose-900/50 dark:text-rose-300 dark:border-rose-800/50',
+    'bg-secondary/10 text-secondary border-secondary/20',
 }
 
 const sizes: Record<Size, string> = {

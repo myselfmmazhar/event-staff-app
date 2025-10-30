@@ -45,16 +45,16 @@ export function Breadcrumbs() {
         return (
           <div key={breadcrumb.href} className="flex items-center">
             {index > 0 && (
-              <ChevronRightIcon className="mx-1 h-4 w-4 text-gray-400" />
+              <ChevronRightIcon className="mx-1 h-4 w-4 text-muted-foreground" />
             )}
             {isLast ? (
-              <span className="font-medium text-gray-900 dark:text-white">
+              <span className="font-medium text-foreground">
                 {breadcrumb.label}
               </span>
             ) : (
               <Link
                 href={breadcrumb.href}
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 {breadcrumb.label}
               </Link>

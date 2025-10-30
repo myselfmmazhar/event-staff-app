@@ -35,7 +35,7 @@ export function UserFilters({
     <div className="flex flex-col sm:flex-row gap-4">
       {/* Role Filter */}
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+        <label className="text-sm font-medium text-foreground flex items-center gap-2">
           <FilterIcon className="h-4 w-4" />
           Role
         </label>
@@ -55,7 +55,7 @@ export function UserFilters({
 
       {/* Status Filter */}
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+        <label className="text-sm font-medium text-foreground flex items-center gap-2">
           <FilterIcon className="h-4 w-4" />
           Status
         </label>

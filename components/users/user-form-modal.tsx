@@ -123,7 +123,7 @@ export function UserFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="text-muted-foreground hover:text-foreground"
             >
               <CloseIcon className="h-5 w-5" />
             </button>
@@ -144,7 +144,7 @@ export function UserFormModal({
                 disabled={isSubmitting}
               />
               {errors.firstName && (
-                <p className="text-sm text-red-600 mt-1">{errors.firstName.message}</p>
+                <p className="text-sm text-destructive mt-1">{errors.firstName.message}</p>
               )}
             </div>
 
@@ -160,7 +160,7 @@ export function UserFormModal({
                 disabled={isSubmitting}
               />
               {errors.lastName && (
-                <p className="text-sm text-red-600 mt-1">{errors.lastName.message}</p>
+                <p className="text-sm text-destructive mt-1">{errors.lastName.message}</p>
               )}
             </div>
 
@@ -177,7 +177,7 @@ export function UserFormModal({
                 disabled={isSubmitting}
               />
               {errors.email && (
-                <p className="text-sm text-red-600 mt-1">{errors.email.message}</p>
+                <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
               )}
             </div>
 
@@ -195,7 +195,7 @@ export function UserFormModal({
                 placeholder={isEdit ? 'Leave blank to keep current password' : ''}
               />
               {errors.password && (
-                <p className="text-sm text-red-600 mt-1">{errors.password.message}</p>
+                <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
               )}
             </div>
 
@@ -208,7 +208,7 @@ export function UserFormModal({
                 id="role"
                 {...register('role')}
                 disabled={isSubmitting}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full rounded-lg border-2 border-input bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
               >
                 {ROLES.map((role) => (
                   <option key={role.value} value={role.value}>
@@ -217,7 +217,7 @@ export function UserFormModal({
                 ))}
               </select>
               {errors.role && (
-                <p className="text-sm text-red-600 mt-1">{errors.role.message}</p>
+                <p className="text-sm text-destructive mt-1">{errors.role.message}</p>
               )}
             </div>
 
@@ -232,7 +232,7 @@ export function UserFormModal({
                 disabled={isSubmitting}
               />
               {errors.phone && (
-                <p className="text-sm text-red-600 mt-1">{errors.phone.message}</p>
+                <p className="text-sm text-destructive mt-1">{errors.phone.message}</p>
               )}
             </div>
 
@@ -246,7 +246,7 @@ export function UserFormModal({
                 disabled={isSubmitting}
               />
               {errors.address && (
-                <p className="text-sm text-red-600 mt-1">{errors.address.message}</p>
+                <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
               )}
             </div>
 
@@ -261,7 +261,7 @@ export function UserFormModal({
                 placeholder="Name and phone number"
               />
               {errors.emergencyContact && (
-                <p className="text-sm text-red-600 mt-1">{errors.emergencyContact.message}</p>
+                <p className="text-sm text-destructive mt-1">{errors.emergencyContact.message}</p>
               )}
             </div>
           </div>

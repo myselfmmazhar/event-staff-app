@@ -10,17 +10,17 @@ const base =
 
 const variants: Record<Variant, string> = {
   default:
-    'bg-gradient-to-br from-purple-600 via-purple-500 to-purple-600 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 focus-visible:ring-offset-background before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/20 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity',
+    'bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:bg-primary/90 hover:-translate-y-0.5',
   premium:
-    'bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 focus-visible:ring-offset-background before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/30 before:via-transparent before:to-white/10 before:opacity-0 hover:before:opacity-100 before:transition-all before:duration-500',
+    'bg-gradient-to-br from-primary via-primary to-primary/80 text-primary-foreground shadow-xl hover:shadow-2xl hover:-translate-y-1 before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/30 before:via-transparent before:to-white/10 before:opacity-0 hover:before:opacity-100 before:transition-all before:duration-500',
   secondary:
-    'bg-gradient-to-b from-slate-50 to-slate-100 text-slate-900 shadow-md hover:shadow-lg hover:-translate-y-0.5 border border-slate-200/60 dark:from-slate-800 dark:to-slate-900 dark:text-slate-100 dark:border-slate-700/60 dark:hover:border-slate-600 focus-visible:ring-offset-background',
+    'bg-secondary text-secondary-foreground shadow-md hover:shadow-lg hover:bg-secondary/90 hover:-translate-y-0.5',
   outline:
-    'border-2 border-purple-300/50 bg-background/80 text-purple-700 shadow-sm hover:shadow-md hover:border-purple-400 hover:bg-purple-50 hover:-translate-y-0.5 dark:border-purple-500/30 dark:bg-background/30 dark:text-purple-300 dark:hover:border-purple-400 dark:hover:bg-purple-950/30 focus-visible:ring-offset-background',
+    'border-2 border-primary/30 bg-background text-primary shadow-sm hover:shadow-md hover:border-primary/50 hover:bg-accent hover:-translate-y-0.5',
   ghost:
-    'bg-transparent text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white focus-visible:ring-offset-background shadow-none',
+    'bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground shadow-none',
   danger:
-    'bg-gradient-to-br from-rose-500 via-red-500 to-rose-600 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 focus-visible:ring-rose-500/60 focus-visible:ring-offset-background before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/20 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity',
+    'bg-destructive text-destructive-foreground shadow-lg hover:shadow-xl hover:bg-destructive/90 hover:-translate-y-0.5',
 }
 
 const sizes: Record<Size, string> = {

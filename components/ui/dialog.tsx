@@ -43,7 +43,7 @@ export function Dialog({ open, onClose, children, className }: DialogProps) {
       <div
         ref={dialogRef}
         className={cn(
-          'relative bg-white dark:bg-gray-900 rounded-lg shadow-xl',
+          'relative bg-card rounded-lg shadow-xl',
           'max-h-[90vh] overflow-y-auto',
           'w-full max-w-md mx-4',
           'animate-in fade-in-0 zoom-in-95',
@@ -58,7 +58,7 @@ export function Dialog({ open, onClose, children, className }: DialogProps) {
 
 export function DialogHeader({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('px-6 py-4 border-b border-gray-200 dark:border-gray-700', className)}>
+    <div className={cn('px-6 py-4 border-b border-border', className)}>
       {children}
     </div>
   );
@@ -66,7 +66,7 @@ export function DialogHeader({ children, className }: { children: React.ReactNod
 
 export function DialogTitle({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <h2 className={cn('text-xl font-semibold text-gray-900 dark:text-gray-100', className)}>
+    <h2 className={cn('text-xl font-semibold text-card-foreground', className)}>
       {children}
     </h2>
   );
@@ -74,7 +74,7 @@ export function DialogTitle({ children, className }: { children: React.ReactNode
 
 export function DialogDescription({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={cn('text-sm text-gray-600 dark:text-gray-400 mt-1', className)}>
+    <p className={cn('text-sm text-muted-foreground mt-1', className)}>
       {children}
     </p>
   );
@@ -90,7 +90,7 @@ export function DialogContent({ children, className }: { children: React.ReactNo
 
 export function DialogFooter({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3', className)}>
+    <div className={cn('px-6 py-4 border-t border-border flex items-center justify-end gap-3', className)}>
       {children}
     </div>
   );

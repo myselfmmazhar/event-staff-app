@@ -20,7 +20,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-950 dark:to-neutral-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-muted/30 to-muted/50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Welcome Section */}
         <WelcomeSection
@@ -31,8 +31,8 @@ export default function DashboardPage() {
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg p-4">
-            <p className="text-red-800 dark:text-red-200 text-sm">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+            <p className="text-destructive text-sm">
               Failed to load dashboard statistics. Please try refreshing the page.
             </p>
           </div>
@@ -84,85 +84,85 @@ export default function DashboardPage() {
 
         {/* Role Breakdown */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+              <h3 className="text-sm font-medium text-muted-foreground">
                 Super Admins
               </h3>
-              <div className="w-3 h-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full" />
+              <div className="w-3 h-3 bg-gradient-to-br from-primary to-primary/80 rounded-full" />
             </div>
             {isLoading ? (
-              <div className="h-8 w-16 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse" />
+              <div className="h-8 w-16 bg-muted rounded animate-pulse" />
             ) : (
-              <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+              <p className="text-2xl font-bold text-card-foreground">
                 {stats?.byRole?.SUPER_ADMIN || 0}
               </p>
             )}
             {stats?.total && stats.total > 0 && (
-              <p className="text-xs text-neutral-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {getRolePercentage(stats?.byRole?.SUPER_ADMIN || 0)} of users
               </p>
             )}
           </div>
 
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+              <h3 className="text-sm font-medium text-muted-foreground">
                 Admins
               </h3>
-              <div className="w-3 h-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full" />
+              <div className="w-3 h-3 bg-gradient-to-br from-info to-info/80 rounded-full" />
             </div>
             {isLoading ? (
-              <div className="h-8 w-16 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse" />
+              <div className="h-8 w-16 bg-muted rounded animate-pulse" />
             ) : (
-              <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+              <p className="text-2xl font-bold text-card-foreground">
                 {stats?.byRole?.ADMIN || 0}
               </p>
             )}
             {stats?.total && stats.total > 0 && (
-              <p className="text-xs text-neutral-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {getRolePercentage(stats?.byRole?.ADMIN || 0)} of users
               </p>
             )}
           </div>
 
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+              <h3 className="text-sm font-medium text-muted-foreground">
                 Managers
               </h3>
-              <div className="w-3 h-3 bg-gradient-to-br from-green-500 to-green-600 rounded-full" />
+              <div className="w-3 h-3 bg-gradient-to-br from-success to-success/80 rounded-full" />
             </div>
             {isLoading ? (
-              <div className="h-8 w-16 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse" />
+              <div className="h-8 w-16 bg-muted rounded animate-pulse" />
             ) : (
-              <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+              <p className="text-2xl font-bold text-card-foreground">
                 {stats?.byRole?.MANAGER || 0}
               </p>
             )}
             {stats?.total && stats.total > 0 && (
-              <p className="text-xs text-neutral-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {getRolePercentage(stats?.byRole?.MANAGER || 0)} of users
               </p>
             )}
           </div>
 
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+              <h3 className="text-sm font-medium text-muted-foreground">
                 Staff
               </h3>
-              <div className="w-3 h-3 bg-gradient-to-br from-rose-500 to-rose-600 rounded-full" />
+              <div className="w-3 h-3 bg-gradient-to-br from-secondary to-secondary/80 rounded-full" />
             </div>
             {isLoading ? (
-              <div className="h-8 w-16 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse" />
+              <div className="h-8 w-16 bg-muted rounded animate-pulse" />
             ) : (
-              <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+              <p className="text-2xl font-bold text-card-foreground">
                 {stats?.byRole?.STAFF || 0}
               </p>
             )}
             {stats?.total && stats.total > 0 && (
-              <p className="text-xs text-neutral-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {getRolePercentage(stats?.byRole?.STAFF || 0)} of users
               </p>
             )}
@@ -171,11 +171,11 @@ export default function DashboardPage() {
 
         {/* Quick Actions (Optional - can be expanded later) */}
         {stats?.total === 0 && !isLoading && (
-          <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900 rounded-lg p-6 text-center">
-            <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-2">
+          <div className="bg-primary/10 border border-primary/30 rounded-lg p-6 text-center">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Get Started
             </h3>
-            <p className="text-purple-700 dark:text-purple-300 text-sm mb-4">
+            <p className="text-muted-foreground text-sm mb-4">
               No users found. Create your first user to get started with the platform.
             </p>
           </div>

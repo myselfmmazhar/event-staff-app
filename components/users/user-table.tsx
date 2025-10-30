@@ -56,8 +56,8 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
   if (users.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400 text-lg">No users found</p>
-        <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
+        <p className="text-foreground text-lg">No users found</p>
+        <p className="text-muted-foreground text-sm mt-2">
           Try adjusting your search or filters
         </p>
       </div>
@@ -70,26 +70,26 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-700">
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <tr className="border-b border-border">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
                 Name
               </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
                 Email
               </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
                 Role
               </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
                 Status
               </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
                 Phone
               </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
                 Joined
               </th>
-              <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <th className="text-right py-3 px-4 text-sm font-semibold text-foreground">
                 Actions
               </th>
             </tr>
@@ -98,14 +98,14 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
             {users.map((user) => (
               <tr
                 key={user.id}
-                className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                className="border-b border-border hover:bg-muted/50 transition-colors"
               >
                 <td className="py-4 px-4">
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                  <div className="font-medium text-foreground">
                     {user.firstName} {user.lastName}
                   </div>
                 </td>
-                <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
+                <td className="py-4 px-4 text-sm text-muted-foreground">
                   {user.email}
                 </td>
                 <td className="py-4 px-4">
@@ -118,10 +118,10 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
                     {user.isActive ? 'Active' : 'Inactive'}
                   </Badge>
                 </td>
-                <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
+                <td className="py-4 px-4 text-sm text-muted-foreground">
                   {user.phone || '-'}
                 </td>
-                <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
+                <td className="py-4 px-4 text-sm text-muted-foreground">
                   {format(new Date(user.createdAt), 'MMM d, yyyy')}
                 </td>
                 <td className="py-4 px-4">
@@ -146,7 +146,7 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
                       variant="ghost"
                       size="sm"
                       onClick={() => onDelete(user)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       title="Delete user"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -164,14 +164,14 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
         {users.map((user) => (
           <div
             key={user.id}
-            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3"
+            className="bg-card rounded-lg border border-border p-4 space-y-3"
           >
             <div className="flex items-start justify-between">
               <div>
-                <div className="font-semibold text-gray-900 dark:text-gray-100">
+                <div className="font-semibold text-card-foreground">
                   {user.firstName} {user.lastName}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <div className="text-sm text-muted-foreground mt-1">
                   {user.email}
                 </div>
               </div>
@@ -185,15 +185,15 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
                 {ROLE_LABELS[user.role]}
               </Badge>
               {user.phone && (
-                <span className="text-sm text-gray-600 dark:text-gray-400">{user.phone}</span>
+                <span className="text-sm text-muted-foreground">{user.phone}</span>
               )}
             </div>
 
-            <div className="text-xs text-gray-500 dark:text-gray-500">
+            <div className="text-xs text-muted-foreground">
               Joined {format(new Date(user.createdAt), 'MMM d, yyyy')}
             </div>
 
-            <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-2 pt-2 border-t border-border">
               <Button
                 variant="outline"
                 size="sm"
@@ -215,7 +215,7 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
                 variant="outline"
                 size="sm"
                 onClick={() => onDelete(user)}
-                className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950"
+                className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
               >
                 <TrashIcon className="h-4 w-4" />
               </Button>

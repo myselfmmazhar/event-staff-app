@@ -39,8 +39,8 @@ export function DeleteUserDialog({
     <Dialog open={open} onClose={onClose}>
       <DialogHeader>
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-            <AlertIcon className="h-6 w-6 text-red-600 dark:text-red-500" />
+          <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+            <AlertIcon className="h-6 w-6 text-destructive" />
           </div>
           <div>
             <DialogTitle>Delete User</DialogTitle>
@@ -50,18 +50,18 @@ export function DeleteUserDialog({
       </DialogHeader>
 
       <DialogContent>
-        <p className="text-gray-700 dark:text-gray-300">
+        <p className="text-foreground">
           Are you sure you want to delete{' '}
-          <span className="font-semibold text-gray-900 dark:text-gray-100">
+          <span className="font-semibold text-foreground">
             {user.firstName} {user.lastName}
           </span>
           ?
         </p>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+        <p className="text-sm text-muted-foreground mt-2">
           Email: {user.email}
         </p>
-        <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-300">
+        <div className="mt-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <p className="text-sm text-destructive">
             This will permanently delete the user and all associated data.
           </p>
         </div>

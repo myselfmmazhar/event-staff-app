@@ -6,7 +6,7 @@ export function Skeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
       className={cn(
-        'animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800',
+        'animate-pulse rounded-xl bg-muted',
         className,
       )}
       {...props}
@@ -16,7 +16,7 @@ export function Skeleton({ className, ...props }: SkeletonProps) {
 
 export function SkeletonCard() {
   return (
-    <div className="space-y-4 rounded-3xl border border-slate-200/60 bg-card p-6 dark:border-slate-800/60">
+    <div className="space-y-4 rounded-3xl border border-border bg-card p-6">
       <div className="space-y-2">
         <Skeleton className="h-5 w-2/5" />
         <Skeleton className="h-4 w-4/5" />

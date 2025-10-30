@@ -92,22 +92,22 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   };
 
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-gray-900 text-white">
+    <div className="flex h-full flex-col bg-card border-r border-border">
       {/* Logo/Brand */}
-      <div className="flex h-16 items-center justify-between border-b border-gray-800 px-6">
+      <div className="flex h-16 items-center justify-between border-b border-border px-6">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-rose-500">
-            <span className="text-sm font-bold">ES</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80">
+            <span className="text-sm font-bold text-primary-foreground">ES</span>
           </div>
-          <span className="text-lg font-semibold">Event Staff</span>
+          <span className="text-lg font-semibold text-card-foreground">Event Staff</span>
         </div>
         {isMobile && (
           <button
             onClick={onClose}
-            className="rounded-lg p-1 hover:bg-gray-800 transition-colors"
+            className="rounded-lg p-1 hover:bg-muted transition-colors"
             aria-label="Close menu"
           >
-            <CloseIcon className="h-5 w-5" />
+            <CloseIcon className="h-5 w-5 text-foreground" />
           </button>
         )}
       </div>
@@ -127,8 +127,8 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
                 ${
                   active
-                    ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-lg shadow-purple-500/30'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }
               `}
             >
@@ -141,23 +141,23 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
 
       {/* User Profile Section */}
       {user && (
-        <div className="border-t border-gray-800 p-4">
-          <div className="mb-3 rounded-lg bg-gray-800 p-3">
+        <div className="border-t border-border p-4">
+          <div className="mb-3 rounded-lg bg-muted p-3">
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-foreground">
                 {user.firstName} {user.lastName}
               </span>
               <Badge variant={getRoleBadgeVariant(user.role)} size="sm">
                 {user.role?.replace('_', ' ')}
               </Badge>
             </div>
-            <p className="text-xs text-gray-400 truncate">{user.email}</p>
+            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
 
           <Button
             variant="ghost"
             onClick={handleLogout}
-            className="w-full justify-start gap-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+            className="w-full justify-start gap-2"
           >
             <LogoutIcon className="h-4 w-4" />
             <span>Logout</span>

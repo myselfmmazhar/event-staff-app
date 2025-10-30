@@ -33,7 +33,7 @@ export default function ProtectedLayout({
           <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
 
           {/* Page Content */}
-          <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+          <main className="flex-1 overflow-y-auto bg-muted/30">
             <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
               {children}
             </div>

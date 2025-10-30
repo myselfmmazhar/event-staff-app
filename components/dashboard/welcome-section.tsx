@@ -58,18 +58,18 @@ export function WelcomeSection({
   };
 
   return (
-    <Card className="border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-purple-500/5 to-rose-500/5">
+    <Card className="border-border bg-gradient-to-br from-primary/5 to-secondary/5">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold text-foreground mb-2">
               {getGreeting()}, {fullName}!
             </h1>
-            <p className="text-neutral-600 dark:text-neutral-400 flex items-center gap-2">
+            <p className="text-muted-foreground flex items-center gap-2">
               {formatDate()}
               {role && (
                 <>
-                  <span className="text-neutral-400">•</span>
+                  <span className="text-muted-foreground">•</span>
                   <Badge variant={getRoleBadgeVariant(role)} className="text-xs">
                     {formatRoleDisplay(role)}
                   </Badge>
