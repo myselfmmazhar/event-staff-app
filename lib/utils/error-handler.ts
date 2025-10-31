@@ -28,8 +28,8 @@ export interface ErrorResponse {
  * Extract field-level errors from Zod validation errors
  */
 export function extractZodFieldErrors(error: ZodError): FieldError[] {
-  return error.errors.map((err) => ({
-    field: extractFieldFromPath(err.path),
+  return error.issues.map((err) => ({
+    field: extractFieldFromPath(err.path as (string | number)[]),
     message: err.message,
   }));
 }

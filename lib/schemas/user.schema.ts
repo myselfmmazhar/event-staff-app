@@ -151,6 +151,10 @@ export class UserSchema {
     sortOrder: z.enum(["asc", "desc"]).default("desc").optional(),
     role: z.nativeEnum(UserRole).optional(),
     isActive: z.boolean().optional(),
+    emailVerified: z.boolean().optional(),
+    hasPhone: z.boolean().optional(),
+    createdFrom: z.string().optional(),
+    createdTo: z.string().optional(),
   });
 
   /**

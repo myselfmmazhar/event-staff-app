@@ -3,9 +3,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EditIcon, TrashIcon } from '@/components/ui/icons';
+import { EditIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from '@/components/ui/icons';
 import { UserRole } from '@prisma/client';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -23,9 +24,12 @@ interface User {
 interface UserTableProps {
   users: User[];
   isLoading: boolean;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   onToggleStatus: (user: User) => void;
+  onSort: (field: 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role') => void;
 }
 
 const ROLE_COLORS: Record<UserRole, 'purple' | 'primary' | 'info' | 'default'> = {
@@ -42,7 +46,33 @@ const ROLE_LABELS: Record<UserRole, string> = {
   STAFF: 'Staff',
 };
 
-export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }: UserTableProps) {
+const SORTABLE_COLUMNS: Array<{ key: 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role'; label: string }> = [
+  { key: 'firstName', label: 'Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'role', label: 'Role' },
+  { key: 'createdAt', label: 'Joined' },
+];
+
+export function UserTable({ 
+  users, 
+  isLoading, 
+  sortBy = 'createdAt',
+  sortOrder = 'desc',
+  onEdit, 
+  onDelete, 
+  onToggleStatus,
+  onSort
+}: UserTableProps) {
+  const renderSortIcon = (columnKey: string) => {
+    if (sortBy !== columnKey) {
+      return <ChevronUpIcon className="h-4 w-4 opacity-30" />;
+    }
+    return sortOrder === 'asc' ? (
+      <ChevronUpIcon className="h-4 w-4" />
+    ) : (
+      <ChevronDownIcon className="h-4 w-4" />
+    );
+  };
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -68,95 +98,109 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
     <>
       {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
-                Name
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
-                Email
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
-                Role
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
-                Status
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
-                Phone
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
-                Joined
-              </th>
-              <th className="text-right py-3 px-4 text-sm font-semibold text-foreground">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr
-                key={user.id}
-                className="border-b border-border hover:bg-muted/50 transition-colors"
-              >
-                <td className="py-4 px-4">
-                  <div className="font-medium text-foreground">
-                    {user.firstName} {user.lastName}
-                  </div>
-                </td>
-                <td className="py-4 px-4 text-sm text-muted-foreground">
-                  {user.email}
-                </td>
-                <td className="py-4 px-4">
-                  <Badge variant={ROLE_COLORS[user.role]}>
-                    {ROLE_LABELS[user.role]}
-                  </Badge>
-                </td>
-                <td className="py-4 px-4">
-                  <Badge variant={user.isActive ? 'success' : 'danger'} pulse={user.isActive}>
-                    {user.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
-                </td>
-                <td className="py-4 px-4 text-sm text-muted-foreground">
-                  {user.phone || '-'}
-                </td>
-                <td className="py-4 px-4 text-sm text-muted-foreground">
-                  {format(new Date(user.createdAt), 'MMM d, yyyy')}
-                </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onToggleStatus(user)}
-                      title={user.isActive ? 'Deactivate user' : 'Activate user'}
+        <div className="min-w-full inline-block">
+          <table className="w-full min-w-[800px]">
+            <thead>
+              <tr className="border-b border-border">
+                {SORTABLE_COLUMNS.map((col) => {
+                  // Special alignment for Role column
+                  const isRole = col.key === 'role';
+                  return (
+                    <th 
+                      key={col.key} 
+                      className={cn(
+                        "py-3 px-4",
+                        isRole ? "text-center" : "text-left"
+                      )}
                     >
-                      {user.isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit(user)}
-                      title="Edit user"
-                    >
-                      <EditIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDelete(user)}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      title="Delete user"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
+                      <button
+                        onClick={() => onSort(col.key)}
+                        className={cn(
+                          "flex items-center gap-2 font-semibold text-sm text-foreground hover:text-primary transition-colors",
+                          isRole && "justify-center"
+                        )}
+                      >
+                        {col.label}
+                        {renderSortIcon(col.key)}
+                      </button>
+                    </th>
+                  );
+                })}
+                <th className="text-left py-3 px-4">
+                  <span className="font-semibold text-sm text-foreground">Status</span>
+                </th>
+                <th className="text-left py-3 px-4">
+                  <span className="font-semibold text-sm text-foreground">Phone</span>
+                </th>
+                <th className="text-right py-3 px-4">
+                  <span className="font-semibold text-sm text-foreground">Actions</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr
+                  key={user.id}
+                  className="border-b border-border hover:bg-muted/50 transition-colors"
+                >
+                  <td className="py-4 px-4">
+                    <div className="font-medium text-foreground">
+                      {user.firstName} {user.lastName}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4 text-sm text-muted-foreground">
+                    {user.email}
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    <Badge variant={ROLE_COLORS[user.role]} asSpan>
+                      {ROLE_LABELS[user.role]}
+                    </Badge>
+                  </td>
+                  <td className="py-4 px-4 text-sm text-muted-foreground">
+                    {format(new Date(user.createdAt), 'MMM d, yyyy')}
+                  </td>
+                  <td className="py-4 px-4">
+                    <Badge variant={user.isActive ? 'success' : 'danger'} pulse={user.isActive} asSpan>
+                      {user.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </td>
+                  <td className="py-4 px-4 text-sm text-muted-foreground">
+                    {user.phone || '-'}
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onToggleStatus(user)}
+                        title={user.isActive ? 'Deactivate user' : 'Activate user'}
+                      >
+                        {user.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEdit(user)}
+                        title="Edit user"
+                      >
+                        <EditIcon className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDelete(user)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        title="Delete user"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Mobile Cards */}
@@ -175,13 +219,13 @@ export function UserTable({ users, isLoading, onEdit, onDelete, onToggleStatus }
                   {user.email}
                 </div>
               </div>
-              <Badge variant={user.isActive ? 'success' : 'danger'} pulse={user.isActive}>
+              <Badge variant={user.isActive ? 'success' : 'danger'} pulse={user.isActive} asSpan>
                 {user.isActive ? 'Active' : 'Inactive'}
               </Badge>
             </div>
 
             <div className="flex items-center gap-2">
-              <Badge variant={ROLE_COLORS[user.role]}>
+              <Badge variant={ROLE_COLORS[user.role]} asSpan>
                 {ROLE_LABELS[user.role]}
               </Badge>
               {user.phone && (

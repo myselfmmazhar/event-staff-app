@@ -63,11 +63,12 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   // Filter navigation items based on user role
   const visibleNavItems = navItems.filter((item) => {
     if (!item.requiresAdmin) return true;
-    if (!user?.role) return false;
+    const userRole = (user as any)?.role;
+    if (!userRole) return false;
 
     // Check if user has admin access (ADMIN or SUPER_ADMIN)
     const adminRoles = ['ADMIN', 'SUPER_ADMIN'];
-    return adminRoles.includes(user.role);
+    return adminRoles.includes(userRole);
   });
 
   // Check if current path matches nav item
@@ -145,10 +146,10 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           <div className="mb-3 rounded-lg bg-muted p-3">
             <div className="mb-1 flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">
-                {user.firstName} {user.lastName}
+                {(user as any).firstName} {(user as any).lastName}
               </span>
-              <Badge variant={getRoleBadgeVariant(user.role)} size="sm">
-                {user.role?.replace('_', ' ')}
+              <Badge variant={getRoleBadgeVariant((user as any).role)} size="sm">
+                {(user as any).role?.replace('_', ' ')}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>

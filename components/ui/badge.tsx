@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'primary' | 'secondary'
@@ -29,11 +29,12 @@ const sizes: Record<Size, string> = {
   lg: 'px-4 py-1.5 text-sm rounded-xl',
 }
 
-export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+export interface BadgeProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
   variant?: Variant
   size?: Size
   dot?: boolean
   pulse?: boolean
+  asSpan?: boolean  // Opt-in for non-interactive badges
 }
 
 export const Badge = ({
@@ -42,19 +43,49 @@ export const Badge = ({
   size = 'md',
   dot = false,
   pulse = false,
+  asSpan = false,
   children,
+  onClick,
   ...props
-}: BadgeProps) => (
-  <span
-    className={cn(
-      'inline-flex items-center gap-1.5 font-semibold border shadow-sm transition-all duration-200 hover:scale-105',
-      variants[variant],
-      sizes[size],
-      className,
-    )}
-    {...props}
-  >
-    {(dot || pulse) && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
-    {children}
-  </span>
-)
+}: BadgeProps) => {
+  const isInteractive = !!onClick
+
+  const baseStyles = cn(
+    'inline-flex items-center gap-1.5 font-semibold border shadow-sm transition-all duration-200',
+    variants[variant],
+    sizes[size],
+    isInteractive && 'hover:scale-105 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50',
+    className,
+  )
+
+  const content = (
+    <>
+      {(dot || pulse) && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
+      {children}
+    </>
+  )
+
+  // Render as span if explicitly requested or not interactive
+  if (asSpan || !isInteractive) {
+    return (
+      <span
+        className={baseStyles}
+        {...(props as HTMLAttributes<HTMLSpanElement>)}
+      >
+        {content}
+      </span>
+    )
+  }
+
+  // Render as button for interactive badges
+  return (
+    <button
+      type="button"
+      className={baseStyles}
+      onClick={onClick}
+      {...(props as ButtonHTMLAttributes<HTMLButtonElement>)}
+    >
+      {content}
+    </button>
+  )
+}

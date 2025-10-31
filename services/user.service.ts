@@ -147,6 +147,35 @@ export class UserService {
       where.isActive = query.isActive;
     }
 
+    // Email verification filter
+    if (typeof query.emailVerified === "boolean") {
+      where.emailVerified = query.emailVerified;
+    }
+
+    // Phone filter
+    if (typeof query.hasPhone === "boolean") {
+      if (query.hasPhone) {
+        where.phone = { not: null };
+      } else {
+        where.phone = null;
+      }
+    }
+
+    // Date range filter
+    if (query.createdFrom || query.createdTo) {
+      where.createdAt = {};
+      if (query.createdFrom) {
+        // Normalize to start of day in local timezone
+        const fromDate = new Date(query.createdFrom + 'T00:00:00');
+        where.createdAt.gte = fromDate;
+      }
+      if (query.createdTo) {
+        // Normalize to end of day in local timezone (23:59:59.999)
+        const toDate = new Date(query.createdTo + 'T23:59:59.999');
+        where.createdAt.lte = toDate;
+      }
+    }
+
     // Search filter (firstName, lastName, email)
     if (query.search) {
       where.OR = [

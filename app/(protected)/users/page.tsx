@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { PlusIcon } from '@/components/ui/icons';
+import { ActiveFilters } from '@/components/users/active-filters';
 import { DeleteUserDialog } from '@/components/users/delete-user-dialog';
 import { Pagination } from '@/components/users/pagination';
 import { UserFilters } from '@/components/users/user-filters';
@@ -12,7 +13,8 @@ import { UserSearch } from '@/components/users/user-search';
 import { UserTable } from '@/components/users/user-table';
 import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
-import { useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 type User = {
   id: string;
@@ -29,13 +31,37 @@ type User = {
 
 export default function UsersPage() {
   const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // State
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [search, setSearch] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole | 'ALL'>('ALL');
-  const [selectedStatus, setSelectedStatus] = useState<boolean | 'ALL'>('ALL');
+  // Initialize state from URL params
+  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
+  const [limit, setLimit] = useState(Number(searchParams.get('limit')) || 10);
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [selectedRole, setSelectedRole] = useState<UserRole | 'ALL'>(
+    (searchParams.get('role') as UserRole) || 'ALL'
+  );
+  const [selectedStatus, setSelectedStatus] = useState<boolean | 'ALL'>(
+    searchParams.get('status') === 'true' ? true :
+    searchParams.get('status') === 'false' ? false : 'ALL'
+  );
+  const [selectedEmailVerified, setSelectedEmailVerified] = useState<boolean | 'ALL'>(
+    searchParams.get('emailVerified') === 'true' ? true :
+    searchParams.get('emailVerified') === 'false' ? false : 'ALL'
+  );
+  const [selectedHasPhone, setSelectedHasPhone] = useState<boolean | 'ALL'>(
+    searchParams.get('hasPhone') === 'true' ? true :
+    searchParams.get('hasPhone') === 'false' ? false : 'ALL'
+  );
+  const [createdFrom, setCreatedFrom] = useState(searchParams.get('createdFrom') || '');
+  const [createdTo, setCreatedTo] = useState(searchParams.get('createdTo') || '');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role'>(
+    (searchParams.get('sortBy') as 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role') || 'createdAt'
+  );
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(
+    (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc'
+  );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -48,6 +74,12 @@ export default function UsersPage() {
     search: search || undefined,
     role: selectedRole === 'ALL' ? undefined : selectedRole,
     isActive: selectedStatus === 'ALL' ? undefined : selectedStatus,
+    emailVerified: selectedEmailVerified === 'ALL' ? undefined : selectedEmailVerified,
+    hasPhone: selectedHasPhone === 'ALL' ? undefined : selectedHasPhone,
+    createdFrom: createdFrom || undefined,
+    createdTo: createdTo || undefined,
+    sortBy,
+    sortOrder,
   });
 
   // tRPC mutations
@@ -235,7 +267,158 @@ export default function UsersPage() {
     setPage(1); // Reset to first page
   };
 
+  const handleSort = (field: 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role') => {
+    if (sortBy === field) {
+      // Toggle order if same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to desc
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const handleEmailVerifiedChange = (verified: boolean | 'ALL') => {
+    setSelectedEmailVerified(verified);
+    setPage(1);
+  };
+
+  const handleHasPhoneChange = (hasPhone: boolean | 'ALL') => {
+    setSelectedHasPhone(hasPhone);
+    setPage(1);
+  };
+
+  const handleCreatedFromChange = (date: string) => {
+    setCreatedFrom(date);
+    setPage(1);
+  };
+
+  const handleCreatedToChange = (date: string) => {
+    setCreatedTo(date);
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedRole('ALL');
+    setSelectedStatus('ALL');
+    setSelectedEmailVerified('ALL');
+    setSelectedHasPhone('ALL');
+    setCreatedFrom('');
+    setCreatedTo('');
+    setSearch('');
+    setPage(1);
+  };
+
   const totalPages = data ? Math.ceil(data.meta.total / limit) : 0;
+
+  // Build active filters array
+  const ROLE_LABELS: Record<UserRole, string> = {
+    SUPER_ADMIN: 'Super Admin',
+    ADMIN: 'Admin',
+    MANAGER: 'Manager',
+    STAFF: 'Staff',
+  };
+
+  const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];
+
+  if (search) {
+    activeFilters.push({
+      key: 'search',
+      label: 'Search',
+      value: search,
+      onRemove: () => setSearch(''),
+    });
+  }
+
+  if (selectedRole !== 'ALL') {
+    activeFilters.push({
+      key: 'role',
+      label: 'Role',
+      value: ROLE_LABELS[selectedRole],
+      onRemove: () => setSelectedRole('ALL'),
+    });
+  }
+
+  if (selectedStatus !== 'ALL') {
+    activeFilters.push({
+      key: 'status',
+      label: 'Status',
+      value: selectedStatus ? 'Active' : 'Inactive',
+      onRemove: () => setSelectedStatus('ALL'),
+    });
+  }
+
+  if (selectedEmailVerified !== 'ALL') {
+    activeFilters.push({
+      key: 'emailVerified',
+      label: 'Email',
+      value: selectedEmailVerified ? 'Verified' : 'Unverified',
+      onRemove: () => setSelectedEmailVerified('ALL'),
+    });
+  }
+
+  if (selectedHasPhone !== 'ALL') {
+    activeFilters.push({
+      key: 'hasPhone',
+      label: 'Phone',
+      value: selectedHasPhone ? 'Has Phone' : 'No Phone',
+      onRemove: () => setSelectedHasPhone('ALL'),
+    });
+  }
+
+  if (createdFrom) {
+    activeFilters.push({
+      key: 'createdFrom',
+      label: 'From',
+      value: new Date(createdFrom).toLocaleDateString(),
+      onRemove: () => setCreatedFrom(''),
+    });
+  }
+
+  if (createdTo) {
+    activeFilters.push({
+      key: 'createdTo',
+      label: 'To',
+      value: new Date(createdTo).toLocaleDateString(),
+      onRemove: () => setCreatedTo(''),
+    });
+  }
+
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (page > 1) params.set('page', page.toString());
+    if (limit !== 10) params.set('limit', limit.toString());
+    if (search) params.set('search', search);
+    if (selectedRole !== 'ALL') params.set('role', selectedRole);
+    if (selectedStatus !== 'ALL') params.set('status', String(selectedStatus));
+    if (selectedEmailVerified !== 'ALL') params.set('emailVerified', String(selectedEmailVerified));
+    if (selectedHasPhone !== 'ALL') params.set('hasPhone', String(selectedHasPhone));
+    if (createdFrom) params.set('createdFrom', createdFrom);
+    if (createdTo) params.set('createdTo', createdTo);
+    if (sortBy !== 'createdAt') params.set('sortBy', sortBy);
+    if (sortOrder !== 'desc') params.set('sortOrder', sortOrder);
+
+    const queryString = params.toString();
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+
+    router.replace(newUrl, { scroll: false });
+  }, [
+    page,
+    limit,
+    search,
+    selectedRole,
+    selectedStatus,
+    selectedEmailVerified,
+    selectedHasPhone,
+    createdFrom,
+    createdTo,
+    sortBy,
+    sortOrder,
+    pathname,
+    router,
+  ]);
 
   return (
     <div className="p-6 space-y-6">
@@ -255,40 +438,55 @@ export default function UsersPage() {
 
       {/* Filters */}
       <Card className="p-6">
-        <div className="space-y-4">
+        <div className="relative z-10 space-y-4">
           <UserSearch value={search} onChange={handleSearchChange} />
           <UserFilters
             selectedRole={selectedRole}
             selectedStatus={selectedStatus}
+            selectedEmailVerified={selectedEmailVerified}
+            selectedHasPhone={selectedHasPhone}
+            createdFrom={createdFrom}
+            createdTo={createdTo}
             onRoleChange={handleRoleChange}
             onStatusChange={handleStatusChange}
+            onEmailVerifiedChange={handleEmailVerifiedChange}
+            onHasPhoneChange={handleHasPhoneChange}
+            onCreatedFromChange={handleCreatedFromChange}
+            onCreatedToChange={handleCreatedToChange}
+            onClearAll={handleClearFilters}
           />
+          <ActiveFilters filters={activeFilters} />
         </div>
       </Card>
 
       {/* Table */}
       <Card className="p-6">
-        <UserTable
-          users={data?.data || []}
-          isLoading={isLoading}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onToggleStatus={handleToggleStatus}
-        />
+        <div className="relative z-10">
+          <UserTable
+            users={data?.data || []}
+            isLoading={isLoading}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onToggleStatus={handleToggleStatus}
+            onSort={handleSort}
+          />
 
-        {/* Pagination */}
-        {data && data.meta.total > 0 && (
-          <div className="mt-6">
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              totalItems={data.meta.total}
-              itemsPerPage={limit}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleLimitChange}
-            />
-          </div>
-        )}
+          {/* Pagination */}
+          {data && data.meta.total > 0 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={data.meta.total}
+                itemsPerPage={limit}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleLimitChange}
+              />
+            </div>
+          )}
+        </div>
       </Card>
 
       {/* Modals */}
