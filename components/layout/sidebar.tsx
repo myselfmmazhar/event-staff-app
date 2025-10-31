@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import type { SessionUser } from '@/lib/types/auth.types';
 
 interface NavItem {
   label: string;
@@ -53,7 +54,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const user = session?.user;
+  const user = session?.user as SessionUser | undefined;
 
   const handleLogout = async () => {
     await signOut();
@@ -63,12 +64,11 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   // Filter navigation items based on user role
   const visibleNavItems = navItems.filter((item) => {
     if (!item.requiresAdmin) return true;
-    const userRole = (user as any)?.role;
-    if (!userRole) return false;
+    if (!user?.role) return false;
 
     // Check if user has admin access (ADMIN or SUPER_ADMIN)
     const adminRoles = ['ADMIN', 'SUPER_ADMIN'];
-    return adminRoles.includes(userRole);
+    return adminRoles.includes(user.role);
   });
 
   // Check if current path matches nav item
@@ -146,10 +146,10 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           <div className="mb-3 rounded-lg bg-muted p-3">
             <div className="mb-1 flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">
-                {(user as any).firstName} {(user as any).lastName}
+                {user.firstName} {user.lastName}
               </span>
-              <Badge variant={getRoleBadgeVariant((user as any).role)} size="sm">
-                {(user as any).role?.replace('_', ' ')}
+              <Badge variant={getRoleBadgeVariant(user.role)} size="sm">
+                {user.role?.replace('_', ' ')}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>

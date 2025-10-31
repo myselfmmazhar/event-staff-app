@@ -37,10 +37,11 @@ export function extractZodFieldErrors(error: ZodError): FieldError[] {
 /**
  * Map Prisma errors to user-friendly messages
  */
-export function mapPrismaError(error: any): TRPCError {
+export function mapPrismaError(error: unknown): TRPCError {
+  const prismaError = error as { code?: string; meta?: { target?: string[] } };
   // Prisma unique constraint violation
-  if (error.code === 'P2002') {
-    const field = error.meta?.target?.[0] || 'field';
+  if (prismaError.code === 'P2002') {
+    const field = prismaError.meta?.target?.[0] || 'field';
     return new TRPCError({
       code: 'CONFLICT',
       message: field === 'email' 
@@ -50,7 +51,7 @@ export function mapPrismaError(error: any): TRPCError {
   }
 
   // Prisma foreign key constraint violation
-  if (error.code === 'P2003') {
+  if (prismaError.code === 'P2003') {
     return new TRPCError({
       code: 'BAD_REQUEST',
       message: 'Invalid reference to related record',
@@ -58,7 +59,7 @@ export function mapPrismaError(error: any): TRPCError {
   }
 
   // Prisma record not found
-  if (error.code === 'P2025') {
+  if (prismaError.code === 'P2025') {
     return new TRPCError({
       code: 'NOT_FOUND',
       message: 'Record not found',
@@ -66,7 +67,7 @@ export function mapPrismaError(error: any): TRPCError {
   }
 
   // Default Prisma error
-  if (error.code && error.code.startsWith('P')) {
+  if (prismaError.code && prismaError.code.startsWith('P')) {
     return new TRPCError({
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Database error occurred',
@@ -83,7 +84,7 @@ export function mapPrismaError(error: any): TRPCError {
 /**
  * Format tRPC error for client consumption
  */
-export function formatTRPCError(error: any): ErrorResponse {
+export function formatTRPCError(error: unknown): ErrorResponse {
   // Handle TRPCError
   if (error instanceof TRPCError) {
     return {
@@ -102,7 +103,8 @@ export function formatTRPCError(error: any): ErrorResponse {
   }
 
   // Handle Prisma errors
-  if (error.code && error.code.startsWith('P')) {
+  const prismaError = error as { code?: string };
+  if (prismaError.code && prismaError.code.startsWith('P')) {
     const mappedError = mapPrismaError(error);
     return {
       code: mappedError.code,
@@ -120,8 +122,8 @@ export function formatTRPCError(error: any): ErrorResponse {
 /**
  * Safe error logging (don't log sensitive data)
  */
-export function logError(error: any, context?: string) {
-  const logData: any = {
+export function logError(error: unknown, context?: string) {
+  const logData: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     context,
   };
@@ -135,11 +137,15 @@ export function logError(error: any, context?: string) {
       path: e.path.join('.'),
       message: e.message,
     }));
-  } else if (error.code && error.code.startsWith('P')) {
-    logData.code = error.code;
-    logData.message = 'Prisma error';
   } else {
-    logData.error = error.message || 'Unknown error';
+    const prismaError = error as { code?: string };
+    if (prismaError.code && prismaError.code.startsWith('P')) {
+      logData.code = prismaError.code;
+      logData.message = 'Prisma error';
+    } else {
+      const genericError = error as { message?: string };
+      logData.error = genericError.message || 'Unknown error';
+    }
   }
 
   console.error('Error:', JSON.stringify(logData, null, 2));

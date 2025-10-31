@@ -1,6 +1,7 @@
 import { auth, type Session } from "./auth";
 import { headers } from "next/headers";
 import { TRPCError } from "@trpc/server";
+import type { SessionUser } from "@/lib/types/auth.types";
 
 /**
  * User Role Enum matching Prisma schema
@@ -83,7 +84,8 @@ export function hasRoleLevel(userRole: string, minimumRole: UserRole): boolean {
  */
 export async function requireRoles(allowedRoles: UserRole[]): Promise<Session> {
   const session = await requireAuth();
-  const userRole = (session.user as any).role;
+  const user = session.user as SessionUser;
+  const userRole = user.role;
 
   if (!hasRole(userRole, allowedRoles)) {
     throw new TRPCError({
@@ -113,7 +115,8 @@ export async function requireReadAccess(): Promise<Session> {
  * Check if user is active
  */
 export function isUserActive(session: Session): boolean {
-  return (session.user as any).isActive === true;
+  const user = session.user as SessionUser;
+  return user.isActive === true;
 }
 
 /**
@@ -143,7 +146,7 @@ export function isEmailVerified(session: Session): boolean {
  * Get user display name
  */
 export function getUserDisplayName(session: Session): string {
-  const user = session.user as any;
+  const user = session.user as SessionUser;
   const firstName = user.firstName || "";
   const lastName = user.lastName || "";
 

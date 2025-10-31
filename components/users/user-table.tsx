@@ -21,15 +21,17 @@ interface User {
   emergencyContact?: string | null;
 }
 
+type SortableField = 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role';
+
 interface UserTableProps {
   users: User[];
   isLoading: boolean;
-  sortBy?: string;
+  sortBy?: SortableField;
   sortOrder?: 'asc' | 'desc';
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   onToggleStatus: (user: User) => void;
-  onSort: (field: 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role') => void;
+  onSort: (field: SortableField) => void;
 }
 
 const ROLE_COLORS: Record<UserRole, 'purple' | 'primary' | 'info' | 'default'> = {
@@ -46,7 +48,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   STAFF: 'Staff',
 };
 
-const SORTABLE_COLUMNS: Array<{ key: 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role'; label: string }> = [
+const SORTABLE_COLUMNS: Array<{ key: SortableField; label: string }> = [
   { key: 'firstName', label: 'Name' },
   { key: 'email', label: 'Email' },
   { key: 'role', label: 'Role' },
@@ -63,7 +65,7 @@ export function UserTable({
   onToggleStatus,
   onSort
 }: UserTableProps) {
-  const renderSortIcon = (columnKey: string) => {
+  const renderSortIcon = (columnKey: SortableField) => {
     if (sortBy !== columnKey) {
       return <ChevronUpIcon className="h-4 w-4 opacity-30" />;
     }
@@ -169,14 +171,16 @@ export function UserTable({
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onToggleStatus(user)}
-                        title={user.isActive ? 'Deactivate user' : 'Activate user'}
-                      >
-                        {user.isActive ? 'Deactivate' : 'Activate'}
-                      </Button>
+                      {user.role !== 'SUPER_ADMIN' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onToggleStatus(user)}
+                          title={user.isActive ? 'Deactivate user' : 'Activate user'}
+                        >
+                          {user.isActive ? 'Deactivate' : 'Activate'}
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -185,15 +189,17 @@ export function UserTable({
                       >
                         <EditIcon className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDelete(user)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        title="Delete user"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
+                      {user.role !== 'SUPER_ADMIN' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDelete(user)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Delete user"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -238,14 +244,16 @@ export function UserTable({
             </div>
 
             <div className="flex items-center gap-2 pt-2 border-t border-border">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onToggleStatus(user)}
-                className="flex-1"
-              >
-                {user.isActive ? 'Deactivate' : 'Activate'}
-              </Button>
+              {user.role !== 'SUPER_ADMIN' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onToggleStatus(user)}
+                  className="flex-1"
+                >
+                  {user.isActive ? 'Deactivate' : 'Activate'}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -255,14 +263,16 @@ export function UserTable({
                 <EditIcon className="h-4 w-4 mr-1" />
                 Edit
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onDelete(user)}
-                className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
-              >
-                <TrashIcon className="h-4 w-4" />
-              </Button>
+              {user.role !== 'SUPER_ADMIN' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onDelete(user)}
+                  className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         ))}

@@ -15,6 +15,7 @@ import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import type { CreateUserInput, UpdateUserInput } from '@/lib/schemas/user.schema';
 
 type User = {
   id: string;
@@ -95,7 +96,7 @@ export default function UsersPage() {
     },
     onError: (error) => {
       // Extract field errors from error response
-      const fieldErrors = (error.data as any)?.fieldErrors || [];
+      const fieldErrors = (error.data as { fieldErrors?: Array<{ field: string; message: string }> })?.fieldErrors || [];
 
       if (fieldErrors.length > 0) {
         // Set field errors to be displayed on the form
@@ -129,7 +130,7 @@ export default function UsersPage() {
     },
     onError: (error) => {
       // Extract field errors from error response
-      const fieldErrors = (error.data as any)?.fieldErrors || [];
+      const fieldErrors = (error.data as { fieldErrors?: Array<{ field: string; message: string }> })?.fieldErrors || [];
 
       if (fieldErrors.length > 0) {
         // Set field errors to be displayed on the form
@@ -214,11 +215,28 @@ export default function UsersPage() {
   };
 
   const handleDelete = (user: User) => {
+    // Prevent deleting SUPER_ADMIN users
+    if (user.role === 'SUPER_ADMIN') {
+      toast({
+        message: 'Cannot delete SUPER_ADMIN users',
+        type: 'error',
+      });
+      return;
+    }
     setSelectedUser(user);
     setIsDeleteOpen(true);
   };
 
   const handleToggleStatus = (user: User) => {
+    // Prevent deactivating SUPER_ADMIN users
+    if (user.role === 'SUPER_ADMIN') {
+      toast({
+        message: 'Cannot deactivate SUPER_ADMIN users',
+        type: 'error',
+      });
+      return;
+    }
+    
     if (user.isActive) {
       deactivateMutation.mutate({ id: user.id });
     } else {
@@ -226,7 +244,7 @@ export default function UsersPage() {
     }
   };
 
-  const handleFormSubmit = (formData: any) => {
+  const handleFormSubmit = (formData: CreateUserInput | Omit<UpdateUserInput, 'id'>) => {
     if (selectedUser) {
       // Update existing user
       updateMutation.mutate({
