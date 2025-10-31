@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from "@prisma/client";
+import { PrismaClient, UserRole, Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import * as bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
@@ -19,8 +19,22 @@ export interface UpdateUserInput {
   emergencyContact?: string;
 }
 
+type UserSelect = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  isActive: boolean;
+  phone: string | null;
+  address: string | null;
+  emergencyContact: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export interface PaginatedUsers {
-  data: any[];
+  data: UserSelect[];
   meta: {
     total: number;
     page: number;
@@ -135,7 +149,7 @@ export class UserService {
     const sortOrder = query.sortOrder ?? "desc";
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.UserWhereInput = {};
 
     // Role filter
     if (query.role) {
@@ -271,7 +285,7 @@ export class UserService {
       const user = await this.findOne(id);
 
       // Sanitize input data
-      const sanitizedData: any = {};
+      const sanitizedData: Partial<UpdateUserInputType> = {};
       if (data.email) sanitizedData.email = data.email.trim().toLowerCase();
       if (data.firstName) sanitizedData.firstName = data.firstName.trim();
       if (data.lastName) sanitizedData.lastName = data.lastName.trim();
@@ -279,6 +293,14 @@ export class UserService {
       if (data.phone !== undefined) sanitizedData.phone = data.phone?.trim();
       if (data.address !== undefined) sanitizedData.address = data.address?.trim();
       if (data.emergencyContact !== undefined) sanitizedData.emergencyContact = data.emergencyContact?.trim();
+
+      // Prevent changing role of SUPER_ADMIN users
+      if (user.role === UserRole.SUPER_ADMIN && sanitizedData.role && sanitizedData.role !== UserRole.SUPER_ADMIN) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Cannot change the role of SUPER_ADMIN users",
+        });
+      }
 
       // Check if email is being updated and if it's already taken
       if (sanitizedData.email && sanitizedData.email !== user.email) {
@@ -302,12 +324,15 @@ export class UserService {
       // Auto-generate name field if firstName or lastName is being updated
       const updatedFirstName = sanitizedData.firstName || user.firstName;
       const updatedLastName = sanitizedData.lastName || user.lastName;
-      sanitizedData.name = `${updatedFirstName} ${updatedLastName}`;
+      const updateData = {
+        ...sanitizedData,
+        name: `${updatedFirstName} ${updatedLastName}`,
+      } as Prisma.UserUpdateInput;
 
       // Update the user
       const updatedUser = await this.prisma.user.update({
         where: { id },
-        data: sanitizedData,
+        data: updateData,
         select: {
           id: true,
           email: true,
@@ -345,7 +370,15 @@ export class UserService {
    */
   async remove(id: string) {
     // Check if user exists
-    await this.findOne(id);
+    const user = await this.findOne(id);
+
+    // Prevent deleting SUPER_ADMIN users
+    if (user.role === UserRole.SUPER_ADMIN) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Cannot delete SUPER_ADMIN users",
+      });
+    }
 
     // Delete the user
     await this.prisma.user.delete({
@@ -359,6 +392,17 @@ export class UserService {
    * Deactivate a user
    */
   async deactivate(id: string) {
+    // Check if user exists and get their role
+    const existingUser = await this.findOne(id);
+
+    // Prevent deactivating SUPER_ADMIN users
+    if (existingUser.role === UserRole.SUPER_ADMIN) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Cannot deactivate SUPER_ADMIN users",
+      });
+    }
+
     const user = await this.prisma.user.update({
       where: { id },
       data: { isActive: false },

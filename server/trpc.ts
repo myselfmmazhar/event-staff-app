@@ -4,6 +4,7 @@ import { getOptionalAuth } from "@/lib/server/auth-utils";
 import { UserRole, hasRole } from "@/lib/server/auth-utils";
 import superjson from "superjson";
 import type { Session } from "@/lib/server/auth";
+import type { SessionUser } from "@/lib/types/auth.types";
 import { ZodError } from "zod";
 import { extractZodFieldErrors, mapPrismaError } from "@/lib/utils/error-handler";
 
@@ -17,7 +18,7 @@ export async function createContext() {
     prisma,
     session,
     userId: session?.user?.id || null,
-    userRole: (session?.user as any)?.role || null,
+    userRole: (session?.user as SessionUser | undefined)?.role || null,
   };
 }
 
@@ -44,7 +45,7 @@ const t = initTRPC.context<Context>().create({
 
     // Map Prisma errors to user-friendly messages
     if (error.cause && typeof error.cause === 'object' && 'code' in error.cause) {
-      const prismaError = error.cause as any;
+      const prismaError = error.cause as { code?: string };
       if (prismaError.code && prismaError.code.startsWith('P')) {
         const mappedError = mapPrismaError(prismaError);
         return {
@@ -97,7 +98,7 @@ const isAuthenticated = middleware(async ({ ctx, next }) => {
  * Middleware to check if user is active
  */
 const isActive = middleware(async ({ ctx, next }) => {
-  const user = ctx.session?.user as any;
+  const user = ctx.session?.user as SessionUser | undefined;
 
   if (!user?.isActive) {
     throw new TRPCError({

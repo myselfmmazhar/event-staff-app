@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useSession, signOut } from '@/lib/client/auth';
 import { UserIcon, LogoutIcon, ChevronDownIcon } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
+import type { SessionUser } from '@/lib/types/auth.types';
 
 export function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session } = useSession();
-  const user = session?.user;
+  const user = session?.user as SessionUser | undefined;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -57,15 +58,15 @@ export function UserDropdown() {
         className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
       >
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-xs font-bold text-primary-foreground">
-          {(user as any).firstName?.[0]}
-          {(user as any).lastName?.[0]}
+          {user.firstName?.[0]}
+          {user.lastName?.[0]}
         </div>
         <div className="hidden sm:block text-left">
           <div className="text-sm font-medium text-card-foreground">
-            {(user as any).firstName} {(user as any).lastName}
+            {user.firstName} {user.lastName}
           </div>
           <div className="text-xs text-muted-foreground">
-            {(user as any).role?.replace('_', ' ')}
+            {user.role?.replace('_', ' ')}
           </div>
         </div>
         <ChevronDownIcon
@@ -82,10 +83,10 @@ export function UserDropdown() {
           <div className="border-b border-border p-3">
             <div className="mb-1 flex items-center justify-between">
               <span className="text-sm font-medium text-card-foreground">
-                {(user as any).firstName} {(user as any).lastName}
+                {user.firstName} {user.lastName}
               </span>
-              <Badge variant={getRoleBadgeVariant((user as any).role)} size="sm">
-                {(user as any).role?.replace('_', ' ')}
+              <Badge variant={getRoleBadgeVariant(user.role)} size="sm">
+                {user.role?.replace('_', ' ')}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground truncate">

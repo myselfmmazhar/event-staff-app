@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserSchema } from '@/lib/schemas/user.schema';
+import type { CreateUserInput, UpdateUserInput } from '@/lib/schemas/user.schema';
 import { UserRole } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
@@ -102,6 +103,9 @@ type CreateFormData = z.input<typeof createFormSchema>;
 type EditFormData = z.input<typeof editFormSchema>;
 type FormData = CreateFormData | EditFormData;
 
+// Form field names for type-safe setError calls
+type FormFieldName = keyof CreateFormData;
+
 interface User {
   id: string;
   firstName: string;
@@ -117,7 +121,7 @@ interface UserFormModalProps {
   user: User | null;
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: CreateUserInput | Omit<UpdateUserInput, 'id'>) => void;
   isSubmitting: boolean;
   backendErrors?: Array<{ field: string; message: string }>;
 }
@@ -199,7 +203,8 @@ export function UserFormModal({
   useEffect(() => {
     if (backendErrors && backendErrors.length > 0) {
       backendErrors.forEach((error) => {
-        setError(error.field as any, {
+        // Cast to FormFieldName since backend field names should match form field names
+        setError(error.field as FormFieldName, {
           type: 'manual',
           message: error.message,
         });
@@ -214,8 +219,8 @@ export function UserFormModal({
       onSubmit(rest);
     } else {
       // Remove passwordConfirm before submitting (not needed in backend)
-      const { passwordConfirm, ...submitData } = data as any;
-      onSubmit(submitData);
+      const { passwordConfirm, ...submitData } = data;
+      onSubmit(submitData as CreateUserInput | Omit<UpdateUserInput, 'id'>);
     }
   };
 
@@ -337,7 +342,7 @@ export function UserFormModal({
               <select
                 id="role"
                 {...register('role')}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (isEdit && user?.role === 'SUPER_ADMIN')}
                 className="w-full rounded-lg border-2 border-input bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
               >
                 {ROLES.map((role) => (
@@ -346,6 +351,11 @@ export function UserFormModal({
                   </option>
                 ))}
               </select>
+              {isEdit && user?.role === 'SUPER_ADMIN' && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Role cannot be changed for SUPER_ADMIN users
+                </p>
+              )}
               {errors.role && (
                 <p className="text-sm text-destructive mt-1">{errors.role.message}</p>
               )}
