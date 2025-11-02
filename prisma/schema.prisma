@@ -57,42 +57,48 @@ model User {
 
 // Event Model
 model Event {
-  id                   String      @id @default(uuid()) @db.Uuid
-  name                 String
-  description          String?     @db.Text
-  eventType            String?
-  startDate            DateTime    @db.Timestamp(6)
-  endDate              DateTime    @db.Timestamp(6)
-  status               EventStatus @default(DRAFT)
+  id               String      @id @default(uuid()) @db.Uuid
+  eventId          String      @unique // Human-readable ID (EVT-2025-001)
+  title            String
+  description      String?     @db.Text
+  dressCode        String?
+  privateComments  String?     @db.Text
 
-  // Venue Information
-  venueName            String?
-  venueAddress         String?
-  city                 String?
-  state                String?
-  zipCode              String?
-  country              String?
+  // Venue Information (all required)
+  venueName        String
+  address          String
+  room             String
+  city             String
+  state            String
+  zipCode          String
 
-  // Additional Details
-  specialInstructions  String?     @db.Text
-  budget               Decimal?    @db.Decimal(10, 2)
+  // Date and Time (split fields with TBD support)
+  startDate        DateTime    @db.Date
+  startTime        String?     // "14:30" or "TBD"
+  endDate          DateTime    @db.Date
+  endTime          String?     // "18:00" or "TBD"
+  timezone         String      // IANA timezone (e.g., "America/New_York")
 
-  // Client Information
-  clientName           String?
-  clientEmail          String?
-  clientPhone          String?
+  // Settings
+  dailyDigestMode  Boolean     @default(false)
+  requireStaff     Boolean     @default(false)
+  status           EventStatus @default(DRAFT)
+
+  // File Links (JSON array: [{name: "Contract", link: "https://..."}])
+  fileLinks        Json?
 
   // Creator/Owner
-  createdBy            String
-  creator              User        @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdBy        String
+  creator          User        @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
 
   // Timestamps
-  createdAt            DateTime    @default(now()) @db.Timestamp(6)
-  updatedAt            DateTime    @updatedAt @db.Timestamp(6)
+  createdAt        DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime    @updatedAt @db.Timestamp(6)
 
   @@index([createdBy])
   @@index([status])
   @@index([startDate])
+  @@index([eventId])
   @@map("events")
 }
 
