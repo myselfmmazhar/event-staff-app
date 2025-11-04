@@ -254,7 +254,7 @@ export function EventFormModal({
           </div>
         </DialogHeader>
 
-        <DialogContent className="max-h-[calc(100vh-200px)] overflow-y-auto">
+        <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
           {/* Event ID (Read-only in edit mode) */}
           {isEdit && (
             <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">

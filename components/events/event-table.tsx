@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EditIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from '@/components/ui/icons';
+import { EyeIcon, EditIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from '@/components/ui/icons';
 import { EventStatus } from '@prisma/client';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ interface EventTableProps {
   isLoading: boolean;
   sortBy?: SortableField;
   sortOrder?: 'asc' | 'desc';
+  onView: (event: Event) => void;
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onSort: (field: SortableField) => void;
@@ -67,6 +68,7 @@ export function EventTable({
   isLoading,
   sortBy = 'createdAt',
   sortOrder = 'desc',
+  onView,
   onEdit,
   onDelete,
   onSort,
@@ -181,6 +183,14 @@ export function EventTable({
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => onView(event)}
+                        title="View event details"
+                      >
+                        <EyeIcon className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => onEdit(event)}
                         title="Edit event"
                       >
@@ -245,6 +255,15 @@ export function EventTable({
             </div>
 
             <div className="flex items-center gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onView(event)}
+                className="flex-1"
+              >
+                <EyeIcon className="h-4 w-4 mr-1" />
+                View
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { PlusIcon } from '@/components/ui/icons';
 import { DeleteEventDialog } from '@/components/events/delete-event-dialog';
+import { ViewEventDialog } from '@/components/events/view-event-dialog';
 import { Pagination } from '@/components/users/pagination';
 import { EventFilters } from '@/components/events/event-filters';
 import { EventFormModal } from '@/components/events/event-form-modal';
@@ -37,7 +38,9 @@ export default function EventsPage() {
   );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedViewEventId, setSelectedViewEventId] = useState<string | null>(null);
   const [backendErrors, setBackendErrors] = useState<Array<{ field: string; message: string }>>([]);
 
   // tRPC queries
@@ -156,7 +159,21 @@ export default function EventsPage() {
     setIsFormOpen(true);
   };
 
+  const handleViewEvent = (event: any) => {
+    setSelectedViewEventId(event.id);
+    setIsViewOpen(true);
+  };
+
   const handleEditEvent = (event: any) => {
+    setSelectedEvent(event);
+    setBackendErrors([]);
+    setIsFormOpen(true);
+  };
+
+  const handleEditFromView = (event: any) => {
+    // Close view dialog and open edit form
+    setIsViewOpen(false);
+    setSelectedViewEventId(null);
     setSelectedEvent(event);
     setBackendErrors([]);
     setIsFormOpen(true);
@@ -286,6 +303,7 @@ export default function EventsPage() {
             isLoading={isLoading}
             sortBy={sortBy}
             sortOrder={sortOrder}
+            onView={handleViewEvent}
             onEdit={handleEditEvent}
             onDelete={handleDeleteEvent}
             onSort={handleSort}
@@ -319,6 +337,17 @@ export default function EventsPage() {
         onSubmit={handleFormSubmit}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
         backendErrors={backendErrors}
+      />
+
+      {/* View Dialog */}
+      <ViewEventDialog
+        eventId={selectedViewEventId}
+        open={isViewOpen}
+        onClose={() => {
+          setIsViewOpen(false);
+          setSelectedViewEventId(null);
+        }}
+        onEdit={handleEditFromView}
       />
 
       {/* Delete Dialog */}
