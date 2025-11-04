@@ -59,6 +59,10 @@ export default function EventsPage() {
       });
       setIsFormOpen(false);
       setBackendErrors([]);
+      // Clear filters to show the newly created event
+      setSelectedStatus('ALL');
+      setSearch('');
+      setPage(1);
       refetch();
     },
     onError: (error) => {
@@ -244,59 +248,63 @@ export default function EventsPage() {
       </div>
 
       {/* Search and Filters */}
-      <Card className="p-4 space-y-4">
-        <EventSearch
-          value={search}
-          onChange={handleSearch}
-          placeholder="Search by title, venue, city, or event ID..."
-        />
+      <Card className="p-4">
+        <div className="relative z-10 space-y-4">
+          <EventSearch
+            value={search}
+            onChange={handleSearch}
+            placeholder="Search by title, venue, city, or event ID..."
+          />
 
-        <EventFilters
-          status={selectedStatus}
-          onStatusChange={handleStatusChange}
-          sortBy={sortBy}
-          onSortByChange={handleSortByChange}
-          sortOrder={sortOrder}
-          onSortOrderChange={handleSortOrderChange}
-        />
+          <EventFilters
+            status={selectedStatus}
+            onStatusChange={handleStatusChange}
+            sortBy={sortBy}
+            onSortByChange={handleSortByChange}
+            sortOrder={sortOrder}
+            onSortOrderChange={handleSortOrderChange}
+          />
 
-        {hasActiveFilters && (
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-            <p className="text-sm text-muted-foreground">
-              {data?.meta.total || 0} event{data?.meta.total !== 1 ? 's' : ''} found
-            </p>
-            <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-              Clear Filters
-            </Button>
-          </div>
-        )}
+          {hasActiveFilters && (
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <p className="text-sm text-muted-foreground">
+                {data?.meta.total || 0} event{data?.meta.total !== 1 ? 's' : ''} found
+              </p>
+              <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                Clear Filters
+              </Button>
+            </div>
+          )}
+        </div>
       </Card>
 
       {/* Events Table */}
       <Card className="p-4">
-        <EventTable
-          events={data?.data || []}
-          isLoading={isLoading}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onEdit={handleEditEvent}
-          onDelete={handleDeleteEvent}
-          onSort={handleSort}
-        />
+        <div className="relative z-10">
+          <EventTable
+            events={data?.data || []}
+            isLoading={isLoading}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onEdit={handleEditEvent}
+            onDelete={handleDeleteEvent}
+            onSort={handleSort}
+          />
 
-        {/* Pagination */}
-        {data && data.meta.totalPages > 1 && (
-          <div className="mt-6">
-            <Pagination
-              currentPage={page}
-              totalPages={data.meta.totalPages}
-              totalItems={data.meta.total}
-              itemsPerPage={limit}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleLimitChange}
-            />
-          </div>
-        )}
+          {/* Pagination */}
+          {data && data.meta.totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={page}
+                totalPages={data.meta.totalPages}
+                totalItems={data.meta.total}
+                itemsPerPage={limit}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleLimitChange}
+              />
+            </div>
+          )}
+        </div>
       </Card>
 
       {/* Form Modal */}

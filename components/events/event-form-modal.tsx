@@ -597,30 +597,45 @@ export function EventFormModal({
 
             <div className="space-y-3">
               {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-2">
-                  <div className="flex-1">
-                    <Input
-                      {...register(`fileLinks.${index}.name` as const)}
-                      placeholder="File name"
+                <div key={field.id}>
+                  <div className="flex gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Input
+                        {...register(`fileLinks.${index}.name` as const)}
+                        placeholder="File name"
+                        disabled={isSubmitting}
+                        error={!!(errors.fileLinks?.[index]?.name)}
+                      />
+                      {errors.fileLinks?.[index]?.name && (
+                        <p className="text-sm text-destructive">
+                          {errors.fileLinks[index]?.name?.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex-[2] space-y-1">
+                      <Input
+                        {...register(`fileLinks.${index}.link` as const)}
+                        placeholder="https://example.com/file.pdf"
+                        disabled={isSubmitting}
+                        error={!!(errors.fileLinks?.[index]?.link)}
+                      />
+                      {errors.fileLinks?.[index]?.link && (
+                        <p className="text-sm text-destructive">
+                          {errors.fileLinks[index]?.link?.message}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => remove(index)}
                       disabled={isSubmitting}
-                    />
+                      className="self-start"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div className="flex-[2]">
-                    <Input
-                      {...register(`fileLinks.${index}.link` as const)}
-                      placeholder="https://example.com/file.pdf"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => remove(index)}
-                    disabled={isSubmitting}
-                  >
-                    <XIcon className="h-4 w-4" />
-                  </Button>
                 </div>
               ))}
             </div>
