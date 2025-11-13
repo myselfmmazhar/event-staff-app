@@ -1,14 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { ChevronDownIcon } from '@/components/ui/icons';
+import { Select } from '@/components/ui/select';
 
 interface ClientFiltersProps {
   onLoginAccessChange: (value: 'all' | 'with' | 'without') => void;
@@ -30,28 +23,26 @@ export function ClientFilters({
   return (
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
       {/* Login Access Filter */}
-      <Select value={loginAccess} onValueChange={onLoginAccessChange}>
-        <SelectTrigger className="w-full sm:w-48">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Clients</SelectItem>
-          <SelectItem value="with">With Portal Access</SelectItem>
-          <SelectItem value="without">Without Portal Access</SelectItem>
-        </SelectContent>
+      <Select
+        value={loginAccess}
+        onChange={(e) => onLoginAccessChange(e.target.value as 'all' | 'with' | 'without')}
+        className="w-full sm:w-48"
+      >
+        <option value="all">All Clients</option>
+        <option value="with">With Portal Access</option>
+        <option value="without">Without Portal Access</option>
       </Select>
 
       {/* Sort By */}
-      <Select value={sortBy} onValueChange={onSortByChange}>
-        <SelectTrigger className="w-full sm:w-48">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="createdAt">Date Created</SelectItem>
-          <SelectItem value="businessName">Business Name</SelectItem>
-          <SelectItem value="lastName">Last Name</SelectItem>
-          <SelectItem value="email">Email</SelectItem>
-        </SelectContent>
+      <Select
+        value={sortBy}
+        onChange={(e) => onSortByChange(e.target.value)}
+        className="w-full sm:w-48"
+      >
+        <option value="createdAt">Date Created</option>
+        <option value="businessName">Business Name</option>
+        <option value="lastName">Last Name</option>
+        <option value="email">Email</option>
       </Select>
 
       {/* Sort Order */}

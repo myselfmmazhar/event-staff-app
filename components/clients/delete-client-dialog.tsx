@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { AlertTriangleIcon } from '@/components/ui/icons';
 
 interface DeleteClientDialogProps {
   client: { businessName: string; firstName: string; lastName: string; hasLoginAccess: boolean } | null;
@@ -30,10 +29,7 @@ export function DeleteClientDialog({
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
-          <AlertTriangleIcon className="h-5 w-5 text-destructive" />
-          Delete Client
-        </DialogTitle>
+        <DialogTitle>Delete Client</DialogTitle>
       </DialogHeader>
 
       <DialogContent>
