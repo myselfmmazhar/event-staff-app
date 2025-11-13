@@ -1,7 +1,7 @@
 import { PrismaClient, Prisma, UserRole } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { randomBytes } from "crypto";
-import { nanoid } from "nanoid";
+import { auth } from "@/lib/server/auth";
 import type {
   CreateClientInput,
   UpdateClientInput as UpdateClientInputType,
@@ -144,7 +144,7 @@ export class ClientService {
 
   /**
    * Grant login access to a client
-   * Creates a User account and links it to the client
+   * Creates a User account and links it to the client using Better Auth API
    */
   async grantLoginAccess(
     clientId: string,
@@ -161,20 +161,33 @@ export class ClientService {
       }
 
       const tempPassword = this.generateTemporaryPassword();
-      const userId = nanoid();
       const name = `${client.firstName} ${client.lastName}`;
 
-      // Create User account
-      await this.prisma.user.create({
-        data: {
-          id: userId,
+      // Create User account using Better Auth API (handles password hashing and Account creation)
+      const authResult = await auth.api.signUpEmail({
+        body: {
           email: client.email,
+          password: tempPassword,
           name,
           firstName: client.firstName,
           lastName: client.lastName,
+        },
+      });
+
+      if (!authResult?.user?.id) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create user account",
+        });
+      }
+
+      // Update the created user with CLIENT role and verified status
+      await this.prisma.user.update({
+        where: { id: authResult.user.id },
+        data: {
           role: UserRole.CLIENT,
           emailVerified: true,
-          isActive: true,
+          phone: client.cellPhone,
         },
       });
 
@@ -182,7 +195,7 @@ export class ClientService {
       const updatedClient = await this.prisma.client.update({
         where: { id: clientId },
         data: {
-          userId,
+          userId: authResult.user.id,
           hasLoginAccess: true,
         },
         select: this.getClientSelect(),
@@ -195,6 +208,14 @@ export class ClientService {
     } catch (error) {
       if (error instanceof TRPCError) {
         throw error;
+      }
+
+      // Check for duplicate email error from Better Auth
+      if (error instanceof Error && error.message.includes("already exists")) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "A user with this email already exists",
+        });
       }
 
       console.error("Error granting login access:", error);

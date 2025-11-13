@@ -39,6 +39,12 @@ const navItems: NavItem[] = [
     requiresAdmin: false,
   },
   {
+    label: 'Clients',
+    href: '/clients',
+    icon: UserIcon,
+    requiresAdmin: false,
+  },
+  {
     label: 'Users',
     href: '/users',
     icon: UsersIcon,
