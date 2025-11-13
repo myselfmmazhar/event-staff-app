@@ -16,6 +16,7 @@ enum UserRole {
   ADMIN
   MANAGER
   STAFF
+  CLIENT
 }
 
 // Event Status Enum
@@ -51,6 +52,8 @@ model User {
   createdEvents Event[]    @relation("EventCreator")
   sessions      Session[]
   accounts      Account[]
+  client        Client?    @relation("ClientUser")
+  createdClients Client[]  @relation("ClientCreator")
 
   @@map("users")
 }
@@ -100,6 +103,49 @@ model Event {
   @@index([startDate])
   @@index([eventId])
   @@map("events")
+}
+
+// Client Model
+model Client {
+  id              String    @id @default(uuid()) @db.Uuid
+  clientId        String    @unique // Human-readable ID (CLT-2025-001)
+
+  // Client Information
+  businessName    String
+  firstName       String
+  lastName        String
+  email           String
+  cellPhone       String
+  businessPhone   String?
+  details         String?   @db.Text
+
+  // Primary Address
+  venueName       String?
+  room            String?
+  streetAddress   String
+  aptSuiteUnit    String?
+  city            String
+  country         String
+  state           String
+  zipCode         String
+
+  // Login Access
+  hasLoginAccess  Boolean   @default(false)
+  userId          String?   @unique // Nullable - reference to User when login is granted
+  user            User?     @relation("ClientUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  // Creator/Owner
+  createdBy       String
+  creator         User      @relation("ClientCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([createdBy])
+  @@index([email])
+  @@index([clientId])
+  @@map("clients")
 }
 
 // Better Auth - Session Model
