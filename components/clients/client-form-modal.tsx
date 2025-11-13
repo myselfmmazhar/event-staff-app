@@ -12,59 +12,58 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ClientSchema } from '@/lib/schemas/client.schema';
 import type { CreateClientInput, UpdateClientInput } from '@/lib/schemas/client.schema';
+import type { Client } from '@/lib/types/client';
+import { emailValidation, phoneValidation } from "@/lib/utils/validation";
+import { FieldErrors } from "@/lib/utils/error-messages";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon } from '@/components/ui/icons';
 
-const editFormSchema = z.object({
-  businessName: z.string().min(1, "Business name is required").max(200).transform(val => val.trim()).optional(),
-  firstName: z.string().min(1, "First name is required").max(50).transform(val => val.trim()).optional(),
-  lastName: z.string().min(1, "Last name is required").max(50).transform(val => val.trim()).optional(),
-  email: z.string().email("Invalid email").optional(),
-  cellPhone: z.string().optional(),
-  businessPhone: z.string().optional(),
-  details: z.string().max(5000).optional(),
-  venueName: z.string().max(200).optional(),
-  room: z.string().max(100).optional(),
-  streetAddress: z.string().min(1, "Street address is required").max(300).optional(),
-  aptSuiteUnit: z.string().max(50).optional(),
-  city: z.string().min(1, "City is required").max(100).optional(),
-  country: z.string().min(1, "Country is required").max(100).optional(),
-  state: z.string().min(1, "State is required").max(50).optional(),
-  zipCode: z.string().min(1, "ZIP code is required").max(20).optional(),
+// Create a unified form schema that includes hasLoginAccess
+const formSchema = z.object({
+  businessName: z.string().min(1, "Business name is required").max(200).transform(val => val.trim()),
+  firstName: z.string().min(1, "First name is required").max(50).transform(val => val.trim()),
+  lastName: z.string().min(1, "Last name is required").max(50).transform(val => val.trim()),
+  email: z
+    .string()
+    .email({ message: FieldErrors.email.invalid })
+    .transform(val => val.trim().toLowerCase())
+    .refine(
+      (email) => emailValidation.hasValidDomain(email),
+      { message: FieldErrors.email.disposable }
+    ),
+  cellPhone: z
+    .string()
+    .refine(
+      (phone) => phoneValidation.isValid(phone),
+      { message: FieldErrors.phone.invalid }
+    )
+    .transform(val => val?.trim()),
+  businessPhone: z
+    .string()
+    .refine(
+      (phone) => !phone || phoneValidation.isValid(phone),
+      { message: FieldErrors.phone.invalid }
+    )
+    .transform(val => val?.trim())
+    .optional(),
+  details: z.string().max(5000).transform(val => val?.trim()).optional(),
+  venueName: z.string().max(200).transform(val => val?.trim()).optional(),
+  room: z.string().max(100).transform(val => val?.trim()).optional(),
+  streetAddress: z.string().min(1, "Street address is required").max(300).transform(val => val.trim()),
+  aptSuiteUnit: z.string().max(50).transform(val => val?.trim()).optional(),
+  city: z.string().min(1, "City is required").max(100).transform(val => val.trim()),
+  country: z.string().min(1, "Country is required").max(100).transform(val => val.trim()),
+  state: z.string().min(1, "State is required").max(50).transform(val => val.trim()),
+  zipCode: z.string().min(1, "ZIP code is required").max(20).transform(val => val.trim()),
   hasLoginAccess: z.boolean().optional(),
 });
 
-type CreateFormData = z.infer<typeof ClientSchema.create>;
-type EditFormData = z.infer<typeof editFormSchema>;
-type FormData = CreateFormData | EditFormData;
+type FormData = z.infer<typeof formSchema>;
 type FormFieldName = keyof FormData;
-
-interface Client {
-  id: string;
-  clientId: string;
-  businessName: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  cellPhone: string;
-  businessPhone?: string | null;
-  details?: string | null;
-  venueName?: string | null;
-  room?: string | null;
-  streetAddress: string;
-  aptSuiteUnit?: string | null;
-  city: string;
-  country: string;
-  state: string;
-  zipCode: string;
-  hasLoginAccess: boolean;
-  userId?: string | null;
-}
 
 interface ClientFormModalProps {
   client: Client | null;
@@ -93,7 +92,7 @@ export function ClientFormModal({
     setError,
     watch,
   } = useForm<FormData>({
-    resolver: zodResolver(isEdit ? editFormSchema : ClientSchema.create),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       businessName: '',
       firstName: '',

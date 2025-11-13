@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { prisma } from "@/lib/server/prisma";
 import { getOptionalAuth } from "@/lib/server/auth-utils";
 import { UserRole, hasRole } from "@/lib/server/auth-utils";
+import { ClientService } from "@/services/client.service";
 import superjson from "superjson";
 import type { Session } from "@/lib/server/auth";
 import type { SessionUser } from "@/lib/types/auth.types";
@@ -19,6 +20,7 @@ export async function createContext() {
     session,
     userId: session?.user?.id || null,
     userRole: (session?.user as SessionUser | undefined)?.role || null,
+    clientService: new ClientService(prisma),
   };
 }
 

@@ -10,28 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { EditIcon } from '@/components/ui/icons';
-
-interface Client {
-  id: string;
-  clientId: string;
-  businessName: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  cellPhone: string;
-  businessPhone?: string | null;
-  details?: string | null;
-  venueName?: string | null;
-  room?: string | null;
-  streetAddress: string;
-  aptSuiteUnit?: string | null;
-  city: string;
-  country: string;
-  state: string;
-  zipCode: string;
-  hasLoginAccess: boolean;
-  userId?: string | null;
-}
+import type { Client } from '@/lib/types/client';
 
 interface ViewClientDialogProps {
   client: Client | null;

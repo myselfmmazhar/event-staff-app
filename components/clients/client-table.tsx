@@ -3,22 +3,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EditIcon, TrashIcon, EyeIcon } from '@/components/ui/icons';
-
-interface Client {
-  id: string;
-  clientId: string;
-  businessName: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  cellPhone: string;
-  city: string;
-  state: string;
-  hasLoginAccess: boolean;
-}
+import type { ClientTableRow } from '@/lib/types/client';
 
 interface ClientTableProps {
-  clients: Client[];
+  clients: ClientTableRow[];
   isLoading?: boolean;
   onView: (id: string) => void;
   onEdit: (id: string) => void;

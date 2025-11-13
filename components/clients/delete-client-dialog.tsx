@@ -8,9 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import type { ClientDeleteInfo } from '@/lib/types/client';
 
 interface DeleteClientDialogProps {
-  client: { businessName: string; firstName: string; lastName: string; hasLoginAccess: boolean } | null;
+  client: ClientDeleteInfo | null;
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;

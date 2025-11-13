@@ -14,32 +14,11 @@ import { TemporaryPasswordDialog } from '@/components/clients/temporary-password
 import { Pagination } from '@/components/users/pagination';
 import { ActiveFilters } from '@/components/users/active-filters';
 import { trpc } from '@/lib/client/trpc';
+import type { Client } from '@/lib/types/client';
+import type { CreateClientInput, UpdateClientInput } from '@/lib/schemas/client.schema';
+import { handleClientMutationError } from '@/lib/utils/client-error-handler';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import type { CreateClientInput, UpdateClientInput } from '@/lib/schemas/client.schema';
-
-type Client = {
-  id: string;
-  clientId: string;
-  businessName: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  cellPhone: string;
-  businessPhone?: string | null;
-  details?: string | null;
-  venueName?: string | null;
-  room?: string | null;
-  streetAddress: string;
-  aptSuiteUnit?: string | null;
-  city: string;
-  country: string;
-  state: string;
-  zipCode: string;
-  hasLoginAccess: boolean;
-  userId?: string | null;
-  createdAt?: Date;
-};
 
 export default function ClientsPage() {
   const { toast } = useToast();
@@ -47,123 +26,87 @@ export default function ClientsPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Initialize state from URL params
-  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
-  const [limit, setLimit] = useState(Number(searchParams.get('limit')) || 10);
-  const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [selectedLoginAccess, setSelectedLoginAccess] = useState<'all' | 'with' | 'without'>(
-    (searchParams.get('loginAccess') as 'all' | 'with' | 'without') || 'all'
-  );
-  const [sortBy, setSortBy] = useState<'clientId' | 'businessName' | 'createdAt'>(
-    (searchParams.get('sortBy') as 'clientId' | 'businessName' | 'createdAt') || 'createdAt'
-  );
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(
-    (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc'
-  );
+  // Pagination and filtering state (initialized from URL params)
+  const [pagination, setPagination] = useState({
+    page: Number(searchParams.get('page')) || 1,
+    limit: Number(searchParams.get('limit')) || 10,
+  });
 
-  // Modal states
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isTempPasswordOpen, setIsTempPasswordOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    search: searchParams.get('search') || '',
+    loginAccess: (searchParams.get('loginAccess') as 'all' | 'with' | 'without') || 'all' as const,
+    sortBy: (searchParams.get('sortBy') as 'clientId' | 'businessName' | 'createdAt') || 'createdAt' as const,
+    sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc' as const,
+  });
+
+  // Modal state
+  const [modals, setModals] = useState({
+    form: false,
+    view: false,
+    delete: false,
+    tempPassword: false,
+  });
+
+  // Client and form state
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [backendErrors, setBackendErrors] = useState<Array<{ field: string; message: string }>>([]);
 
   // Convert filter values for tRPC query
   const getLoginAccessFilter = () => {
-    if (selectedLoginAccess === 'with') return true;
-    if (selectedLoginAccess === 'without') return false;
+    if (filters.loginAccess === 'with') return true;
+    if (filters.loginAccess === 'without') return false;
     return undefined;
   };
 
   // tRPC queries
   const { data, isLoading, refetch } = trpc.client.getAll.useQuery({
-    page,
-    limit,
-    search: search || undefined,
+    page: pagination.page,
+    limit: pagination.limit,
+    search: filters.search || undefined,
     hasLoginAccess: getLoginAccessFilter(),
-    sortBy,
-    sortOrder,
+    sortBy: filters.sortBy,
+    sortOrder: filters.sortOrder,
   });
 
   // tRPC mutations
   const createMutation = trpc.client.create.useMutation({
-    onSuccess: (response) => {
-      // The create response has { client, tempPassword }
-      // tempPassword is null when login access is not granted during creation
-      const client = 'client' in response ? response.client : response;
-
+    onSuccess: () => {
       toast({
         message: 'Client created successfully',
         type: 'success',
       });
-      setIsFormOpen(false);
+      setModals((prev) => ({ ...prev, form: false }));
       setBackendErrors([]);
       refetch();
     },
     onError: (error) => {
-      const fieldErrors = (error.data as { fieldErrors?: Array<{ field: string; message: string }> })?.fieldErrors || [];
-
-      if (fieldErrors.length > 0) {
-        setBackendErrors(fieldErrors);
-        toast({
-          message: 'Please check the form for errors',
-          type: 'error',
-        });
-      } else {
-        setBackendErrors([]);
-        toast({
-          message: error.message,
-          type: 'error',
-        });
-      }
+      handleClientMutationError(error, toast, setBackendErrors);
     },
   });
 
   const updateMutation = trpc.client.update.useMutation({
     onSuccess: (response) => {
-      // Check if temporary password was returned (indicates login access was just granted)
-      // The response could be either a ClientSelect or { client, tempPassword }
-      const client = 'client' in response && response.client ? response.client : response;
-      const tempPwd = 'tempPassword' in response && response.tempPassword ? (response.tempPassword as string) : null;
+      // Handle standardized response format
+      const { client, tempPassword } = response;
 
-      if (tempPwd) {
-        setTempPassword(tempPwd as string);
-        const clientData = client as Client;
-        setSelectedClient({
-          ...clientData,
-          createdAt: clientData.createdAt instanceof Date ? clientData.createdAt : new Date(clientData.createdAt || new Date()),
-        });
-        setIsTempPasswordOpen(true);
+      if (tempPassword) {
+        setTempPassword(tempPassword);
+        setSelectedClient(client);
+        setModals((prev) => ({ ...prev, tempPassword: true }));
       }
 
       toast({
         message: 'Client updated successfully',
         type: 'success',
       });
-      setIsFormOpen(false);
-      setIsViewOpen(false);
+      setModals((prev) => ({ ...prev, form: false, view: false }));
       setSelectedClient(null);
       setBackendErrors([]);
       refetch();
     },
     onError: (error) => {
-      const fieldErrors = (error.data as { fieldErrors?: Array<{ field: string; message: string }> })?.fieldErrors || [];
-
-      if (fieldErrors.length > 0) {
-        setBackendErrors(fieldErrors);
-        toast({
-          message: 'Please check the form for errors',
-          type: 'error',
-        });
-      } else {
-        setBackendErrors([]);
-        toast({
-          message: error.message,
-          type: 'error',
-        });
-      }
+      handleClientMutationError(error, toast, setBackendErrors);
     },
   });
 
@@ -173,7 +116,7 @@ export default function ClientsPage() {
         message: 'Client deleted successfully',
         type: 'success',
       });
-      setIsDeleteOpen(false);
+      setModals((prev) => ({ ...prev, delete: false }));
       setSelectedClient(null);
       refetch();
     },
@@ -189,7 +132,7 @@ export default function ClientsPage() {
   const handleCreate = () => {
     setSelectedClient(null);
     setBackendErrors([]);
-    setIsFormOpen(true);
+    setModals((prev) => ({ ...prev, form: true }));
   };
 
   const handleView = (clientId: string) => {
@@ -199,7 +142,7 @@ export default function ClientsPage() {
         ...client,
         createdAt: new Date(client.createdAt || new Date()),
       });
-      setIsViewOpen(true);
+      setModals((prev) => ({ ...prev, view: true }));
     }
   };
 
@@ -211,7 +154,7 @@ export default function ClientsPage() {
         createdAt: new Date(client.createdAt || new Date()),
       });
       setBackendErrors([]);
-      setIsFormOpen(true);
+      setModals((prev) => ({ ...prev, form: true }));
     }
   };
 
@@ -219,7 +162,7 @@ export default function ClientsPage() {
     const client = data?.data.find((c) => c.id === clientId);
     if (client) {
       setSelectedClient(client);
-      setIsDeleteOpen(true);
+      setModals((prev) => ({ ...prev, delete: true }));
     }
   };
 
@@ -243,68 +186,76 @@ export default function ClientsPage() {
   };
 
   const handlePageChange = (newPage: number) => {
-    setPage(newPage);
+    setPagination((prev) => ({ ...prev, page: newPage }));
   };
 
   const handleLimitChange = (newLimit: number) => {
-    setLimit(newLimit);
-    setPage(1);
+    setPagination({ page: 1, limit: newLimit });
   };
 
   const handleSearchChange = (newSearch: string) => {
-    setSearch(newSearch);
-    setPage(1);
+    setFilters((prev) => ({ ...prev, search: newSearch }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleLoginAccessChange = (access: 'all' | 'with' | 'without') => {
-    setSelectedLoginAccess(access);
-    setPage(1);
+    setFilters((prev) => ({ ...prev, loginAccess: access }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleSortByChange = (field: string) => {
-    setSortBy(field as 'clientId' | 'businessName' | 'createdAt');
+    setFilters((prev) => ({ ...prev, sortBy: field as 'clientId' | 'businessName' | 'createdAt' }));
   };
 
   const handleSortOrderChange = (order: 'asc' | 'desc') => {
-    setSortOrder(order);
+    setFilters((prev) => ({ ...prev, sortOrder: order }));
   };
 
   const handleSort = (field: string) => {
     const validField = field as 'clientId' | 'businessName' | 'createdAt';
-    if (sortBy === validField) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    if (filters.sortBy === validField) {
+      setFilters((prev) => ({
+        ...prev,
+        sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc',
+      }));
     } else {
-      setSortBy(validField);
-      setSortOrder('desc');
+      setFilters((prev) => ({
+        ...prev,
+        sortBy: validField,
+        sortOrder: 'desc',
+      }));
     }
   };
 
   const handleClearFilters = () => {
-    setSelectedLoginAccess('all');
-    setSearch('');
-    setPage(1);
+    setFilters((prev) => ({
+      ...prev,
+      loginAccess: 'all',
+      search: '',
+    }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const totalPages = data ? Math.ceil(data.meta.total / limit) : 0;
+  const totalPages = data ? Math.ceil(data.meta.total / pagination.limit) : 0;
 
   // Build active filters array
   const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];
 
-  if (search) {
+  if (filters.search) {
     activeFilters.push({
       key: 'search',
       label: 'Search',
-      value: search,
-      onRemove: () => setSearch(''),
+      value: filters.search,
+      onRemove: () => setFilters((prev) => ({ ...prev, search: '' })),
     });
   }
 
-  if (selectedLoginAccess !== 'all') {
+  if (filters.loginAccess !== 'all') {
     activeFilters.push({
       key: 'loginAccess',
       label: 'Login Access',
-      value: selectedLoginAccess === 'with' ? 'Portal Access' : 'No Access',
-      onRemove: () => setSelectedLoginAccess('all'),
+      value: filters.loginAccess === 'with' ? 'Portal Access' : 'No Access',
+      onRemove: () => setFilters((prev) => ({ ...prev, loginAccess: 'all' })),
     });
   }
 
@@ -312,27 +263,18 @@ export default function ClientsPage() {
   useEffect(() => {
     const params = new URLSearchParams();
 
-    if (page > 1) params.set('page', page.toString());
-    if (limit !== 10) params.set('limit', limit.toString());
-    if (search) params.set('search', search);
-    if (selectedLoginAccess !== 'all') params.set('loginAccess', selectedLoginAccess);
-    if (sortBy !== 'createdAt') params.set('sortBy', sortBy);
-    if (sortOrder !== 'desc') params.set('sortOrder', sortOrder);
+    if (pagination.page > 1) params.set('page', pagination.page.toString());
+    if (pagination.limit !== 10) params.set('limit', pagination.limit.toString());
+    if (filters.search) params.set('search', filters.search);
+    if (filters.loginAccess !== 'all') params.set('loginAccess', filters.loginAccess);
+    if (filters.sortBy !== 'createdAt') params.set('sortBy', filters.sortBy);
+    if (filters.sortOrder !== 'desc') params.set('sortOrder', filters.sortOrder);
 
     const queryString = params.toString();
     const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
 
     router.replace(newUrl, { scroll: false });
-  }, [
-    page,
-    limit,
-    search,
-    selectedLoginAccess,
-    sortBy,
-    sortOrder,
-    pathname,
-    router,
-  ]);
+  }, [pagination, filters, pathname, router]);
 
   return (
     <div className="p-6 space-y-6">
@@ -355,11 +297,11 @@ export default function ClientsPage() {
         <div className="relative z-10 space-y-4">
           <ClientSearch onSearch={handleSearchChange} />
           <ClientFilters
-            loginAccess={selectedLoginAccess}
+            loginAccess={filters.loginAccess}
             onLoginAccessChange={handleLoginAccessChange}
-            sortBy={sortBy}
+            sortBy={filters.sortBy}
             onSortByChange={handleSortByChange}
-            sortOrder={sortOrder}
+            sortOrder={filters.sortOrder}
             onSortOrderChange={handleSortOrderChange}
           />
           <ActiveFilters filters={activeFilters} />
@@ -372,8 +314,8 @@ export default function ClientsPage() {
           <ClientTable
             clients={data?.data || []}
             isLoading={isLoading}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
+            sortBy={filters.sortBy}
+            sortOrder={filters.sortOrder}
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
@@ -384,10 +326,10 @@ export default function ClientsPage() {
           {data && data.meta.total > 0 && (
             <div className="mt-6">
               <Pagination
-                currentPage={page}
+                currentPage={pagination.page}
                 totalPages={totalPages}
                 totalItems={data.meta.total}
-                itemsPerPage={limit}
+                itemsPerPage={pagination.limit}
                 onPageChange={handlePageChange}
                 onItemsPerPageChange={handleLimitChange}
               />
@@ -399,9 +341,9 @@ export default function ClientsPage() {
       {/* Modals */}
       <ClientFormModal
         client={selectedClient}
-        open={isFormOpen}
+        open={modals.form}
         onClose={() => {
-          setIsFormOpen(false);
+          setModals((prev) => ({ ...prev, form: false }));
           setSelectedClient(null);
           setBackendErrors([]);
         }}
@@ -412,23 +354,22 @@ export default function ClientsPage() {
 
       <ViewClientDialog
         client={selectedClient}
-        open={isViewOpen}
+        open={modals.view}
         onClose={() => {
-          setIsViewOpen(false);
+          setModals((prev) => ({ ...prev, view: false }));
           setSelectedClient(null);
         }}
         onEdit={() => {
-          setIsViewOpen(false);
+          setModals((prev) => ({ ...prev, view: false, form: true }));
           setBackendErrors([]);
-          setIsFormOpen(true);
         }}
       />
 
       <DeleteClientDialog
         client={selectedClient}
-        open={isDeleteOpen}
+        open={modals.delete}
         onClose={() => {
-          setIsDeleteOpen(false);
+          setModals((prev) => ({ ...prev, delete: false }));
           setSelectedClient(null);
         }}
         onConfirm={handleDeleteConfirm}
@@ -439,9 +380,9 @@ export default function ClientsPage() {
         tempPassword={tempPassword}
         clientName={selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : ''}
         clientEmail={selectedClient?.email || ''}
-        open={isTempPasswordOpen}
+        open={modals.tempPassword}
         onClose={() => {
-          setIsTempPasswordOpen(false);
+          setModals((prev) => ({ ...prev, tempPassword: false }));
           setTempPassword(null);
           setSelectedClient(null);
         }}
