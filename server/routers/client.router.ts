@@ -1,10 +1,10 @@
 import { router, protectedProcedure } from "../trpc";
-import { ClientService } from "@/services/client.service";
 import { ClientSchema } from "@/lib/schemas/client.schema";
 
 /**
  * Client Router - All client-related tRPC procedures
  * All procedures use protectedProcedure (authenticated users manage their own clients)
+ * ClientService is injected via context for efficient resource management
  */
 export const clientRouter = router({
   /**
@@ -14,8 +14,7 @@ export const clientRouter = router({
   getAll: protectedProcedure
     .input(ClientSchema.query)
     .query(async ({ ctx, input }) => {
-      const clientService = new ClientService(ctx.prisma);
-      return await clientService.findAll(input, ctx.userId!);
+      return await ctx.clientService.findAll(input, ctx.userId!);
     }),
 
   /**
@@ -24,8 +23,7 @@ export const clientRouter = router({
   getById: protectedProcedure
     .input(ClientSchema.id)
     .query(async ({ ctx, input }) => {
-      const clientService = new ClientService(ctx.prisma);
-      return await clientService.findOne(input.id);
+      return await ctx.clientService.findOne(input.id);
     }),
 
   /**
@@ -34,8 +32,7 @@ export const clientRouter = router({
   create: protectedProcedure
     .input(ClientSchema.create)
     .mutation(async ({ ctx, input }) => {
-      const clientService = new ClientService(ctx.prisma);
-      return await clientService.create(input, ctx.userId!);
+      return await ctx.clientService.create(input, ctx.userId!);
     }),
 
   /**
@@ -46,8 +43,7 @@ export const clientRouter = router({
     .input(ClientSchema.update)
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      const clientService = new ClientService(ctx.prisma);
-      return await clientService.update(id, data);
+      return await ctx.clientService.update(id, data);
     }),
 
   /**
@@ -56,8 +52,7 @@ export const clientRouter = router({
   delete: protectedProcedure
     .input(ClientSchema.id)
     .mutation(async ({ ctx, input }) => {
-      const clientService = new ClientService(ctx.prisma);
-      return await clientService.remove(input.id);
+      return await ctx.clientService.remove(input.id);
     }),
 
   /**
@@ -67,8 +62,7 @@ export const clientRouter = router({
   grantLoginAccess: protectedProcedure
     .input(ClientSchema.id)
     .mutation(async ({ ctx, input }) => {
-      const clientService = new ClientService(ctx.prisma);
-      return await clientService.grantLoginAccess(input.id, ctx.userId!);
+      return await ctx.clientService.grantLoginAccess(input.id, ctx.userId!);
     }),
 
   /**
@@ -78,15 +72,13 @@ export const clientRouter = router({
   revokeLoginAccess: protectedProcedure
     .input(ClientSchema.id)
     .mutation(async ({ ctx, input }) => {
-      const clientService = new ClientService(ctx.prisma);
-      return await clientService.revokeLoginAccess(input.id);
+      return await ctx.clientService.revokeLoginAccess(input.id);
     }),
 
   /**
    * Get client statistics for dashboard
    */
   getStats: protectedProcedure.query(async ({ ctx }) => {
-    const clientService = new ClientService(ctx.prisma);
-    return await clientService.getStats();
+    return await ctx.clientService.getStats();
   }),
 });

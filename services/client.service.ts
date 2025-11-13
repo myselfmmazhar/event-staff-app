@@ -104,8 +104,12 @@ export class ClientService {
 
   /**
    * Create a new client
+   * Returns standardized response format with client and optional tempPassword
    */
-  async create(data: CreateClientInput, createdByUserId: string) {
+  async create(
+    data: CreateClientInput,
+    createdByUserId: string
+  ): Promise<{ client: ClientSelect; tempPassword: string | null }> {
     try {
       const clientId = await this.generateClientId();
 
@@ -376,17 +380,24 @@ export class ClientService {
   /**
    * Update a client
    * Handles login access changes
+   * Returns standardized response format with client and optional tempPassword
    */
-  async update(id: string, data: UpdateClientInput): Promise<ClientSelect> {
+  async update(
+    id: string,
+    data: UpdateClientInput
+  ): Promise<{ client: ClientSelect; tempPassword: string | null }> {
     try {
       const client = await this.findOne(id);
 
       // Handle login access changes
       if (data.hasLoginAccess !== undefined && data.hasLoginAccess !== client.hasLoginAccess) {
         if (data.hasLoginAccess) {
-          return (await this.grantLoginAccess(id, client.createdBy)).client;
+          // Return the full response from grantLoginAccess (includes tempPassword)
+          return await this.grantLoginAccess(id, client.createdBy);
         } else {
-          return await this.revokeLoginAccess(id);
+          // Return revoked client with null tempPassword
+          const revokedClient = await this.revokeLoginAccess(id);
+          return { client: revokedClient, tempPassword: null };
         }
       }
 
@@ -418,7 +429,7 @@ export class ClientService {
         select: this.getClientSelect(),
       });
 
-      return updatedClient;
+      return { client: updatedClient, tempPassword: null };
     } catch (error) {
       if (error instanceof TRPCError) {
         throw error;
