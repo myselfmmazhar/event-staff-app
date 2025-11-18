@@ -58,7 +58,7 @@ export function DeleteEventDialog({
         </Button>
         <Button
           type="button"
-          variant="destructive"
+          variant="danger"
           onClick={onConfirm}
           disabled={isDeleting}
         >

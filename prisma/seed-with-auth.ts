@@ -1,10 +1,10 @@
 import { PrismaClient, UserRole } from '@prisma/client';
-import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database with Better Auth...');
+  console.log('⚠️  DEPRECATED: Use seed.ts or seed-scrypt.ts instead');
+  console.log('🌱 Seeding database with Better Auth (scrypt)...\n');
 
   // Check if admin user already exists
   const existingAdmin = await prisma.user.findUnique({
@@ -12,54 +12,59 @@ async function main() {
   });
 
   if (existingAdmin) {
-    console.log('⚠️  Admin user already exists.');
-    console.log('   Deleting and recreating with correct password hash...');
-
-    // Delete existing admin and all related records (cascades)
-    await prisma.user.delete({
-      where: { id: existingAdmin.id },
-    });
+    console.log('✅ Admin user already exists. Skipping seed.');
+    console.log('   To recreate, delete the user first or use seed.ts\n');
+    return;
   }
 
-  // Better Auth uses bcrypt internally, but we need to use their specific format
-  // The password will be hashed by Better Auth's internal system
-  // We need to hash it in a way that Better Auth expects
+  // Import Better Auth at runtime to use its sign-up functionality
+  const { auth } = await import('../lib/server/auth');
 
-  // Better Auth expects passwords to be hashed with bcrypt rounds 10
-  const hashedPassword = await hash('admin123', 10);
-
-  const admin = await prisma.user.create({
-    data: {
-      email: 'admin@example.com',
-      password: hashedPassword,
-      firstName: 'Super',
-      lastName: 'Admin',
-      role: UserRole.SUPER_ADMIN,
-      isActive: true,
-      phone: '+1234567890',
-      address: '123 Admin Street, Admin City, AC 12345',
-      name: 'Super Admin', // Better Auth expects a 'name' field
-      emailVerified: true,
-      accounts: {
-        create: {
-          accountId: 'admin@example.com',
-          providerId: 'credential',
-          password: hashedPassword,
-        },
+  try {
+    // Use Better Auth's sign-up method which handles scrypt hashing
+    const result = await auth.api.signUpEmail({
+      body: {
+        email: 'admin@example.com',
+        password: 'admin123',
+        name: 'Super Admin',
+        firstName: 'Super',
+        lastName: 'Admin',
       },
-    },
-  });
+    });
 
-  console.log('✅ Super admin user created:', {
-    id: admin.id,
-    email: admin.email,
-    role: admin.role,
-  });
+    if (!result || !result.user) {
+      throw new Error('Failed to create user via Better Auth');
+    }
 
-  console.log('\n📋 Login credentials:');
-  console.log('   Email: admin@example.com');
-  console.log('   Password: admin123');
-  console.log('\n🎉 Database seeding completed successfully!');
+    // Update user with additional fields after creation
+    const admin = await prisma.user.update({
+      where: { id: result.user.id },
+      data: {
+        firstName: 'Super',
+        lastName: 'Admin',
+        role: UserRole.SUPER_ADMIN,
+        isActive: true,
+        phone: '+1234567890',
+        address: '123 Admin Street, Admin City, AC 12345',
+        emailVerified: true,
+      },
+    });
+
+    console.log('✅ Super admin user created:', {
+      id: admin.id,
+      email: admin.email,
+      role: admin.role,
+    });
+
+    console.log('\n📋 Login credentials:');
+    console.log('   Email: admin@example.com');
+    console.log('   Password: admin123');
+    console.log('\n🔒 Password Security: scrypt (Better Auth default)');
+    console.log('🎉 Database seeding completed successfully!');
+  } catch (error) {
+    console.error('❌ Error during sign-up:', error);
+    throw error;
+  }
 }
 
 main()

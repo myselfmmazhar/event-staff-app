@@ -58,7 +58,7 @@ export function DeleteClientDialog({
           Cancel
         </Button>
         <Button
-          variant="destructive"
+          variant="danger"
           onClick={onConfirm}
           disabled={isLoading}
         >

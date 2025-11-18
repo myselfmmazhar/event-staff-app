@@ -20,7 +20,6 @@ import { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon, PlusIcon, XIcon } from '@/components/ui/icons';
-import { DatePicker } from '@/components/ui/date-picker';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;

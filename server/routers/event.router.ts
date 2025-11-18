@@ -16,7 +16,7 @@ export const eventRouter = router({
     .input(EventSchema.query)
     .query(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.findAll(input, ctx.userId);
+      return await eventService.findAll(input, ctx.userId!);
     }),
 
   /**
@@ -28,7 +28,7 @@ export const eventRouter = router({
     .input(EventSchema.id)
     .query(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.findOne(input.id, ctx.userId);
+      return await eventService.findOne(input.id, ctx.userId!);
     }),
 
   /**
@@ -39,7 +39,7 @@ export const eventRouter = router({
     .input(EventSchema.create)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.create(input, ctx.userId);
+      return await eventService.create(input, ctx.userId!);
     }),
 
   /**
@@ -52,7 +52,7 @@ export const eventRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const eventService = new EventService(ctx.prisma);
-      return await eventService.update(id, data, ctx.userId);
+      return await eventService.update(id, data, ctx.userId!);
     }),
 
   /**
@@ -64,7 +64,7 @@ export const eventRouter = router({
     .input(EventSchema.id)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.remove(input.id, ctx.userId);
+      return await eventService.remove(input.id, ctx.userId!);
     }),
 
   /**
@@ -76,7 +76,7 @@ export const eventRouter = router({
     .input(EventSchema.updateStatus)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.updateStatus(input.id, input.status, ctx.userId);
+      return await eventService.updateStatus(input.id, input.status, ctx.userId!);
     }),
 
   /**
@@ -86,7 +86,7 @@ export const eventRouter = router({
    */
   getUpcoming: protectedProcedure.query(async ({ ctx }) => {
     const eventService = new EventService(ctx.prisma);
-    return await eventService.getUpcoming(ctx.userId);
+    return await eventService.getUpcoming(ctx.userId!);
   }),
 
   /**
@@ -96,6 +96,6 @@ export const eventRouter = router({
    */
   getStats: protectedProcedure.query(async ({ ctx }) => {
     const eventService = new EventService(ctx.prisma);
-    return await eventService.getStats(ctx.userId);
+    return await eventService.getStats(ctx.userId!);
   }),
 });

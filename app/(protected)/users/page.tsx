@@ -252,8 +252,8 @@ export default function UsersPage() {
         ...formData,
       });
     } else {
-      // Create new user
-      createMutation.mutate(formData);
+      // Create new user - formData must be CreateUserInput since all required fields are validated by the form
+      createMutation.mutate(formData as any);
     }
   };
 
@@ -335,6 +335,7 @@ export default function UsersPage() {
     ADMIN: 'Admin',
     MANAGER: 'Manager',
     STAFF: 'Staff',
+    CLIENT: 'Client',
   };
 
   const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];

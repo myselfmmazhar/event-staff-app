@@ -39,6 +39,7 @@ const ROLE_COLORS: Record<UserRole, 'purple' | 'primary' | 'info' | 'default'> =
   ADMIN: 'primary',
   MANAGER: 'info',
   STAFF: 'default',
+  CLIENT: 'default',
 };
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -46,6 +47,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: 'Admin',
   MANAGER: 'Manager',
   STAFF: 'Staff',
+  CLIENT: 'Client',
 };
 
 const SORTABLE_COLUMNS: Array<{ key: SortableField; label: string }> = [
