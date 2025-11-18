@@ -26,6 +26,8 @@ async function main() {
         email: 'admin@example.com',
         password: 'admin123',
         name: 'Super Admin',
+        firstName: 'Super',
+        lastName: 'Admin',
       },
     });
 

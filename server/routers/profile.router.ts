@@ -59,7 +59,7 @@ export const profileRouter = router({
 
       // Verify current password
       const bcrypt = await import("bcryptjs");
-      const isValid = await bcrypt.compare(input.currentPassword, user.password);
+      const isValid = await bcrypt.compare(input.currentPassword, user.password!);
 
       if (!isValid) {
         throw new Error("Current password is incorrect");

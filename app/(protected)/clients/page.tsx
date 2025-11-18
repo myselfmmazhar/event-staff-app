@@ -18,7 +18,7 @@ import type { Client } from '@/lib/types/client';
 import type { CreateClientInput, UpdateClientInput } from '@/lib/schemas/client.schema';
 import { handleClientMutationError } from '@/lib/utils/client-error-handler';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function ClientsPage() {
   const { toast } = useToast();
@@ -259,6 +259,9 @@ export default function ClientsPage() {
     });
   }
 
+  // Track the previous URL to prevent unnecessary updates
+  const previousUrlRef = useRef<string>('');
+
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
@@ -273,7 +276,11 @@ export default function ClientsPage() {
     const queryString = params.toString();
     const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
 
-    router.replace(newUrl, { scroll: false });
+    // Only update if URL actually changed
+    if (newUrl !== previousUrlRef.current) {
+      previousUrlRef.current = newUrl;
+      router.replace(newUrl, { scroll: false });
+    }
   }, [pagination, filters, pathname, router]);
 
   return (

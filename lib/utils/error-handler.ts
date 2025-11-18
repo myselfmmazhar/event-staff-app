@@ -133,7 +133,7 @@ export function logError(error: unknown, context?: string) {
     logData.message = error.message;
   } else if (error instanceof ZodError) {
     logData.code = 'VALIDATION_ERROR';
-    logData.errors = error.errors.map(e => ({
+    logData.errors = error.issues.map(e => ({
       path: e.path.join('.'),
       message: e.message,
     }));

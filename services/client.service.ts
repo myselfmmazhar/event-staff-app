@@ -4,12 +4,9 @@ import { randomBytes } from "crypto";
 import { auth } from "@/lib/server/auth";
 import type {
   CreateClientInput,
-  UpdateClientInput as UpdateClientInputType,
+  UpdateClientInput,
   QueryClientsInput,
 } from "@/lib/schemas/client.schema";
-
-// Update input type for service (Zod already validates, service receives validated data)
-export interface UpdateClientInput extends Omit<UpdateClientInputType, "id"> {}
 
 type ClientSelect = {
   id: string;
@@ -384,7 +381,7 @@ export class ClientService {
    */
   async update(
     id: string,
-    data: UpdateClientInput
+    data: Omit<UpdateClientInput, 'id'>
   ): Promise<{ client: ClientSelect; tempPassword: string | null }> {
     try {
       const client = await this.findOne(id);
@@ -404,13 +401,14 @@ export class ClientService {
       // If user fields changed and client has login access, update the User
       if (client.userId && client.hasLoginAccess) {
         const userUpdateData: Prisma.UserUpdateInput = {};
-        if (data.firstName) userUpdateData.firstName = data.firstName;
-        if (data.lastName) userUpdateData.lastName = data.lastName;
-        if (data.email) userUpdateData.email = data.email;
+        const updateData = data as any;
+        if (updateData.firstName) userUpdateData.firstName = updateData.firstName;
+        if (updateData.lastName) userUpdateData.lastName = updateData.lastName;
+        if (updateData.email) userUpdateData.email = updateData.email;
 
-        if (data.firstName || data.lastName) {
-          const firstName = data.firstName ?? client.firstName;
-          const lastName = data.lastName ?? client.lastName;
+        if (updateData.firstName || updateData.lastName) {
+          const firstName = updateData.firstName ?? client.firstName;
+          const lastName = updateData.lastName ?? client.lastName;
           userUpdateData.name = `${firstName} ${lastName}`;
         }
 
