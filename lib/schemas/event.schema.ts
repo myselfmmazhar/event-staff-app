@@ -69,6 +69,13 @@ export class EventSchema {
         .optional()
         .transform((val) => val?.trim()),
 
+      // Client relationship (optional)
+      clientId: z
+        .string()
+        .uuid("Invalid client ID")
+        .optional()
+        .or(z.literal("")),
+
       // Venue Information (all required)
       venueName: z
         .string()
@@ -175,6 +182,13 @@ export class EventSchema {
         .max(5000, "Private comments must be 5000 characters or less")
         .transform((val) => val?.trim())
         .optional(),
+
+      // Client relationship (optional)
+      clientId: z
+        .string()
+        .uuid("Invalid client ID")
+        .optional()
+        .or(z.literal("")),
 
       // Venue Information
       venueName: z
@@ -288,6 +302,7 @@ export class EventSchema {
       .optional(),
     sortOrder: z.enum(["asc", "desc"]).default("desc").optional(),
     status: z.nativeEnum(EventStatus).optional(),
+    clientId: z.string().optional(), // "NONE" for events without client, or UUID for specific client
     startDateFrom: z.coerce.date().optional(),
     startDateTo: z.coerce.date().optional(),
     endDateFrom: z.coerce.date().optional(),

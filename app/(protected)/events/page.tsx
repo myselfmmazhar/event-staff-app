@@ -42,6 +42,7 @@ export default function EventsPage() {
     const limit = Number(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
     const status = (searchParams.get('status') as EventStatus) || 'ALL';
+    const clientId = searchParams.get('clientId') || 'ALL';
     const sortBy = (searchParams.get('sortBy') as any) || 'createdAt';
     const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
 
@@ -49,13 +50,14 @@ export default function EventsPage() {
     filters.setLimit(limit);
     filters.setSearch(search);
     filters.setSelectedStatus(status);
+    filters.setSelectedClientId(clientId);
     filters.setSortBy(sortBy);
     filters.setSortOrder(sortOrder);
   }, []); // Only run on mount
 
   // Sync store with URL
   useUrlSync(filters, {
-    keys: ['page', 'limit', 'search', 'selectedStatus', 'sortBy', 'sortOrder'],
+    keys: ['page', 'limit', 'search', 'selectedStatus', 'selectedClientId', 'sortBy', 'sortOrder'],
   });
 
   // tRPC queries
@@ -64,6 +66,7 @@ export default function EventsPage() {
     limit: filters.limit,
     search: filters.search || undefined,
     status: filters.selectedStatus === 'ALL' ? undefined : filters.selectedStatus,
+    clientId: filters.selectedClientId === 'ALL' ? undefined : filters.selectedClientId,
     sortBy: filters.sortBy,
     sortOrder: filters.sortOrder,
   });

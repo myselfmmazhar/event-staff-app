@@ -94,11 +94,16 @@ model Event {
   createdBy        String
   creator          User        @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
 
+  // Client Relationship (optional)
+  clientId         String?     @db.Uuid
+  client           Client?     @relation("EventClient", fields: [clientId], references: [id], onDelete: SetNull)
+
   // Timestamps
   createdAt        DateTime    @default(now()) @db.Timestamp(6)
   updatedAt        DateTime    @updatedAt @db.Timestamp(6)
 
   @@index([createdBy])
+  @@index([clientId])
   @@index([status])
   @@index([startDate])
   @@index([eventId])
@@ -137,6 +142,9 @@ model Client {
   // Creator/Owner
   createdBy       String
   creator         User      @relation("ClientCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  // Relations
+  events          Event[]   @relation("EventClient")
 
   // Timestamps
   createdAt       DateTime  @default(now()) @db.Timestamp(6)

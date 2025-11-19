@@ -21,6 +21,10 @@ interface Event {
   timezone: string;
   status: EventStatus;
   createdAt: Date;
+  client?: {
+    id: string;
+    businessName: string;
+  } | null;
 }
 
 type SortableField = 'createdAt' | 'updatedAt' | 'title' | 'eventId' | 'startDate' | 'endDate' | 'status' | 'venueName';
@@ -130,10 +134,12 @@ export function EventTable({
       ),
     },
     {
-      key: 'location',
-      label: 'Location',
+      key: 'client',
+      label: 'Client',
       className: 'py-4 px-4 text-sm text-muted-foreground',
-      render: (event) => `${event.city}, ${event.state}`,
+      render: (event) => event.client?.businessName || (
+        <span className="text-muted-foreground/50 italic">Not applicable</span>
+      ),
     },
     {
       key: 'actions',
@@ -195,8 +201,8 @@ export function EventTable({
           <span>{event.venueName}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-medium">Location:</span>
-          <span>{event.city}, {event.state}</span>
+          <span className="font-medium">Client:</span>
+          <span>{event.client?.businessName || <span className="italic opacity-50">Not applicable</span>}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="font-medium">Start:</span>

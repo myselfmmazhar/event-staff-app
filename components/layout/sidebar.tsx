@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/lib/client/auth';
 import { signOut } from '@/lib/client/auth';
-import { hasRole } from '@/lib/server/auth-utils';
 import {
   DashboardIcon,
   UsersIcon,
@@ -13,16 +12,27 @@ import {
   LogoutIcon,
   CloseIcon,
   CalendarIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  ListIcon,
 } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { SessionUser } from '@/lib/types/auth.types';
 
-interface NavItem {
+interface SubNavItem {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+}
+
+interface NavItem {
+  label: string;
+  href?: string;
+  icon: React.ComponentType<{ className?: string }>;
   requiresAdmin?: boolean;
+  subItems?: SubNavItem[];
 }
 
 const navItems: NavItem[] = [
@@ -34,15 +44,20 @@ const navItems: NavItem[] = [
   },
   {
     label: 'Events',
-    href: '/events',
     icon: CalendarIcon,
     requiresAdmin: false,
-  },
-  {
-    label: 'Clients',
-    href: '/clients',
-    icon: UserIcon,
-    requiresAdmin: false,
+    subItems: [
+      {
+        label: 'View Events',
+        href: '/events',
+        icon: ListIcon,
+      },
+      {
+        label: 'View Clients',
+        href: '/clients',
+        icon: ListIcon,
+      },
+    ],
   },
   {
     label: 'Users',
@@ -68,6 +83,7 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   const pathname = usePathname();
   const { data: session } = useSession();
   const user = session?.user as SessionUser | undefined;
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
   const handleLogout = async () => {
     await signOut();
@@ -87,6 +103,19 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   // Check if current path matches nav item
   const isActive = (href: string) => {
     return pathname === href || pathname?.startsWith(href + '/');
+  };
+
+  // Check if any sub-item is active
+  const hasActiveSubItem = (subItems?: SubNavItem[]) => {
+    if (!subItems) return false;
+    return subItems.some(subItem => isActive(subItem.href));
+  };
+
+  // Toggle expanded state
+  const toggleExpanded = (label: string) => {
+    setExpandedItems(prev =>
+      prev.includes(label) ? prev.filter(item => item !== label) : [...prev, label]
+    );
   };
 
   // Get role badge variant
@@ -130,12 +159,71 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       <nav className="flex-1 space-y-1 px-3 py-4">
         {visibleNavItems.map((item) => {
           const Icon = item.icon;
-          const active = isActive(item.href);
+          const hasSubItems = item.subItems && item.subItems.length > 0;
+          const isExpanded = expandedItems.includes(item.label) || hasActiveSubItem(item.subItems);
+          const active = item.href ? isActive(item.href) : false;
 
+          if (hasSubItems) {
+            return (
+              <div key={item.label}>
+                {/* Parent Item */}
+                <button
+                  onClick={() => toggleExpanded(item.label)}
+                  className={`
+                    flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
+                    ${
+                      hasActiveSubItem(item.subItems)
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }
+                  `}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {isExpanded ? (
+                    <ChevronDownIcon className="h-4 w-4" />
+                  ) : (
+                    <ChevronRightIcon className="h-4 w-4" />
+                  )}
+                </button>
+
+                {/* Sub Items */}
+                {isExpanded && item.subItems && (
+                  <div className="ml-4 mt-1 space-y-1 border-l-2 border-border pl-2">
+                    {item.subItems.map((subItem) => {
+                      const SubIcon = subItem.icon;
+                      const subActive = isActive(subItem.href);
+
+                      return (
+                        <Link
+                          key={subItem.href}
+                          href={subItem.href}
+                          onClick={isMobile ? onClose : undefined}
+                          className={`
+                            flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
+                            ${
+                              subActive
+                                ? 'bg-primary text-primary-foreground shadow-md'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }
+                          `}
+                        >
+                          <SubIcon className="h-4 w-4" />
+                          <span>{subItem.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Regular nav item without sub-items
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href!}
               onClick={isMobile ? onClose : undefined}
               className={`
                 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200

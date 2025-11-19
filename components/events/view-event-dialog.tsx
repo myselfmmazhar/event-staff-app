@@ -107,6 +107,15 @@ export function ViewEventDialog({
                   <p className="text-sm font-medium text-foreground">{event.title}</p>
                 </div>
 
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Client</p>
+                  <p className="text-sm text-foreground">
+                    {event.client?.businessName || (
+                      <span className="text-muted-foreground/70 italic">Not applicable</span>
+                    )}
+                  </p>
+                </div>
+
                 {event.description && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Description</p>

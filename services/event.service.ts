@@ -21,6 +21,11 @@ type EventSelect = {
   description: string | null;
   dressCode: string | null;
   privateComments: string | null;
+  clientId: string | null;
+  client?: {
+    id: string;
+    businessName: string;
+  } | null;
   venueName: string;
   address: string;
   room: string;
@@ -118,6 +123,7 @@ export class EventService {
         description: data.description?.trim() || null,
         dressCode: data.dressCode?.trim() || null,
         privateComments: data.privateComments?.trim() || null,
+        clientId: data.clientId && data.clientId !== '' ? data.clientId : null,
         venueName: data.venueName.trim(),
         address: data.address.trim(),
         room: data.room.trim(),
@@ -146,6 +152,7 @@ export class EventService {
           description: true,
           dressCode: true,
           privateComments: true,
+          clientId: true,
           venueName: true,
           address: true,
           room: true,
@@ -204,6 +211,17 @@ export class EventService {
       where.status = query.status;
     }
 
+    // Client filter
+    if (query.clientId) {
+      if (query.clientId === 'NONE') {
+        // Filter for events without a client
+        where.clientId = null;
+      } else {
+        // Filter for specific client
+        where.clientId = query.clientId;
+      }
+    }
+
     // Timezone filter
     if (query.timezone) {
       where.timezone = query.timezone;
@@ -253,6 +271,13 @@ export class EventService {
           description: true,
           dressCode: true,
           privateComments: true,
+          clientId: true,
+          client: {
+            select: {
+              id: true,
+              businessName: true,
+            },
+          },
           venueName: true,
           address: true,
           room: true,
@@ -307,6 +332,13 @@ export class EventService {
         description: true,
         dressCode: true,
         privateComments: true,
+        clientId: true,
+        client: {
+          select: {
+            id: true,
+            businessName: true,
+          },
+        },
         venueName: true,
         address: true,
         room: true,
@@ -348,11 +380,12 @@ export class EventService {
       await this.findOne(id, userId);
 
       // Sanitize input data
-      const sanitizedData: Partial<Prisma.EventUpdateInput> = {};
+      const sanitizedData: any = {};
       if (data.title !== undefined) sanitizedData.title = data.title.trim();
       if (data.description !== undefined) sanitizedData.description = data.description?.trim() || null;
       if (data.dressCode !== undefined) sanitizedData.dressCode = data.dressCode?.trim() || null;
       if (data.privateComments !== undefined) sanitizedData.privateComments = data.privateComments?.trim() || null;
+      if (data.clientId !== undefined) sanitizedData.clientId = data.clientId && data.clientId !== '' ? data.clientId : null;
       if (data.venueName !== undefined) sanitizedData.venueName = data.venueName.trim();
       if (data.address !== undefined) sanitizedData.address = data.address.trim();
       if (data.room !== undefined) sanitizedData.room = data.room.trim();
@@ -382,6 +415,7 @@ export class EventService {
           description: true,
           dressCode: true,
           privateComments: true,
+          clientId: true,
           venueName: true,
           address: true,
           room: true,

@@ -12,6 +12,7 @@ interface EventsFiltersState {
   // Search & Filters
   search: string;
   selectedStatus: EventStatus | "ALL";
+  selectedClientId: string | "ALL";
 
   // Sorting
   sortBy: EventSortBy;
@@ -24,6 +25,7 @@ interface EventsFiltersState {
   // Actions - Search & Filters
   setSearch: (search: string) => void;
   setSelectedStatus: (status: EventStatus | "ALL") => void;
+  setSelectedClientId: (clientId: string | "ALL") => void;
 
   // Actions - Sorting
   setSortBy: (sortBy: EventSortBy) => void;
@@ -37,6 +39,7 @@ interface EventsFiltersState {
 const DEFAULT_FILTERS = {
   search: "",
   selectedStatus: "ALL" as EventStatus | "ALL",
+  selectedClientId: "ALL" as string | "ALL",
 };
 
 const DEFAULT_STATE = {
@@ -57,6 +60,7 @@ export const useEventsFilters = create<EventsFiltersState>((set) => ({
   // Search & Filter actions
   setSearch: (search) => set({ search, page: 1 }),
   setSelectedStatus: (selectedStatus) => set({ selectedStatus, page: 1 }),
+  setSelectedClientId: (selectedClientId) => set({ selectedClientId, page: 1 }),
 
   // Sorting actions
   setSortBy: (sortBy) => set({ sortBy }),

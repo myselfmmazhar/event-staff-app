@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon, PlusIcon, XIcon } from '@/components/ui/icons';
+import { trpc } from '@/lib/client/trpc';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;
@@ -30,6 +31,7 @@ const editFormSchema = z.object({
   description: z.string().max(5000).optional().transform(val => val?.trim()),
   dressCode: z.string().max(200).optional().transform(val => val?.trim()),
   privateComments: z.string().max(5000).optional().transform(val => val?.trim()),
+  clientId: z.string().optional(),
   venueName: z.string().min(1, "Venue name is required").max(200).transform(val => val.trim()),
   address: z.string().min(1, "Address is required").max(300).transform(val => val.trim()),
   room: z.string().min(1, "Room/Place is required").max(100).transform(val => val.trim()),
@@ -71,6 +73,7 @@ interface Event {
   description?: string | null;
   dressCode?: string | null;
   privateComments?: string | null;
+  clientId?: string | null;
   venueName: string;
   address: string;
   room: string;
@@ -118,6 +121,12 @@ export function EventFormModal({
   const [startTimeTBD, setStartTimeTBD] = useState(false);
   const [endTimeTBD, setEndTimeTBD] = useState(false);
 
+  // Fetch clients for dropdown
+  const { data: clientsData } = trpc.client.getAll.useQuery({
+    page: 1,
+    limit: 100
+  });
+
   const {
     register,
     handleSubmit,
@@ -134,6 +143,7 @@ export function EventFormModal({
       description: '',
       dressCode: '',
       privateComments: '',
+      clientId: '',
       venueName: '',
       address: '',
       room: '',
@@ -166,6 +176,7 @@ export function EventFormModal({
         description: event.description || '',
         dressCode: event.dressCode || '',
         privateComments: event.privateComments || '',
+        clientId: event.clientId || '',
         venueName: event.venueName,
         address: event.address,
         room: event.room,
@@ -190,6 +201,7 @@ export function EventFormModal({
         description: '',
         dressCode: '',
         privateComments: '',
+        clientId: '',
         venueName: '',
         address: '',
         room: '',
@@ -278,6 +290,25 @@ export function EventFormModal({
               />
               {errors.title && (
                 <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="clientId">Client</Label>
+              <Select
+                id="clientId"
+                {...register('clientId')}
+                disabled={isSubmitting}
+              >
+                <option value="">Not applicable</option>
+                {clientsData?.data.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.businessName}
+                  </option>
+                ))}
+              </Select>
+              {errors.clientId && (
+                <p className="text-sm text-destructive mt-1">{errors.clientId.message}</p>
               )}
             </div>
 
