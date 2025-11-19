@@ -29,12 +29,12 @@ const DEFAULT_STATE = {
 export const useModalStore = create<ModalState>((set) => ({
   ...DEFAULT_STATE,
 
-  openModal: (type, data, mode = null) =>
+  openModal: (type, data, mode) =>
     set({
       modalType: type,
       isOpen: true,
       selectedData: data ?? null,
-      mode,
+      mode: mode ?? null,
     }),
 
   closeModal: () =>

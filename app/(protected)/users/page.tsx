@@ -278,21 +278,7 @@ export default function UsersPage() {
       <Card className="p-6">
         <div className="relative z-10 space-y-4">
           <UserSearch value={filters.search} onChange={filters.setSearch} />
-          <UserFilters
-            selectedRole={filters.selectedRole}
-            selectedStatus={filters.selectedStatus}
-            selectedEmailVerified={filters.selectedEmailVerified}
-            selectedHasPhone={filters.selectedHasPhone}
-            createdFrom={filters.createdFrom}
-            createdTo={filters.createdTo}
-            onRoleChange={filters.setSelectedRole}
-            onStatusChange={filters.setSelectedStatus}
-            onEmailVerifiedChange={filters.setSelectedEmailVerified}
-            onHasPhoneChange={filters.setSelectedHasPhone}
-            onCreatedFromChange={filters.setCreatedFrom}
-            onCreatedToChange={filters.setCreatedTo}
-            onClearAll={filters.resetFilters}
-          />
+          <UserFilters />
           <ActiveFilters filters={activeFilters} />
         </div>
       </Card>

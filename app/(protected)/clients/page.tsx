@@ -91,7 +91,7 @@ export default function ClientsPage() {
       },
     }),
     onError: (error) => {
-      handleClientMutationError(error, { toast: (opts: any) => {}, setBackendErrors });
+      handleClientMutationError(error, (_opts: any) => {}, setBackendErrors);
     },
   });
 
@@ -113,7 +113,7 @@ export default function ClientsPage() {
       },
     }),
     onError: (error) => {
-      handleClientMutationError(error, { toast: (opts: any) => {}, setBackendErrors });
+      handleClientMutationError(error, (_opts: any) => {}, setBackendErrors);
     },
   });
 

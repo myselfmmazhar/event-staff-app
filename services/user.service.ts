@@ -243,6 +243,7 @@ export class UserService {
       select: {
         id: true,
         email: true,
+        emailVerified: true,
         firstName: true,
         lastName: true,
         role: true,
