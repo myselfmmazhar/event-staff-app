@@ -20,11 +20,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { SessionUser } from '@/lib/types/auth.types';
+import { type FeatureFlags, getFeatureStatus, isFeatureEnabled, isFeatureComingSoon, isFeatureDisabled } from '@/lib/config/feature-flags';
 
 interface SubNavItem {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  featureFlag?: keyof FeatureFlags;
 }
 
 interface NavItem {
@@ -33,6 +35,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   requiresAdmin?: boolean;
   subItems?: SubNavItem[];
+  featureFlag?: keyof FeatureFlags;
 }
 
 const navItems: NavItem[] = [
@@ -41,21 +44,25 @@ const navItems: NavItem[] = [
     href: '/dashboard',
     icon: DashboardIcon,
     requiresAdmin: false,
+    featureFlag: 'dashboard',
   },
   {
     label: 'Events',
     icon: CalendarIcon,
     requiresAdmin: false,
+    featureFlag: 'events',
     subItems: [
       {
         label: 'View Events',
         href: '/events',
         icon: ListIcon,
+        featureFlag: 'events',
       },
       {
         label: 'View Clients',
         href: '/clients',
         icon: ListIcon,
+        featureFlag: 'clients',
       },
     ],
   },
@@ -64,12 +71,14 @@ const navItems: NavItem[] = [
     href: '/users',
     icon: UsersIcon,
     requiresAdmin: true, // Only ADMIN and SUPER_ADMIN
+    featureFlag: 'users',
   },
   {
     label: 'Profile',
     href: '/profile',
     icon: UserIcon,
     requiresAdmin: false,
+    featureFlag: 'profile',
   },
 ];
 
@@ -90,15 +99,21 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
     window.location.href = '/login';
   };
 
-  // Filter navigation items based on user role
-  const visibleNavItems = navItems.filter((item) => {
-    if (!item.requiresAdmin) return true;
-    if (!user?.role) return false;
+  // Filter navigation items based on user role only (show all features regardless of status)
+  const visibleNavItems = navItems
+    .filter((item) => {
+      // Check role-based access only
+      if (!item.requiresAdmin) return true;
+      if (!user?.role) return false;
 
-    // Check if user has admin access (ADMIN or SUPER_ADMIN)
-    const adminRoles = ['ADMIN', 'SUPER_ADMIN'];
-    return adminRoles.includes(user.role);
-  });
+      // Check if user has admin access (ADMIN or SUPER_ADMIN)
+      const adminRoles = ['ADMIN', 'SUPER_ADMIN'];
+      return adminRoles.includes(user.role);
+    })
+    .map((item) => {
+      // Keep all sub-items (don't filter by feature flags)
+      return item;
+    });
 
   // Check if current path matches nav item
   const isActive = (href: string) => {
@@ -171,10 +186,9 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                   onClick={() => toggleExpanded(item.label)}
                   className={`
                     flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
-                    ${
-                      hasActiveSubItem(item.subItems)
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ${hasActiveSubItem(item.subItems)
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     }
                   `}
                 >
@@ -193,6 +207,43 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                     {item.subItems.map((subItem) => {
                       const SubIcon = subItem.icon;
                       const subActive = isActive(subItem.href);
+                      const featureStatus = subItem.featureFlag ? getFeatureStatus(subItem.featureFlag) : 'enabled';
+                      const isDisabled = featureStatus === 'disabled';
+                      const isComingSoon = featureStatus === 'coming_soon';
+                      const isClickable = featureStatus === 'enabled';
+
+                      // Render as button if disabled/coming soon, Link if enabled
+                      const content = (
+                        <>
+                          <SubIcon className="h-4 w-4" />
+                          <span className="flex-1">{subItem.label}</span>
+                          {isComingSoon && (
+                            <Badge variant="info" size="sm">
+                              Coming Soon
+                            </Badge>
+                          )}
+                          {isDisabled && (
+                            <Badge variant="secondary" size="sm">
+                              Disabled
+                            </Badge>
+                          )}
+                        </>
+                      );
+
+                      if (!isClickable) {
+                        return (
+                          <div
+                            key={subItem.href}
+                            className={`
+                              flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
+                              cursor-not-allowed opacity-60
+                              text-muted-foreground
+                            `}
+                          >
+                            {content}
+                          </div>
+                        );
+                      }
 
                       return (
                         <Link
@@ -201,15 +252,13 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                           onClick={isMobile ? onClose : undefined}
                           className={`
                             flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
-                            ${
-                              subActive
-                                ? 'bg-primary text-primary-foreground shadow-md'
-                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            ${subActive
+                              ? 'bg-primary text-primary-foreground shadow-md'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                             }
                           `}
                         >
-                          <SubIcon className="h-4 w-4" />
-                          <span>{subItem.label}</span>
+                          {content}
                         </Link>
                       );
                     })}
@@ -220,6 +269,43 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           }
 
           // Regular nav item without sub-items
+          const featureStatus = item.featureFlag ? getFeatureStatus(item.featureFlag) : 'enabled';
+          const isDisabled = featureStatus === 'disabled';
+          const isComingSoon = featureStatus === 'coming_soon';
+          const isClickable = featureStatus === 'enabled';
+
+          const content = (
+            <>
+              <Icon className="h-5 w-5" />
+              <span className="flex-1">{item.label}</span>
+              {isComingSoon && (
+                <Badge variant="info" size="sm">
+                  Coming Soon
+                </Badge>
+              )}
+              {isDisabled && (
+                <Badge variant="secondary" size="sm">
+                  Disabled
+                </Badge>
+              )}
+            </>
+          );
+
+          if (!isClickable) {
+            return (
+              <div
+                key={item.href || item.label}
+                className={`
+                  flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
+                  cursor-not-allowed opacity-60
+                  text-muted-foreground
+                `}
+              >
+                {content}
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.href}
@@ -227,15 +313,13 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
               onClick={isMobile ? onClose : undefined}
               className={`
                 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
-                ${
-                  active
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                ${active
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }
               `}
             >
-              <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
+              {content}
             </Link>
           );
         })}
@@ -245,15 +329,34 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       {user && (
         <div className="border-t border-border p-4">
           <div className="mb-3 rounded-lg bg-muted p-3">
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">
-                {user.firstName} {user.lastName}
-              </span>
-              <Badge variant={getRoleBadgeVariant(user.role)} size="sm">
-                {user.role?.replace('_', ' ')}
-              </Badge>
+            <div className="flex items-center gap-3">
+              {/* Profile Photo */}
+              <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full">
+                {user.profilePhoto ? (
+                  <img
+                    src={user.profilePhoto}
+                    alt={`${user.firstName} ${user.lastName}`}
+                    className="aspect-square h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-secondary text-sm font-bold text-primary-foreground">
+                    {user.firstName?.[0]}
+                    {user.lastName?.[0]}
+                  </div>
+                )}
+              </div>
+
+              {/* Name, Role, and Email */}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-foreground truncate mb-1">
+                  {user.firstName} {user.lastName}
+                </div>
+                <Badge variant={getRoleBadgeVariant(user.role)} size="sm" className="mb-1">
+                  {user.role?.replace('_', ' ')}
+                </Badge>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
 
           <Button
