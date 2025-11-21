@@ -90,17 +90,36 @@ export function UserDropdown() {
         <div className="absolute right-0 mt-2 w-64 origin-top-right rounded-lg border border-border bg-card shadow-lg">
           {/* User Info */}
           <div className="border-b border-border p-3">
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-sm font-medium text-card-foreground">
-                {user.firstName} {user.lastName}
-              </span>
-              <Badge variant={getRoleBadgeVariant(user.role)} size="sm">
-                {user.role?.replace('_', ' ')}
-              </Badge>
+            <div className="flex items-center gap-3">
+              {/* Profile Photo */}
+              <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full">
+                {user.profilePhoto ? (
+                  <img
+                    src={user.profilePhoto}
+                    alt={`${user.firstName} ${user.lastName}`}
+                    className="aspect-square h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-secondary text-sm font-bold text-primary-foreground">
+                    {user.firstName?.[0]}
+                    {user.lastName?.[0]}
+                  </div>
+                )}
+              </div>
+
+              {/* Name, Role, and Email */}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-card-foreground truncate mb-1">
+                  {user.firstName} {user.lastName}
+                </div>
+                <Badge variant={getRoleBadgeVariant(user.role)} size="sm" className="mb-1">
+                  {user.role?.replace('_', ' ')}
+                </Badge>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user.email}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground truncate">
-              {user.email}
-            </p>
           </div>
 
           {/* Menu Items */}
