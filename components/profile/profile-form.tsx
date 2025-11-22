@@ -75,16 +75,21 @@ export function ProfileForm({ user }: ProfileFormProps) {
         if (!file) return;
 
         setUploading(true);
-        const formData = new FormData();
-        formData.append('file', file);
 
         try {
+            // Always use API route for uploads (server-side handles Supabase auth)
+            const formData = new FormData();
+            formData.append('file', file);
+
             const response = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData,
             });
 
-            if (!response.ok) throw new Error('Upload failed');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Upload failed');
+            }
 
             const data = await response.json();
             form.setValue('profilePhoto', data.url);
@@ -94,10 +99,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 description: 'Your profile photo has been uploaded. Click Save Changes to apply.',
                 variant: 'success',
             });
-        } catch (error) {
+        } catch (error: any) {
+            console.error('Upload error:', error);
             toast({
                 title: 'Error',
-                description: 'Failed to upload photo.',
+                description: error.message || 'Failed to upload photo.',
                 variant: 'error',
             });
         } finally {

@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 
 export async function POST(request: NextRequest) {
     try {
@@ -14,28 +12,45 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        // Check if Supabase is configured
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        // Create unique filename
-        const uniqueSuffix = crypto.randomUUID();
-        const originalName = file.name.replace(/[^a-zA-Z0-9.]/g, '');
-        const filename = `${uniqueSuffix}-${originalName}`;
+        if (supabaseUrl && supabaseServiceKey) {
+            // Upload to Supabase Storage using service role key (bypasses RLS)
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            });
 
-        // Ensure uploads directory exists
-        const uploadDir = join(process.cwd(), 'public', 'uploads');
-        try {
-            await mkdir(uploadDir, { recursive: true });
-        } catch (e) {
-            // Ignore error if directory exists
+            const uniqueSuffix = crypto.randomUUID();
+            const originalName = file.name.replace(/[^a-zA-Z0-9.]/g, '');
+            const filename = `${uniqueSuffix}-${originalName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('profile-photos')
+                .upload(filename, file);
+
+            if (uploadError) {
+                console.error('Supabase upload error:', uploadError);
+                throw new Error('Failed to upload to storage');
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('profile-photos')
+                .getPublicUrl(filename);
+
+            return NextResponse.json({ url: publicUrl });
         }
 
-        const filepath = join(uploadDir, filename);
-        await writeFile(filepath, buffer);
-
-        const url = `/uploads/${filename}`;
-
-        return NextResponse.json({ url });
+        // No Supabase configured
+        return NextResponse.json(
+            { error: 'Storage service not configured' },
+            { status: 500 }
+        );
     } catch (error) {
         console.error('Upload error:', error);
         return NextResponse.json(

@@ -48,3 +48,6 @@ quick-commands.txt
 
 # uploads
 /public/uploads
+
+# txt files
+*.txt
