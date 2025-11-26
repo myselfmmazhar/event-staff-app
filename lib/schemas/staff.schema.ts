@@ -196,6 +196,15 @@ export class StaffSchema {
     static id = z.object({
         id: z.string().uuid("Invalid staff ID"),
     });
+
+    /**
+     * Bulk Disable Staff Schema
+     */
+    static bulkDisable = z.object({
+        staffIds: z
+            .array(z.string().uuid("Invalid staff ID"))
+            .min(1, "At least one staff member must be selected"),
+    });
 }
 
 /**
@@ -205,3 +214,4 @@ export type CreateStaffInput = z.infer<typeof StaffSchema.create>;
 export type UpdateStaffInput = z.infer<typeof StaffSchema.update>;
 export type QueryStaffInput = z.infer<typeof StaffSchema.query>;
 export type StaffIdInput = z.infer<typeof StaffSchema.id>;
+export type BulkDisableStaffInput = z.infer<typeof StaffSchema.bulkDisable>;
