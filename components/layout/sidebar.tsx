@@ -96,6 +96,12 @@ const navItems: NavItem[] = [
         icon: ListIcon,
         featureFlag: 'staff',
       },
+      {
+        label: 'Clean Up Roster',
+        href: '/staff/cleanup-roster',
+        icon: ListIcon,
+        featureFlag: 'staff',
+      },
     ],
   },
   {
@@ -149,7 +155,12 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
 
   // Check if current path matches nav item
   const isActive = (href: string) => {
-    return pathname === href || pathname?.startsWith(href + '/');
+    // Exact match first
+    if (pathname === href) return true;
+
+    // For sub-paths, only match if it's truly a sub-path (not a sibling)
+    // This prevents /staff from matching /staff/cleanup-roster
+    return false;
   };
 
   // Check if any sub-item is active

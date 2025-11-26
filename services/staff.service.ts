@@ -412,6 +412,109 @@ export class StaffService {
     }
 
     /**
+     * Bulk disable staff members
+     * @param staffIds Array of staff IDs to disable
+     * @param updatedByUserId ID of user performing the operation
+     * @returns Result with success count and failed items
+     */
+    async bulkDisable(
+        staffIds: string[],
+        updatedByUserId: string
+    ): Promise<{
+        success: number;
+        failed: Array<{ id: string; staffId: string; reason: string }>;
+    }> {
+        try {
+            // Fetch all staff to validate
+            const staffMembers = await this.prisma.staff.findMany({
+                where: {
+                    id: { in: staffIds },
+                },
+                select: {
+                    id: true,
+                    staffId: true,
+                    firstName: true,
+                    lastName: true,
+                    staffType: true,
+                    accountStatus: true,
+                    _count: {
+                        select: {
+                            employees: true, // Count of employees assigned to this contractor
+                        },
+                    },
+                },
+            });
+
+            // Track failures
+            const failed: Array<{ id: string; staffId: string; reason: string }> = [];
+            const validIds: string[] = [];
+
+            // Validate each staff member
+            for (const staff of staffMembers) {
+                // Check if already disabled
+                if (staff.accountStatus === "DISABLED") {
+                    failed.push({
+                        id: staff.id,
+                        staffId: staff.staffId,
+                        reason: "Staff member is already disabled",
+                    });
+                    continue;
+                }
+
+                // Check if contractor with assigned employees
+                if (staff.staffType === "CONTRACTOR" && staff._count.employees > 0) {
+                    failed.push({
+                        id: staff.id,
+                        staffId: staff.staffId,
+                        reason: `Contractor has ${staff._count.employees} assigned employee(s)`,
+                    });
+                    continue;
+                }
+
+                // Valid for disabling
+                validIds.push(staff.id);
+            }
+
+            // Check for non-existent IDs
+            const foundIds = staffMembers.map((s) => s.id);
+            const missingIds = staffIds.filter((id) => !foundIds.includes(id));
+            for (const id of missingIds) {
+                failed.push({
+                    id,
+                    staffId: "Unknown",
+                    reason: "Staff member not found",
+                });
+            }
+
+            // Perform bulk update for valid IDs
+            let successCount = 0;
+            if (validIds.length > 0) {
+                const result = await this.prisma.staff.updateMany({
+                    where: {
+                        id: { in: validIds },
+                    },
+                    data: {
+                        accountStatus: "DISABLED",
+                        updatedAt: new Date(),
+                    },
+                });
+                successCount = result.count;
+            }
+
+            return {
+                success: successCount,
+                failed,
+            };
+        } catch (error) {
+            console.error("Error bulk disabling staff:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to disable staff members",
+            });
+        }
+    }
+
+    /**
      * Get staff statistics for dashboard
      */
     async getStats(): Promise<StaffStats> {

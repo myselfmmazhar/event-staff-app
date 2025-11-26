@@ -112,4 +112,15 @@ export const staffRouter = router({
             orderBy: { name: "asc" },
         });
     }),
+
+    /**
+     * Bulk disable staff members
+     * Requires: Authentication
+     */
+    bulkDisable: protectedProcedure
+        .input(StaffSchema.bulkDisable)
+        .mutation(async ({ ctx, input }) => {
+            const staffService = new StaffService(ctx.prisma);
+            return await staffService.bulkDisable(input.staffIds, ctx.userId!);
+        }),
 });
