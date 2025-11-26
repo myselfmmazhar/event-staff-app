@@ -28,6 +28,9 @@ export interface FeatureFlags {
     /** Users management feature */
     users: FeatureStatus;
 
+    /** Staff management feature */
+    staff: FeatureStatus;
+
     /** Profile feature */
     profile: FeatureStatus;
 
@@ -68,6 +71,7 @@ export const featureFlags: FeatureFlags = {
     clients: parseFeatureStatus(process.env.NEXT_PUBLIC_FEATURE_CLIENTS, 'enabled'),
     events: parseFeatureStatus(process.env.NEXT_PUBLIC_FEATURE_EVENTS, 'enabled'),
     users: parseFeatureStatus(process.env.NEXT_PUBLIC_FEATURE_USERS, 'enabled'),
+    staff: parseFeatureStatus(process.env.NEXT_PUBLIC_FEATURE_STAFF, 'enabled'),
     profile: parseFeatureStatus(process.env.NEXT_PUBLIC_FEATURE_PROFILE, 'enabled'),
     dashboard: parseFeatureStatus(process.env.NEXT_PUBLIC_FEATURE_DASHBOARD, 'enabled'),
 };

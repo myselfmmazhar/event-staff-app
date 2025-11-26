@@ -28,6 +28,43 @@ enum EventStatus {
   CANCELLED
 }
 
+// Staff Account Status Enum
+enum AccountStatus {
+  ACTIVE
+  DISABLED
+  PENDING
+}
+
+// Staff Type Enum
+enum StaffType {
+  EMPLOYEE
+  CONTRACTOR
+}
+
+// Rate Type Enum
+enum RateType {
+  HOURLY
+  EVENT
+  DAILY
+  SHIFT
+}
+
+// Skill Level Enum
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+// Staff Rating Enum
+enum StaffRating {
+  NA
+  A
+  B
+  C
+}
+
+
 // Main User Model (compatible with existing TypeORM schema)
 model User {
   id               String    @id // Better Auth generates its own IDs
@@ -53,6 +90,8 @@ model User {
   accounts      Account[]
   client        Client?    @relation("ClientUser")
   createdClients Client[]  @relation("ClientCreator")
+  staff         Staff?     @relation("StaffUser")
+  createdStaff  Staff[]    @relation("StaffCreator")
 
   @@map("users")
 }
@@ -203,3 +242,134 @@ model Verification {
   @@unique([identifier, value])
   @@map("verifications")
 }
+
+// Staff Model
+model Staff {
+  id               String        @id @default(uuid()) @db.Uuid
+  staffId          String        @unique // Human-readable ID (STF-2025-001)
+  
+  // Account Details
+  accountStatus    AccountStatus @default(PENDING)
+  staffType        StaffType     @default(EMPLOYEE)
+  
+  // Staff Information
+  firstName        String        // Max 50 chars
+  lastName         String        // Max 50 chars
+  phone            String        // Validated phone format
+  email            String        @unique // Validated email
+  dateOfBirth      DateTime      @db.Date
+  
+  // Rate Information (single rateType applies to both)
+  payRate          Decimal       @db.Decimal(10, 2)
+  billRate         Decimal       @db.Decimal(10, 2)
+  rateType         RateType      @default(HOURLY)
+  
+  // Skill Level
+  skillLevel       SkillLevel    @default(BEGINNER)
+  
+  // Address Information
+  streetAddress    String        // Max 300 chars
+  aptSuiteUnit     String?       // Optional, max 50 chars
+  city             String        // Max 100 chars
+  country          String        // Max 100 chars
+  state            String        // Max 50 chars
+  zipCode          String        // Max 20 chars
+  
+  // Custom Admin Fields
+  experience       String?       @db.Text // Admin only
+  staffRating      StaffRating   @default(NA) // Admin only
+  internalNotes    String?       @db.Text // Admin only
+  
+  // Contractor-Employee Relationship (nullable - employees may not belong to contractor)
+  contractorId     String?       @db.Uuid
+  contractor       Staff?        @relation("EmployeeToContractor", fields: [contractorId], references: [id], onDelete: SetNull)
+  employees        Staff[]       @relation("EmployeeToContractor")
+  
+  // User Account Link (for login access)
+  userId           String?       @unique
+  user             User?         @relation("StaffUser", fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Creator
+  createdBy        String
+  creator          User          @relation("StaffCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  
+  // Many-to-Many Relations
+  positions        StaffPositionAssignment[]
+  workTypes        StaffWorkTypeAssignment[]
+  
+  // Timestamps
+  createdAt        DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime      @updatedAt @db.Timestamp(6)
+  
+  @@index([createdBy])
+  @@index([contractorId])
+  @@index([staffId])
+  @@index([accountStatus])
+  @@index([email])
+  @@map("staff")
+}
+
+// Staff Position Lookup Model
+model StaffPosition {
+  id          String                    @id @default(uuid()) @db.Uuid
+  name        String                    @unique
+  description String?
+  isActive    Boolean                   @default(true)
+  
+  staff       StaffPositionAssignment[]
+  
+  createdAt   DateTime                  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime                  @updatedAt @db.Timestamp(6)
+  
+  @@map("staff_positions")
+}
+
+// Work Type Lookup Model
+model WorkType {
+  id          String                    @id @default(uuid()) @db.Uuid
+  name        String                    @unique
+  description String?
+  isActive    Boolean                   @default(true)
+  
+  staff       StaffWorkTypeAssignment[]
+  
+  createdAt   DateTime                  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime                  @updatedAt @db.Timestamp(6)
+  
+  @@map("work_types")
+}
+
+// Staff Position Assignment Junction Table
+model StaffPositionAssignment {
+  id              String        @id @default(uuid()) @db.Uuid
+  staffId         String        @db.Uuid
+  positionId      String        @db.Uuid
+  
+  staff           Staff         @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  position        StaffPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  
+  assignedAt      DateTime      @default(now()) @db.Timestamp(6)
+  
+  @@unique([staffId, positionId])
+  @@index([staffId])
+  @@index([positionId])
+  @@map("staff_position_assignments")
+}
+
+// Staff Work Type Assignment Junction Table
+model StaffWorkTypeAssignment {
+  id              String    @id @default(uuid()) @db.Uuid
+  staffId         String    @db.Uuid
+  workTypeId      String    @db.Uuid
+  
+  staff           Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  workType        WorkType  @relation(fields: [workTypeId], references: [id], onDelete: Cascade)
+  
+  assignedAt      DateTime  @default(now()) @db.Timestamp(6)
+  
+  @@unique([staffId, workTypeId])
+  @@index([staffId])
+  @@index([workTypeId])
+  @@map("staff_work_type_assignments")
+}
+

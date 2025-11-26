@@ -4,6 +4,7 @@ import { profileRouter } from "./profile.router";
 import { sessionRouter } from "./session.router";
 import { eventRouter } from "./event.router";
 import { clientRouter } from "./client.router";
+import { staffRouter } from "./staff.router";
 
 /**
  * Main application router
@@ -15,6 +16,8 @@ export const appRouter = router({
   session: sessionRouter,
   event: eventRouter,
   clients: clientRouter,
+  staff: staffRouter,
 });
 
 export type AppRouter = typeof appRouter;
+
