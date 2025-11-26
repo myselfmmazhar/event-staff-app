@@ -64,6 +64,12 @@ const navItems: NavItem[] = [
         icon: ListIcon,
         featureFlag: 'clients',
       },
+      {
+        label: 'View Staff',
+        href: '/staff',
+        icon: ListIcon,
+        featureFlag: 'staff',
+      },
     ],
   },
   {
