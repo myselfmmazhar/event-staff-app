@@ -32,7 +32,7 @@ export function ClientTable({
       key: 'clientId',
       label: 'Client ID',
       sortable: true,
-      className: 'py-4 px-4',
+      className: 'py-4 px-4 whitespace-nowrap',
       render: (client) => (
         <span className="font-mono text-sm text-muted-foreground">
           {client.clientId}
@@ -65,7 +65,7 @@ export function ClientTable({
     {
       key: 'phone',
       label: 'Cell Phone',
-      className: 'py-4 px-4 text-sm text-muted-foreground',
+      className: 'py-4 px-4 text-sm text-muted-foreground whitespace-nowrap',
       render: (client) => client.cellPhone,
     },
     {
@@ -77,7 +77,7 @@ export function ClientTable({
     {
       key: 'access',
       label: 'Access',
-      className: 'py-4 px-4',
+      className: 'py-4 px-4 whitespace-nowrap',
       render: (client) => (
         <Badge variant={client.hasLoginAccess ? 'success' : 'secondary'} asSpan>
           {client.hasLoginAccess ? 'Portal Access' : 'No Access'}

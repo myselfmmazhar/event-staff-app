@@ -81,7 +81,7 @@ export function EventTable({
       key: 'eventId',
       label: 'Event ID',
       sortable: true,
-      className: 'py-4 px-4',
+      className: 'py-4 px-4 whitespace-nowrap',
       render: (event) => (
         <span className="font-mono text-sm text-muted-foreground">
           {event.eventId}
@@ -110,7 +110,7 @@ export function EventTable({
       key: 'startDate',
       label: 'Start Date',
       sortable: true,
-      className: 'py-4 px-4 text-sm text-muted-foreground',
+      className: 'py-4 px-4 text-sm text-muted-foreground whitespace-nowrap',
       render: (event) => (
         <div>
           <div>{formatDateTime(event.startDate, event.startTime, event.timezone)}</div>
@@ -126,7 +126,7 @@ export function EventTable({
       key: 'status',
       label: 'Status',
       sortable: true,
-      className: 'py-4 px-4',
+      className: 'py-4 px-4 whitespace-nowrap',
       render: (event) => (
         <Badge variant={STATUS_COLORS[event.status]} asSpan>
           {STATUS_LABELS[event.status]}

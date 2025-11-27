@@ -55,7 +55,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
         {
             key: 'staffId',
             label: 'Staff ID',
-            className: 'py-4 px-4',
+            className: 'py-4 px-4 whitespace-nowrap',
             render: (member) => (
                 <span className="font-mono text-sm text-muted-foreground">
                     {member.staffId}
@@ -79,7 +79,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
         {
             key: 'phone',
             label: 'Phone',
-            className: 'py-4 px-4 text-sm text-muted-foreground',
+            className: 'py-4 px-4 text-sm text-muted-foreground whitespace-nowrap',
             render: (member) => member.phone,
         },
         {

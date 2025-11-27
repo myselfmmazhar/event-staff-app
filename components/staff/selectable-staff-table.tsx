@@ -141,7 +141,7 @@ export function SelectableStaffTable({
                                     aria-label={`Select ${member.firstName} ${member.lastName}`}
                                 />
                             </td>
-                            <td className="py-4 px-4">
+                            <td className="py-4 px-4 whitespace-nowrap">
                                 <span className="font-mono text-sm text-muted-foreground">
                                     {member.staffId}
                                 </span>
