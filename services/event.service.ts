@@ -535,10 +535,20 @@ export class EventService {
         eventId: true,
         title: true,
         venueName: true,
+        city: true,
+        state: true,
         startDate: true,
         startTime: true,
+        endDate: true,
+        endTime: true,
         status: true,
         timezone: true,
+        client: {
+          select: {
+            id: true,
+            businessName: true,
+          },
+        },
       },
       orderBy: {
         startDate: "asc",
