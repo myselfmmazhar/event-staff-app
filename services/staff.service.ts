@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma, AccountStatus, StaffType, RateType, SkillLevel, StaffRating } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import type {
     CreateStaffInput,
@@ -12,8 +12,8 @@ import type {
 type StaffSelect = {
     id: string;
     staffId: string;
-    accountStatus: string;
-    staffType: string;
+    accountStatus: AccountStatus;
+    staffType: StaffType;
     firstName: string;
     lastName: string;
     phone: string;
@@ -21,8 +21,8 @@ type StaffSelect = {
     dateOfBirth: Date;
     payRate: Prisma.Decimal;
     billRate: Prisma.Decimal;
-    rateType: string;
-    skillLevel: string;
+    rateType: RateType;
+    skillLevel: SkillLevel;
     streetAddress: string;
     aptSuiteUnit: string | null;
     city: string;
@@ -30,7 +30,7 @@ type StaffSelect = {
     state: string;
     zipCode: string;
     experience: string | null;
-    staffRating: string;
+    staffRating: StaffRating;
     internalNotes: string | null;
     contractorId: string | null;
     userId: string | null;
@@ -38,9 +38,17 @@ type StaffSelect = {
     createdAt: Date;
     updatedAt: Date;
     positions: Array<{
+        id: string;
+        staffId: string;
+        positionId: string;
+        assignedAt: Date;
         position: {
             id: string;
             name: string;
+            description: string | null;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
         };
     }>;
     workTypes: Array<{
@@ -606,10 +614,18 @@ export class StaffService {
             updatedAt: true,
             positions: {
                 select: {
+                    id: true,
+                    staffId: true,
+                    positionId: true,
+                    assignedAt: true,
                     position: {
                         select: {
                             id: true,
                             name: true,
+                            description: true,
+                            isActive: true,
+                            createdAt: true,
+                            updatedAt: true,
                         },
                     },
                 },

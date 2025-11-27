@@ -59,7 +59,7 @@ export default function CleanupRosterPage() {
                 toast({
                     title: 'Some staff members could not be disabled',
                     description: failureDetails,
-                    variant: 'warning',
+                    variant: 'error',
                 });
             }
 

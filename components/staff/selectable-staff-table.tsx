@@ -47,7 +47,6 @@ export function SelectableStaffTable({
     };
 
     const allSelected = staff.length > 0 && staff.every((s) => selectedIds.has(s.id));
-    const someSelected = staff.some((s) => selectedIds.has(s.id)) && !allSelected;
 
     const getStatusBadge = (status: string) => {
         const variants: Record<string, 'default' | 'secondary' | 'danger'> = {
@@ -101,7 +100,6 @@ export function SelectableStaffTable({
                         <th className="w-12 text-left py-3 px-4">
                             <Checkbox
                                 checked={allSelected}
-                                indeterminate={someSelected}
                                 onChange={handleSelectAll}
                                 aria-label="Select all staff"
                             />
