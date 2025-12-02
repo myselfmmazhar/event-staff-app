@@ -4,6 +4,7 @@ import type {
   CreateEventInput,
   UpdateEventInput as UpdateEventInputType,
   QueryEventsInput,
+  DateRangeInput,
 } from "@/lib/schemas/event.schema";
 
 // Re-export types from schema for backwards compatibility
@@ -603,5 +604,51 @@ export class EventService {
         CANCELLED: byStatus[5],
       },
     };
+  }
+
+  /**
+   * Get events by date range (for calendar view)
+   * Returns events that overlap with the specified date range
+   */
+  async getByDateRange(input: DateRangeInput, userId: string) {
+    const where: Prisma.EventWhereInput = {
+      createdBy: userId,
+      // Event overlaps with the date range if:
+      // - Event starts before or on range end AND
+      // - Event ends on or after range start
+      startDate: { lte: input.endDate },
+      endDate: { gte: input.startDate },
+    };
+
+    // Optional status filter
+    if (input.status) {
+      where.status = input.status;
+    }
+
+    const events = await this.prisma.event.findMany({
+      where,
+      select: {
+        id: true,
+        eventId: true,
+        title: true,
+        startDate: true,
+        startTime: true,
+        endDate: true,
+        endTime: true,
+        status: true,
+        timezone: true,
+        venueName: true,
+        client: {
+          select: {
+            businessName: true,
+          },
+        },
+      },
+      orderBy: {
+        startDate: "asc",
+      },
+    });
+
+    return events;
   }
 }

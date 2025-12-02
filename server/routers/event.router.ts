@@ -98,4 +98,17 @@ export const eventRouter = router({
     const eventService = new EventService(ctx.prisma);
     return await eventService.getStats(ctx.userId!);
   }),
+
+  /**
+   * Get events by date range (for calendar view)
+   * Returns events that overlap with the specified date range
+   * Users can only see their own events
+   * Requires: Authentication
+   */
+  getByDateRange: protectedProcedure
+    .input(EventSchema.dateRange)
+    .query(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+      return await eventService.getByDateRange(input, ctx.userId!);
+    }),
 });

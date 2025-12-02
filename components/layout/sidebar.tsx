@@ -65,6 +65,12 @@ const navItems: NavItem[] = [
         featureFlag: 'events',
       },
       {
+        label: 'Calendar',
+        href: '/events/calendar',
+        icon: CalendarIcon,
+        featureFlag: 'events',
+      },
+      {
         label: 'Create Client',
         href: '/clients?create=true',
         icon: PlusIcon,

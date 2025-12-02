@@ -326,6 +326,15 @@ export class EventSchema {
       message: "Status is required",
     }),
   });
+
+  /**
+   * Date Range Schema (for calendar queries)
+   */
+  static dateRange = z.object({
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date(),
+    status: z.nativeEnum(EventStatus).optional(),
+  });
 }
 
 /**
@@ -336,6 +345,7 @@ export type UpdateEventInput = z.infer<typeof EventSchema.update>;
 export type QueryEventsInput = z.infer<typeof EventSchema.query>;
 export type EventIdInput = z.infer<typeof EventSchema.id>;
 export type UpdateEventStatusInput = z.infer<typeof EventSchema.updateStatus>;
+export type DateRangeInput = z.infer<typeof EventSchema.dateRange>;
 
 /**
  * File link type
