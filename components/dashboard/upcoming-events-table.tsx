@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, DownloadIcon } from "@/components/ui/icons";
 import { EventStatus } from "@prisma/client";
 import { format } from "date-fns";
 import { DataTable, ColumnDef } from "@/components/common/data-table";
+import { toast } from "@/components/ui/use-toast";
 import {
   getMockCallTimesForEvent,
   getMockWorkShiftsForEvent,
@@ -15,6 +17,9 @@ import {
   getWorkShiftStatusVariant,
   type MockCallTime,
 } from "@/lib/mock-data/dashboard-mock";
+import { exportUpcomingEventsToCSV } from "@/lib/utils/export-upcoming-events-csv";
+import { exportUpcomingEventsToExcel } from "@/lib/utils/export-upcoming-events-excel";
+import { exportUpcomingEventsToPDF } from "@/lib/utils/export-upcoming-events-pdf";
 
 interface UpcomingEvent {
   id: string;
@@ -56,10 +61,130 @@ const STATUS_COLORS: Record<EventStatus, 'default' | 'info' | 'success' | 'prima
  * Uses mock data for Phase 2 demonstration.
  */
 export function UpcomingEventsTable({ events, isLoading, onEventClick }: UpcomingEventsTableProps) {
-  const handleExport = (type: 'csv' | 'excel' | 'pdf' | 'print') => {
-    // Placeholder for export functionality
-    console.log(`Exporting as ${type}...`);
-    alert(`Export to ${type.toUpperCase()} - Coming soon!`);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async (type: 'csv' | 'excel' | 'pdf') => {
+    if (type === 'csv') {
+      // Handle CSV export
+      if (!events || events.length === 0) {
+        toast({
+          title: 'No events to export',
+          description: 'There are no upcoming events to export.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      setIsExporting(true);
+
+      try {
+        // Show loading toast
+        toast({
+          title: 'Exporting CSV...',
+          description: 'Preparing your file for download.',
+          variant: 'info',
+        });
+
+        // Export to CSV
+        exportUpcomingEventsToCSV(events);
+
+        // Show success toast
+        toast({
+          title: 'CSV exported successfully!',
+          description: `Exported ${events.length} event${events.length !== 1 ? 's' : ''} to CSV.`,
+          variant: 'success',
+        });
+      } catch (error) {
+        console.error('CSV export failed:', error);
+        toast({
+          title: 'Export failed',
+          description: 'Failed to export CSV. Please try again.',
+          variant: 'error',
+        });
+      } finally {
+        setIsExporting(false);
+      }
+    } else if (type === 'excel') {
+      // Handle Excel export
+      if (!events || events.length === 0) {
+        toast({
+          title: 'No events to export',
+          description: 'There are no upcoming events to export.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      setIsExporting(true);
+
+      try {
+        // Show loading toast
+        toast({
+          title: 'Exporting Excel...',
+          description: 'Preparing your file for download.',
+          variant: 'info',
+        });
+
+        // Export to Excel
+        exportUpcomingEventsToExcel(events);
+
+        // Show success toast
+        toast({
+          title: 'Excel exported successfully!',
+          description: `Exported ${events.length} event${events.length !== 1 ? 's' : ''} to Excel.`,
+          variant: 'success',
+        });
+      } catch (error) {
+        console.error('Excel export failed:', error);
+        toast({
+          title: 'Export failed',
+          description: 'Failed to export Excel. Please try again.',
+          variant: 'error',
+        });
+      } finally {
+        setIsExporting(false);
+      }
+    } else if (type === 'pdf') {
+      // Handle PDF export
+      if (!events || events.length === 0) {
+        toast({
+          title: 'No events to export',
+          description: 'There are no upcoming events to export.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      setIsExporting(true);
+
+      try {
+        // Show loading toast
+        toast({
+          title: 'Exporting PDF...',
+          description: 'Preparing your file for download.',
+          variant: 'info',
+        });
+
+        // Export to PDF
+        exportUpcomingEventsToPDF(events);
+
+        // Show success toast
+        toast({
+          title: 'PDF exported successfully!',
+          description: `Exported ${events.length} event${events.length !== 1 ? 's' : ''} to PDF.`,
+          variant: 'success',
+        });
+      } catch (error) {
+        console.error('PDF export failed:', error);
+        toast({
+          title: 'Export failed',
+          description: 'Failed to export PDF. Please try again.',
+          variant: 'error',
+        });
+      } finally {
+        setIsExporting(false);
+      }
+    }
   };
 
   const formatDateTime = (date: Date, time: string | null) => {
@@ -276,6 +401,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
             variant="outline"
             size="sm"
             onClick={() => handleExport("csv")}
+            disabled={isExporting || isLoading}
             className="text-xs"
           >
             <DownloadIcon className="w-4 h-4 mr-1" />
@@ -285,6 +411,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
             variant="outline"
             size="sm"
             onClick={() => handleExport("excel")}
+            disabled={isExporting || isLoading}
             className="text-xs"
           >
             <DownloadIcon className="w-4 h-4 mr-1" />
@@ -294,6 +421,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
             variant="outline"
             size="sm"
             onClick={() => handleExport("pdf")}
+            disabled={isExporting || isLoading}
             className="text-xs"
           >
             <DownloadIcon className="w-4 h-4 mr-1" />
