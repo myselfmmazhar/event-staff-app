@@ -1,5 +1,8 @@
+"use client";
+
 import { StatsCard } from "./stats-card";
 import { CalendarIcon, UsersIcon } from "@/components/ui/icons";
+import { useTerminology } from "@/lib/hooks/use-terminology";
 
 interface EventStats {
   total: number;
@@ -34,10 +37,11 @@ interface QuickStatsProps {
  * Displays 3 key metrics: Upcoming Events, Active Staff, and Total Events
  */
 export function QuickStats({ eventStats, staffStats, isLoading }: QuickStatsProps) {
+  const { terminology } = useTerminology();
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <StatsCard
-        title="Upcoming Events"
+        title={`Upcoming ${terminology.event.plural}`}
         value={eventStats?.upcoming || 0}
         icon={<CalendarIcon className="w-6 h-6" />}
         description="Next 30 days"
@@ -45,18 +49,18 @@ export function QuickStats({ eventStats, staffStats, isLoading }: QuickStatsProp
         isLoading={isLoading}
       />
       <StatsCard
-        title="Active Staff"
+        title={`Active ${terminology.staff.plural}`}
         value={staffStats?.active || 0}
         icon={<UsersIcon className="w-6 h-6" />}
-        description="Available staff members"
+        description={`Available ${terminology.staff.lowerPlural}`}
         gradient="green"
         isLoading={isLoading}
       />
       <StatsCard
-        title="Total Events"
+        title={`Total ${terminology.event.plural}`}
         value={eventStats?.total || 0}
         icon={<CalendarIcon className="w-6 h-6" />}
-        description="All events"
+        description={`All ${terminology.event.lowerPlural}`}
         gradient="blue"
         isLoading={isLoading}
       />

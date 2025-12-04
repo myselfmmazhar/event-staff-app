@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Edit2Icon, Trash2Icon, EyeIcon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { Staff, StaffPositionAssignment, StaffPosition, StaffWorkTypeAssignment, WorkType } from '@prisma/client';
+import { useStaffTerm } from '@/lib/hooks/use-terminology';
 
 // Define the type with relations included
 export type StaffWithRelations = Staff & {
@@ -20,6 +21,8 @@ interface StaffTableProps {
 }
 
 export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps) {
+    const staffTerm = useStaffTerm();
+
     const getStatusBadge = (status: string) => {
         const variants: Record<string, 'default' | 'secondary' | 'danger'> = {
             ACTIVE: 'default',
@@ -54,7 +57,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
     const columns: ColumnDef<StaffWithRelations>[] = [
         {
             key: 'staffId',
-            label: 'Staff ID',
+            label: `${staffTerm.singular} ID`,
             className: 'py-4 px-4 whitespace-nowrap',
             render: (member) => (
                 <span className="font-mono text-sm text-muted-foreground">
@@ -203,7 +206,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
         <DataTable
             data={staff}
             columns={columns}
-            emptyMessage="No staff members found"
+            emptyMessage={`No ${staffTerm.lower} members found`}
             emptyDescription="Try adjusting your search or filters"
             mobileCard={renderMobileCard}
             getRowKey={(member) => member.id}

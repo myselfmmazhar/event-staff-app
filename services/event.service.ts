@@ -6,6 +6,7 @@ import type {
   QueryEventsInput,
   DateRangeInput,
 } from "@/lib/schemas/event.schema";
+import { SettingsService } from "./settings.service";
 
 // Re-export types from schema for backwards compatibility
 export type { CreateEventInput, QueryEventsInput };
@@ -74,14 +75,21 @@ export interface EventStats {
  * Event Service - Business logic layer for event operations
  */
 export class EventService {
-  constructor(private prisma: PrismaClient) {}
+  private settingsService: SettingsService;
+
+  constructor(private prisma: PrismaClient) {
+    this.settingsService = new SettingsService(prisma);
+  }
 
   /**
-   * Generate a unique Event ID in format EVT-YYYY-NNN
+   * Generate a unique Event ID in format [PREFIX]-YYYY-NNN
+   * Prefix is dynamically determined from terminology settings
    */
   private async generateEventId(): Promise<string> {
+    // Get current terminology to determine prefix
+    const terminology = await this.settingsService.getTerminology();
     const year = new Date().getFullYear();
-    const prefix = `EVT-${year}-`;
+    const prefix = `${terminology.eventIdPrefix}-${year}-`;
 
     // Get the count of events created this year
     const count = await this.prisma.event.count({
@@ -184,9 +192,10 @@ export class EventService {
 
       // Log and throw formatted error for Prisma errors
       console.error("Error creating event:", error);
+      const terminology = await this.settingsService.getTerminology();
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create event. Please try again.",
+        message: `Failed to create ${terminology.event.lower}. Please try again.`,
       });
     }
   }
@@ -362,9 +371,10 @@ export class EventService {
     });
 
     if (!event) {
+      const terminology = await this.settingsService.getTerminology();
       throw new TRPCError({
         code: "NOT_FOUND",
-        message: `Event with ID ${id} not found or you don't have permission to access it`,
+        message: `${terminology.event.singular} with ID ${id} not found or you don't have permission to access it`,
       });
     }
 
@@ -447,9 +457,10 @@ export class EventService {
 
       // Log and throw formatted error for Prisma errors
       console.error("Error updating event:", error);
+      const terminology = await this.settingsService.getTerminology();
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to update event. Please try again.",
+        message: `Failed to update ${terminology.event.lower}. Please try again.`,
       });
     }
   }
@@ -467,7 +478,8 @@ export class EventService {
       where: { id },
     });
 
-    return { success: true, message: "Event deleted successfully" };
+    const terminology = await this.settingsService.getTerminology();
+    return { success: true, message: `${terminology.event.singular} deleted successfully` };
   }
 
   /**

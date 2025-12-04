@@ -20,6 +20,7 @@ import {
 import { exportUpcomingEventsToCSV } from "@/lib/utils/export-upcoming-events-csv";
 import { exportUpcomingEventsToExcel } from "@/lib/utils/export-upcoming-events-excel";
 import { exportUpcomingEventsToPDF } from "@/lib/utils/export-upcoming-events-pdf";
+import { useEventTerm } from "@/lib/hooks/use-terminology";
 
 interface UpcomingEvent {
   id: string;
@@ -61,6 +62,7 @@ const STATUS_COLORS: Record<EventStatus, 'default' | 'info' | 'success' | 'prima
  * Uses mock data for Phase 2 demonstration.
  */
 export function UpcomingEventsTable({ events, isLoading, onEventClick }: UpcomingEventsTableProps) {
+  const eventTerm = useEventTerm();
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (type: 'csv' | 'excel' | 'pdf') => {
@@ -68,8 +70,8 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
       // Handle CSV export
       if (!events || events.length === 0) {
         toast({
-          title: 'No events to export',
-          description: 'There are no upcoming events to export.',
+          title: `No ${eventTerm.lowerPlural} to export`,
+          description: `There are no upcoming ${eventTerm.lowerPlural} to export.`,
           variant: 'error',
         });
         return;
@@ -91,7 +93,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
         // Show success toast
         toast({
           title: 'CSV exported successfully!',
-          description: `Exported ${events.length} event${events.length !== 1 ? 's' : ''} to CSV.`,
+          description: `Exported ${events.length} ${events.length !== 1 ? eventTerm.lowerPlural : eventTerm.lower} to CSV.`,
           variant: 'success',
         });
       } catch (error) {
@@ -108,8 +110,8 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
       // Handle Excel export
       if (!events || events.length === 0) {
         toast({
-          title: 'No events to export',
-          description: 'There are no upcoming events to export.',
+          title: `No ${eventTerm.lowerPlural} to export`,
+          description: `There are no upcoming ${eventTerm.lowerPlural} to export.`,
           variant: 'error',
         });
         return;
@@ -131,7 +133,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
         // Show success toast
         toast({
           title: 'Excel exported successfully!',
-          description: `Exported ${events.length} event${events.length !== 1 ? 's' : ''} to Excel.`,
+          description: `Exported ${events.length} ${events.length !== 1 ? eventTerm.lowerPlural : eventTerm.lower} to Excel.`,
           variant: 'success',
         });
       } catch (error) {
@@ -148,8 +150,8 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
       // Handle PDF export
       if (!events || events.length === 0) {
         toast({
-          title: 'No events to export',
-          description: 'There are no upcoming events to export.',
+          title: `No ${eventTerm.lowerPlural} to export`,
+          description: `There are no upcoming ${eventTerm.lowerPlural} to export.`,
           variant: 'error',
         });
         return;
@@ -171,7 +173,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
         // Show success toast
         toast({
           title: 'PDF exported successfully!',
-          description: `Exported ${events.length} event${events.length !== 1 ? 's' : ''} to PDF.`,
+          description: `Exported ${events.length} ${events.length !== 1 ? eventTerm.lowerPlural : eventTerm.lower} to PDF.`,
           variant: 'success',
         });
       } catch (error) {
@@ -198,7 +200,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
   const columns: ColumnDef<UpcomingEvent>[] = [
     {
       key: "title",
-      label: "Event",
+      label: eventTerm.singular,
       sortable: true,
       className: "py-4 px-4 whitespace-nowrap",
       render: (event) => (
@@ -395,7 +397,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
     <div className="space-y-4">
       {/* Header with Export Buttons */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Upcoming Events</h2>
+        <h2 className="text-lg font-semibold text-foreground">Upcoming {eventTerm.plural}</h2>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -437,8 +439,8 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
           columns={columns}
           isLoading={isLoading}
           getRowKey={(event) => event.id}
-          emptyMessage="No upcoming events found"
-          emptyDescription="Events scheduled for the next 30 days will appear here"
+          emptyMessage={`No upcoming ${eventTerm.lowerPlural} found`}
+          emptyDescription={`${eventTerm.plural} scheduled for the next 30 days will appear here`}
           mobileCard={mobileCard}
           minWidth="1400px"
           skeletonRows={3}

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangleIcon } from 'lucide-react';
 import type { StaffWithRelations } from './selectable-staff-table';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 interface BulkDisableDialogProps {
     staff: StaffWithRelations[];
@@ -27,10 +28,11 @@ export function BulkDisableDialog({
     onConfirm,
     isDisabling,
 }: BulkDisableDialogProps) {
+    const { terminology } = useTerminology();
     return (
         <Dialog open={open} onClose={onClose}>
             <DialogHeader>
-                <DialogTitle>Disable Staff Members?</DialogTitle>
+                <DialogTitle>Disable {terminology.staff.plural}?</DialogTitle>
             </DialogHeader>
 
             <DialogContent>
@@ -40,12 +42,12 @@ export function BulkDisableDialog({
                         <AlertTriangleIcon className="h-5 w-5 text-warning mt-0.5 flex-shrink-0" />
                         <div>
                             <p className="text-sm font-medium text-foreground">
-                                You are about to disable {staff.length} staff{' '}
+                                You are about to disable {staff.length} {staff.length === 1 ? terminology.staff.lower : terminology.staff.lowerPlural}{' '}
                                 {staff.length === 1 ? 'member' : 'members'}
                             </p>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Disabled staff members will not be available for new assignments.
-                                They can be re-enabled later from the main Staff page.
+                                Disabled {terminology.staff.lower} members will not be available for new assignments.
+                                They can be re-enabled later from the main {terminology.staff.singular} page.
                             </p>
                         </div>
                     </div>
@@ -53,7 +55,7 @@ export function BulkDisableDialog({
                     {/* Staff List */}
                     <div>
                         <p className="text-sm font-medium text-foreground mb-3">
-                            Staff members to disable:
+                            {terminology.staff.plural} to disable:
                         </p>
                         <div className="max-h-60 overflow-y-auto space-y-2 border border-border rounded-lg p-3">
                             {staff.map((member) => (
@@ -87,7 +89,7 @@ export function BulkDisableDialog({
                     Cancel
                 </Button>
                 <Button variant="danger" onClick={onConfirm} disabled={isDisabling}>
-                    {isDisabling ? 'Disabling...' : `Disable ${staff.length} Staff`}
+                    {isDisabling ? 'Disabling...' : `Disable ${staff.length} ${terminology.staff.singular}`}
                 </Button>
             </DialogFooter>
         </Dialog>

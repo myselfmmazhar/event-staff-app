@@ -1,14 +1,8 @@
 import { PrismaClient, UserRole } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
 import { seedStaffData } from './seed-staff-data';
 
-// Use DIRECT_URL for seeding to bypass connection pooling
-const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-
-const prisma = new PrismaClient({ adapter });
+// Simple Prisma client without adapter (uses DATABASE_URL from .env)
+const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Seeding database with Better Auth (scrypt)...\n');
@@ -80,6 +74,29 @@ async function main() {
   // Seed Staff Data (Positions and Work Types)
   await seedStaffData();
 
+  // Seed Organization Settings (Terminology)
+  console.log('\n📝 Seeding organization settings...');
+  const existingSettings = await prisma.organizationSettings.findFirst();
+
+  if (existingSettings) {
+    console.log('✅ Organization settings already exist. Skipping settings seed.');
+  } else {
+    const settings = await prisma.organizationSettings.create({
+      data: {
+        staffTermSingular: 'Staff',
+        staffTermPlural: 'Staff',
+        eventTermSingular: 'Event',
+        eventTermPlural: 'Events',
+      },
+    });
+
+    console.log('✅ Organization settings created:', {
+      id: settings.id,
+      staffTerm: `${settings.staffTermSingular}/${settings.staffTermPlural}`,
+      eventTerm: `${settings.eventTermSingular}/${settings.eventTermPlural}`,
+    });
+  }
+
   console.log('\n🎉 Database seeding completed successfully!');
 }
 
@@ -90,5 +107,4 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
-    await pool.end();
   });

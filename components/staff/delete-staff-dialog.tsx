@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Staff } from '@prisma/client';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 interface DeleteStaffDialogProps {
     staff: Staff | null;
@@ -25,12 +26,13 @@ export function DeleteStaffDialog({
     onConfirm,
     isDeleting,
 }: DeleteStaffDialogProps) {
+    const { terminology } = useTerminology();
     if (!staff) return null;
 
     return (
         <Dialog open={open} onClose={onClose}>
             <DialogHeader>
-                <DialogTitle>Delete Staff Member</DialogTitle>
+                <DialogTitle>Delete {terminology.staff.singular}</DialogTitle>
             </DialogHeader>
 
             <DialogContent>
@@ -56,7 +58,7 @@ export function DeleteStaffDialog({
                     Cancel
                 </Button>
                 <Button variant="danger" onClick={onConfirm} disabled={isDeleting}>
-                    {isDeleting ? 'Deleting...' : 'Delete Staff'}
+                    {isDeleting ? 'Deleting...' : `Delete ${terminology.staff.singular}`}
                 </Button>
             </DialogFooter>
         </Dialog>

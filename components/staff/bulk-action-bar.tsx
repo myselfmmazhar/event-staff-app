@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 interface BulkActionBarProps {
     selectedCount: number;
@@ -16,6 +17,7 @@ export function BulkActionBar({
     onDisableSelected,
     isDisabling = false,
 }: BulkActionBarProps) {
+    const { terminology } = useTerminology();
     if (selectedCount === 0) return null;
 
     return (
@@ -23,7 +25,7 @@ export function BulkActionBar({
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <Badge variant="primary" size="lg">
-                        {selectedCount} {selectedCount === 1 ? 'staff member' : 'staff members'} selected
+                        {selectedCount} {selectedCount === 1 ? `${terminology.staff.lower} member` : `${terminology.staff.lower} members`} selected
                     </Badge>
                 </div>
 

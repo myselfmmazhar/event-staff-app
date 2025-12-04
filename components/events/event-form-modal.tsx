@@ -21,13 +21,14 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon, PlusIcon, XIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;
 
 // Build edit form schema (all fields optional except those being updated)
 const editFormSchema = z.object({
-  title: z.string().min(1, "Event title is required").max(200).transform(val => val.trim()),
+  title: z.string().min(1, "Title is required").max(200).transform(val => val.trim()),
   description: z.string().max(5000).optional().transform(val => val?.trim()),
   dressCode: z.string().max(200).optional().transform(val => val?.trim()),
   privateComments: z.string().max(5000).optional().transform(val => val?.trim()),
@@ -117,6 +118,7 @@ export function EventFormModal({
   isSubmitting,
   backendErrors = [],
 }: EventFormModalProps) {
+  const { terminology } = useTerminology();
   const isEdit = !!event;
   const [startTimeTBD, setStartTimeTBD] = useState(false);
   const [endTimeTBD, setEndTimeTBD] = useState(false);
@@ -254,7 +256,7 @@ export function EventFormModal({
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>{isEdit ? 'Edit Event' : 'Create New Event'}</DialogTitle>
+            <DialogTitle>{isEdit ? `Edit ${terminology.event.singular}` : `Create New ${terminology.event.singular}`}</DialogTitle>
             <button
               type="button"
               onClick={onClose}
@@ -269,7 +271,7 @@ export function EventFormModal({
           {/* Event ID (Read-only in edit mode) */}
           {isEdit && (
             <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
-              <p className="text-sm text-muted-foreground">Event ID</p>
+              <p className="text-sm text-muted-foreground">{terminology.event.singular} ID</p>
               <p className="text-base font-medium">{event?.eventId}</p>
             </div>
           )}
@@ -286,7 +288,7 @@ export function EventFormModal({
                   {...register('title')}
                   error={!!errors.title}
                   disabled={isSubmitting}
-                  placeholder="Event title"
+                  placeholder={`${terminology.event.singular} title`}
                 />
                 {errors.title && (
                   <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
@@ -319,7 +321,7 @@ export function EventFormModal({
                   {...register('description')}
                   disabled={isSubmitting}
                   rows={3}
-                  placeholder="Event description"
+                  placeholder={`${terminology.event.singular} description`}
                 />
                 {errors.description && (
                   <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
@@ -585,7 +587,7 @@ export function EventFormModal({
                   />
                   <div>
                     <span className="text-sm font-medium">Daily Digest Mode</span>
-                    <p className="text-xs text-muted-foreground">Send daily digest emails for this event</p>
+                    <p className="text-xs text-muted-foreground">Send daily digest emails for this {terminology.event.lower}</p>
                   </div>
                 </label>
 
@@ -597,8 +599,8 @@ export function EventFormModal({
                     className="rounded border-input"
                   />
                   <div>
-                    <span className="text-sm font-medium">Require Staff</span>
-                    <p className="text-xs text-muted-foreground">This event requires staff assignment</p>
+                    <span className="text-sm font-medium">Require {terminology.staff.singular}</span>
+                    <p className="text-xs text-muted-foreground">This {terminology.event.lower} requires {terminology.staff.lower} assignment</p>
                   </div>
                 </label>
               </div>
@@ -698,7 +700,7 @@ export function EventFormModal({
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : isEdit ? 'Update Event' : 'Create Event'}
+            {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.event.singular}` : `Create ${terminology.event.singular}`}
           </Button>
         </DialogFooter>
       </form>

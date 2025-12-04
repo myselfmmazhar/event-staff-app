@@ -20,6 +20,7 @@ import { CloseIcon } from '@/components/ui/icons';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
 import { AccountStatus, StaffType, RateType, SkillLevel, StaffRating, Staff, StaffPositionAssignment, StaffPosition, StaffWorkTypeAssignment, WorkType } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 // Form schema for client-side
 const formSchema = StaffSchema.create;
@@ -46,6 +47,7 @@ export function StaffFormModal({
     onSubmit,
     isSubmitting,
 }: StaffFormModalProps) {
+    const { terminology } = useTerminology();
     const isEdit = !!staff;
 
     // Fetch lookup data
@@ -157,7 +159,7 @@ export function StaffFormModal({
             <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col h-full overflow-hidden">
                 <DialogHeader className="shrink-0">
                     <div className="flex items-center justify-between">
-                        <DialogTitle>{isEdit ? 'Edit Staff Member' : 'Add New Staff Member'}</DialogTitle>
+                        <DialogTitle>{isEdit ? `Edit ${terminology.staff.singular}` : `Add New ${terminology.staff.singular}`}</DialogTitle>
                         <button
                             type="button"
                             onClick={onClose}
@@ -172,7 +174,7 @@ export function StaffFormModal({
                     {/* Staff ID (Read-only in edit mode) */}
                     {isEdit && staff && (
                         <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
-                            <p className="text-sm text-muted-foreground">Staff ID</p>
+                            <p className="text-sm text-muted-foreground">{terminology.staff.singular} ID</p>
                             <p className="text-base font-medium">{staff.staffId}</p>
                         </div>
                     )}
@@ -597,7 +599,7 @@ export function StaffFormModal({
                         Cancel
                     </Button>
                     <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Saving...' : isEdit ? 'Update Staff' : 'Create Staff'}
+                        {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.staff.singular}` : `Create ${terminology.staff.singular}`}
                     </Button>
                 </DialogFooter>
             </form>

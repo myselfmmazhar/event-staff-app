@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { CloseIcon } from '@/components/ui/icons';
 import { format } from 'date-fns';
 import { Staff, StaffPositionAssignment, StaffPosition, StaffWorkTypeAssignment, WorkType } from '@prisma/client';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 // Define the type with relations included
 type StaffWithRelations = Staff & {
@@ -25,13 +26,14 @@ interface ViewStaffDialogProps {
 }
 
 export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) {
+    const { terminology } = useTerminology();
     if (!staff) return null;
 
     return (
         <Dialog open={open} onClose={onClose} className="max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
             <DialogHeader className="shrink-0">
                 <div className="flex items-center justify-between">
-                    <DialogTitle>Staff Details</DialogTitle>
+                    <DialogTitle>{terminology.staff.singular} Details</DialogTitle>
                     <button
                         onClick={onClose}
                         className="text-muted-foreground hover:text-foreground"
@@ -44,7 +46,7 @@ export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) 
             <DialogContent className="flex-1 overflow-y-auto">
                 {/* Staff ID */}
                 <div className="mb-6 p-3 bg-muted/30 rounded-md border">
-                    <p className="text-sm text-muted-foreground">Staff ID</p>
+                    <p className="text-sm text-muted-foreground">{terminology.staff.singular} ID</p>
                     <p className="text-base font-medium">{staff.staffId}</p>
                 </div>
 

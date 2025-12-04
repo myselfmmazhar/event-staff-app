@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { UpcomingEventCard } from "./upcoming-event-card";
 import { EventStatus } from "@prisma/client";
+import { useTerminology } from "@/lib/hooks/use-terminology";
+import { getEventRoute } from "@/lib/utils/route-helpers";
 
 interface UpcomingEvent {
   id: string;
@@ -32,12 +34,13 @@ interface UpcomingEventsSectionProps {
  * Displays a grid of upcoming event cards with loading and empty states
  */
 export function UpcomingEventsSection({ events, isLoading, onEventClick }: UpcomingEventsSectionProps) {
+  const { terminology } = useTerminology();
   // Show loading skeleton
   if (isLoading) {
     return (
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Upcoming Events</h2>
+          <h2 className="text-lg font-semibold text-foreground">Upcoming {terminology.event.plural}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
@@ -60,17 +63,17 @@ export function UpcomingEventsSection({ events, isLoading, onEventClick }: Upcom
     return (
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Upcoming Events</h2>
+          <h2 className="text-lg font-semibold text-foreground">Upcoming {terminology.event.plural}</h2>
         </div>
         <div className="bg-card rounded-xl border border-border p-12 text-center">
           <p className="text-muted-foreground mb-4">
-            No upcoming events in the next 30 days.
+            No upcoming {terminology.event.lower}s in the next 30 days.
           </p>
           <Link
-            href="/events?create=true"
+            href={`${getEventRoute(terminology)}?create=true`}
             className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4"
           >
-            Create Your First Event
+            Create Your First {terminology.event.singular}
           </Link>
         </div>
       </div>
@@ -84,10 +87,10 @@ export function UpcomingEventsSection({ events, isLoading, onEventClick }: Upcom
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Upcoming Events</h2>
+        <h2 className="text-lg font-semibold text-foreground">Upcoming {terminology.event.plural}</h2>
         {hasMore && (
           <Link
-            href="/events"
+            href={getEventRoute(terminology)}
             className="text-sm font-medium text-primary hover:underline"
           >
             View All ({events.length})
@@ -106,10 +109,10 @@ export function UpcomingEventsSection({ events, isLoading, onEventClick }: Upcom
       {hasMore && (
         <div className="mt-6 text-center">
           <Link
-            href="/events"
+            href={getEventRoute(terminology)}
             className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 py-2 px-4"
           >
-            View All Events
+            View All {terminology.event.plural}
           </Link>
         </div>
       )}

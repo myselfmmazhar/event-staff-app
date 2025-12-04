@@ -10,12 +10,14 @@ import {
   UpcomingEventsTable,
 } from "@/components/dashboard";
 import { ViewEventDialog } from "@/components/events/view-event-dialog";
+import { useEventTerm } from "@/lib/hooks/use-terminology";
 
 /**
  * Main dashboard page - revamped to focus on events and staff management
  * Shows upcoming events, key metrics, and actionable information
  */
 export default function DashboardPage() {
+  const eventTerm = useEventTerm();
   const { data: profile } = trpc.profile.getMyProfile.useQuery();
   const { data: eventStats, isLoading: eventLoading, error: eventError } = trpc.event.getStats.useQuery();
   const { data: staffStats, isLoading: staffLoading, error: staffError } = trpc.staff.getStats.useQuery();
@@ -81,7 +83,7 @@ export default function DashboardPage() {
             },
             {
               id: "upcoming-events",
-              label: "Upcoming Events",
+              label: `Upcoming ${eventTerm.plural}`,
               content: (
                 <UpcomingEventsTable
                   events={upcomingEvents}

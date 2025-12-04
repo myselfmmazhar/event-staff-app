@@ -19,9 +19,11 @@ import type { CreateEventInput, UpdateEventInput } from '@/lib/schemas/event.sch
 import { useEventsFilters } from '@/store/events-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 export default function EventsPage() {
   const searchParams = useSearchParams();
+  const { terminology } = useTerminology();
 
   // Use filters store
   const filters = useEventsFilters();
@@ -84,7 +86,7 @@ export default function EventsPage() {
 
   // tRPC mutations with standardized error handling
   const createMutation = trpc.event.create.useMutation(
-    createMutationOptions('Event created successfully', {
+    createMutationOptions(`${terminology.event.singular} created successfully`, {
       onSuccess: () => {
         setIsFormOpen(false);
         // Clear filters to show the newly created event
@@ -97,7 +99,7 @@ export default function EventsPage() {
   );
 
   const updateMutation = trpc.event.update.useMutation(
-    updateMutationOptions('Event updated successfully', {
+    updateMutationOptions(`${terminology.event.singular} updated successfully`, {
       onSuccess: () => {
         setIsFormOpen(false);
         setSelectedEvent(null);
@@ -107,7 +109,7 @@ export default function EventsPage() {
   );
 
   const deleteMutation = trpc.event.delete.useMutation(
-    deleteMutationOptions('Event deleted successfully', {
+    deleteMutationOptions(`${terminology.event.singular} deleted successfully`, {
       onSuccess: () => {
         setIsDeleteOpen(false);
         setSelectedEvent(null);
@@ -208,14 +210,14 @@ export default function EventsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Events</h1>
+          <h1 className="text-3xl font-bold text-foreground">{terminology.event.plural}</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your events
+            Manage your {terminology.event.lowerPlural}
           </p>
         </div>
         <Button onClick={handleCreateEvent}>
           <PlusIcon className="h-5 w-5 mr-2" />
-          New Event
+          New {terminology.event.singular}
         </Button>
       </div>
 
@@ -225,7 +227,7 @@ export default function EventsPage() {
           <EventSearch
             value={filters.search}
             onChange={filters.setSearch}
-            placeholder="Search by title, venue, city, or event ID..."
+            placeholder={`Search by title, venue, city, or ${terminology.event.lower} ID...`}
           />
           <EventFilters />
           <ActiveFilters filters={activeFilters} />

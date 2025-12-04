@@ -5,6 +5,7 @@ import type {
     UpdateStaffInput,
     QueryStaffInput,
 } from "@/lib/schemas/staff.schema";
+import { SettingsService } from "./settings.service";
 
 /**
  * Staff Select Type (return type for queries)
@@ -98,15 +99,22 @@ type StaffStats = {
  * Staff Service - Business logic layer for staff operations
  */
 export class StaffService {
-    constructor(private prisma: PrismaClient) { }
+    private settingsService: SettingsService;
+
+    constructor(private prisma: PrismaClient) {
+        this.settingsService = new SettingsService(prisma);
+    }
 
     /**
-     * Generate a unique Staff ID in format STF-YYYY-NNN
+     * Generate a unique Staff ID in format [PREFIX]-YYYY-NNN
+     * Prefix is dynamically determined from terminology settings
      * Includes race condition protection
      */
     async generateStaffId(): Promise<string> {
+        // Get current terminology to determine prefix
+        const terminology = await this.settingsService.getTerminology();
         const currentYear = new Date().getFullYear();
-        const prefix = `STF-${currentYear}`;
+        const prefix = `${terminology.staffIdPrefix}-${currentYear}`;
 
         // Find the last staff ID for the current year
         const lastStaff = await this.prisma.staff.findFirst({
@@ -169,9 +177,10 @@ export class StaffService {
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 if (error.code === "P2002") {
+                    const terminology = await this.settingsService.getTerminology();
                     throw new TRPCError({
                         code: "CONFLICT",
-                        message: "A staff member with this email already exists",
+                        message: `A ${terminology.staff.lower} member with this email already exists`,
                     });
                 }
                 if (error.code === "P2003") {
@@ -182,9 +191,10 @@ export class StaffService {
                 }
             }
             console.error("Error creating staff:", error);
+            const terminology = await this.settingsService.getTerminology();
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
-                message: "Failed to create staff member",
+                message: `Failed to create ${terminology.staff.lower} member`,
             });
         }
     }
@@ -208,9 +218,10 @@ export class StaffService {
         });
 
         if (!existing) {
+            const terminology = await this.settingsService.getTerminology();
             throw new TRPCError({
                 code: "NOT_FOUND",
-                message: "Staff member not found",
+                message: `${terminology.staff.singular} member not found`,
             });
         }
 
@@ -245,9 +256,10 @@ export class StaffService {
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 if (error.code === "P2002") {
+                    const terminology = await this.settingsService.getTerminology();
                     throw new TRPCError({
                         code: "CONFLICT",
-                        message: "A staff member with this email already exists",
+                        message: `A ${terminology.staff.lower} member with this email already exists`,
                     });
                 }
                 if (error.code === "P2003") {
@@ -258,9 +270,10 @@ export class StaffService {
                 }
             }
             console.error("Error updating staff:", error);
+            const terminology = await this.settingsService.getTerminology();
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
-                message: "Failed to update staff member",
+                message: `Failed to update ${terminology.staff.lower} member`,
             });
         }
     }
@@ -365,9 +378,10 @@ export class StaffService {
         });
 
         if (!staff) {
+            const terminology = await this.settingsService.getTerminology();
             throw new TRPCError({
                 code: "NOT_FOUND",
-                message: "Staff member not found",
+                message: `${terminology.staff.singular} member not found`,
             });
         }
 
@@ -379,6 +393,8 @@ export class StaffService {
      * Cascades to position and work type assignments
      */
     async remove(id: string): Promise<{ success: boolean; message: string }> {
+        const terminology = await this.settingsService.getTerminology();
+
         // Check if staff exists
         const staff = await this.prisma.staff.findUnique({
             where: { id },
@@ -388,7 +404,7 @@ export class StaffService {
         if (!staff) {
             throw new TRPCError({
                 code: "NOT_FOUND",
-                message: "Staff member not found",
+                message: `${terminology.staff.singular} member not found`,
             });
         }
 
@@ -408,13 +424,13 @@ export class StaffService {
 
             return {
                 success: true,
-                message: `Staff member ${staff.firstName} ${staff.lastName} deleted successfully`,
+                message: `${terminology.staff.singular} member ${staff.firstName} ${staff.lastName} deleted successfully`,
             };
         } catch (error) {
             console.error("Error deleting staff:", error);
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
-                message: "Failed to delete staff member",
+                message: `Failed to delete ${terminology.staff.lower} member`,
             });
         }
     }
@@ -461,10 +477,11 @@ export class StaffService {
             for (const staff of staffMembers) {
                 // Check if already disabled
                 if (staff.accountStatus === "DISABLED") {
+                    const terminology = await this.settingsService.getTerminology();
                     failed.push({
                         id: staff.id,
                         staffId: staff.staffId,
-                        reason: "Staff member is already disabled",
+                        reason: `${terminology.staff.singular} member is already disabled`,
                     });
                     continue;
                 }
@@ -486,11 +503,12 @@ export class StaffService {
             // Check for non-existent IDs
             const foundIds = staffMembers.map((s) => s.id);
             const missingIds = staffIds.filter((id) => !foundIds.includes(id));
+            const terminology = await this.settingsService.getTerminology();
             for (const id of missingIds) {
                 failed.push({
                     id,
                     staffId: "Unknown",
-                    reason: "Staff member not found",
+                    reason: `${terminology.staff.singular} member not found`,
                 });
             }
 
@@ -515,9 +533,10 @@ export class StaffService {
             };
         } catch (error) {
             console.error("Error bulk disabling staff:", error);
+            const terminology = await this.settingsService.getTerminology();
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
-                message: "Failed to disable staff members",
+                message: `Failed to disable ${terminology.staff.lower} members`,
             });
         }
     }

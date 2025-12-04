@@ -6,6 +6,7 @@ import { EyeIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
 import { EventStatus } from '@prisma/client';
 import { format } from 'date-fns';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 interface Event {
   id: string;
@@ -68,6 +69,8 @@ export function EventTable({
   onDelete,
   onSort,
 }: EventTableProps) {
+  const { terminology } = useTerminology();
+
   const formatDateTime = (date: Date, time?: string | null, timezone?: string) => {
     const dateStr = format(new Date(date), 'MMM d, yyyy');
     if (!time || time === 'TBD') {
@@ -79,7 +82,7 @@ export function EventTable({
   const columns: ColumnDef<Event>[] = [
     {
       key: 'eventId',
-      label: 'Event ID',
+      label: `${terminology.event.singular} ID`,
       sortable: true,
       className: 'py-4 px-4 whitespace-nowrap',
       render: (event) => (
@@ -152,7 +155,7 @@ export function EventTable({
             variant="ghost"
             size="sm"
             onClick={() => onView(event)}
-            title="View event details"
+            title={`View ${terminology.event.lower} details`}
           >
             <EyeIcon className="h-4 w-4" />
           </Button>
@@ -160,7 +163,7 @@ export function EventTable({
             variant="ghost"
             size="sm"
             onClick={() => onEdit(event)}
-            title="Edit event"
+            title={`Edit ${terminology.event.lower}`}
           >
             <EditIcon className="h-4 w-4" />
           </Button>
@@ -169,7 +172,7 @@ export function EventTable({
             size="sm"
             onClick={() => onDelete(event)}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            title="Delete event"
+            title={`Delete ${terminology.event.lower}`}
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
@@ -255,7 +258,7 @@ export function EventTable({
       sortBy={sortBy}
       sortOrder={sortOrder}
       onSort={(field) => onSort(field as SortableField)}
-      emptyMessage="No events found"
+      emptyMessage={`No ${terminology.event.lowerPlural} found`}
       emptyDescription="Try adjusting your search or filters"
       mobileCard={renderMobileCard}
       getRowKey={(event) => event.id}

@@ -14,6 +14,7 @@ import { CheckIcon, XIcon, EditIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
 import { format } from 'date-fns';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 interface ViewEventDialogProps {
   eventId: string | null;
@@ -46,6 +47,7 @@ export function ViewEventDialog({
   onClose,
   onEdit,
 }: ViewEventDialogProps) {
+  const { terminology } = useTerminology();
   const { data: event, isLoading, error } = trpc.event.getById.useQuery(
     { id: eventId || '' },
     { enabled: !!eventId && open }
@@ -69,7 +71,7 @@ export function ViewEventDialog({
   return (
     <Dialog open={open} onClose={onClose} className="max-w-3xl">
       <DialogHeader>
-        <DialogTitle>Event Details</DialogTitle>
+        <DialogTitle>{terminology.event.singular} Details</DialogTitle>
       </DialogHeader>
 
       <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
@@ -82,7 +84,7 @@ export function ViewEventDialog({
           </div>
         ) : error ? (
           <div className="text-center py-8">
-            <p className="text-destructive">Failed to load event details</p>
+            <p className="text-destructive">Failed to load {terminology.event.lower} details</p>
             <p className="text-sm text-muted-foreground mt-2">{error.message}</p>
           </div>
         ) : event ? (
@@ -90,7 +92,7 @@ export function ViewEventDialog({
             {/* Header: Event ID + Status */}
             <div className="flex items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg border border-border">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Event ID</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{terminology.event.singular} ID</p>
                 <p className="font-mono text-sm font-medium">{event.eventId}</p>
               </div>
               <Badge variant={STATUS_COLORS[event.status]} asSpan>
@@ -100,7 +102,7 @@ export function ViewEventDialog({
 
             {/* Event Details Section */}
             <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">Event Details</h3>
+              <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">{terminology.event.singular} Details</h3>
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Title</p>
@@ -202,9 +204,9 @@ export function ViewEventDialog({
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Require Staff</p>
+                    <p className="text-sm font-medium text-foreground">Require {terminology.staff.singular}</p>
                     <p className="text-xs text-muted-foreground">
-                      {event.requireStaff ? 'Staff required for this event' : 'Staff not required'}
+                      {event.requireStaff ? `${terminology.staff.singular} required for this ${terminology.event.lower}` : `${terminology.staff.singular} not required`}
                     </p>
                   </div>
                 </div>
@@ -274,7 +276,7 @@ export function ViewEventDialog({
         {event && onEdit && (
           <Button onClick={handleEdit}>
             <EditIcon className="h-4 w-4 mr-2" />
-            Edit Event
+            Edit {terminology.event.singular}
           </Button>
         )}
       </DialogFooter>

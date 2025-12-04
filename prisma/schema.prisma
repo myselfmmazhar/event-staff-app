@@ -361,15 +361,33 @@ model StaffWorkTypeAssignment {
   id              String    @id @default(uuid()) @db.Uuid
   staffId         String    @db.Uuid
   workTypeId      String    @db.Uuid
-  
+
   staff           Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
   workType        WorkType  @relation(fields: [workTypeId], references: [id], onDelete: Cascade)
-  
+
   assignedAt      DateTime  @default(now()) @db.Timestamp(6)
-  
+
   @@unique([staffId, workTypeId])
   @@index([staffId])
   @@index([workTypeId])
   @@map("staff_work_type_assignments")
+}
+
+// Organization Settings Model (for customizable terminology)
+model OrganizationSettings {
+  id                   String   @id @default(uuid()) @db.Uuid
+
+  // Terminology Customization
+  staffTermSingular    String   @default("Staff")
+  staffTermPlural      String   @default("Staff")
+  eventTermSingular    String   @default("Event")
+  eventTermPlural      String   @default("Events")
+
+  // Future: organizationId for multi-tenancy support
+
+  createdAt            DateTime @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("organization_settings")
 }
 

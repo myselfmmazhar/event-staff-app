@@ -5,6 +5,7 @@ import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
 import { FilterIcon, XIcon } from '@/components/ui/icons';
+import { useStaffTerm } from '@/lib/hooks/use-terminology';
 
 interface StaffFiltersProps {
     filters: {
@@ -17,6 +18,7 @@ interface StaffFiltersProps {
 }
 
 export function StaffFilters({ filters, onFilterChange, onClearFilters }: StaffFiltersProps) {
+    const staffTerm = useStaffTerm();
     const hasActiveFilters = filters.accountStatus || filters.staffType || filters.skillLevel;
 
     return (
@@ -49,7 +51,7 @@ export function StaffFilters({ filters, onFilterChange, onClearFilters }: StaffF
                 </div>
 
                 <div>
-                    <Label>Staff Type</Label>
+                    <Label>{staffTerm.singular} Type</Label>
                     <Select
                         value={filters.staffType || ''}
                         onChange={(e) => onFilterChange('staffType', e.target.value || undefined)}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Lexend } from "next/font/google";
 import "./globals.css";
 import { TRPCProvider } from "@/lib/providers/trpc-provider";
+import { TerminologyProvider } from "@/lib/providers/terminology-provider";
 import { Toaster } from "@/components/ui/toaster";
 
 const lexend = Lexend({
@@ -25,8 +26,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${lexend.variable} font-sans antialiased`}>
         <TRPCProvider>
-          {children}
-          <Toaster />
+          <TerminologyProvider>
+            {children}
+            <Toaster />
+          </TerminologyProvider>
         </TRPCProvider>
       </body>
     </html>

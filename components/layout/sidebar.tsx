@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/lib/client/auth';
@@ -16,11 +16,18 @@ import {
   ChevronRightIcon,
   PlusIcon,
   ListIcon,
+  SettingsIcon,
 } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { SessionUser } from '@/lib/types/auth.types';
 import { type FeatureFlags, getFeatureStatus, isFeatureEnabled, isFeatureBeta, isFeatureDisabled } from '@/lib/config/feature-flags';
+import { useTerminology } from '@/lib/hooks/use-terminology';
+import {
+  getStaffRoute,
+  getEventRoute,
+  getEventCalendarRoute,
+} from '@/lib/utils/route-helpers';
 
 interface SubNavItem {
   label: string;
@@ -38,94 +45,6 @@ interface NavItem {
   featureFlag?: keyof FeatureFlags;
 }
 
-const navItems: NavItem[] = [
-  {
-    label: 'Dashboard',
-    href: '/dashboard',
-    icon: DashboardIcon,
-    requiresAdmin: false,
-    featureFlag: 'dashboard',
-  },
-  {
-    label: 'Events',
-    icon: CalendarIcon,
-    requiresAdmin: false,
-    featureFlag: 'events',
-    subItems: [
-      {
-        label: 'Create Event',
-        href: '/events?create=true',
-        icon: PlusIcon,
-        featureFlag: 'events',
-      },
-      {
-        label: 'View Events',
-        href: '/events',
-        icon: ListIcon,
-        featureFlag: 'events',
-      },
-      {
-        label: 'Calendar',
-        href: '/events/calendar',
-        icon: CalendarIcon,
-        featureFlag: 'events',
-      },
-      {
-        label: 'Create Client',
-        href: '/clients?create=true',
-        icon: PlusIcon,
-        featureFlag: 'clients',
-      },
-      {
-        label: 'View Clients',
-        href: '/clients',
-        icon: ListIcon,
-        featureFlag: 'clients',
-      },
-    ],
-  },
-  {
-    label: 'Staff',
-    icon: UsersIcon,
-    requiresAdmin: false,
-    featureFlag: 'staff',
-    subItems: [
-      {
-        label: 'Create Staff',
-        href: '/staff?create=true',
-        icon: PlusIcon,
-        featureFlag: 'staff',
-      },
-      {
-        label: 'View Staff',
-        href: '/staff',
-        icon: ListIcon,
-        featureFlag: 'staff',
-      },
-      {
-        label: 'Clean Up Roster',
-        href: '/staff/cleanup-roster',
-        icon: ListIcon,
-        featureFlag: 'staff',
-      },
-    ],
-  },
-  {
-    label: 'Users',
-    href: '/users',
-    icon: UsersIcon,
-    requiresAdmin: true, // Only ADMIN and SUPER_ADMIN
-    featureFlag: 'users',
-  },
-  {
-    label: 'Profile',
-    href: '/profile',
-    icon: UserIcon,
-    requiresAdmin: false,
-    featureFlag: 'profile',
-  },
-];
-
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
@@ -137,6 +56,108 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   const { data: session } = useSession();
   const user = session?.user as SessionUser | undefined;
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const { terminology } = useTerminology();
+
+  // Generate dynamic navigation items based on terminology
+  const navItems: NavItem[] = useMemo(() => [
+    {
+      label: 'Dashboard',
+      href: '/dashboard',
+      icon: DashboardIcon,
+      requiresAdmin: false,
+      featureFlag: 'dashboard',
+    },
+    {
+      label: terminology.event.plural,
+      icon: CalendarIcon,
+      requiresAdmin: false,
+      featureFlag: 'events',
+      subItems: [
+        {
+          label: `Create ${terminology.event.singular}`,
+          href: `${getEventRoute(terminology)}?create=true`,
+          icon: PlusIcon,
+          featureFlag: 'events',
+        },
+        {
+          label: `View ${terminology.event.plural}`,
+          href: getEventRoute(terminology),
+          icon: ListIcon,
+          featureFlag: 'events',
+        },
+        {
+          label: 'Calendar',
+          href: getEventCalendarRoute(terminology),
+          icon: CalendarIcon,
+          featureFlag: 'events',
+        },
+        {
+          label: 'Create Client',
+          href: '/clients?create=true',
+          icon: PlusIcon,
+          featureFlag: 'clients',
+        },
+        {
+          label: 'View Clients',
+          href: '/clients',
+          icon: ListIcon,
+          featureFlag: 'clients',
+        },
+      ],
+    },
+    {
+      label: terminology.staff.plural,
+      icon: UsersIcon,
+      requiresAdmin: false,
+      featureFlag: 'staff',
+      subItems: [
+        {
+          label: `Create ${terminology.staff.singular}`,
+          href: `${getStaffRoute(terminology)}?create=true`,
+          icon: PlusIcon,
+          featureFlag: 'staff',
+        },
+        {
+          label: `View ${terminology.staff.plural}`,
+          href: getStaffRoute(terminology),
+          icon: ListIcon,
+          featureFlag: 'staff',
+        },
+        {
+          label: 'Clean Up Roster',
+          href: `${getStaffRoute(terminology)}/cleanup-roster`,
+          icon: ListIcon,
+          featureFlag: 'staff',
+        },
+      ],
+    },
+    {
+      label: 'Users',
+      href: '/users',
+      icon: UsersIcon,
+      requiresAdmin: true, // Only ADMIN and SUPER_ADMIN
+      featureFlag: 'users',
+    },
+    {
+      label: 'Settings',
+      icon: SettingsIcon,
+      requiresAdmin: true, // Only ADMIN and SUPER_ADMIN
+      subItems: [
+        {
+          label: 'Terminology',
+          href: '/settings/terminology',
+          icon: SettingsIcon,
+        },
+      ],
+    },
+    {
+      label: 'Profile',
+      href: '/profile',
+      icon: UserIcon,
+      requiresAdmin: false,
+      featureFlag: 'profile',
+    },
+  ], [terminology]);
 
   const handleLogout = async () => {
     await signOut();

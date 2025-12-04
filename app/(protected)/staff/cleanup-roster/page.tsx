@@ -10,9 +10,11 @@ import { BulkDisableDialog } from '@/components/staff/bulk-disable-dialog';
 import { trpc as api } from '@/lib/client/trpc';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 export default function CleanupRosterPage() {
     const { toast } = useToast();
+    const { terminology } = useTerminology();
 
     // State
     const [page, setPage] = useState(1);
@@ -48,8 +50,8 @@ export default function CleanupRosterPage() {
                 toast({
                     title: 'Success',
                     description: failed.length > 0
-                        ? `Disabled ${success} staff member(s). ${failed.length} failed.`
-                        : `Successfully disabled ${success} staff member(s)`,
+                        ? `Disabled ${success} ${terminology.staff.lower} member(s). ${failed.length} failed.`
+                        : `Successfully disabled ${success} ${terminology.staff.lower} member(s)`,
                 });
             }
 
@@ -57,7 +59,7 @@ export default function CleanupRosterPage() {
             if (failed.length > 0) {
                 const failureDetails = failed.map(f => `${f.staffId}: ${f.reason}`).join(', ');
                 toast({
-                    title: 'Some staff members could not be disabled',
+                    title: `Some ${terminology.staff.lower} members could not be disabled`,
                     description: failureDetails,
                     variant: 'error',
                 });
@@ -71,7 +73,7 @@ export default function CleanupRosterPage() {
         onError: (error) => {
             toast({
                 title: 'Error',
-                description: error.message || 'Failed to disable staff members',
+                description: error.message || `Failed to disable ${terminology.staff.lower} members`,
                 variant: 'error',
             });
             setShowConfirmDialog(false);
@@ -103,7 +105,7 @@ export default function CleanupRosterPage() {
             <div>
                 <h1 className="text-3xl font-bold text-foreground">Clean Up Roster</h1>
                 <p className="text-muted-foreground mt-1">
-                    Select and disable staff members who are no longer active
+                    Select and disable {terminology.staff.lower} members who are no longer active
                 </p>
             </div>
 

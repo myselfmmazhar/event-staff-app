@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Staff, StaffPositionAssignment, StaffPosition } from '@prisma/client';
+import { useStaffTerm } from '@/lib/hooks/use-terminology';
 
 // Define the type with relations included
 export type StaffWithRelations = Staff & {
@@ -23,6 +24,8 @@ export function SelectableStaffTable({
     onSelectionChange,
     isLoading = false,
 }: SelectableStaffTableProps) {
+    const staffTerm = useStaffTerm();
+
     const handleSelectAll = () => {
         const visibleIds = staff.map((s) => s.id);
         const allSelected = visibleIds.every((id) => selectedIds.has(id));
@@ -84,9 +87,9 @@ export function SelectableStaffTable({
     if (staff.length === 0) {
         return (
             <div className="text-center py-12">
-                <p className="text-foreground text-lg">No staff members found</p>
+                <p className="text-foreground text-lg">No {staffTerm.lower} members found</p>
                 <p className="text-muted-foreground text-sm mt-2">
-                    No ACTIVE or PENDING staff members match your search criteria
+                    No ACTIVE or PENDING {staffTerm.lower} members match your search criteria
                 </p>
             </div>
         );
@@ -105,7 +108,7 @@ export function SelectableStaffTable({
                             />
                         </th>
                         <th className="text-left py-3 px-4">
-                            <span className="font-semibold text-sm text-foreground">Staff ID</span>
+                            <span className="font-semibold text-sm text-foreground">{staffTerm.singular} ID</span>
                         </th>
                         <th className="text-left py-3 px-4">
                             <span className="font-semibold text-sm text-foreground">Name</span>

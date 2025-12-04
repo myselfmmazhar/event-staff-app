@@ -15,8 +15,10 @@ import type { CreateStaffInput, UpdateStaffInput } from '@/lib/schemas/staff.sch
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSearchParams } from 'next/navigation';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 export default function StaffPage() {
+    const { terminology } = useTerminology();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -64,7 +66,7 @@ export default function StaffPage() {
         onSuccess: () => {
             toast({
                 title: 'Success',
-                description: 'Staff member created successfully',
+                description: `${terminology.staff.singular} created successfully`,
             });
             setModals((prev) => ({ ...prev, form: false }));
             setSelectedStaff(null);
@@ -73,7 +75,7 @@ export default function StaffPage() {
         onError: (error) => {
             toast({
                 title: 'Error',
-                description: error.message || 'Failed to create staff member',
+                description: error.message || `Failed to create ${terminology.staff.lower}`,
                 variant: 'error',
             });
         },
@@ -83,7 +85,7 @@ export default function StaffPage() {
         onSuccess: () => {
             toast({
                 title: 'Success',
-                description: 'Staff member updated successfully',
+                description: `${terminology.staff.singular} updated successfully`,
             });
             setModals((prev) => ({ ...prev, form: false }));
             setSelectedStaff(null);
@@ -92,7 +94,7 @@ export default function StaffPage() {
         onError: (error) => {
             toast({
                 title: 'Error',
-                description: error.message || 'Failed to update staff member',
+                description: error.message || `Failed to update ${terminology.staff.lower}`,
                 variant: 'error',
             });
         },
@@ -102,7 +104,7 @@ export default function StaffPage() {
         onSuccess: () => {
             toast({
                 title: 'Success',
-                description: 'Staff member deleted successfully',
+                description: `${terminology.staff.singular} deleted successfully`,
             });
             setModals((prev) => ({ ...prev, delete: false }));
             setSelectedStaff(null);
@@ -111,7 +113,7 @@ export default function StaffPage() {
         onError: (error) => {
             toast({
                 title: 'Error',
-                description: error.message || 'Failed to delete staff member',
+                description: error.message || `Failed to delete ${terminology.staff.lower}`,
                 variant: 'error',
             });
         },
@@ -175,14 +177,14 @@ export default function StaffPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground">Staff</h1>
+                    <h1 className="text-3xl font-bold text-foreground">{terminology.staff.plural}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage staff members, positions, and work types
+                        Manage {terminology.staff.lowerPlural}, positions, and work types
                     </p>
                 </div>
                 <Button onClick={handleCreate}>
                     <PlusIcon className="h-5 w-5 mr-2" />
-                    Add Staff Member
+                    Add {terminology.staff.singular}
                 </Button>
             </div>
 
@@ -203,7 +205,7 @@ export default function StaffPage() {
                 <div className="relative z-10">
                     {isLoading ? (
                         <div className="text-center py-8 text-muted-foreground">
-                            Loading staff members...
+                            Loading {terminology.staff.lowerPlural}...
                         </div>
                     ) : (
                         <>
