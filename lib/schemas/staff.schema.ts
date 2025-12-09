@@ -53,7 +53,7 @@ const baseFields = {
                 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
                 return date <= eighteenYearsAgo;
             },
-            { message: "Staff must be at least 18 years old" }
+            { message: "Must be at least 18 years old" }
         ),
 
     // Rate Information (single rateType for both)

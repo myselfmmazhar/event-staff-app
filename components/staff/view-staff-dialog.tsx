@@ -59,7 +59,7 @@ export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) 
                             <Badge>{staff.accountStatus}</Badge>
                         </div>
                         <div>
-                            <p className="text-sm text-muted-foreground">Staff Type</p>
+                            <p className="text-sm text-muted-foreground">{terminology.staff.singular} Type</p>
                             <Badge variant="secondary">{staff.staffType}</Badge>
                         </div>
                     </div>
@@ -171,7 +171,7 @@ export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) 
                         <h3 className="font-semibold">Admin Information</h3>
                         {staff.staffRating !== 'NA' && (
                             <div>
-                                <p className="text-sm text-muted-foreground">Staff Rating</p>
+                                <p className="text-sm text-muted-foreground">{terminology.staff.singular} Rating</p>
                                 <Badge>{staff.staffRating}</Badge>
                             </div>
                         )}
