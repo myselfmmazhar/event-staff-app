@@ -22,6 +22,8 @@ export class SettingsService {
                     staffTermPlural: true,
                     eventTermSingular: true,
                     eventTermPlural: true,
+                    roleTermSingular: true,
+                    roleTermPlural: true,
                 },
             });
 
@@ -59,6 +61,8 @@ export class SettingsService {
                         staffTermPlural: data.staffTermPlural,
                         eventTermSingular: data.eventTermSingular,
                         eventTermPlural: data.eventTermPlural,
+                        roleTermSingular: data.roleTermSingular,
+                        roleTermPlural: data.roleTermPlural,
                         updatedAt: new Date(),
                     },
                     select: {
@@ -66,6 +70,8 @@ export class SettingsService {
                         staffTermPlural: true,
                         eventTermSingular: true,
                         eventTermPlural: true,
+                        roleTermSingular: true,
+                        roleTermPlural: true,
                     },
                 });
             } else {
@@ -76,12 +82,16 @@ export class SettingsService {
                         staffTermPlural: data.staffTermPlural,
                         eventTermSingular: data.eventTermSingular,
                         eventTermPlural: data.eventTermPlural,
+                        roleTermSingular: data.roleTermSingular,
+                        roleTermPlural: data.roleTermPlural,
                     },
                     select: {
                         staffTermSingular: true,
                         staffTermPlural: true,
                         eventTermSingular: true,
                         eventTermPlural: true,
+                        roleTermSingular: true,
+                        roleTermPlural: true,
                     },
                 });
             }

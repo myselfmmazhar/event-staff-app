@@ -380,6 +380,8 @@ model OrganizationSettings {
   staffTermPlural      String   @default("Staff")
   eventTermSingular    String   @default("Event")
   eventTermPlural      String   @default("Events")
+  roleTermSingular     String   @default("Role")
+  roleTermPlural       String   @default("Roles")
 
   // Future: organizationId for multi-tenancy support
 

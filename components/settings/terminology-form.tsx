@@ -39,10 +39,20 @@ const EVENT_PRESETS = [
     { value: 'custom', label: 'Custom...' },
 ];
 
+const ROLE_PRESETS = [
+    { value: 'Role', label: 'Role (Default)' },
+    { value: 'Position', label: 'Position' },
+    { value: 'Access Level', label: 'Access Level' },
+    { value: 'Permission', label: 'Permission' },
+    { value: 'Level', label: 'Level' },
+    { value: 'custom', label: 'Custom...' },
+];
+
 export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
     const { toast } = useToast();
     const [showStaffCustom, setShowStaffCustom] = useState(false);
     const [showEventCustom, setShowEventCustom] = useState(false);
+    const [showRoleCustom, setShowRoleCustom] = useState(false);
 
     const {
         register,
@@ -59,11 +69,14 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
             staffTermPlural: currentTerminology.staff.plural,
             eventTermSingular: currentTerminology.event.singular,
             eventTermPlural: currentTerminology.event.plural,
+            roleTermSingular: currentTerminology.role.singular,
+            roleTermPlural: currentTerminology.role.plural,
         },
     });
 
     const staffSingular = watch('staffTermSingular');
     const eventSingular = watch('eventTermSingular');
+    const roleSingular = watch('roleTermSingular');
 
     // tRPC mutations
     const utils = trpc.useUtils();
@@ -127,21 +140,29 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
             setValue('staffTermPlural', 'Staff', { shouldDirty: true });
             setValue('eventTermSingular', 'Event', { shouldDirty: true });
             setValue('eventTermPlural', 'Events', { shouldDirty: true });
+            setValue('roleTermSingular', 'Role', { shouldDirty: true });
+            setValue('roleTermPlural', 'Roles', { shouldDirty: true });
         } else if (preset === 'Talent/Events') {
             setValue('staffTermSingular', 'Talent', { shouldDirty: true });
             setValue('staffTermPlural', 'Talents', { shouldDirty: true });
             setValue('eventTermSingular', 'Event', { shouldDirty: true });
             setValue('eventTermPlural', 'Events', { shouldDirty: true });
+            setValue('roleTermSingular', 'Role', { shouldDirty: true });
+            setValue('roleTermPlural', 'Roles', { shouldDirty: true });
         } else if (preset === 'Staff/Tasks') {
             setValue('staffTermSingular', 'Staff', { shouldDirty: true });
             setValue('staffTermPlural', 'Staff', { shouldDirty: true });
             setValue('eventTermSingular', 'Task', { shouldDirty: true });
             setValue('eventTermPlural', 'Tasks', { shouldDirty: true });
+            setValue('roleTermSingular', 'Role', { shouldDirty: true });
+            setValue('roleTermPlural', 'Roles', { shouldDirty: true });
         } else if (preset === 'Talent/Tasks') {
             setValue('staffTermSingular', 'Talent', { shouldDirty: true });
             setValue('staffTermPlural', 'Talents', { shouldDirty: true });
             setValue('eventTermSingular', 'Task', { shouldDirty: true });
             setValue('eventTermPlural', 'Tasks', { shouldDirty: true });
+            setValue('roleTermSingular', 'Role', { shouldDirty: true });
+            setValue('roleTermPlural', 'Roles', { shouldDirty: true });
         }
     };
 
@@ -294,6 +315,60 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                 </div>
             </div>
 
+            {/* Role Term Section */}
+            <div className="space-y-4">
+                <h3 className="text-sm font-medium">Role Term</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="roleTermSingular">Singular Form</Label>
+                        <Controller
+                            name="roleTermSingular"
+                            control={control}
+                            render={({ field }) => (
+                                <Select
+                                    {...field}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (value === 'custom') {
+                                            setShowRoleCustom(true);
+                                            field.onChange('');
+                                        } else {
+                                            setShowRoleCustom(false);
+                                            field.onChange(value);
+                                        }
+                                    }}
+                                >
+                                    {ROLE_PRESETS.map((preset) => (
+                                        <option key={preset.value} value={preset.value}>
+                                            {preset.label}
+                                        </option>
+                                    ))}
+                                </Select>
+                            )}
+                        />
+                        {showRoleCustom && (
+                            <Input
+                                {...register('roleTermSingular')}
+                                placeholder="Enter custom singular term"
+                            />
+                        )}
+                        {errors.roleTermSingular && (
+                            <p className="text-sm text-red-500">{errors.roleTermSingular.message}</p>
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="roleTermPlural">Plural Form</Label>
+                        <Input
+                            {...register('roleTermPlural')}
+                            placeholder="e.g., Roles, Positions, Levels"
+                        />
+                        {errors.roleTermPlural && (
+                            <p className="text-sm text-red-500">{errors.roleTermPlural.message}</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {/* Preview Section */}
             <div className="border border-border rounded-lg p-4 bg-muted/50">
                 <h3 className="text-sm font-medium mb-3">Preview</h3>
@@ -305,6 +380,10 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                     <p>
                         <span className="text-muted-foreground">Example heading:</span>{' '}
                         <span className="font-medium">{eventSingular} Details</span>
+                    </p>
+                    <p>
+                        <span className="text-muted-foreground">User form label:</span>{' '}
+                        <span className="font-medium">{roleSingular}</span>
                     </p>
                     <p>
                         <span className="text-muted-foreground">ID formats:</span>{' '}

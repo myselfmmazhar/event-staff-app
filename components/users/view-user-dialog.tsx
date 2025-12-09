@@ -14,6 +14,7 @@ import { CheckIcon, XIcon, EditIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
 import { format } from 'date-fns';
+import { useRoleTerm } from '@/lib/hooks/use-terminology';
 
 interface ViewUserDialogProps {
   userId: string | null;
@@ -44,6 +45,7 @@ export function ViewUserDialog({
   onClose,
   onEdit,
 }: ViewUserDialogProps) {
+  const roleTerm = useRoleTerm();
   const { data: user, isLoading, error } = trpc.user.getById.useQuery(
     { id: userId || '' },
     { enabled: !!userId && open }
@@ -149,7 +151,7 @@ export function ViewUserDialog({
                   <span className="font-mono text-xs text-foreground">{user.id}</span>
                 </div>
                 <div className="grid grid-cols-[140px_1fr] gap-2 text-sm">
-                  <span className="text-muted-foreground">Role:</span>
+                  <span className="text-muted-foreground">{roleTerm.singular}:</span>
                   <span className="font-medium text-foreground">{ROLE_LABELS[user.role]}</span>
                 </div>
                 <div className="grid grid-cols-[140px_1fr] gap-2 text-sm">

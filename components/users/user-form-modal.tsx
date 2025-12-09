@@ -22,6 +22,7 @@ import { PasswordStrength } from '@/components/ui/password-strength';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { FieldErrors } from '@/lib/utils/error-messages';
 import { passwordValidation, emailValidation, phoneValidation } from '@/lib/utils/validation';
+import { useRoleTerm } from '@/lib/hooks/use-terminology';
 
 // Extended schema for create mode (with password confirmation)
 const createFormSchema = UserSchema.create.extend({
@@ -143,6 +144,7 @@ export function UserFormModal({
 }: UserFormModalProps) {
   const isEdit = !!user;
   const [password, setPassword] = useState('');
+  const roleTerm = useRoleTerm();
 
   const {
     register,
@@ -337,7 +339,7 @@ export function UserFormModal({
             {/* Role */}
             <div>
               <Label htmlFor="role" required>
-                Role
+                {roleTerm.singular}
               </Label>
               <select
                 id="role"

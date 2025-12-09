@@ -29,6 +29,8 @@ export const updateTerminologySchema = z.object({
     staffTermPlural: terminologyTermSchema,
     eventTermSingular: terminologyTermSchema,
     eventTermPlural: terminologyTermSchema,
+    roleTermSingular: terminologyTermSchema,
+    roleTermPlural: terminologyTermSchema,
 });
 
 /**

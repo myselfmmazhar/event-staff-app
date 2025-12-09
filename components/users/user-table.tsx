@@ -6,6 +6,7 @@ import { EditIcon, TrashIcon } from '@/components/ui/icons';
 import { UserRole } from '@prisma/client';
 import { format } from 'date-fns';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
+import { useRoleTerm } from '@/lib/hooks/use-terminology';
 
 interface User {
   id: string;
@@ -59,6 +60,8 @@ export function UserTable({
   onToggleStatus,
   onSort
 }: UserTableProps) {
+  const roleTerm = useRoleTerm();
+
   const columns: ColumnDef<User>[] = [
     {
       key: 'firstName',
@@ -80,7 +83,7 @@ export function UserTable({
     },
     {
       key: 'role',
-      label: 'Role',
+      label: roleTerm.singular,
       sortable: true,
       className: 'py-4 px-4 text-center',
       headerClassName: 'text-center py-3 px-4',

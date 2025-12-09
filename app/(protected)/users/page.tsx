@@ -18,6 +18,7 @@ import type { CreateUserInput, UpdateUserInput } from '@/lib/schemas/user.schema
 import { useUsersFilters } from '@/store/users-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
+import { useRoleTerm } from '@/lib/hooks/use-terminology';
 
 type User = {
   id: string;
@@ -37,6 +38,7 @@ export default function UsersPage() {
 
   // Use filters store
   const filters = useUsersFilters();
+  const roleTerm = useRoleTerm();
 
   // Use CRUD mutations hook
   const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
@@ -207,7 +209,7 @@ export default function UsersPage() {
   if (filters.selectedRole !== 'ALL') {
     activeFilters.push({
       key: 'role',
-      label: 'Role',
+      label: roleTerm.singular,
       value: ROLE_LABELS[filters.selectedRole],
       onRemove: () => filters.setSelectedRole('ALL'),
     });

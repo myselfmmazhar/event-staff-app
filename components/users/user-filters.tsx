@@ -6,9 +6,9 @@ import { DateRangePicker } from '@/components/ui/date-picker';
 import { FilterIcon } from '@/components/ui/icons';
 import { useUsersFilters } from '@/store/users-filters.store';
 import { UserRole } from '@prisma/client';
+import { useRoleTerm } from '@/lib/hooks/use-terminology';
 
-const ROLES: Array<{ value: UserRole | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'All Roles' },
+const ROLE_VALUES: Array<{ value: UserRole | 'ALL'; label: string }> = [
   { value: 'SUPER_ADMIN', label: 'Super Admin' },
   { value: 'ADMIN', label: 'Admin' },
   { value: 'MANAGER', label: 'Manager' },
@@ -34,6 +34,7 @@ const PHONE_STATUS: Array<{ value: boolean | 'ALL'; label: string }> = [
 ];
 
 export function UserFilters() {
+  const roleTerm = useRoleTerm();
   const {
     selectedRole,
     selectedStatus,
@@ -49,6 +50,12 @@ export function UserFilters() {
     setCreatedTo,
     resetFilters,
   } = useUsersFilters();
+
+  // Build ROLES array with dynamic "All Roles" label
+  const ROLES = [
+    { value: 'ALL' as const, label: `All ${roleTerm.plural}` },
+    ...ROLE_VALUES,
+  ];
 
   const hasActiveFilters =
     selectedRole !== 'ALL' ||
@@ -80,7 +87,7 @@ export function UserFilters() {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
-            Role
+            {roleTerm.singular}
           </label>
           <div className="flex flex-wrap gap-2">
             {ROLES.map((role) => (

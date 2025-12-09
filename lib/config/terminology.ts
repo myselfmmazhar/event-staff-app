@@ -19,6 +19,7 @@ export interface TermConfig {
 export interface TerminologyConfig {
   staff: TermConfig;
   event: TermConfig;
+  role: TermConfig;
   staffIdPrefix: string;   // "STF" or "TAL" (auto-derived)
   eventIdPrefix: string;   // "EVT" or "TSK" (auto-derived)
 }
@@ -76,10 +77,13 @@ export function buildTerminologyConfig(data: {
   staffTermPlural: string;
   eventTermSingular: string;
   eventTermPlural: string;
+  roleTermSingular?: string;
+  roleTermPlural?: string;
 }): TerminologyConfig {
   return {
     staff: buildTermConfig(data.staffTermSingular, data.staffTermPlural),
     event: buildTermConfig(data.eventTermSingular, data.eventTermPlural),
+    role: buildTermConfig(data.roleTermSingular || 'Role', data.roleTermPlural || 'Roles'),
     staffIdPrefix: deriveIdPrefix(data.staffTermSingular),
     eventIdPrefix: deriveIdPrefix(data.eventTermSingular),
   };
@@ -87,19 +91,23 @@ export function buildTerminologyConfig(data: {
 
 /**
  * Get default terminology from environment variables
- * Falls back to "Staff" and "Event" if not configured
+ * Falls back to "Staff", "Event", and "Role" if not configured
  */
 export function getDefaultTerminology(): TerminologyConfig {
   const staffSingular = process.env.NEXT_PUBLIC_TERM_STAFF_SINGULAR || 'Staff';
   const staffPlural = process.env.NEXT_PUBLIC_TERM_STAFF_PLURAL || 'Staff';
   const eventSingular = process.env.NEXT_PUBLIC_TERM_EVENT_SINGULAR || 'Event';
   const eventPlural = process.env.NEXT_PUBLIC_TERM_EVENT_PLURAL || 'Events';
+  const roleSingular = process.env.NEXT_PUBLIC_TERM_ROLE_SINGULAR || 'Role';
+  const rolePlural = process.env.NEXT_PUBLIC_TERM_ROLE_PLURAL || 'Roles';
 
   return buildTerminologyConfig({
     staffTermSingular: staffSingular,
     staffTermPlural: staffPlural,
     eventTermSingular: eventSingular,
     eventTermPlural: eventPlural,
+    roleTermSingular: roleSingular,
+    roleTermPlural: rolePlural,
   });
 }
 
@@ -167,4 +175,15 @@ export const EVENT_TERM_OPTIONS = [
   { value: 'Function', label: 'Function' },
   { value: 'Experience', label: 'Experience' },
   { value: 'Gig', label: 'Gig' },
+] as const;
+
+/**
+ * Role term preset options for dropdown
+ */
+export const ROLE_TERM_OPTIONS = [
+  { value: 'Role', label: 'Role' },
+  { value: 'Position', label: 'Position' },
+  { value: 'Access Level', label: 'Access Level' },
+  { value: 'Permission', label: 'Permission' },
+  { value: 'Level', label: 'Level' },
 ] as const;

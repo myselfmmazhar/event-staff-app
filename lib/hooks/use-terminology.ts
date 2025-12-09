@@ -127,6 +127,37 @@ export function useEventIdPrefix(): string {
 }
 
 /**
+ * Convenience hook to access only role terminology
+ *
+ * Returns role term configuration with all case variations:
+ * - singular: "Role" or "Position"
+ * - plural: "Roles" or "Positions"
+ * - lower: "role" or "position"
+ * - lowerPlural: "roles" or "positions"
+ * - upper: "ROLE" or "POSITION"
+ * - upperPlural: "ROLES" or "POSITIONS"
+ * - route: "roles" or "positions" (for URLs)
+ *
+ * @example
+ * ```tsx
+ * function UserForm() {
+ *   const roleTerm = useRoleTerm();
+ *
+ *   return (
+ *     <div>
+ *       <Label>{roleTerm.singular}</Label>
+ *       <p>Select a {roleTerm.lower}</p>
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useRoleTerm(): TermConfig {
+  const { terminology } = useTerminologyContext();
+  return terminology.role;
+}
+
+/**
  * Hook to get the complete terminology config object
  * Useful for passing to utility functions or export handlers
  *
