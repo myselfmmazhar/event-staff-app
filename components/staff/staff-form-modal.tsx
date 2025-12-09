@@ -202,7 +202,7 @@ export function StaffFormModal({
                             </div>
 
                             <div>
-                                <Label htmlFor="staffType" required>Staff Type</Label>
+                                <Label htmlFor="staffType" required>{terminology.staff.singular} Type</Label>
                                 <Controller
                                     name="staffType"
                                     control={control}
@@ -222,7 +222,7 @@ export function StaffFormModal({
 
                     {/* Staff Information */}
                     <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Staff Information</h3>
+                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">{terminology.staff.singular} Information</h3>
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -560,12 +560,12 @@ export function StaffFormModal({
                                     {...register('experience')}
                                     disabled={isSubmitting}
                                     rows={3}
-                                    placeholder="Staff experience and background"
+                                    placeholder={`${terminology.staff.singular} experience and background`}
                                 />
                             </div>
 
                             <div>
-                                <Label htmlFor="staffRating">Staff Rating</Label>
+                                <Label htmlFor="staffRating">{terminology.staff.singular} Rating</Label>
                                 <Controller
                                     name="staffRating"
                                     control={control}
@@ -587,7 +587,7 @@ export function StaffFormModal({
                                     {...register('internalNotes')}
                                     disabled={isSubmitting}
                                     rows={3}
-                                    placeholder="Internal notes (not visible to staff)"
+                                    placeholder={`Internal notes (not visible to ${terminology.staff.lower})`}
                                 />
                             </div>
                         </div>

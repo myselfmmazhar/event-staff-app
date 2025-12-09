@@ -122,7 +122,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
                         variant="ghost"
                         size="sm"
                         onClick={() => onEdit(member)}
-                        title="Edit staff"
+                        title={`Edit ${staffTerm.lower}`}
                     >
                         <Edit2Icon className="h-4 w-4" />
                     </Button>
@@ -130,7 +130,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
                         variant="ghost"
                         size="sm"
                         onClick={() => onDelete(member)}
-                        title="Delete staff"
+                        title={`Delete ${staffTerm.lower}`}
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                         <Trash2Icon className="h-4 w-4" />
