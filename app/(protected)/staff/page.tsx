@@ -1,9 +1,8 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { Button, LinkButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PlusIcon, UsersIcon } from 'lucide-react';
-import Link from 'next/link';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { StaffFormModal } from '@/components/staff/staff-form-modal';
 import { StaffTable } from '@/components/staff/staff-table';
@@ -286,12 +285,10 @@ export default function StaffPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Cleanup Roster Button */}
-                    <Button variant="outline" asChild>
-                        <Link href="/staff/cleanup-roster" className="flex items-center whitespace-nowrap">
-                            <UsersIcon className="h-4 w-4 mr-2" />
-                            Cleanup Roster
-                        </Link>
-                    </Button>
+                    <LinkButton href="/staff/cleanup-roster" variant="outline">
+                        <UsersIcon className="h-4 w-4 mr-2" />
+                        Cleanup Roster
+                    </LinkButton>
 
                     {/* Add Staff Button */}
                     <Button onClick={handleCreate}>

@@ -1,14 +1,15 @@
 import { forwardRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 type Variant = 'default' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'premium'
 type Size = 'sm' | 'md' | 'lg'
 
-const base =
+export const buttonBase =
   'inline-flex flex-row items-center justify-center gap-0.5 font-semibold transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed relative overflow-hidden group active:scale-[0.97] will-change-transform'
 
-const variants: Record<Variant, string> = {
+export const buttonVariants: Record<Variant, string> = {
   default:
     'bg-primary text-primary-foreground shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/95 hover:-translate-y-0.5 hover:scale-[1.02] after:absolute after:inset-0 after:bg-gradient-to-br after:from-white/20 after:via-transparent after:to-transparent after:opacity-0 hover:after:opacity-100 after:transition-opacity after:duration-200',
   premium:
@@ -23,7 +24,7 @@ const variants: Record<Variant, string> = {
     'bg-destructive text-destructive-foreground shadow-md shadow-destructive/25 hover:shadow-lg hover:shadow-destructive/30 hover:bg-destructive/95 hover:-translate-y-0.5 hover:scale-[1.02] after:absolute after:inset-0 after:bg-gradient-to-br after:from-white/20 after:via-transparent after:to-transparent after:opacity-0 hover:after:opacity-100 after:transition-opacity after:duration-200',
 }
 
-const sizes: Record<Size, string> = {
+export const buttonSizes: Record<Size, string> = {
   sm: 'h-9 px-2 text-xs font-semibold tracking-wide rounded-lg',
   md: 'h-11 px-3 text-sm font-semibold rounded-xl',
   lg: 'h-14 px-4 text-base font-bold rounded-2xl',
@@ -39,7 +40,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'md', isLoading, children, disabled, ...props }, ref) => (
     <button
       ref={ref}
-      className={cn(base, variants[variant], sizes[size], className)}
+      className={cn(buttonBase, buttonVariants[variant], buttonSizes[size], className)}
       disabled={disabled || isLoading}
       {...props}
     >
@@ -75,3 +76,23 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 )
 
 Button.displayName = 'Button'
+
+// LinkButton component for navigation with button styling
+export interface LinkButtonProps {
+  href: string
+  variant?: Variant
+  size?: Size
+  className?: string
+  children: React.ReactNode
+}
+
+export function LinkButton({ href, variant = 'default', size = 'md', className, children }: LinkButtonProps) {
+  return (
+    <Link
+      href={href}
+      className={cn(buttonBase, buttonVariants[variant], buttonSizes[size], className)}
+    >
+      <span className="relative z-10 inline-flex items-center gap-0.5">{children}</span>
+    </Link>
+  )
+}
