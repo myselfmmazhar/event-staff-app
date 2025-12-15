@@ -420,6 +420,183 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
 }
 
 /**
+ * Check if an event is an all-day event
+ * All-day: only events without startTime
+ * Multi-day events with times are displayed in the time grid spanning multiple days
+ */
+export function isAllDayEvent(event: CalendarEvent): boolean {
+  return !event.startTime;
+}
+
+/**
+ * Separate events into all-day and timed categories
+ */
+export function categorizeEvents(events: CalendarEvent[]): {
+  allDayEvents: CalendarEvent[];
+  timedEvents: CalendarEvent[];
+} {
+  const allDayEvents: CalendarEvent[] = [];
+  const timedEvents: CalendarEvent[] = [];
+
+  events.forEach((event) => {
+    if (isAllDayEvent(event)) {
+      allDayEvents.push(event);
+    } else {
+      timedEvents.push(event);
+    }
+  });
+
+  return { allDayEvents, timedEvents };
+}
+
+/**
+ * Parse time string to minutes from midnight
+ * "14:30" -> 870 (14*60 + 30)
+ */
+export function timeToMinutes(time: string | null): number {
+  if (!time) return 0;
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * Calculate event duration in minutes
+ * For events without end time, default to 1 hour
+ */
+export function getEventDuration(event: CalendarEvent): number {
+  const startMinutes = timeToMinutes(event.startTime);
+  const endMinutes = event.endTime ? timeToMinutes(event.endTime) : startMinutes + 60;
+  return Math.max(endMinutes - startMinutes, 30); // Minimum 30 minutes for visibility
+}
+
+export interface TimedEventLayout {
+  event: CalendarEvent;
+  top: number; // percentage from top (0-100)
+  height: number; // percentage height
+  left: number; // percentage from left of column (0-100)
+  width: number; // percentage width
+  isFirstDay: boolean; // is this the first day of the event
+  isLastDay: boolean; // is this the last day of the event
+  isMiddleDay: boolean; // is this a middle day (not first, not last)
+}
+
+/**
+ * Calculate timed event positions for a single day
+ * Handles overlapping events by splitting horizontal space
+ * Multi-day events appear on all days they span
+ */
+export function getTimedEventLayout(
+  events: CalendarEvent[],
+  day: Date
+): TimedEventLayout[] {
+  const dayStart = startOfDay(day);
+  const dayEnd = endOfDay(day);
+
+  // Filter events that occur on this day (including multi-day events)
+  const dayEvents = events.filter((event) => {
+    if (!event.startTime) return false; // Skip all-day events
+
+    const eventStart = startOfDay(new Date(event.startDate));
+    const eventEnd = endOfDay(new Date(event.endDate));
+
+    // Event occurs on this day if it overlaps
+    return eventStart <= dayEnd && eventEnd >= dayStart;
+  });
+
+  if (dayEvents.length === 0) return [];
+
+  // Sort by start time (use event's actual start time)
+  dayEvents.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+  const MINUTES_PER_DAY = 24 * 60;
+
+  // Track columns for overlapping events
+  interface EventSlot {
+    event: CalendarEvent;
+    startMinutes: number;
+    endMinutes: number;
+    column: number;
+    isFirstDay: boolean;
+    isLastDay: boolean;
+    isMiddleDay: boolean;
+  }
+
+  const slots: EventSlot[] = [];
+  const columns: number[] = []; // Track end time of each column
+
+  dayEvents.forEach((event) => {
+    const eventStartDate = startOfDay(new Date(event.startDate));
+    const eventEndDate = startOfDay(new Date(event.endDate));
+
+    const isFirstDay = isSameDay(dayStart, eventStartDate);
+    const isLastDay = isSameDay(dayStart, eventEndDate);
+    const isMiddleDay = !isFirstDay && !isLastDay;
+
+    // For first day: start at event's start time, end at midnight (100%)
+    // For last day: start at midnight (0%), end at event's end time
+    // For middle days: show full day (0% to 100%)
+    let startMinutes: number;
+    let endMinutes: number;
+
+    if (isFirstDay && isLastDay) {
+      // Single day event
+      startMinutes = timeToMinutes(event.startTime);
+      endMinutes = event.endTime ? timeToMinutes(event.endTime) : startMinutes + 60;
+    } else if (isFirstDay) {
+      // First day of multi-day: start time to end of day
+      startMinutes = timeToMinutes(event.startTime);
+      endMinutes = MINUTES_PER_DAY; // End of day
+    } else if (isLastDay) {
+      // Last day of multi-day: start of day to end time
+      startMinutes = 0;
+      endMinutes = event.endTime ? timeToMinutes(event.endTime) : MINUTES_PER_DAY;
+    } else {
+      // Middle day: full day
+      startMinutes = 0;
+      endMinutes = MINUTES_PER_DAY;
+    }
+
+    // Ensure minimum duration for visibility
+    const duration = Math.max(endMinutes - startMinutes, 30);
+    endMinutes = startMinutes + duration;
+
+    // Find first available column (where previous event ended before this one starts)
+    let column = 0;
+    while (column < columns.length && columns[column] > startMinutes) {
+      column++;
+    }
+
+    // Assign to column and update its end time
+    columns[column] = endMinutes;
+
+    slots.push({
+      event,
+      startMinutes,
+      endMinutes,
+      column,
+      isFirstDay,
+      isLastDay,
+      isMiddleDay,
+    });
+  });
+
+  // Calculate total columns needed for width calculation
+  const totalColumns = columns.length;
+
+  // Convert to layout positions
+  return slots.map((slot) => ({
+    event: slot.event,
+    top: (slot.startMinutes / MINUTES_PER_DAY) * 100,
+    height: ((slot.endMinutes - slot.startMinutes) / MINUTES_PER_DAY) * 100,
+    left: (slot.column / totalColumns) * 100,
+    width: 100 / totalColumns,
+    isFirstDay: slot.isFirstDay,
+    isLastDay: slot.isLastDay,
+    isMiddleDay: slot.isMiddleDay,
+  }));
+}
+
+/**
  * Calculate layout for all events across entire month
  * Ensures consistent row slots when events span multiple weeks
  */

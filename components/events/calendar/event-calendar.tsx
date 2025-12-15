@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { CalendarHeader } from './calendar-header';
 import { CalendarMonthView } from './calendar-month-view';
+import { CalendarWeekView } from './calendar-week-view';
 import { CalendarEventTooltip } from './calendar-event-tooltip';
 import { ViewMode, CalendarEvent } from '@/lib/utils/calendar-helpers';
 import { trpc } from '@/lib/client/trpc';
@@ -136,12 +137,15 @@ export function EventCalendar({ onEventClick }: EventCalendarProps) {
             onEventLeave={handleEventLeave}
           />
         );
-      // Week, Day, and List views will be implemented later
       case 'week':
         return (
-          <div className="mt-4 p-8 text-center text-muted-foreground">
-            Week view coming soon...
-          </div>
+          <CalendarWeekView
+            events={events}
+            currentDate={currentDate}
+            onEventClick={onEventClick}
+            onEventHover={handleEventHover}
+            onEventLeave={handleEventLeave}
+          />
         );
       case 'day':
         return (
