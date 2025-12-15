@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { CalendarHeader } from './calendar-header';
 import { CalendarMonthView } from './calendar-month-view';
 import { CalendarWeekView } from './calendar-week-view';
+import { CalendarDayView } from './calendar-day-view';
 import { CalendarEventTooltip } from './calendar-event-tooltip';
 import { ViewMode, CalendarEvent } from '@/lib/utils/calendar-helpers';
 import { trpc } from '@/lib/client/trpc';
@@ -149,9 +150,13 @@ export function EventCalendar({ onEventClick }: EventCalendarProps) {
         );
       case 'day':
         return (
-          <div className="mt-4 p-8 text-center text-muted-foreground">
-            Day view coming soon...
-          </div>
+          <CalendarDayView
+            events={events}
+            currentDate={currentDate}
+            onEventClick={onEventClick}
+            onEventHover={handleEventHover}
+            onEventLeave={handleEventLeave}
+          />
         );
       case 'list':
         return (
