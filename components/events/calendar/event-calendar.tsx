@@ -6,6 +6,7 @@ import { CalendarHeader } from './calendar-header';
 import { CalendarMonthView } from './calendar-month-view';
 import { CalendarWeekView } from './calendar-week-view';
 import { CalendarDayView } from './calendar-day-view';
+import { CalendarListView } from './calendar-list-view';
 import { CalendarEventTooltip } from './calendar-event-tooltip';
 import { ViewMode, CalendarEvent } from '@/lib/utils/calendar-helpers';
 import { trpc } from '@/lib/client/trpc';
@@ -160,9 +161,11 @@ export function EventCalendar({ onEventClick }: EventCalendarProps) {
         );
       case 'list':
         return (
-          <div className="mt-4 p-8 text-center text-muted-foreground">
-            List view coming soon...
-          </div>
+          <CalendarListView
+            events={events}
+            currentDate={currentDate}
+            onEventClick={onEventClick}
+          />
         );
       default:
         return null;
