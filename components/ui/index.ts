@@ -6,6 +6,7 @@ export * from './label'
 export * from './badge'
 export * from './dialog'
 export * from './date-picker'
+export * from './tabs'
 
 // Toast notifications
 export { Toast } from './toast'

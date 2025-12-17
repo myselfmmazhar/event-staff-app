@@ -10,10 +10,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckIcon, XIcon, EditIcon } from '@/components/ui/icons';
+import { CheckIcon, XIcon, EditIcon, UsersIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 
 interface ViewEventDialogProps {
@@ -47,6 +48,7 @@ export function ViewEventDialog({
   onClose,
   onEdit,
 }: ViewEventDialogProps) {
+  const router = useRouter();
   const { terminology } = useTerminology();
   const { data: event, isLoading, error } = trpc.event.getById.useQuery(
     { id: eventId || '' },
@@ -236,6 +238,18 @@ export function ViewEventDialog({
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
+        {event && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              onClose();
+              router.push(`/events/${event.id}/call-times`);
+            }}
+          >
+            <UsersIcon className="h-4 w-4 mr-2" />
+            Manage Call Times
+          </Button>
+        )}
         {event && onEdit && (
           <Button onClick={handleEdit}>
             <EditIcon className="h-4 w-4 mr-2" />

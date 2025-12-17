@@ -63,6 +63,23 @@ enum StaffRating {
   C
 }
 
+// Rate Type Enum (for pay/bill rates)
+enum RateType {
+  PER_HOUR
+  PER_SHIFT
+  PER_DAY
+  PER_EVENT
+}
+
+// Call Time Invitation Status Enum
+enum CallTimeInvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  WAITLISTED
+}
+
 
 // Main User Model (compatible with existing TypeORM schema)
 model User {
@@ -135,6 +152,9 @@ model Event {
   // Client Relationship (optional)
   clientId         String?     @db.Uuid
   client           Client?     @relation("EventClient", fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Call Times
+  callTimes        CallTime[]  @relation("EventCallTimes")
 
   // Timestamps
   createdAt        DateTime    @default(now()) @db.Timestamp(6)
@@ -301,6 +321,9 @@ model Staff {
   // Many-to-Many Relations
   positions             StaffPositionAssignment[]
 
+  // Call Time Invitations
+  callTimeInvitations   CallTimeInvitation[] @relation("StaffCallTimeInvitations")
+
   // Timestamps
   createdAt             DateTime           @default(now()) @db.Timestamp(6)
   updatedAt             DateTime           @updatedAt @db.Timestamp(6)
@@ -320,12 +343,13 @@ model StaffPosition {
   name        String                    @unique
   description String?
   isActive    Boolean                   @default(true)
-  
+
   staff       StaffPositionAssignment[]
-  
+  callTimes   CallTime[]                @relation("CallTimePosition")
+
   createdAt   DateTime                  @default(now()) @db.Timestamp(6)
   updatedAt   DateTime                  @updatedAt @db.Timestamp(6)
-  
+
   @@map("staff_positions")
 }
 
@@ -366,5 +390,85 @@ model OrganizationSettings {
   updatedAt            DateTime @updatedAt @db.Timestamp(6)
 
   @@map("organization_settings")
+}
+
+// Call Time Model (staffing requirements for events)
+model CallTime {
+  id                    String        @id @default(uuid()) @db.Uuid
+  callTimeId            String        @unique // Human-readable ID (CT-YYYY-NNN)
+
+  // Position Requirement
+  positionId            String        @db.Uuid
+  position              StaffPosition @relation("CallTimePosition", fields: [positionId], references: [id], onDelete: Restrict)
+
+  // Staffing Requirements
+  numberOfStaffRequired Int           @default(1)
+  skillLevel            SkillLevel    @default(BEGINNER)
+
+  // Date and Time (may be TBD)
+  startDate             DateTime      @db.Date
+  startTime             String?       // "14:30" or null for TBD
+  endDate               DateTime      @db.Date
+  endTime               String?       // "18:00" or null for TBD
+
+  // Pay and Bill Rates
+  payRate               Decimal       @db.Decimal(10, 2)
+  payRateType           RateType
+  billRate              Decimal       @db.Decimal(10, 2)
+  billRateType          RateType
+
+  // Notes
+  notes                 String?       @db.Text
+
+  // Event Relationship
+  eventId               String        @db.Uuid
+  event                 Event         @relation("EventCallTimes", fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Invitations
+  invitations           CallTimeInvitation[]
+
+  // Timestamps
+  createdAt             DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime      @updatedAt @db.Timestamp(6)
+
+  @@index([eventId])
+  @@index([positionId])
+  @@index([startDate])
+  @@index([callTimeId])
+  @@map("call_times")
+}
+
+// Call Time Invitation Model (staff assignments to call times)
+model CallTimeInvitation {
+  id                    String                   @id @default(uuid()) @db.Uuid
+
+  // Call Time Relationship
+  callTimeId            String                   @db.Uuid
+  callTime              CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
+
+  // Staff Relationship
+  staffId               String                   @db.Uuid
+  staff                 Staff                    @relation("StaffCallTimeInvitations", fields: [staffId], references: [id], onDelete: Cascade)
+
+  // Invitation Status
+  status                CallTimeInvitationStatus @default(PENDING)
+
+  // Response tracking
+  respondedAt           DateTime?                @db.Timestamp(6)
+  declineReason         String?                  @db.Text
+
+  // Confirmation tracking (for accepted invitations)
+  isConfirmed           Boolean                  @default(false) // true if one of the first N to accept
+  confirmedAt           DateTime?                @db.Timestamp(6)
+
+  // Timestamps
+  createdAt             DateTime                 @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime                 @updatedAt @db.Timestamp(6)
+
+  @@unique([callTimeId, staffId])
+  @@index([staffId])
+  @@index([callTimeId])
+  @@index([status])
+  @@map("call_time_invitations")
 }
 

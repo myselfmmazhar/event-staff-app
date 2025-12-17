@@ -2,9 +2,10 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { EyeIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
+import { EyeIcon, EditIcon, TrashIcon, UsersIcon } from '@/components/ui/icons';
 import { EventStatus } from '@prisma/client';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 
@@ -69,6 +70,7 @@ export function EventTable({
   onDelete,
   onSort,
 }: EventTableProps) {
+  const router = useRouter();
   const { terminology } = useTerminology();
 
   const formatDateTime = (date: Date, time?: string | null, timezone?: string) => {
@@ -154,6 +156,14 @@ export function EventTable({
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => router.push(`/events/${event.id}/call-times`)}
+            title="Manage call times"
+          >
+            <UsersIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onView(event)}
             title={`View ${terminology.event.lower} details`}
           >
@@ -220,6 +230,15 @@ export function EventTable({
       </div>
 
       <div className="flex items-center gap-2 pt-2 border-t border-border">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push(`/events/${event.id}/call-times`)}
+          className="flex-1"
+        >
+          <UsersIcon className="h-4 w-4 mr-1" />
+          Staff
+        </Button>
         <Button
           variant="outline"
           size="sm"

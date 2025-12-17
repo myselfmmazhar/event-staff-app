@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
-type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'primary' | 'secondary'
+type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'primary' | 'secondary' | 'outline' | 'destructive'
 type Size = 'sm' | 'md' | 'lg'
 
 const variants: Record<Variant, string> = {
@@ -21,6 +21,10 @@ const variants: Record<Variant, string> = {
     'bg-primary/10 text-primary border-primary/20',
   secondary:
     'bg-secondary/10 text-secondary border-secondary/20',
+  outline:
+    'bg-transparent text-foreground border-border',
+  destructive:
+    'bg-destructive/10 text-destructive border-destructive/20',
 }
 
 const sizes: Record<Size, string> = {
