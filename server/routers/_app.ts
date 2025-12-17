@@ -6,6 +6,7 @@ import { eventRouter } from "./event.router";
 import { clientRouter } from "./client.router";
 import { staffRouter } from "./staff.router";
 import { settingsRouter } from "./settings.router";
+import { callTimeRouter } from "./call-time.router";
 
 /**
  * Main application router
@@ -19,6 +20,7 @@ export const appRouter = router({
   clients: clientRouter,
   staff: staffRouter,
   settings: settingsRouter,
+  callTime: callTimeRouter,
 });
 
 export type AppRouter = typeof appRouter;

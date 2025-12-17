@@ -69,6 +69,13 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       featureFlag: 'dashboard',
     },
     {
+      label: 'My Schedule',
+      href: '/my-schedule',
+      icon: CalendarIcon,
+      requiresAdmin: false,
+      staffOnly: true, // Only show for STAFF users
+    },
+    {
       label: 'My Profile',
       href: '/profile',
       icon: UserIcon,
@@ -173,9 +180,9 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   // Filter navigation items based on user role only (show all features regardless of status)
   const visibleNavItems = navItems
     .filter((item) => {
-      // STAFF users only see Dashboard and Profile
+      // STAFF users only see Dashboard, My Schedule, and Profile
       if (user?.role === 'STAFF') {
-        return item.label === 'Dashboard' || item.label === 'My Profile';
+        return item.label === 'Dashboard' || item.label === 'My Schedule' || item.label === 'My Profile';
       }
 
       // Hide staffOnly items from non-staff users (they access via header)
