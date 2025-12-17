@@ -654,13 +654,19 @@ export class StaffService {
         return await this.prisma.staff.update({
             where: { id: staff.id },
             data: {
+                // Personal Information
+                firstName: data.firstName,
+                lastName: data.lastName,
                 phone: data.phone,
+                dateOfBirth: data.dateOfBirth,
+                // Address
                 streetAddress: data.streetAddress,
                 aptSuiteUnit: data.aptSuiteUnit,
                 city: data.city,
                 state: data.state,
                 zipCode: data.zipCode,
                 country: data.country,
+                // Availability
                 availabilityStatus: data.availabilityStatus,
                 timeOffStart: data.timeOffStart,
                 timeOffEnd: data.timeOffEnd,

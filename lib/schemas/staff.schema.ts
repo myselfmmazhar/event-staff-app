@@ -299,6 +299,19 @@ export class StaffSchema {
      * Fields staff can update about themselves
      */
     static selfUpdate = z.object({
+        // Personal Information (editable by staff)
+        firstName: z
+            .string()
+            .min(1, "First name is required")
+            .max(50, "First name must be 50 characters or less")
+            .transform((val) => val.trim())
+            .optional(),
+        lastName: z
+            .string()
+            .min(1, "Last name is required")
+            .max(50, "Last name must be 50 characters or less")
+            .transform((val) => val.trim())
+            .optional(),
         phone: z
             .string()
             .refine(
@@ -307,6 +320,20 @@ export class StaffSchema {
             )
             .transform((val) => val?.trim())
             .optional(),
+        dateOfBirth: z
+            .date()
+            .refine(
+                (date) => {
+                    if (!date) return true;
+                    const eighteenYearsAgo = new Date();
+                    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+                    return date <= eighteenYearsAgo;
+                },
+                { message: "Must be at least 18 years old" }
+            )
+            .optional()
+            .nullable(),
+        // Address Information
         streetAddress: z
             .string()
             .max(300, "Street address must be 300 characters or less")
@@ -337,6 +364,7 @@ export class StaffSchema {
             .max(100, "Country must be 100 characters or less")
             .transform((val) => val?.trim())
             .optional(),
+        // Availability
         availabilityStatus: z.nativeEnum(AvailabilityStatus).optional(),
         timeOffStart: z.date().optional().nullable(),
         timeOffEnd: z.date().optional().nullable(),
