@@ -6,6 +6,7 @@ import {
   PendingRequestsList,
   UpcomingEventsList,
   PastEventsList,
+  DeclinedInvitationsList,
 } from '@/components/staff-dashboard';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
@@ -95,6 +96,8 @@ export default function MySchedulePage() {
   const pendingCount = data?.pending.length || 0;
   const upcomingCount = data?.accepted.length || 0;
   const pastCount = data?.past.length || 0;
+  const declinedCount = data?.declined.length || 0;
+  const historyCount = pastCount + declinedCount;
 
   return (
     <div className="p-6 space-y-6">
@@ -169,6 +172,11 @@ export default function MySchedulePage() {
           <TabsTrigger value="history" className="flex items-center gap-2">
             <CheckCircleIcon className="h-4 w-4" />
             History
+            {historyCount > 0 && (
+              <span className="ml-1 px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full">
+                {historyCount}
+              </span>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -185,7 +193,40 @@ export default function MySchedulePage() {
         </TabsContent>
 
         <TabsContent value="history" className="mt-6">
-          <PastEventsList invitations={data?.past || []} />
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-xl font-semibold">History</h3>
+              <p className="text-sm text-muted-foreground">
+                Review your completed assignments or revisit requests you declined.
+              </p>
+            </div>
+            <Tabs defaultValue={pastCount > 0 ? 'completed' : 'declined'} className="space-y-4">
+              <TabsList className="w-full grid grid-cols-2">
+                <TabsTrigger value="completed" className="flex items-center justify-center gap-2">
+                  Completed
+                  {pastCount > 0 && (
+                    <span className="ml-1 px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full">
+                      {pastCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="declined" className="flex items-center justify-center gap-2">
+                  Declined
+                  {declinedCount > 0 && (
+                    <span className="ml-1 px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full">
+                      {declinedCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="completed">
+                <PastEventsList invitations={data?.past || []} />
+              </TabsContent>
+              <TabsContent value="declined">
+                <DeclinedInvitationsList invitations={data?.declined || []} />
+              </TabsContent>
+            </Tabs>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

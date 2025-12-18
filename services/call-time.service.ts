@@ -606,7 +606,7 @@ export class CallTimeService {
     });
 
     if (!staff) {
-      return { pending: [], accepted: [], past: [] };
+      return { pending: [], accepted: [], past: [], declined: [] };
     }
 
     const now = new Date();
@@ -652,8 +652,9 @@ export class CallTimeService {
         inv.isConfirmed &&
         inv.callTime.endDate < now
     );
+    const declined = invitations.filter((inv) => inv.status === 'DECLINED');
 
-    return { pending, accepted, past };
+    return { pending, accepted, past, declined };
   }
 
   /**
