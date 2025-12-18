@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { EventCalendar } from '@/components/events/calendar/event-calendar';
-import { ViewEventDialog } from '@/components/events/view-event-dialog';
+import { ViewEventModal } from '@/components/events/view-event-modal';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 
 export default function CalendarPage() {
@@ -31,8 +31,8 @@ export default function CalendarPage() {
 
       <EventCalendar onEventClick={handleEventClick} />
 
-      {/* View Event Dialog */}
-      <ViewEventDialog
+      {/* View Event Modal */}
+      <ViewEventModal
         eventId={selectedEventId}
         open={isViewOpen}
         onClose={handleCloseDialog}

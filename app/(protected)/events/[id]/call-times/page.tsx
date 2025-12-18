@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import {
   CallTimeFormModal,
   CallTimeList,
-  CallTimeDetailDialog,
-  DeleteCallTimeDialog,
+  CallTimeDetailModal,
+  DeleteCallTimeModal,
 } from '@/components/call-times';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
@@ -233,8 +233,8 @@ export default function EventCallTimesPage() {
         backendErrors={backendErrors}
       />
 
-      {/* Detail Dialog */}
-      <CallTimeDetailDialog
+      {/* Detail Modal */}
+      <CallTimeDetailModal
         callTimeId={selectedCallTime?.id || null}
         open={isDetailOpen}
         onClose={() => {
@@ -243,8 +243,8 @@ export default function EventCallTimesPage() {
         }}
       />
 
-      {/* Delete Dialog */}
-      <DeleteCallTimeDialog
+      {/* Delete Modal */}
+      <DeleteCallTimeModal
         callTime={selectedCallTime}
         open={isDeleteOpen}
         onClose={() => {

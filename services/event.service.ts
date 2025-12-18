@@ -7,6 +7,7 @@ import type {
   DateRangeInput,
 } from "@/lib/schemas/event.schema";
 import { SettingsService } from "./settings.service";
+import { generateEventId } from "@/lib/utils/id-generator";
 
 // Re-export types from schema for backwards compatibility
 export type { CreateEventInput, QueryEventsInput };
@@ -80,48 +81,13 @@ export class EventService {
   }
 
   /**
-   * Generate a unique Event ID in format [PREFIX]-YYYY-NNN
-   * Prefix is dynamically determined from terminology settings
-   */
-  private async generateEventId(): Promise<string> {
-    // Get current terminology to determine prefix
-    const terminology = await this.settingsService.getTerminology();
-    const year = new Date().getFullYear();
-    const prefix = `${terminology.eventIdPrefix}-${year}-`;
-
-    // Get the count of events created this year
-    const count = await this.prisma.event.count({
-      where: {
-        eventId: {
-          startsWith: prefix,
-        },
-      },
-    });
-
-    // Generate the next number (pad with zeros to 3 digits)
-    const nextNumber = (count + 1).toString().padStart(3, "0");
-    const eventId = `${prefix}${nextNumber}`;
-
-    // Check if this ID already exists (race condition protection)
-    const existing = await this.prisma.event.findUnique({
-      where: { eventId },
-    });
-
-    if (existing) {
-      // Recursively try the next number
-      return this.generateEventId();
-    }
-
-    return eventId;
-  }
-
-  /**
    * Create a new event
    */
   async create(data: CreateEventInput, userId: string) {
     try {
-      // Generate unique event ID
-      const eventId = await this.generateEventId();
+      // Generate unique event ID using shared utility
+      const terminology = await this.settingsService.getTerminology();
+      const eventId = await generateEventId(this.prisma, terminology.eventIdPrefix);
 
       // Sanitize input data
       const sanitizedData = {

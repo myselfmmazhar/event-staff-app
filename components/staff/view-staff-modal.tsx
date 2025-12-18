@@ -20,7 +20,7 @@ type StaffWithRelations = Staff & {
     contractor?: Staff | null;
 };
 
-interface ViewStaffDialogProps {
+interface ViewStaffModalProps {
     staff: StaffWithRelations | null;
     open: boolean;
     onClose: () => void;
@@ -58,7 +58,7 @@ function formatAvailabilityStatus(status: AvailabilityStatus) {
     }
 }
 
-export function ViewStaffDialog({
+export function ViewStaffModal({
     staff,
     open,
     onClose,
@@ -66,7 +66,7 @@ export function ViewStaffDialog({
     onResendInvitation,
     onDisable,
     isActioning = false,
-}: ViewStaffDialogProps) {
+}: ViewStaffModalProps) {
     const { terminology } = useTerminology();
     if (!staff) return null;
 

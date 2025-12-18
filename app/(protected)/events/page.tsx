@@ -3,8 +3,8 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PlusIcon } from '@/components/ui/icons';
-import { DeleteEventDialog } from '@/components/events/delete-event-dialog';
-import { ViewEventDialog } from '@/components/events/view-event-dialog';
+import { DeleteEventModal } from '@/components/events/delete-event-modal';
+import { ViewEventModal } from '@/components/events/view-event-modal';
 import { Pagination } from '@/components/common/pagination';
 import { ActiveFilters } from '@/components/common/active-filters';
 import { EventFilters } from '@/components/events/event-filters';
@@ -278,8 +278,8 @@ export default function EventsPage() {
         backendErrors={backendErrors}
       />
 
-      {/* View Dialog */}
-      <ViewEventDialog
+      {/* View Modal */}
+      <ViewEventModal
         eventId={selectedViewEventId}
         open={isViewOpen}
         onClose={() => {
@@ -289,8 +289,8 @@ export default function EventsPage() {
         onEdit={handleEditFromView}
       />
 
-      {/* Delete Dialog */}
-      <DeleteEventDialog
+      {/* Delete Modal */}
+      <DeleteEventModal
         event={selectedEvent}
         open={isDeleteOpen}
         onClose={() => {

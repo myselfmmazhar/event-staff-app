@@ -21,7 +21,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon, SendIcon, UsersIcon } from '@/components/ui/icons';
 import { useEventTerm, useStaffTerm } from '@/lib/hooks/use-terminology';
 
-interface CallTimeDetailDialogProps {
+interface CallTimeDetailModalProps {
   callTimeId: string | null;
   open: boolean;
   onClose: () => void;
@@ -33,11 +33,11 @@ const SKILL_LEVEL_LABELS: Record<SkillLevel, string> = {
   ADVANCED: 'Advanced',
 };
 
-export function CallTimeDetailDialog({
+export function CallTimeDetailModal({
   callTimeId,
   open,
   onClose,
-}: CallTimeDetailDialogProps) {
+}: CallTimeDetailModalProps) {
   const eventTerm = useEventTerm();
   const staffTerm = useStaffTerm();
   const { toast } = useToast();

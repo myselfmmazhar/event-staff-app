@@ -3,12 +3,11 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import {
-  RATE_TYPE_LABELS,
-  INVITATION_STATUS_LABELS,
-} from '@/lib/schemas/call-time.schema';
 import { SkillLevel, RateType, CallTimeInvitationStatus } from '@prisma/client';
 import { EditIcon, TrashIcon, UsersIcon, EyeIcon } from '@/components/ui/icons';
+import { SKILL_LEVEL_LABELS } from '@/lib/constants';
+import { formatDateShort, formatTime, isSameDay } from '@/lib/utils/date-formatter';
+import { formatRateCompact } from '@/lib/utils/currency-formatter';
 
 interface CallTimeCardProps {
   callTime: {
@@ -33,41 +32,13 @@ interface CallTimeCardProps {
   onDelete: () => void;
 }
 
-const SKILL_LEVEL_LABELS: Record<SkillLevel, string> = {
-  BEGINNER: 'Beginner',
-  INTERMEDIATE: 'Intermediate',
-  ADVANCED: 'Advanced',
-};
-
 export function CallTimeCard({
   callTime,
   onView,
   onEdit,
   onDelete,
 }: CallTimeCardProps) {
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const formatTime = (time: string | null) => {
-    if (!time) return 'TBD';
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    return `${hour > 12 ? hour - 12 : hour}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
-  };
-
-  const payRate =
-    typeof callTime.payRate === 'object'
-      ? callTime.payRate.toNumber()
-      : Number(callTime.payRate);
-
-  const isSameDay =
-    new Date(callTime.startDate).toDateString() ===
-    new Date(callTime.endDate).toDateString();
+  const sameDay = isSameDay(callTime.startDate, callTime.endDate);
 
   const pendingCount = callTime.invitations.filter(
     (inv) => inv.status === 'PENDING'
@@ -102,8 +73,8 @@ export function CallTimeCard({
             <div>
               <p className="text-muted-foreground">Date</p>
               <p className="font-medium">
-                {formatDate(callTime.startDate)}
-                {!isSameDay && ` - ${formatDate(callTime.endDate)}`}
+                {formatDateShort(callTime.startDate)}
+                {!sameDay && ` - ${formatDateShort(callTime.endDate)}`}
               </p>
             </div>
             <div>
@@ -115,7 +86,7 @@ export function CallTimeCard({
             <div>
               <p className="text-muted-foreground">Pay Rate</p>
               <p className="font-medium">
-                ${payRate.toFixed(2)} {RATE_TYPE_LABELS[callTime.payRateType].toLowerCase()}
+                {formatRateCompact(callTime.payRate, callTime.payRateType)}
               </p>
             </div>
             <div>

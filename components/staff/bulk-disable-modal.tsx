@@ -13,7 +13,7 @@ import { AlertTriangleIcon } from 'lucide-react';
 import type { StaffWithRelations } from './selectable-staff-table';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 
-interface BulkDisableDialogProps {
+interface BulkDisableModalProps {
     staff: StaffWithRelations[];
     open: boolean;
     onClose: () => void;
@@ -21,13 +21,13 @@ interface BulkDisableDialogProps {
     isDisabling: boolean;
 }
 
-export function BulkDisableDialog({
+export function BulkDisableModal({
     staff,
     open,
     onClose,
     onConfirm,
     isDisabling,
-}: BulkDisableDialogProps) {
+}: BulkDisableModalProps) {
     const { terminology } = useTerminology();
     return (
         <Dialog open={open} onClose={onClose}>

@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PlusIcon } from '@/components/ui/icons';
 import { ActiveFilters } from '@/components/common/active-filters';
-import { ConfirmDialog } from '@/components/common/confirm-dialog';
-import { DeleteUserDialog } from '@/components/users/delete-user-dialog';
+import { ConfirmModal } from '@/components/common/confirm-modal';
+import { DeleteUserModal } from '@/components/users/delete-user-modal';
 import { Pagination } from '@/components/common/pagination';
 import { UserFilters } from '@/components/users/user-filters';
 import { UserFormModal } from '@/components/users/user-form-modal';
@@ -354,7 +354,7 @@ export default function UsersPage() {
         backendErrors={backendErrors}
       />
 
-      <DeleteUserDialog
+      <DeleteUserModal
         user={selectedUser}
         open={isDeleteOpen}
         onClose={() => {
@@ -365,7 +365,7 @@ export default function UsersPage() {
         isDeleting={deleteMutation.isPending}
       />
 
-      <ConfirmDialog
+      <ConfirmModal
         open={isResendConfirmOpen}
         onClose={() => {
           setIsResendConfirmOpen(false);
@@ -382,7 +382,7 @@ export default function UsersPage() {
           A new invitation email will be sent to <strong>{userToResend?.email}</strong>.
           The previous invitation link will be invalidated.
         </p>
-      </ConfirmDialog>
+      </ConfirmModal>
     </div>
   );
 }

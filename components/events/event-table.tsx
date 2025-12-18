@@ -4,10 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EyeIcon, EditIcon, TrashIcon, UsersIcon } from '@/components/ui/icons';
 import { EventStatus } from '@prisma/client';
-import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from '@/lib/constants';
+import { formatDateTime } from '@/lib/utils/date-formatter';
 
 interface Event {
   id: string;
@@ -42,24 +43,6 @@ interface EventTableProps {
   onSort: (field: SortableField) => void;
 }
 
-const STATUS_COLORS: Record<EventStatus, 'default' | 'info' | 'success' | 'primary' | 'purple' | 'danger'> = {
-  DRAFT: 'default',
-  PUBLISHED: 'info',
-  CONFIRMED: 'success',
-  IN_PROGRESS: 'primary',
-  COMPLETED: 'purple',
-  CANCELLED: 'danger',
-};
-
-const STATUS_LABELS: Record<EventStatus, string> = {
-  DRAFT: 'Draft',
-  PUBLISHED: 'Published',
-  CONFIRMED: 'Confirmed',
-  IN_PROGRESS: 'In Progress',
-  COMPLETED: 'Completed',
-  CANCELLED: 'Cancelled',
-};
-
 export function EventTable({
   events,
   isLoading,
@@ -72,14 +55,6 @@ export function EventTable({
 }: EventTableProps) {
   const router = useRouter();
   const { terminology } = useTerminology();
-
-  const formatDateTime = (date: Date, time?: string | null, timezone?: string) => {
-    const dateStr = format(new Date(date), 'MMM d, yyyy');
-    if (!time || time === 'TBD') {
-      return `${dateStr} - TBD`;
-    }
-    return `${dateStr} ${time}`;
-  };
 
   const columns: ColumnDef<Event>[] = [
     {
@@ -118,10 +93,10 @@ export function EventTable({
       className: 'py-4 px-4 text-sm text-muted-foreground whitespace-nowrap',
       render: (event) => (
         <div>
-          <div>{formatDateTime(event.startDate, event.startTime, event.timezone)}</div>
+          <div>{formatDateTime(event.startDate, event.startTime)}</div>
           {event.endDate && (
             <div className="text-xs opacity-75">
-              to {formatDateTime(event.endDate, event.endTime, event.timezone)}
+              to {formatDateTime(event.endDate, event.endTime)}
             </div>
           )}
         </div>
@@ -133,8 +108,8 @@ export function EventTable({
       sortable: true,
       className: 'py-4 px-4 whitespace-nowrap',
       render: (event) => (
-        <Badge variant={STATUS_COLORS[event.status]} asSpan>
-          {STATUS_LABELS[event.status]}
+        <Badge variant={EVENT_STATUS_COLORS[event.status]} asSpan>
+          {EVENT_STATUS_LABELS[event.status]}
         </Badge>
       ),
     },
@@ -203,8 +178,8 @@ export function EventTable({
           </div>
           <h3 className="font-medium text-foreground">{event.title}</h3>
         </div>
-        <Badge variant={STATUS_COLORS[event.status]} asSpan>
-          {STATUS_LABELS[event.status]}
+        <Badge variant={EVENT_STATUS_COLORS[event.status]} asSpan>
+          {EVENT_STATUS_LABELS[event.status]}
         </Badge>
       </div>
 
@@ -219,12 +194,12 @@ export function EventTable({
         </div>
         <div className="flex items-center gap-2">
           <span className="font-medium">Start:</span>
-          <span>{formatDateTime(event.startDate, event.startTime, event.timezone)}</span>
+          <span>{formatDateTime(event.startDate, event.startTime)}</span>
         </div>
         {event.endDate && (
           <div className="flex items-center gap-2">
             <span className="font-medium">End:</span>
-            <span>{formatDateTime(event.endDate, event.endTime, event.timezone)}</span>
+            <span>{formatDateTime(event.endDate, event.endTime)}</span>
           </div>
         )}
       </div>

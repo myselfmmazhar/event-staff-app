@@ -12,19 +12,19 @@ import { Badge } from '@/components/ui/badge';
 import { EditIcon } from '@/components/ui/icons';
 import type { Client } from '@/lib/types/client';
 
-interface ViewClientDialogProps {
+interface ViewClientModalProps {
   client: Client | null;
   open: boolean;
   onClose: () => void;
   onEdit: () => void;
 }
 
-export function ViewClientDialog({
+export function ViewClientModal({
   client,
   open,
   onClose,
   onEdit,
-}: ViewClientDialogProps) {
+}: ViewClientModalProps) {
   if (!client) return null;
 
   return (
