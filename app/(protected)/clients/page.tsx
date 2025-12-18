@@ -17,10 +17,38 @@ import type { Client } from '@/lib/types/client';
 import type { CreateClientInput, UpdateClientInput } from '@/lib/schemas/client.schema';
 import { handleClientMutationError } from '@/lib/utils/client-error-handler';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { useClientsFilters } from '@/store/clients-filters.store';
+import { useState, useEffect, type ComponentProps } from 'react';
+import { useClientsFilters, type ClientLoginAccess, type ClientSortBy, type SortOrder } from '@/store/clients-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
+
+type ClientTableData = ComponentProps<typeof ClientTable>['clients'][number];
+
+function parseNumberParam(value: string | null, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseLoginAccessParam(value: string | null): ClientLoginAccess {
+  if (value === 'with' || value === 'without') {
+    return value;
+  }
+  return 'all';
+}
+
+const CLIENT_SORT_FIELDS: ClientSortBy[] = ['clientId', 'businessName', 'createdAt'];
+const CLIENT_SORT_FIELD_SET = new Set<ClientSortBy>(CLIENT_SORT_FIELDS);
+
+function parseSortByParam(value: string | null): ClientSortBy {
+  if (value && CLIENT_SORT_FIELD_SET.has(value as ClientSortBy)) {
+    return value as ClientSortBy;
+  }
+  return 'createdAt';
+}
+
+function parseSortOrderParam(value: string | null): SortOrder {
+  return value === 'asc' ? 'asc' : 'desc';
+}
 
 export default function ClientsPage() {
   const searchParams = useSearchParams();
@@ -45,12 +73,12 @@ export default function ClientsPage() {
 
   // Initialize store from URL params on mount
   useEffect(() => {
-    const page = Number(searchParams.get('page')) || 1;
-    const limit = Number(searchParams.get('limit')) || 10;
+    const page = parseNumberParam(searchParams.get('page'), 1);
+    const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
-    const loginAccess = (searchParams.get('loginAccess') as 'all' | 'with' | 'without') || 'all';
-    const sortBy = (searchParams.get('sortBy') as 'clientId' | 'businessName' | 'createdAt') || 'createdAt';
-    const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+    const loginAccess = parseLoginAccessParam(searchParams.get('loginAccess'));
+    const sortBy = parseSortByParam(searchParams.get('sortBy'));
+    const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
 
     filters.setPage(page);
     filters.setLimit(limit);
@@ -92,6 +120,7 @@ export default function ClientsPage() {
     sortBy: filters.sortBy,
     sortOrder: filters.sortOrder,
   });
+  const clients = data?.data ?? [];
 
   // tRPC mutations with standardized error handling
   const createMutation = trpc.clients.create.useMutation({
@@ -145,31 +174,28 @@ export default function ClientsPage() {
     setModals((prev) => ({ ...prev, form: true }));
   };
 
+  const getClientById = (clientId: string): Client | undefined =>
+    clients.find((client) => client.id === clientId);
+
   const handleView = (clientId: string) => {
-    const client = data?.data.find((c) => c.id === clientId);
+    const client = getClientById(clientId);
     if (client) {
-      setSelectedClient({
-        ...client,
-        createdAt: new Date(client.createdAt || new Date()),
-      });
+      setSelectedClient(client);
       setModals((prev) => ({ ...prev, view: true }));
     }
   };
 
   const handleEdit = (clientId: string) => {
-    const client = data?.data.find((c) => c.id === clientId);
+    const client = getClientById(clientId);
     if (client) {
-      setSelectedClient({
-        ...client,
-        createdAt: new Date(client.createdAt || new Date()),
-      });
+      setSelectedClient(client);
       setBackendErrors([]);
       setModals((prev) => ({ ...prev, form: true }));
     }
   };
 
   const handleDelete = (clientId: string) => {
-    const client = data?.data.find((c) => c.id === clientId);
+    const client = getClientById(clientId);
     if (client) {
       setSelectedClient(client);
       setModals((prev) => ({ ...prev, delete: true }));
@@ -196,11 +222,11 @@ export default function ClientsPage() {
   };
 
   const handleSort = (field: string) => {
-    const validField = field as 'clientId' | 'businessName' | 'createdAt';
-    if (filters.sortBy === validField) {
+    const sortField = parseSortByParam(field);
+    if (filters.sortBy === sortField) {
       filters.setSortOrder(filters.sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      filters.setSortBy(validField);
+      filters.setSortBy(sortField);
       filters.setSortOrder('desc');
     }
   };

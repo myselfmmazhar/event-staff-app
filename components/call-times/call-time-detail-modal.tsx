@@ -48,21 +48,23 @@ export function CallTimeDetailModal({
   const [cancellingId, setCancellingId] = useState<string | undefined>();
 
   const utils = trpc.useUtils();
+  const hasCallTimeId = Boolean(callTimeId);
+  const callTimeQueryId = callTimeId ?? '';
 
   // Fetch call time details
   const { data: callTime, isLoading } = trpc.callTime.getById.useQuery(
-    { id: callTimeId! },
-    { enabled: !!callTimeId && open }
+    { id: callTimeQueryId },
+    { enabled: hasCallTimeId && open }
   );
 
   // Fetch available staff
   const { data: staffData, isLoading: isLoadingStaff } =
     trpc.callTime.searchStaff.useQuery(
       {
-        callTimeId: callTimeId!,
+        callTimeId: callTimeQueryId,
         includeAlreadyInvited,
       },
-      { enabled: !!callTimeId && open && activeTab === 'search' }
+      { enabled: hasCallTimeId && open && activeTab === 'search' }
     );
 
   // Send invitations mutation
@@ -73,8 +75,10 @@ export function CallTimeDetailModal({
         description: `Successfully sent ${data.sent} invitation(s)`,
       });
       setSelectedStaffIds([]);
-      utils.callTime.getById.invalidate({ id: callTimeId! });
-      utils.callTime.searchStaff.invalidate({ callTimeId: callTimeId! });
+      if (hasCallTimeId) {
+        utils.callTime.getById.invalidate({ id: callTimeQueryId });
+        utils.callTime.searchStaff.invalidate({ callTimeId: callTimeQueryId });
+      }
     },
     onError: (error) => {
       toast({
@@ -92,7 +96,9 @@ export function CallTimeDetailModal({
         title: 'Invitation resent',
         description: 'The invitation has been resent successfully',
       });
-      utils.callTime.getById.invalidate({ id: callTimeId! });
+      if (hasCallTimeId) {
+        utils.callTime.getById.invalidate({ id: callTimeQueryId });
+      }
       setResendingId(undefined);
     },
     onError: (error) => {
@@ -112,7 +118,9 @@ export function CallTimeDetailModal({
         title: 'Invitation cancelled',
         description: 'The invitation has been cancelled',
       });
-      utils.callTime.getById.invalidate({ id: callTimeId! });
+      if (hasCallTimeId) {
+        utils.callTime.getById.invalidate({ id: callTimeQueryId });
+      }
       setCancellingId(undefined);
     },
     onError: (error) => {
@@ -126,9 +134,9 @@ export function CallTimeDetailModal({
   });
 
   const handleSendInvitations = () => {
-    if (selectedStaffIds.length === 0 || !callTimeId) return;
+    if (selectedStaffIds.length === 0 || !hasCallTimeId) return;
     sendInvitations.mutate({
-      callTimeId,
+      callTimeId: callTimeQueryId,
       staffIds: selectedStaffIds,
     });
   };
@@ -155,7 +163,9 @@ export function CallTimeDetailModal({
   const formatTime = (time: string | null) => {
     if (!time) return 'TBD';
     const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
+    if (!hours || !minutes) return 'TBD';
+    const hour = Number.parseInt(hours, 10);
+    if (Number.isNaN(hour)) return 'TBD';
     return `${hour > 12 ? hour - 12 : hour}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
   };
 

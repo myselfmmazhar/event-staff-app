@@ -20,7 +20,7 @@ import {
 import { SkillLevel, RateType } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
@@ -53,7 +53,8 @@ const formSchema = z
     path: ['endDate'],
   });
 
-type FormData = z.infer<typeof formSchema>;
+type FormInput = z.input<typeof formSchema>;
+type FormOutput = z.infer<typeof formSchema>;
 
 interface CallTime {
   id: string;
@@ -92,6 +93,11 @@ const RATE_TYPES: Array<{ value: RateType; label: string }> = Object.entries(
   RATE_TYPE_LABELS
 ).map(([value, label]) => ({ value: value as RateType, label }));
 
+const formatDateInputValue = (value: Date | string): string => {
+  const [datePart = ''] = new Date(value).toISOString().split('T');
+  return datePart;
+};
+
 export function CallTimeFormModal({
   callTime,
   eventId,
@@ -119,8 +125,8 @@ export function CallTimeFormModal({
     setError,
     setValue,
     watch,
-  } = useForm<FormData>({
-    resolver: zodResolver(formSchema) as any,
+  } = useForm<FormInput, undefined, FormOutput>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       positionId: '',
       numberOfStaffRequired: 1,
@@ -161,10 +167,10 @@ export function CallTimeFormModal({
         positionId: callTime.positionId,
         numberOfStaffRequired: callTime.numberOfStaffRequired,
         skillLevel: callTime.skillLevel,
-        startDate: new Date(callTime.startDate).toISOString().split('T')[0],
+        startDate: formatDateInputValue(callTime.startDate),
         startTime: callTime.startTime || '',
         startTimeTBD: !callTime.startTime,
-        endDate: new Date(callTime.endDate).toISOString().split('T')[0],
+        endDate: formatDateInputValue(callTime.endDate),
         endTime: callTime.endTime || '',
         endTimeTBD: !callTime.endTime,
         payRate: payRateValue,
@@ -176,7 +182,7 @@ export function CallTimeFormModal({
       setStartTimeTBD(!callTime.startTime);
       setEndTimeTBD(!callTime.endTime);
     } else {
-      const today = new Date().toISOString().split('T')[0];
+      const today = formatDateInputValue(new Date());
       reset({
         positionId: '',
         numberOfStaffRequired: 1,
@@ -202,7 +208,7 @@ export function CallTimeFormModal({
   useEffect(() => {
     if (backendErrors && backendErrors.length > 0) {
       backendErrors.forEach((error) => {
-        setError(error.field as keyof FormData, {
+        setError(error.field as keyof FormInput, {
           type: 'manual',
           message: error.message,
         });
@@ -210,7 +216,7 @@ export function CallTimeFormModal({
     }
   }, [backendErrors, setError]);
 
-  const handleFormSubmit = (data: FormData) => {
+  const handleFormSubmit: SubmitHandler<FormOutput> = (data) => {
     const submitData = {
       ...(isEdit ? {} : { eventId }),
       positionId: data.positionId,

@@ -75,13 +75,21 @@ export function StaffProfileSection() {
     const [deactivateReason, setDeactivateReason] = useState('');
     const [isDeactivateConfirmOpen, setIsDeactivateConfirmOpen] = useState(false);
 
+    const formatDateInputValue = (value?: Date | string | null): string => {
+        if (!value) {
+            return '';
+        }
+        const [datePart = ''] = new Date(value).toISOString().split('T');
+        return datePart;
+    };
+
     // Initialize form when data loads
     useEffect(() => {
         if (staffProfile) {
             setFirstName(staffProfile.firstName || '');
             setLastName(staffProfile.lastName || '');
             setPhone(staffProfile.phone || '');
-            setDateOfBirth(staffProfile.dateOfBirth ? new Date(staffProfile.dateOfBirth).toISOString().split('T')[0] : '');
+            setDateOfBirth(formatDateInputValue(staffProfile.dateOfBirth));
             setStreetAddress(staffProfile.streetAddress || '');
             setAptSuiteUnit(staffProfile.aptSuiteUnit || '');
             setCity(staffProfile.city || '');
@@ -89,8 +97,8 @@ export function StaffProfileSection() {
             setZipCode(staffProfile.zipCode || '');
             setCountry(staffProfile.country || '');
             setAvailabilityStatus(staffProfile.availabilityStatus);
-            setTimeOffStart(staffProfile.timeOffStart ? new Date(staffProfile.timeOffStart).toISOString().split('T')[0] : '');
-            setTimeOffEnd(staffProfile.timeOffEnd ? new Date(staffProfile.timeOffEnd).toISOString().split('T')[0] : '');
+            setTimeOffStart(formatDateInputValue(staffProfile.timeOffStart));
+            setTimeOffEnd(formatDateInputValue(staffProfile.timeOffEnd));
         }
     }, [staffProfile]);
 

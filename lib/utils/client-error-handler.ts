@@ -1,12 +1,13 @@
+import type { TRPCError, FieldError } from "@/lib/types/error-types";
+import { extractFieldErrors, getErrorMessage } from "@/lib/types/error-types";
+
 /**
  * Client module error handling utilities
  * Centralizes error handling logic to reduce duplication
  */
 
-export interface BackendError {
-  field: string;
-  message: string;
-}
+// Re-export BackendError as alias for FieldError for backwards compatibility
+export type BackendError = FieldError;
 
 export interface Toast {
   message: string;
@@ -22,12 +23,11 @@ export interface ToastFn {
  * Extracts field-specific errors and shows appropriate toast messages
  */
 export const handleClientMutationError = (
-  error: any,
+  error: TRPCError,
   toast: ToastFn,
-  setBackendErrors: (errors: BackendError[]) => void
+  setBackendErrors: (errors: FieldError[]) => void
 ): void => {
-  const fieldErrors =
-    (error.data as { fieldErrors?: BackendError[] })?.fieldErrors || [];
+  const fieldErrors = extractFieldErrors(error);
 
   if (fieldErrors.length > 0) {
     setBackendErrors(fieldErrors);
@@ -38,7 +38,7 @@ export const handleClientMutationError = (
   } else {
     setBackendErrors([]);
     toast({
-      message: error.message || 'An error occurred',
+      message: getErrorMessage(error),
       type: 'error',
     });
   }

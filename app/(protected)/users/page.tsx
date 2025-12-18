@@ -14,25 +14,50 @@ import { UserTable } from '@/components/users/user-table';
 import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ComponentProps } from 'react';
 import type { InviteUserInput, UpdateUserInput } from '@/lib/schemas/user.schema';
-import { useUsersFilters } from '@/store/users-filters.store';
+import { useUsersFilters, type UserSortBy, type SortOrder } from '@/store/users-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import { useRoleTerm } from '@/lib/hooks/use-terminology';
+type UserTableRow = ComponentProps<typeof UserTable>['users'][number];
 
-type User = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: UserRole;
-  isActive: boolean;
-  phone?: string | null;
-  address?: string | null;
-  emergencyContact?: string | null;
-  createdAt: Date;
-};
+const USER_SORT_FIELDS: UserSortBy[] = ['createdAt', 'updatedAt', 'firstName', 'lastName', 'email', 'role'];
+const USER_SORT_FIELD_SET = new Set<UserSortBy>(USER_SORT_FIELDS);
+const USER_ROLE_SET = new Set<UserRole>(Object.values(UserRole));
+
+function parseNumberParam(value: string | null, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseRoleParam(value: string | null): UserRole | 'ALL' {
+  if (value && USER_ROLE_SET.has(value as UserRole)) {
+    return value as UserRole;
+  }
+  return 'ALL';
+}
+
+function parseTriStateBoolean(value: string | null): boolean | 'ALL' {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return 'ALL';
+}
+
+function parseSortByParam(value: string | null): UserSortBy {
+  if (value && USER_SORT_FIELD_SET.has(value as UserSortBy)) {
+    return value as UserSortBy;
+  }
+  return 'createdAt';
+}
+
+function parseSortOrderParam(value: string | null): SortOrder {
+  return value === 'asc' ? 'asc' : 'desc';
+}
+
+function parseDateParam(value: string | null): string {
+  return value ?? '';
+}
 
 export default function UsersPage() {
   const searchParams = useSearchParams();
@@ -48,22 +73,22 @@ export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [userToResend, setUserToResend] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserTableRow | null>(null);
+  const [userToResend, setUserToResend] = useState<UserTableRow | null>(null);
 
   // Initialize store from URL params on mount
   useEffect(() => {
-    const page = Number(searchParams.get('page')) || 1;
-    const limit = Number(searchParams.get('limit')) || 10;
+    const page = parseNumberParam(searchParams.get('page'), 1);
+    const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
-    const role = (searchParams.get('role') as UserRole) || 'ALL';
-    const status = searchParams.get('status') === 'true' ? true : searchParams.get('status') === 'false' ? false : 'ALL';
-    const emailVerified = searchParams.get('emailVerified') === 'true' ? true : searchParams.get('emailVerified') === 'false' ? false : 'ALL';
-    const hasPhone = searchParams.get('hasPhone') === 'true' ? true : searchParams.get('hasPhone') === 'false' ? false : 'ALL';
-    const createdFrom = searchParams.get('createdFrom') || '';
-    const createdTo = searchParams.get('createdTo') || '';
-    const sortBy = (searchParams.get('sortBy') as any) || 'createdAt';
-    const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+    const role = parseRoleParam(searchParams.get('role'));
+    const status = parseTriStateBoolean(searchParams.get('status'));
+    const emailVerified = parseTriStateBoolean(searchParams.get('emailVerified'));
+    const hasPhone = parseTriStateBoolean(searchParams.get('hasPhone'));
+    const createdFrom = parseDateParam(searchParams.get('createdFrom'));
+    const createdTo = parseDateParam(searchParams.get('createdTo'));
+    const sortBy = parseSortByParam(searchParams.get('sortBy'));
+    const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
 
     filters.setPage(page);
     filters.setLimit(limit);
@@ -157,18 +182,18 @@ export default function UsersPage() {
     setIsFormOpen(true);
   };
 
-  const handleEdit = (user: User) => {
+  const handleEdit = (user: UserTableRow) => {
     setSelectedUser(user);
     setBackendErrors([]);
     setIsFormOpen(true);
   };
 
-  const handleDelete = (user: User) => {
+  const handleDelete = (user: UserTableRow) => {
     setSelectedUser(user);
     setIsDeleteOpen(true);
   };
 
-  const handleToggleStatus = (user: User) => {
+  const handleToggleStatus = (user: UserTableRow) => {
     if (user.isActive) {
       deactivateMutation.mutate({ id: user.id });
     } else {
@@ -176,7 +201,7 @@ export default function UsersPage() {
     }
   };
 
-  const handleResendInvitation = (user: User) => {
+  const handleResendInvitation = (user: UserTableRow) => {
     setUserToResend(user);
     setIsResendConfirmOpen(true);
   };

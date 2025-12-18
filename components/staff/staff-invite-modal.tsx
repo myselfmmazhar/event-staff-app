@@ -22,7 +22,8 @@ import { useTerminology } from '@/lib/hooks/use-terminology';
 
 // Form schema for invitation
 const formSchema = StaffSchema.invite;
-type InviteFormData = z.infer<typeof formSchema>;
+type InviteFormInput = z.input<typeof formSchema>;
+type InviteFormOutput = z.infer<typeof formSchema>;
 
 interface StaffInviteModalProps {
     open: boolean;
@@ -48,8 +49,8 @@ export function StaffInviteModal({
         formState: { errors },
         reset,
         control,
-    } = useForm<InviteFormData>({
-        resolver: zodResolver(formSchema) as any,
+    } = useForm<InviteFormInput, undefined, InviteFormOutput>({
+        resolver: zodResolver(formSchema),
         defaultValues: {
             email: '',
             firstName: '',
@@ -65,7 +66,7 @@ export function StaffInviteModal({
         onClose();
     };
 
-    const handleFormSubmit: SubmitHandler<InviteFormData> = (data) => {
+    const handleFormSubmit: SubmitHandler<InviteFormOutput> = (data) => {
         onSubmit(data);
     };
 

@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { PlusIcon, UsersIcon } from 'lucide-react';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { StaffFormModal } from '@/components/staff/staff-form-modal';
-import { StaffTable } from '@/components/staff/staff-table';
+import { StaffTable, type StaffWithRelations } from '@/components/staff/staff-table';
 import { StaffSearch } from '@/components/staff/staff-search';
 import { StaffFilters } from '@/components/staff/staff-filters';
 import { ViewStaffModal } from '@/components/staff/view-staff-modal';
@@ -17,6 +17,48 @@ import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
+
+type StaffFilterState = {
+    accountStatus: AccountStatus | 'ALL';
+    staffType: StaffType | 'ALL';
+    skillLevel: SkillLevel | 'ALL';
+};
+
+const DEFAULT_FILTERS: StaffFilterState = {
+    accountStatus: 'ALL',
+    staffType: 'ALL',
+    skillLevel: 'ALL',
+};
+
+type StaffFilterKey = keyof StaffFilterState;
+
+const ACCOUNT_STATUS_VALUES = new Set<AccountStatus>(Object.values(AccountStatus));
+const STAFF_TYPE_VALUES = new Set<StaffType>(Object.values(StaffType));
+const SKILL_LEVEL_VALUES = new Set<SkillLevel>(Object.values(SkillLevel));
+
+function parseStaffFilterValue<K extends StaffFilterKey>(
+    key: K,
+    value: string
+): StaffFilterState[K] {
+    if (!value) {
+        return 'ALL' as StaffFilterState[K];
+    }
+
+    if (key === 'accountStatus' && ACCOUNT_STATUS_VALUES.has(value as AccountStatus)) {
+        return value as StaffFilterState[K];
+    }
+
+    if (key === 'staffType' && STAFF_TYPE_VALUES.has(value as StaffType)) {
+        return value as StaffFilterState[K];
+    }
+
+    if (key === 'skillLevel' && SKILL_LEVEL_VALUES.has(value as SkillLevel)) {
+        return value as StaffFilterState[K];
+    }
+
+    return 'ALL' as StaffFilterState[K];
+}
 
 export default function StaffPage() {
     const { terminology } = useTerminology();
@@ -27,23 +69,19 @@ export default function StaffPage() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [search, setSearch] = useState('');
-    const [filters, setFilters] = useState<{
-        accountStatus?: string;
-        staffType?: string;
-        skillLevel?: string;
-    }>({});
+    const [filters, setFilters] = useState<StaffFilterState>(DEFAULT_FILTERS);
     const [modals, setModals] = useState({
         form: false,
         view: false,
         delete: false,
     });
-    const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
+    const [selectedStaff, setSelectedStaff] = useState<StaffWithRelations | null>(null);
 
     // Confirmation dialog states
     const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
     const [isDisableConfirmOpen, setIsDisableConfirmOpen] = useState(false);
-    const [staffToResend, setStaffToResend] = useState<any | null>(null);
-    const [staffToDisable, setStaffToDisable] = useState<any | null>(null);
+    const [staffToResend, setStaffToResend] = useState<StaffWithRelations | null>(null);
+    const [staffToDisable, setStaffToDisable] = useState<StaffWithRelations | null>(null);
 
     // Handle create query parameter
     useEffect(() => {
@@ -61,9 +99,9 @@ export default function StaffPage() {
         page,
         limit,
         search: search || undefined,
-        accountStatus: filters.accountStatus as any,
-        staffType: filters.staffType as any,
-        skillLevel: filters.skillLevel as any,
+        accountStatus: filters.accountStatus === 'ALL' ? undefined : filters.accountStatus,
+        staffType: filters.staffType === 'ALL' ? undefined : filters.staffType,
+        skillLevel: filters.skillLevel === 'ALL' ? undefined : filters.skillLevel,
         sortBy: 'createdAt',
         sortOrder: 'desc',
     });
@@ -191,17 +229,17 @@ export default function StaffPage() {
         setModals((prev) => ({ ...prev, form: true }));
     };
 
-    const handleView = (staff: any) => {
+    const handleView = (staff: StaffWithRelations) => {
         setSelectedStaff(staff);
         setModals((prev) => ({ ...prev, view: true }));
     };
 
-    const handleEdit = (staff: any) => {
+    const handleEdit = (staff: StaffWithRelations) => {
         setSelectedStaff(staff);
         setModals((prev) => ({ ...prev, form: true }));
     };
 
-    const handleDelete = (staff: any) => {
+    const handleDelete = (staff: StaffWithRelations) => {
         setSelectedStaff(staff);
         setModals((prev) => ({ ...prev, delete: true }));
     };
@@ -258,16 +296,19 @@ export default function StaffPage() {
         }
     };
 
-    const handleFilterChange = (key: string, value: string | undefined) => {
+    const handleFilterChange = <K extends StaffFilterKey>(
+        key: K,
+        value: string
+    ) => {
         setFilters((prev) => ({
             ...prev,
-            [key]: value,
+            [key]: parseStaffFilterValue(key, value),
         }));
         setPage(1);
     };
 
     const handleClearFilters = () => {
-        setFilters({});
+        setFilters(DEFAULT_FILTERS);
         setPage(1);
     };
 
@@ -303,7 +344,11 @@ export default function StaffPage() {
                 <div className="space-y-4">
                     <StaffSearch value={search} onChange={setSearch} />
                     <StaffFilters
-                        filters={filters}
+                        filters={{
+                            accountStatus: filters.accountStatus === 'ALL' ? '' : filters.accountStatus,
+                            staffType: filters.staffType === 'ALL' ? '' : filters.staffType,
+                            skillLevel: filters.skillLevel === 'ALL' ? '' : filters.skillLevel,
+                        }}
                         onFilterChange={handleFilterChange}
                         onClearFilters={handleClearFilters}
                     />
@@ -320,7 +365,7 @@ export default function StaffPage() {
                     ) : (
                         <>
                             <StaffTable
-                                staff={(data?.data || []) as any}
+                                staff={data?.data ?? []}
                                 onView={handleView}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}

@@ -285,7 +285,9 @@ export class EmailService {
     const formatTime = (time: string | null | undefined) => {
       if (!time) return 'TBD';
       const [hours, minutes] = time.split(':');
-      const hour = parseInt(hours);
+      if (!hours || !minutes) return 'TBD';
+      const hour = Number.parseInt(hours, 10);
+      if (Number.isNaN(hour)) return 'TBD';
       return `${hour > 12 ? hour - 12 : hour}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
     };
 
@@ -381,7 +383,9 @@ export class EmailService {
     const formatTime = (time: string | null | undefined) => {
       if (!time) return 'TBD';
       const [hours, minutes] = time.split(':');
-      const hour = parseInt(hours);
+      if (!hours || !minutes) return 'TBD';
+      const hour = Number.parseInt(hours, 10);
+      if (Number.isNaN(hour)) return 'TBD';
       return `${hour > 12 ? hour - 12 : hour}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
     };
 

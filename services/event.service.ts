@@ -8,6 +8,7 @@ import type {
 } from "@/lib/schemas/event.schema";
 import { SettingsService } from "./settings.service";
 import { generateEventId } from "@/lib/utils/id-generator";
+import type { EventSelect, PaginatedResponse } from "@/lib/types/prisma-types";
 
 // Re-export types from schema for backwards compatibility
 export type { CreateEventInput, QueryEventsInput };
@@ -17,45 +18,7 @@ export interface UpdateEventInput extends Omit<UpdateEventInputType, "id"> {
   // id is handled separately in the method signature
 }
 
-type EventSelect = {
-  id: string;
-  eventId: string;
-  title: string;
-  description: string | null;
-  dressCode: string | null;
-  privateComments: string | null;
-  clientId: string | null;
-  client?: {
-    id: string;
-    businessName: string;
-  } | null;
-  venueName: string;
-  address: string;
-  room: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  startDate: Date;
-  startTime: string | null;
-  endDate: Date;
-  endTime: string | null;
-  timezone: string;
-  status: EventStatus;
-  fileLinks: Prisma.JsonValue;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export interface PaginatedEvents {
-  data: EventSelect[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
+export type PaginatedEvents = PaginatedResponse<EventSelect>;
 
 export interface EventStats {
   total: number;
@@ -245,7 +208,11 @@ export class EventService {
           client: {
             select: {
               id: true,
+              clientId: true,
               businessName: true,
+              firstName: true,
+              lastName: true,
+              email: true,
             },
           },
           venueName: true,

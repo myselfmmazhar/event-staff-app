@@ -56,9 +56,12 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
 
   const formatTime = (time: string | null) => {
     if (!time) return 'TBD';
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    return `${hour > 12 ? hour - 12 : hour}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
+    const [hoursPart, minutesPart] = time.split(':');
+    const hours = hoursPart ?? '0';
+    const minutes = minutesPart ?? '00';
+    const hour = Number.parseInt(hours, 10);
+    const normalizedHour = Number.isNaN(hour) ? 0 : hour;
+    return `${normalizedHour > 12 ? normalizedHour - 12 : normalizedHour}:${minutes} ${normalizedHour >= 12 ? 'PM' : 'AM'}`;
   };
 
   const getDaysUntil = (date: Date) => {

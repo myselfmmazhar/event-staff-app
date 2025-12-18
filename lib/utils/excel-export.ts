@@ -118,7 +118,9 @@ function styleHeaders(worksheet: XLSX.WorkSheet, headerCount: number): void {
  * @param worksheet - Excel worksheet
  * @param data - Array of arrays containing all data (headers + rows)
  */
-function autoSizeColumns_(worksheet: XLSX.WorkSheet, data: any[][]): void {
+type CellValue = string | number | boolean | null | undefined;
+
+function autoSizeColumns_(worksheet: XLSX.WorkSheet, data: CellValue[][]): void {
   const maxWidth = 50; // Maximum column width in characters
   const minWidth = 10; // Minimum column width in characters
 

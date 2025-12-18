@@ -1,3 +1,5 @@
+import type { ClientSelect } from './prisma-types';
+
 /**
  * Shared Client types - used across backend and frontend
  * Prevents duplication and ensures consistency across the module
@@ -5,30 +7,9 @@
 
 /**
  * Full Client type with all fields
+ * Derived from Prisma-generated ClientSelect type
  */
-export interface Client {
-  id: string;
-  clientId: string;
-  businessName: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  cellPhone: string;
-  businessPhone?: string | null;
-  details?: string | null;
-  venueName?: string | null;
-  room?: string | null;
-  streetAddress: string;
-  aptSuiteUnit?: string | null;
-  city: string;
-  country: string;
-  state: string;
-  zipCode: string;
-  hasLoginAccess: boolean;
-  userId?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+export type Client = ClientSelect;
 
 /**
  * Subset of Client fields used in table display

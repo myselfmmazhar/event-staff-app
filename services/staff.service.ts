@@ -13,84 +13,17 @@ import type {
 import { SettingsService } from "./settings.service";
 import { auth } from "@/lib/server/auth";
 import { generateStaffId } from "@/lib/utils/id-generator";
-
-/**
- * Staff Select Type (return type for queries)
- */
-type StaffSelect = {
-    id: string;
-    staffId: string;
-    accountStatus: AccountStatus;
-    staffType: StaffType;
-    firstName: string;
-    lastName: string;
-    phone: string;
-    email: string;
-    dateOfBirth: Date | null;
-    skillLevel: SkillLevel;
-    availabilityStatus: AvailabilityStatus;
-    timeOffStart: Date | null;
-    timeOffEnd: Date | null;
-    streetAddress: string;
-    aptSuiteUnit: string | null;
-    city: string;
-    country: string;
-    state: string;
-    zipCode: string;
-    experience: string | null;
-    staffRating: StaffRating;
-    internalNotes: string | null;
-    contractorId: string | null;
-    hasLoginAccess: boolean;
-    userId: string | null;
-    invitationToken: string | null;
-    invitationExpiresAt: Date | null;
-    createdBy: string;
-    createdAt: Date;
-    updatedAt: Date;
-    positions: Array<{
-        id: string;
-        staffId: string;
-        positionId: string;
-        assignedAt: Date;
-        position: {
-            id: string;
-            name: string;
-            description: string | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-        };
-    }>;
-    contractor?: {
-        id: string;
-        staffId: string;
-        firstName: string;
-        lastName: string;
-    } | null;
-};
+import type { StaffSelect, PaginatedResponse } from "@/lib/types/prisma-types";
 
 /**
  * Paginated Staff Response
  */
-type PaginatedStaff = {
-    data: StaffSelect[];
-    meta: {
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-    };
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-};
+export type PaginatedStaff = PaginatedResponse<StaffSelect>;
 
 /**
  * Staff Statistics
  */
-type StaffStats = {
+export type StaffStats = {
     total: number;
     active: number;
     disabled: number;
@@ -104,6 +37,68 @@ type StaffStats = {
  */
 export class StaffService {
     private settingsService: SettingsService;
+
+    /**
+     * Staff select configuration for consistent querying
+     */
+    private readonly staffSelect = {
+        id: true,
+        staffId: true,
+        accountStatus: true,
+        staffType: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        email: true,
+        dateOfBirth: true,
+        skillLevel: true,
+        availabilityStatus: true,
+        timeOffStart: true,
+        timeOffEnd: true,
+        streetAddress: true,
+        aptSuiteUnit: true,
+        city: true,
+        country: true,
+        state: true,
+        zipCode: true,
+        experience: true,
+        staffRating: true,
+        internalNotes: true,
+        contractorId: true,
+        hasLoginAccess: true,
+        userId: true,
+        invitationToken: true,
+        invitationExpiresAt: true,
+        createdBy: true,
+        createdAt: true,
+        updatedAt: true,
+        positions: {
+            select: {
+                id: true,
+                staffId: true,
+                positionId: true,
+                assignedAt: true,
+                position: {
+                    select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        isActive: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    },
+                },
+            },
+        },
+        contractor: {
+            select: {
+                id: true,
+                staffId: true,
+                firstName: true,
+                lastName: true,
+            },
+        },
+    } as const;
 
     constructor(private prisma: PrismaClient) {
         this.settingsService = new SettingsService(prisma);
@@ -162,7 +157,7 @@ export class StaffService {
                         })),
                     },
                 },
-                select: this.getStaffSelect(),
+                select: this.staffSelect,
             });
 
             return { staff, invitationToken };
@@ -240,7 +235,7 @@ export class StaffService {
                         })),
                     },
                 },
-                select: this.getStaffSelect(),
+                select: this.staffSelect,
             });
 
             return { staff, invitationToken };
@@ -337,7 +332,7 @@ export class StaffService {
                         invitationToken: null,
                         invitationExpiresAt: null,
                     },
-                    select: this.getStaffSelect(),
+                    select: this.staffSelect,
                 });
 
                 return updatedStaff;
@@ -382,7 +377,7 @@ export class StaffService {
                     invitationToken: null,
                     invitationExpiresAt: null,
                 },
-                select: this.getStaffSelect(),
+                select: this.staffSelect,
             });
 
             return updatedStaff;
@@ -445,7 +440,7 @@ export class StaffService {
                 invitationToken,
                 invitationExpiresAt,
             },
-            select: this.getStaffSelect(),
+            select: this.staffSelect,
         });
 
         return { staff: updatedStaff, invitationToken };
@@ -560,7 +555,7 @@ export class StaffService {
                     invitationToken: null,
                     invitationExpiresAt: null,
                 },
-                select: this.getStaffSelect(),
+                select: this.staffSelect,
             });
 
             return {
@@ -594,7 +589,7 @@ export class StaffService {
     async getMyStaffProfile(userId: string): Promise<StaffSelect | null> {
         return await this.prisma.staff.findUnique({
             where: { userId },
-            select: this.getStaffSelect(),
+            select: this.staffSelect,
         });
     }
 
@@ -638,7 +633,7 @@ export class StaffService {
                 timeOffStart: data.timeOffStart,
                 timeOffEnd: data.timeOffEnd,
             },
-            select: this.getStaffSelect(),
+            select: this.staffSelect,
         });
     }
 
@@ -670,7 +665,7 @@ export class StaffService {
                         : `Self-deactivated: ${reason}`,
                 }),
             },
-            select: this.getStaffSelect(),
+            select: this.staffSelect,
         });
 
         // Also deactivate user account
@@ -724,7 +719,7 @@ export class StaffService {
                         },
                     }),
                 },
-                select: this.getStaffSelect(),
+                select: this.staffSelect,
             });
 
             return staff;
@@ -810,12 +805,21 @@ export class StaffService {
                 : {}),
         };
 
+        // Create type-safe orderBy
+        const orderBy: Prisma.StaffOrderByWithRelationInput =
+            sortBy === 'firstName' ? { firstName: sortOrder } :
+            sortBy === 'lastName' ? { lastName: sortOrder } :
+            sortBy === 'email' ? { email: sortOrder } :
+            sortBy === 'staffId' ? { staffId: sortOrder } :
+            sortBy === 'createdAt' ? { createdAt: sortOrder } :
+            { createdAt: 'desc' };
+
         // Execute queries in parallel
         const [staff, total] = await Promise.all([
             this.prisma.staff.findMany({
                 where,
-                select: this.getStaffSelect(),
-                orderBy: { [sortBy]: sortOrder },
+                select: this.staffSelect,
+                orderBy,
                 skip: (page - 1) * limit,
                 take: limit,
             }),
@@ -830,10 +834,6 @@ export class StaffService {
                 limit,
                 totalPages: Math.ceil(total / limit),
             },
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
         };
     }
 
@@ -843,7 +843,7 @@ export class StaffService {
     async findOne(id: string): Promise<StaffSelect> {
         const staff = await this.prisma.staff.findUnique({
             where: { id },
-            select: this.getStaffSelect(),
+            select: this.staffSelect,
         });
 
         if (!staff) {
@@ -1066,69 +1066,5 @@ export class StaffService {
             },
             orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
         });
-    }
-
-    /**
-     * Helper method to get consistent staff select fields
-     */
-    private getStaffSelect() {
-        return {
-            id: true,
-            staffId: true,
-            accountStatus: true,
-            staffType: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            email: true,
-            dateOfBirth: true,
-            skillLevel: true,
-            availabilityStatus: true,
-            timeOffStart: true,
-            timeOffEnd: true,
-            streetAddress: true,
-            aptSuiteUnit: true,
-            city: true,
-            country: true,
-            state: true,
-            zipCode: true,
-            experience: true,
-            staffRating: true,
-            internalNotes: true,
-            contractorId: true,
-            hasLoginAccess: true,
-            userId: true,
-            invitationToken: true,
-            invitationExpiresAt: true,
-            createdBy: true,
-            createdAt: true,
-            updatedAt: true,
-            positions: {
-                select: {
-                    id: true,
-                    staffId: true,
-                    positionId: true,
-                    assignedAt: true,
-                    position: {
-                        select: {
-                            id: true,
-                            name: true,
-                            description: true,
-                            isActive: true,
-                            createdAt: true,
-                            updatedAt: true,
-                        },
-                    },
-                },
-            },
-            contractor: {
-                select: {
-                    id: true,
-                    staffId: true,
-                    firstName: true,
-                    lastName: true,
-                },
-            },
-        } as const;
     }
 }

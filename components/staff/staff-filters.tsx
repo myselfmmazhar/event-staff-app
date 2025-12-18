@@ -7,13 +7,11 @@ import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
 import { FilterIcon, XIcon } from '@/components/ui/icons';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 
+type StaffFilterKey = 'accountStatus' | 'staffType' | 'skillLevel';
+
 interface StaffFiltersProps {
-    filters: {
-        accountStatus?: string;
-        staffType?: string;
-        skillLevel?: string;
-    };
-    onFilterChange: (key: string, value: string | undefined) => void;
+    filters: Partial<Record<StaffFilterKey, string>>;
+    onFilterChange: (key: StaffFilterKey, value: string) => void;
     onClearFilters: () => void;
 }
 
@@ -41,7 +39,7 @@ export function StaffFilters({ filters, onFilterChange, onClearFilters }: StaffF
                     <Label>Account Status</Label>
                     <Select
                         value={filters.accountStatus || ''}
-                        onChange={(e) => onFilterChange('accountStatus', e.target.value || undefined)}
+                        onChange={(e) => onFilterChange('accountStatus', e.target.value)}
                     >
                         <option value="">All statuses</option>
                         <option value={AccountStatus.ACTIVE}>Active</option>
@@ -54,7 +52,7 @@ export function StaffFilters({ filters, onFilterChange, onClearFilters }: StaffF
                     <Label>{staffTerm.singular} Type</Label>
                     <Select
                         value={filters.staffType || ''}
-                        onChange={(e) => onFilterChange('staffType', e.target.value || undefined)}
+                        onChange={(e) => onFilterChange('staffType', e.target.value)}
                     >
                         <option value="">All types</option>
                         <option value={StaffType.EMPLOYEE}>Employee</option>
@@ -66,7 +64,7 @@ export function StaffFilters({ filters, onFilterChange, onClearFilters }: StaffF
                     <Label>Skill Level</Label>
                     <Select
                         value={filters.skillLevel || ''}
-                        onChange={(e) => onFilterChange('skillLevel', e.target.value || undefined)}
+                        onChange={(e) => onFilterChange('skillLevel', e.target.value)}
                     >
                         <option value="">All levels</option>
                         <option value={SkillLevel.BEGINNER}>Beginner</option>

@@ -64,8 +64,9 @@ export const emailValidation = {
       'temp-mail.org',
     ];
     
-    const domain = email.split('@')[1]?.toLowerCase();
-    return !disposableDomains.includes(domain);
+    const domain = email.split('@')[1];
+    if (!domain) return false;
+    return !disposableDomains.includes(domain.toLowerCase());
   },
 
   /**
@@ -147,7 +148,8 @@ export const passwordValidation = {
   getStrengthLabel: (password: string): string => {
     const strength = passwordValidation.calculateStrength(password);
     const labels = ['Weak', 'Medium', 'Strong'];
-    return labels[strength];
+    const defaultLabel = labels[0] ?? 'Weak';
+    return labels[strength] ?? defaultLabel;
   },
 
   /**
@@ -156,7 +158,8 @@ export const passwordValidation = {
   getStrengthColor: (password: string): string => {
     const strength = passwordValidation.calculateStrength(password);
     const colors = ['#ef4444', '#f59e0b', '#10b981']; // red, yellow, green
-    return colors[strength];
+    const defaultColor = colors[0] ?? '#ef4444';
+    return colors[strength] ?? defaultColor;
   },
 
   /**
@@ -229,4 +232,3 @@ export const sanitization = {
     return value.replace(/\s+/g, ' ').trim();
   },
 };
-

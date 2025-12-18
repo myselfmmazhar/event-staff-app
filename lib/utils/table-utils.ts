@@ -47,9 +47,14 @@ export function generateSkeletonRows(count: number): number[] {
 }
 
 /**
+ * Valid filter value types
+ */
+type FilterValue = string | number | boolean | null | undefined;
+
+/**
  * Check if there are any active filters
  */
-export function hasActiveFilters(filters: Record<string, any>): boolean {
+export function hasActiveFilters(filters: Record<string, FilterValue>): boolean {
   return Object.entries(filters).some(([key, value]) => {
     // Exclude pagination and sort fields
     if (["page", "limit", "sortBy", "sortOrder"].includes(key)) {

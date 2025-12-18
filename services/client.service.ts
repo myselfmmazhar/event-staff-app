@@ -8,41 +8,9 @@ import type {
   QueryClientsInput,
 } from "@/lib/schemas/client.schema";
 import { generateClientId } from "@/lib/utils/id-generator";
+import type { ClientSelect, PaginatedResponse } from "@/lib/types/prisma-types";
 
-type ClientSelect = {
-  id: string;
-  clientId: string;
-  businessName: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  cellPhone: string;
-  businessPhone: string | null;
-  details: string | null;
-  venueName: string | null;
-  room: string | null;
-  streetAddress: string;
-  aptSuiteUnit: string | null;
-  city: string;
-  country: string;
-  state: string;
-  zipCode: string;
-  hasLoginAccess: boolean;
-  userId: string | null;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export interface PaginatedClients {
-  data: ClientSelect[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
+export type PaginatedClients = PaginatedResponse<ClientSelect>;
 
 export interface ClientStats {
   total: number;
@@ -55,6 +23,34 @@ export interface ClientStats {
  */
 export class ClientService {
   constructor(private prisma: PrismaClient) {}
+
+  /**
+   * Client select configuration for consistent querying
+   */
+  private readonly clientSelect = {
+    id: true,
+    clientId: true,
+    businessName: true,
+    firstName: true,
+    lastName: true,
+    email: true,
+    cellPhone: true,
+    businessPhone: true,
+    details: true,
+    venueName: true,
+    room: true,
+    streetAddress: true,
+    aptSuiteUnit: true,
+    city: true,
+    country: true,
+    state: true,
+    zipCode: true,
+    hasLoginAccess: true,
+    userId: true,
+    createdBy: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const;
 
   /**
    * Generate a secure temporary password
@@ -83,7 +79,7 @@ export class ClientService {
           ...data,
           createdBy: createdByUserId,
         },
-        select: this.getClientSelect(),
+        select: this.clientSelect,
       });
 
       return { client, tempPassword: null };
@@ -166,7 +162,7 @@ export class ClientService {
           userId: authResult.user.id,
           hasLoginAccess: true,
         },
-        select: this.getClientSelect(),
+        select: this.clientSelect,
       });
 
       return {
@@ -219,7 +215,7 @@ export class ClientService {
       const updatedClient = await this.prisma.client.update({
         where: { id: clientId },
         data: { hasLoginAccess: false },
-        select: this.getClientSelect(),
+        select: this.clientSelect,
       });
 
       return updatedClient;
@@ -290,11 +286,18 @@ export class ClientService {
       ];
     }
 
+    // Create type-safe orderBy
+    const orderBy: Prisma.ClientOrderByWithRelationInput =
+      sortBy === 'businessName' ? { businessName: sortOrder } :
+      sortBy === 'email' ? { email: sortOrder } :
+      sortBy === 'createdAt' ? { createdAt: sortOrder } :
+      { createdAt: 'desc' };
+
     const [data, total] = await Promise.all([
       this.prisma.client.findMany({
         where,
-        select: this.getClientSelect(),
-        orderBy: { [sortBy]: sortOrder } as any,
+        select: this.clientSelect,
+        orderBy,
         take: limit,
         skip,
       }),
@@ -318,7 +321,7 @@ export class ClientService {
   async findOne(id: string): Promise<ClientSelect> {
     const client = await this.prisma.client.findUnique({
       where: { id },
-      select: this.getClientSelect(),
+      select: this.clientSelect,
     });
 
     if (!client) {
@@ -337,7 +340,7 @@ export class ClientService {
   async findByEmail(email: string): Promise<ClientSelect | null> {
     return await this.prisma.client.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },
-      select: this.getClientSelect(),
+      select: this.clientSelect,
     });
   }
 
@@ -368,14 +371,20 @@ export class ClientService {
       // If user fields changed and client has login access, update the User
       if (client.userId && client.hasLoginAccess) {
         const userUpdateData: Prisma.UserUpdateInput = {};
-        const updateData = data as any;
-        if (updateData.firstName) userUpdateData.firstName = updateData.firstName;
-        if (updateData.lastName) userUpdateData.lastName = updateData.lastName;
-        if (updateData.email) userUpdateData.email = updateData.email;
 
-        if (updateData.firstName || updateData.lastName) {
-          const firstName = updateData.firstName ?? client.firstName;
-          const lastName = updateData.lastName ?? client.lastName;
+        if ('firstName' in data && data.firstName) {
+          userUpdateData.firstName = data.firstName;
+        }
+        if ('lastName' in data && data.lastName) {
+          userUpdateData.lastName = data.lastName;
+        }
+        if ('email' in data && data.email) {
+          userUpdateData.email = data.email;
+        }
+
+        if ('firstName' in data || 'lastName' in data) {
+          const firstName = ('firstName' in data && data.firstName) ? data.firstName : client.firstName;
+          const lastName = ('lastName' in data && data.lastName) ? data.lastName : client.lastName;
           userUpdateData.name = `${firstName} ${lastName}`;
         }
 
@@ -390,8 +399,8 @@ export class ClientService {
       // Update the client
       const updatedClient = await this.prisma.client.update({
         where: { id },
-        data: data as Prisma.ClientUpdateInput,
-        select: this.getClientSelect(),
+        data: data,
+        select: this.clientSelect,
       });
 
       return { client: updatedClient, tempPassword: null };
@@ -464,36 +473,6 @@ export class ClientService {
       total,
       withLoginAccess,
       withoutLoginAccess: total - withLoginAccess,
-    };
-  }
-
-  /**
-   * Helper method to get consistent client select fields
-   */
-  private getClientSelect() {
-    return {
-      id: true,
-      clientId: true,
-      businessName: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      cellPhone: true,
-      businessPhone: true,
-      details: true,
-      venueName: true,
-      room: true,
-      streetAddress: true,
-      aptSuiteUnit: true,
-      city: true,
-      country: true,
-      state: true,
-      zipCode: true,
-      hasLoginAccess: true,
-      userId: true,
-      createdBy: true,
-      createdAt: true,
-      updatedAt: true,
     };
   }
 }

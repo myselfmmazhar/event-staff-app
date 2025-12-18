@@ -25,7 +25,8 @@ import { useTerminology } from '@/lib/hooks/use-terminology';
 
 // Form schema for client-side
 const formSchema = StaffSchema.create;
-type StaffFormData = z.infer<typeof formSchema>;
+type StaffFormInput = z.input<typeof formSchema>;
+type StaffFormOutput = z.infer<typeof formSchema>;
 
 // Define the type with relations included (same as in staff-table)
 type StaffWithRelations = Staff & {
@@ -71,8 +72,8 @@ export function StaffFormModal({
         reset,
         control,
         watch,
-    } = useForm<StaffFormData>({
-        resolver: zodResolver(formSchema) as any,
+    } = useForm<StaffFormInput, undefined, StaffFormOutput>({
+        resolver: zodResolver(formSchema),
         defaultValues: {
             accountStatus: AccountStatus.PENDING,
             staffType: StaffType.EMPLOYEE,
@@ -134,7 +135,7 @@ export function StaffFormModal({
     }, [staff, open, reset]);
 
     // Properly typed submit handler to match react-hook-form expectations
-    const handleFormSubmit: SubmitHandler<StaffFormData> = (data) => {
+    const handleFormSubmit: SubmitHandler<StaffFormOutput> = (data) => {
         onSubmit(data);
     };
 

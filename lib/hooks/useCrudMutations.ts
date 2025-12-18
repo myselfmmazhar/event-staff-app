@@ -1,14 +1,11 @@
 import { useToast } from "@/components/ui/use-toast";
+import type { TRPCError, FieldError } from "@/lib/types/error-types";
+import { extractFieldErrors } from "@/lib/types/error-types";
 import { useState } from "react";
 
-interface MutationOptions<TData = any> {
+interface MutationOptions<TData = unknown> {
   onSuccess?: (data?: TData) => void;
-  onError?: (error: any) => void;
-}
-
-interface FieldError {
-  field: string;
-  message: string;
+  onError?: (error: TRPCError) => void;
 }
 
 /**
@@ -22,78 +19,91 @@ export function useCrudMutations() {
   /**
    * Handle mutation success
    */
-  const handleSuccess = (message: string, options?: MutationOptions) => {
+  const handleSuccess = (message: string): void => {
     toast({
       message,
       type: "success",
     });
     setBackendErrors([]);
-    options?.onSuccess?.();
   };
 
   /**
    * Handle mutation error with field validation support
    */
-  const handleError = (error: any, options?: MutationOptions) => {
-    // Extract field errors from tRPC error response
-    const fieldErrors = (error.data as { fieldErrors?: FieldError[] })?.fieldErrors || [];
+  const handleError = (error: TRPCError): void => {
+    const fieldErrors = extractFieldErrors(error);
 
     if (fieldErrors.length > 0) {
-      // Set field errors to be displayed on the form
       setBackendErrors(fieldErrors);
       toast({
         message: "Please check the form for errors",
         type: "error",
       });
     } else {
-      // Show specific error message for non-validation errors
       setBackendErrors([]);
       toast({
-        message: error.message || "An error occurred",
+        message: error.message ?? "An error occurred",
         type: "error",
       });
     }
 
-    options?.onError?.(error);
   };
 
   /**
    * Create wrapper for create mutation
    */
-  const createMutationOptions = (
+  const createMutationOptions = <TData = unknown>(
     successMessage: string,
-    options?: MutationOptions
+    options?: MutationOptions<TData>
   ) => ({
-    onSuccess: (data?: any) => handleSuccess(successMessage, { ...options, onSuccess: () => options?.onSuccess?.(data) }),
-    onError: (error: any) => handleError(error, options),
+    onSuccess: (data?: TData) => {
+      handleSuccess(successMessage);
+      options?.onSuccess?.(data);
+    },
+    onError: (error: TRPCError) => {
+      handleError(error);
+      options?.onError?.(error);
+    },
   });
 
   /**
    * Create wrapper for update mutation
    */
-  const updateMutationOptions = (
+  const updateMutationOptions = <TData = unknown>(
     successMessage: string,
-    options?: MutationOptions
+    options?: MutationOptions<TData>
   ) => ({
-    onSuccess: (data?: any) => handleSuccess(successMessage, { ...options, onSuccess: () => options?.onSuccess?.(data) }),
-    onError: (error: any) => handleError(error, options),
+    onSuccess: (data?: TData) => {
+      handleSuccess(successMessage);
+      options?.onSuccess?.(data);
+    },
+    onError: (error: TRPCError) => {
+      handleError(error);
+      options?.onError?.(error);
+    },
   });
 
   /**
    * Create wrapper for delete mutation
    */
-  const deleteMutationOptions = (
+  const deleteMutationOptions = <TData = unknown>(
     successMessage: string,
-    options?: MutationOptions
+    options?: MutationOptions<TData>
   ) => ({
-    onSuccess: (data?: any) => handleSuccess(successMessage, { ...options, onSuccess: () => options?.onSuccess?.(data) }),
-    onError: (error: any) => handleError(error, options),
+    onSuccess: (data?: TData) => {
+      handleSuccess(successMessage);
+      options?.onSuccess?.(data);
+    },
+    onError: (error: TRPCError) => {
+      handleError(error);
+      options?.onError?.(error);
+    },
   });
 
   /**
    * Clear all backend errors
    */
-  const clearErrors = () => setBackendErrors([]);
+  const clearErrors = (): void => setBackendErrors([]);
 
   return {
     backendErrors,

@@ -2,18 +2,18 @@ import { create } from "zustand";
 
 export type ModalType = "form" | "view" | "delete" | "tempPassword" | null;
 
-interface ModalState<T = any> {
+interface ModalState<T = unknown> {
   // Current modal state
   modalType: ModalType;
   isOpen: boolean;
   selectedData: T | null;
   mode: "create" | "edit" | null;
-  tempData: any; // For temp password or other temporary data
+  tempData: unknown; // For temp password or other temporary data
 
   // Actions
   openModal: (type: ModalType, data?: T, mode?: "create" | "edit") => void;
   closeModal: () => void;
-  setTempData: (data: any) => void;
+  setTempData: (data: unknown) => void;
   setSelectedData: (data: T | null) => void;
   reset: () => void;
 }

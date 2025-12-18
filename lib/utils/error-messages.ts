@@ -105,7 +105,12 @@ export const FieldErrors = {
  * Get user-friendly error message from error code
  */
 export function getErrorMessage(code: string): string {
-  return ErrorMessages[code] || ErrorMessages.INTERNAL_SERVER_ERROR;
+  const message = ErrorMessages[code];
+  if (message) {
+    return message;
+  }
+  const fallback = ErrorMessages.INTERNAL_SERVER_ERROR;
+  return fallback ?? 'An unexpected error occurred';
 }
 
 /**
@@ -125,4 +130,3 @@ export function formatFieldError(field: string, errorType: string): string {
 export function extractFieldFromPath(path: (string | number)[]): string {
   return path.join('.');
 }
-

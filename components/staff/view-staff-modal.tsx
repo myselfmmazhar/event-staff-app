@@ -7,7 +7,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CloseIcon } from '@/components/ui/icons';
 import { format } from 'date-fns';
@@ -31,7 +31,7 @@ interface ViewStaffModalProps {
 }
 
 // Helper to get availability status badge color
-function getAvailabilityBadgeVariant(status: AvailabilityStatus) {
+function getAvailabilityBadgeVariant(status: AvailabilityStatus): BadgeProps['variant'] {
     switch (status) {
         case 'OPEN_TO_OFFERS':
             return 'success';
@@ -128,7 +128,7 @@ export function ViewStaffModal({
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <div>
                             <p className="text-sm text-muted-foreground">Status</p>
-                            <Badge variant={getAvailabilityBadgeVariant(staff.availabilityStatus) as any}>
+                            <Badge variant={getAvailabilityBadgeVariant(staff.availabilityStatus)}>
                                 {formatAvailabilityStatus(staff.availabilityStatus)}
                             </Badge>
                         </div>

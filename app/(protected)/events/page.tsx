@@ -14,12 +14,79 @@ import { EventTable } from '@/components/events/event-table';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import type { CreateEventInput, UpdateEventInput } from '@/lib/schemas/event.schema';
-import { useEventsFilters } from '@/store/events-filters.store';
+import { useState, useEffect, type ComponentProps } from 'react';
+import type { CreateEventInput, UpdateEventInput, FileLink } from '@/lib/schemas/event.schema';
+import { useEventsFilters, type EventSortBy, type SortOrder } from '@/store/events-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import type { inferRouterOutputs } from '@trpc/server';
+import type { AppRouter } from '@/server/routers/_app';
+
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type EventsQueryOutput = RouterOutputs['event']['getAll'];
+type EventListItem = EventsQueryOutput['data'][number] & {
+  dailyDigestMode?: boolean | null;
+  requireStaff?: boolean | null;
+};
+type EventTableEvent = ComponentProps<typeof EventTable>['events'][number];
+type EventFormData = NonNullable<ComponentProps<typeof EventFormModal>['event']>;
+
+const EVENT_SORT_FIELDS: EventSortBy[] = [
+  'createdAt',
+  'updatedAt',
+  'startDate',
+  'endDate',
+  'title',
+  'eventId',
+  'venueName',
+  'status',
+];
+
+const EVENT_SORT_FIELD_SET = new Set<EventSortBy>(EVENT_SORT_FIELDS);
+
+const EVENT_STATUS_SET = new Set<EventStatus>(Object.values(EventStatus));
+
+function parseNumberParam(value: string | null, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseStatusParam(value: string | null): EventStatus | 'ALL' {
+  if (value && EVENT_STATUS_SET.has(value as EventStatus)) {
+    return value as EventStatus;
+  }
+  return 'ALL';
+}
+
+function parseClientIdParam(value: string | null): string | 'ALL' {
+  if (!value) return 'ALL';
+  return value === 'ALL' || value === 'all' ? 'ALL' : value;
+}
+
+function parseSortByParam(value: string | null): EventSortBy {
+  if (value && EVENT_SORT_FIELD_SET.has(value as EventSortBy)) {
+    return value as EventSortBy;
+  }
+  return 'createdAt';
+}
+
+function parseSortOrderParam(value: string | null): SortOrder {
+  return value === 'asc' ? 'asc' : 'desc';
+}
+
+function mapEventToFormEvent(event: EventListItem): EventFormData {
+  const normalizedFileLinks: FileLink[] | null = Array.isArray(event.fileLinks)
+    ? (event.fileLinks as FileLink[])
+    : null;
+
+  return {
+    ...event,
+    fileLinks: normalizedFileLinks,
+    dailyDigestMode: event.dailyDigestMode ?? false,
+    requireStaff: event.requireStaff ?? false,
+  };
+}
 
 export default function EventsPage() {
   const searchParams = useSearchParams();
@@ -35,18 +102,18 @@ export default function EventsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
   const [selectedViewEventId, setSelectedViewEventId] = useState<string | null>(null);
 
   // Initialize store from URL params on mount
   useEffect(() => {
-    const page = Number(searchParams.get('page')) || 1;
-    const limit = Number(searchParams.get('limit')) || 10;
+    const page = parseNumberParam(searchParams.get('page'), 1);
+    const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
-    const status = (searchParams.get('status') as EventStatus) || 'ALL';
-    const clientId = searchParams.get('clientId') || 'ALL';
-    const sortBy = (searchParams.get('sortBy') as any) || 'createdAt';
-    const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+    const status = parseStatusParam(searchParams.get('status'));
+    const clientId = parseClientIdParam(searchParams.get('clientId'));
+    const sortBy = parseSortByParam(searchParams.get('sortBy'));
+    const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
 
     filters.setPage(page);
     filters.setLimit(limit);
@@ -83,6 +150,7 @@ export default function EventsPage() {
     sortBy: filters.sortBy,
     sortOrder: filters.sortOrder,
   });
+  const events = data?.data ?? [];
 
   // tRPC mutations with standardized error handling
   const createMutation = trpc.event.create.useMutation(
@@ -125,29 +193,53 @@ export default function EventsPage() {
     setIsFormOpen(true);
   };
 
-  const handleViewEvent = (event: any) => {
+  const getEventDetails = (id: string): EventListItem | undefined =>
+    events.find((evt) => evt.id === id);
+
+  const handleViewEvent = (event: EventListItem) => {
     setSelectedViewEventId(event.id);
     setIsViewOpen(true);
   };
 
-  const handleEditEvent = (event: any) => {
-    setSelectedEvent(event);
+  const handleEditEvent = (event: EventListItem) => {
+    setSelectedEvent(mapEventToFormEvent(event));
     setBackendErrors([]);
     setIsFormOpen(true);
   };
 
-  const handleEditFromView = (event: any) => {
+  const handleEditFromView = (event: EventListItem) => {
     // Close view dialog and open edit form
     setIsViewOpen(false);
     setSelectedViewEventId(null);
-    setSelectedEvent(event);
+    setSelectedEvent(mapEventToFormEvent(event));
     setBackendErrors([]);
     setIsFormOpen(true);
   };
 
-  const handleDeleteEvent = (event: any) => {
-    setSelectedEvent(event);
+  const handleDeleteEvent = (event: EventListItem) => {
+    setSelectedEvent(mapEventToFormEvent(event));
     setIsDeleteOpen(true);
+  };
+
+  const handleViewEventFromTable = (event: EventTableEvent) => {
+    const eventDetails = getEventDetails(event.id);
+    if (eventDetails) {
+      handleViewEvent(eventDetails);
+    }
+  };
+
+  const handleEditEventFromTable = (event: EventTableEvent) => {
+    const eventDetails = getEventDetails(event.id);
+    if (eventDetails) {
+      handleEditEvent(eventDetails);
+    }
+  };
+
+  const handleDeleteEventFromTable = (event: EventTableEvent) => {
+    const eventDetails = getEventDetails(event.id);
+    if (eventDetails) {
+      handleDeleteEvent(eventDetails);
+    }
   };
 
   const handleFormSubmit = (data: CreateEventInput | Omit<UpdateEventInput, 'id'>) => {
@@ -238,13 +330,13 @@ export default function EventsPage() {
       <Card className="p-6">
         <div className="relative z-10">
           <EventTable
-            events={data?.data || []}
+            events={events}
             isLoading={isLoading}
             sortBy={filters.sortBy}
             sortOrder={filters.sortOrder}
-            onView={handleViewEvent}
-            onEdit={handleEditEvent}
-            onDelete={handleDeleteEvent}
+            onView={handleViewEventFromTable}
+            onEdit={handleEditEventFromTable}
+            onDelete={handleDeleteEventFromTable}
             onSort={handleSort}
           />
 

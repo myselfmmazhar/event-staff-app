@@ -29,6 +29,52 @@ export interface CalendarEvent {
   } | null;
 }
 
+type WeekDaysTuple = [Date, Date, Date, Date, Date, Date, Date];
+
+const toWeekDaysTuple = (days: Date[]): WeekDaysTuple => {
+  if (days.length < 7) {
+    throw new Error('Week grid must contain at least 7 days');
+  }
+  return [
+    days[0]!,
+    days[1]!,
+    days[2]!,
+    days[3]!,
+    days[4]!,
+    days[5]!,
+    days[6]!,
+  ];
+};
+
+const getWeekDay = (weekDays: WeekDaysTuple, index: number): Date => {
+  const day = weekDays[index];
+  if (!day) {
+    throw new Error(`Week day not found for index ${index}`);
+  }
+  return day;
+};
+
+const ensureColumnSlots = (columns: boolean[][], index: number): boolean[] => {
+  if (!columns[index]) {
+    columns[index] = [];
+  }
+  const columnSlots = columns[index];
+  if (!columnSlots) {
+    throw new Error('Failed to initialize calendar slot column');
+  }
+  return columnSlots;
+};
+
+const parseTimeParts = (time: string) => {
+  const [hoursPart, minutesPart] = time.split(':');
+  const hours = Number.parseInt(hoursPart ?? '0', 10);
+  const minutes = Number.parseInt(minutesPart ?? '0', 10);
+  return {
+    hours: Number.isNaN(hours) ? 0 : hours,
+    minutes: Number.isNaN(minutes) ? 0 : minutes,
+  };
+};
+
 /**
  * Generate a month grid (6 weeks of days = 42 days total)
  * Includes overflow days from previous/next months
@@ -186,7 +232,7 @@ export function formatEventTime(time: string | null): string {
   }
 
   try {
-    const [hours, minutes] = time.split(':').map(Number);
+    const { hours, minutes } = parseTimeParts(time);
     const period = hours >= 12 ? 'PM' : 'AM';
     const displayHours = hours % 12 || 12;
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
@@ -321,7 +367,9 @@ export interface EventLayout {
  */
 export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventLayout[] {
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 });
-  const weekDays = generateWeekGrid(weekStart);
+  const weekDays = toWeekDaysTuple(generateWeekGrid(weekStart));
+  const firstDayOfWeek = getWeekDay(weekDays, 0);
+  const lastDayOfWeek = getWeekDay(weekDays, 6);
 
   // Filter events that overlap with this week
   const weekEvents = events.filter(event => {
@@ -360,7 +408,7 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
 
     // Find start column
     for (let i = 0; i < 7; i++) {
-      const day = weekDays[i];
+      const day = getWeekDay(weekDays, i);
       if (isSameDay(day, eventStart) || (i === 0 && eventStart < day)) {
         colStart = i;
         break;
@@ -369,7 +417,7 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
 
     // Find end column
     for (let i = colStart; i < 7; i++) {
-      const day = weekDays[i];
+      const day = getWeekDay(weekDays, i);
       if (isSameDay(day, eventEnd)) {
         colEnd = i;
         break;
@@ -377,8 +425,8 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
     }
 
     // Adjust for events starting before or ending after this week
-    if (eventStart < weekDays[0]) colStart = 0;
-    if (eventEnd > weekDays[6]) colEnd = 6;
+    if (eventStart < firstDayOfWeek) colStart = 0;
+    if (eventEnd > lastDayOfWeek) colEnd = 6;
 
     const colSpan = colEnd - colStart + 1;
 
@@ -389,7 +437,8 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
     while (!foundRow) {
       let rowAvailable = true;
       for (let i = colStart; i <= colEnd; i++) {
-        if (slots[i][row]) {
+        const columnSlots = ensureColumnSlots(slots, i);
+        if (columnSlots[row]) {
           rowAvailable = false;
           break;
         }
@@ -399,7 +448,8 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
         foundRow = true;
         // Mark slots as occupied
         for (let i = colStart; i <= colEnd; i++) {
-          slots[i][row] = true;
+          const columnSlots = ensureColumnSlots(slots, i);
+          columnSlots[row] = true;
         }
       } else {
         row++;
@@ -411,8 +461,8 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
       colStart,
       colSpan,
       row,
-      isContinuesBefore: eventStart < weekDays[0],
-      isContinuesAfter: eventEnd > weekDays[6],
+      isContinuesBefore: eventStart < firstDayOfWeek,
+      isContinuesAfter: eventEnd > lastDayOfWeek,
     });
   });
 
@@ -455,7 +505,7 @@ export function categorizeEvents(events: CalendarEvent[]): {
  */
 export function timeToMinutes(time: string | null): number {
   if (!time) return 0;
-  const [hours, minutes] = time.split(':').map(Number);
+  const { hours, minutes } = parseTimeParts(time);
   return hours * 60 + minutes;
 }
 
@@ -562,7 +612,11 @@ export function getTimedEventLayout(
 
     // Find first available column (where previous event ended before this one starts)
     let column = 0;
-    while (column < columns.length && columns[column] > startMinutes) {
+    while (column < columns.length) {
+      const columnEnd = columns[column];
+      if (columnEnd === undefined || columnEnd <= startMinutes) {
+        break;
+      }
       column++;
     }
 
@@ -611,9 +665,15 @@ export function getMonthEventLayout(
   const weekLayoutsMap = new Map<number, EventLayout[]>();
 
   for (let weekIndex = 0; weekIndex < monthGrid.length; weekIndex++) {
-    const weekDays = monthGrid[weekIndex];
-    const weekStart = startOfDay(weekDays[0]);
-    const weekEnd = endOfDay(weekDays[6]);
+    const weekDaysArray = monthGrid[weekIndex];
+    if (!weekDaysArray || weekDaysArray.length < 7) {
+      continue;
+    }
+    const weekDays = toWeekDaysTuple(weekDaysArray);
+    const firstDayOfWeek = getWeekDay(weekDays, 0);
+    const lastDayOfWeek = getWeekDay(weekDays, 6);
+    const weekStart = startOfDay(firstDayOfWeek);
+    const weekEnd = endOfDay(lastDayOfWeek);
 
     // Filter events for this week
     const weekEvents = events.filter((event) => {
@@ -651,7 +711,7 @@ export function getMonthEventLayout(
 
       // Find start column
       for (let i = 0; i < 7; i++) {
-        const day = weekDays[i];
+        const day = getWeekDay(weekDays, i);
         if (isSameDay(day, eventStart) || (i === 0 && eventStart < day)) {
           colStart = i;
           break;
@@ -660,7 +720,7 @@ export function getMonthEventLayout(
 
       // Find end column
       for (let i = colStart; i < 7; i++) {
-        const day = weekDays[i];
+        const day = getWeekDay(weekDays, i);
         if (isSameDay(day, eventEnd)) {
           colEnd = i;
           break;
@@ -668,8 +728,8 @@ export function getMonthEventLayout(
       }
 
       // Adjust for events starting before or ending after this week
-      if (eventStart < weekDays[0]) colStart = 0;
-      if (eventEnd > weekDays[6]) colEnd = 6;
+      if (eventStart < firstDayOfWeek) colStart = 0;
+      if (eventEnd > lastDayOfWeek) colEnd = 6;
 
       const colSpan = colEnd - colStart + 1;
 
@@ -681,10 +741,11 @@ export function getMonthEventLayout(
 
         // Ensure slots array is large enough
         for (let i = colStart; i <= colEnd; i++) {
-          while (slots[i].length <= row) {
-            slots[i].push(false);
+          const columnSlots = ensureColumnSlots(slots, i);
+          while (columnSlots.length <= row) {
+            columnSlots.push(false);
           }
-          slots[i][row] = true;
+          columnSlots[row] = true;
         }
       } else {
         // Find first available row
@@ -694,7 +755,8 @@ export function getMonthEventLayout(
         while (!foundRow) {
           let rowAvailable = true;
           for (let i = colStart; i <= colEnd; i++) {
-            if (slots[i][row]) {
+            const columnSlots = ensureColumnSlots(slots, i);
+            if (columnSlots[row]) {
               rowAvailable = false;
               break;
             }
@@ -703,7 +765,8 @@ export function getMonthEventLayout(
           if (rowAvailable) {
             foundRow = true;
             for (let i = colStart; i <= colEnd; i++) {
-              slots[i][row] = true;
+              const columnSlots = ensureColumnSlots(slots, i);
+              columnSlots[row] = true;
             }
           } else {
             row++;
@@ -719,8 +782,8 @@ export function getMonthEventLayout(
         colStart,
         colSpan,
         row,
-        isContinuesBefore: eventStart < weekDays[0],
-        isContinuesAfter: eventEnd > weekDays[6],
+        isContinuesBefore: eventStart < firstDayOfWeek,
+        isContinuesAfter: eventEnd > lastDayOfWeek,
       });
     });
 

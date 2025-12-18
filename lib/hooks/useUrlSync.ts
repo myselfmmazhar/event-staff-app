@@ -1,21 +1,32 @@
 import { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-type StoreState = Record<string, any>;
+/**
+ * Valid filter value types
+ */
+type FilterValue = string | number | boolean | null | undefined;
 
-interface UseUrlSyncOptions {
+type FilterDefaults<T> = {
+  [K in keyof T]: T[K] extends FilterValue ? T[K] : never;
+};
+
+interface UseUrlSyncOptions<TKey extends string> {
   /** Keys to sync with URL params */
-  keys: string[];
+  keys: TKey[];
   /** Transform function for values before setting in URL */
-  transform?: (key: string, value: any) => string | null;
+  transform?: (key: TKey, value: FilterValue) => string | null;
 }
 
 /**
  * Syncs store state with URL query parameters
+ * Generic type preserves the exact shape of the filter state for type safety
  * @param store - Zustand store state
  * @param options - Configuration options
  */
-export function useUrlSync(store: StoreState, options: UseUrlSyncOptions) {
+export function useUrlSync<TStore, TKey extends keyof TStore & string>(
+  store: TStore,
+  options: UseUrlSyncOptions<TKey>
+) {
   const router = useRouter();
   const pathname = usePathname();
   const previousUrlRef = useRef<string>("");
@@ -26,6 +37,10 @@ export function useUrlSync(store: StoreState, options: UseUrlSyncOptions) {
     // Build URL params from store state
     options.keys.forEach((key) => {
       const value = store[key];
+
+      if (!isFilterValue(value)) {
+        return;
+      }
 
       // Apply custom transform if provided
       const transformedValue = options.transform
@@ -50,7 +65,7 @@ export function useUrlSync(store: StoreState, options: UseUrlSyncOptions) {
 /**
  * Default transform function for common value types
  */
-function defaultTransform(value: any): string | null {
+function defaultTransform(value: FilterValue): string | null {
   // Skip default/empty values
   if (value === undefined || value === null || value === "" || value === "ALL" || value === "all") {
     return null;
@@ -71,27 +86,32 @@ function defaultTransform(value: any): string | null {
     return value;
   }
 
-  // Skip objects and arrays
+  // This should never happen with FilterValue type
   return null;
 }
 
 /**
  * Initialize store from URL search params
+ * Generic type preserves the exact shape of the defaults for type safety
  * @param searchParams - Next.js searchParams object
  * @param defaults - Default values for store
  */
-export function initFromSearchParams<T extends StoreState>(
-  searchParams: URLSearchParams,
-  defaults: T
-): Partial<T> {
-  const state: Partial<T> = {};
+export function initFromSearchParams<
+  TDefaults extends FilterDefaults<TDefaults>,
+  TKey extends keyof TDefaults & string = keyof TDefaults & string
+>(searchParams: URLSearchParams, defaults: TDefaults): Partial<TDefaults> {
+  const state: Partial<TDefaults> = {};
 
-  Object.keys(defaults).forEach((key) => {
+  (Object.keys(defaults) as TKey[]).forEach((key) => {
     const urlValue = searchParams.get(key);
     const defaultValue = defaults[key];
 
     if (urlValue !== null) {
-      state[key as keyof T] = parseUrlValue(urlValue, defaultValue) as T[keyof T];
+      const parsedValue = parseUrlValue(
+        urlValue,
+        defaultValue as FilterValue
+      );
+      state[key as keyof TDefaults] = parsedValue as TDefaults[keyof TDefaults];
     }
   });
 
@@ -101,7 +121,7 @@ export function initFromSearchParams<T extends StoreState>(
 /**
  * Parse URL value based on the type of the default value
  */
-function parseUrlValue(urlValue: string, defaultValue: any): any {
+function parseUrlValue(urlValue: string, defaultValue: FilterValue): FilterValue {
   // Boolean values
   if (typeof defaultValue === "boolean") {
     return urlValue === "true";
@@ -115,4 +135,14 @@ function parseUrlValue(urlValue: string, defaultValue: any): any {
 
   // String values (including special cases like "ALL")
   return urlValue;
+}
+
+function isFilterValue(value: unknown): value is FilterValue {
+  return (
+    value === null ||
+    value === undefined ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
 }

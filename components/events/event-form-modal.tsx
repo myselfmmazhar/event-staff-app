@@ -17,7 +17,7 @@ import type { CreateEventInput, UpdateEventInput, FileLink } from '@/lib/schemas
 import { EventStatus } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon, PlusIcon, XIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
@@ -58,14 +58,16 @@ const editFormSchema = z.object({
   path: ["endDate"],
 });
 
-type CreateFormData = z.input<typeof createFormSchema> & {
+type CreateFormInput = z.input<typeof createFormSchema>;
+type EditFormInput = z.input<typeof editFormSchema>;
+type FormInput = (CreateFormInput | EditFormInput) & {
   startTimeTBD?: boolean;
   endTimeTBD?: boolean;
 };
-
-type EditFormData = z.input<typeof editFormSchema>;
-type FormData = CreateFormData | EditFormData;
-type FormFieldName = keyof FormData;
+type CreateFormOutput = z.infer<typeof createFormSchema>;
+type EditFormOutput = z.infer<typeof editFormSchema>;
+type FormOutput = CreateFormOutput | EditFormOutput;
+type FormFieldName = keyof FormInput;
 
 interface Event {
   id: string;
@@ -138,7 +140,7 @@ export function EventFormModal({
     setError,
     setValue,
     control,
-  } = useForm<FormData>({
+  } = useForm<FormInput, undefined, FormOutput>({
     resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
     defaultValues: {
       title: '',
@@ -164,9 +166,9 @@ export function EventFormModal({
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove } = useFieldArray<FormInput, "fileLinks">({
     control,
-    name: "fileLinks" as any,
+    name: "fileLinks",
   });
 
   useEffect(() => {
@@ -237,18 +239,20 @@ export function EventFormModal({
     }
   }, [backendErrors, setError]);
 
-  const handleFormSubmit = (data: FormData) => {
-    // Transform TBD checkboxes to "TBD" string or empty
-    const submitData = {
+  const handleFormSubmit: SubmitHandler<FormOutput> = (data) => {
+    const normalizedData = {
       ...data,
       startTime: startTimeTBD ? 'TBD' : (data.startTime || undefined),
       endTime: endTimeTBD ? 'TBD' : (data.endTime || undefined),
     };
 
-    // Remove TBD flags from submit data
-    const { startTimeTBD: _st, endTimeTBD: _et, ...finalData } = submitData as any;
-
-    onSubmit(finalData);
+    if (isEdit) {
+      const finalData = editFormSchema.parse(normalizedData);
+      onSubmit(finalData);
+    } else {
+      const finalData = createFormSchema.parse(normalizedData);
+      onSubmit(finalData);
+    }
   };
 
   return (

@@ -58,6 +58,9 @@ export async function generateUniqueId(
 
   // Get the Prisma model dynamically
   const prismaModel = (prisma as unknown as Record<string, PrismaModelWithId>)[model];
+  if (!prismaModel) {
+    throw new Error(`Prisma model ${model} is not available`);
+  }
 
   // Find the last ID for the current year
   const lastRecord = await prismaModel.findFirst({
@@ -76,10 +79,13 @@ export async function generateUniqueId(
   if (lastRecord) {
     // Parse the number from the last ID (format: PREFIX-YYYY-NNN)
     const lastId = lastRecord[field];
-    const parts = lastId.split('-');
-    const lastNumber = parseInt(parts[parts.length - 1], 10);
-    if (!isNaN(lastNumber)) {
-      nextNumber = lastNumber + 1;
+    if (typeof lastId === 'string') {
+      const parts = lastId.split('-');
+      const lastPart = parts[parts.length - 1];
+      const lastNumber = lastPart ? Number.parseInt(lastPart, 10) : Number.NaN;
+      if (!Number.isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1;
+      }
     }
   }
 

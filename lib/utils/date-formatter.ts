@@ -38,9 +38,10 @@ export function formatTime(time: string | null | undefined): string {
   if (!time) return 'TBD';
 
   const [hours, minutes] = time.split(':');
-  const hour = parseInt(hours, 10);
+  if (!hours || !minutes) return 'TBD';
+  const hour = Number.parseInt(hours, 10);
 
-  if (isNaN(hour)) return 'TBD';
+  if (Number.isNaN(hour)) return 'TBD';
 
   const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
   const ampm = hour >= 12 ? 'PM' : 'AM';
