@@ -1,9 +1,9 @@
 'use client';
 
-import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import type { ClientDeleteInfo } from '@/lib/types/client';
 
-interface DeleteClientDialogProps {
+interface DeleteClientModalProps {
   client: ClientDeleteInfo | null;
   open: boolean;
   onClose: () => void;
@@ -11,17 +11,17 @@ interface DeleteClientDialogProps {
   isLoading?: boolean;
 }
 
-export function DeleteClientDialog({
+export function DeleteClientModal({
   client,
   open,
   onClose,
   onConfirm,
   isLoading,
-}: DeleteClientDialogProps) {
+}: DeleteClientModalProps) {
   if (!client) return null;
 
   return (
-    <ConfirmDialog
+    <ConfirmModal
       open={open}
       onClose={onClose}
       onConfirm={onConfirm}
@@ -39,6 +39,6 @@ export function DeleteClientDialog({
       <p className="text-sm">
         Are you sure you want to delete <strong>{client.businessName}</strong> ({client.firstName} {client.lastName})?
       </p>
-    </ConfirmDialog>
+    </ConfirmModal>
   );
 }

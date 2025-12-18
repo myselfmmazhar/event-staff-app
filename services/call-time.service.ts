@@ -13,6 +13,7 @@ import type {
   RespondToInvitationInput,
   StaffSearchInput,
 } from '@/lib/schemas/call-time.schema';
+import { generateCallTimeId } from '@/lib/utils/id-generator';
 
 // Skill level order for comparison (higher = more skilled)
 const SKILL_LEVEL_ORDER: Record<SkillLevel, number> = {
@@ -26,32 +27,6 @@ const SKILL_LEVEL_ORDER: Record<SkillLevel, number> = {
  */
 export class CallTimeService {
   constructor(private prisma: PrismaClient) {}
-
-  /**
-   * Generate unique Call Time ID (CT-YYYY-NNN)
-   */
-  private async generateCallTimeId(): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `CT-${year}-`;
-
-    const count = await this.prisma.callTime.count({
-      where: { callTimeId: { startsWith: prefix } },
-    });
-
-    const nextNumber = (count + 1).toString().padStart(3, '0');
-    const callTimeId = `${prefix}${nextNumber}`;
-
-    // Race condition protection
-    const existing = await this.prisma.callTime.findUnique({
-      where: { callTimeId },
-    });
-
-    if (existing) {
-      return this.generateCallTimeId();
-    }
-
-    return callTimeId;
-  }
 
   /**
    * Create a new call time
@@ -81,7 +56,7 @@ export class CallTimeService {
       });
     }
 
-    const callTimeId = await this.generateCallTimeId();
+    const callTimeId = await generateCallTimeId(this.prisma);
 
     return await this.prisma.callTime.create({
       data: {

@@ -1,6 +1,6 @@
 // Export all common components from a single entry point
 export { ActiveFilters } from './active-filters';
-export { ConfirmDialog } from './confirm-dialog';
+export { ConfirmModal } from './confirm-modal';
 export { CrudFormModal } from './crud-form-modal';
 export { DataTable } from './data-table';
 export type { ColumnDef } from './data-table';

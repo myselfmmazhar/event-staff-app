@@ -10,58 +10,33 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckIcon, XIcon, EditIcon, UsersIcon } from '@/components/ui/icons';
+import { EditIcon, UsersIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
-import { EventStatus } from '@prisma/client';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from '@/lib/constants';
+import { formatDateTime } from '@/lib/utils/date-formatter';
 
-interface ViewEventDialogProps {
+interface ViewEventModalProps {
   eventId: string | null;
   open: boolean;
   onClose: () => void;
   onEdit?: (event: any) => void;
 }
 
-const STATUS_COLORS: Record<EventStatus, 'default' | 'info' | 'success' | 'primary' | 'purple' | 'danger'> = {
-  DRAFT: 'default',
-  PUBLISHED: 'info',
-  CONFIRMED: 'success',
-  IN_PROGRESS: 'primary',
-  COMPLETED: 'purple',
-  CANCELLED: 'danger',
-};
-
-const STATUS_LABELS: Record<EventStatus, string> = {
-  DRAFT: 'Draft',
-  PUBLISHED: 'Published',
-  CONFIRMED: 'Confirmed',
-  IN_PROGRESS: 'In Progress',
-  COMPLETED: 'Completed',
-  CANCELLED: 'Cancelled',
-};
-
-export function ViewEventDialog({
+export function ViewEventModal({
   eventId,
   open,
   onClose,
   onEdit,
-}: ViewEventDialogProps) {
+}: ViewEventModalProps) {
   const router = useRouter();
   const { terminology } = useTerminology();
   const { data: event, isLoading, error } = trpc.event.getById.useQuery(
     { id: eventId || '' },
     { enabled: !!eventId && open }
   );
-
-  const formatDateTime = (date: Date, time?: string | null, timezone?: string) => {
-    const dateStr = format(new Date(date), 'EEEE, MMMM d, yyyy');
-    if (!time || time === 'TBD') {
-      return `${dateStr} - Time TBD`;
-    }
-    return `${dateStr} at ${time}`;
-  };
 
   const handleEdit = () => {
     if (event && onEdit) {
@@ -97,8 +72,8 @@ export function ViewEventDialog({
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{terminology.event.singular} ID</p>
                 <p className="font-mono text-sm font-medium">{event.eventId}</p>
               </div>
-              <Badge variant={STATUS_COLORS[event.status]} asSpan>
-                {STATUS_LABELS[event.status]}
+              <Badge variant={EVENT_STATUS_COLORS[event.status]} asSpan>
+                {EVENT_STATUS_LABELS[event.status]}
               </Badge>
             </div>
 
@@ -165,11 +140,11 @@ export function ViewEventDialog({
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Start</p>
-                  <p className="text-sm text-foreground">{formatDateTime(event.startDate, event.startTime, event.timezone)}</p>
+                  <p className="text-sm text-foreground">{formatDateTime(event.startDate, event.startTime, { dateFormat: 'long' })}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">End</p>
-                  <p className="text-sm text-foreground">{formatDateTime(event.endDate, event.endTime, event.timezone)}</p>
+                  <p className="text-sm text-foreground">{formatDateTime(event.endDate, event.endTime, { dateFormat: 'long' })}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Timezone</p>

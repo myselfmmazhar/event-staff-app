@@ -7,9 +7,9 @@ import { ClientFormModal } from '@/components/clients/client-form-modal';
 import { ClientTable } from '@/components/clients/client-table';
 import { ClientSearch } from '@/components/clients/client-search';
 import { ClientFilters } from '@/components/clients/client-filters';
-import { ViewClientDialog } from '@/components/clients/view-client-dialog';
-import { DeleteClientDialog } from '@/components/clients/delete-client-dialog';
-import { TemporaryPasswordDialog } from '@/components/clients/temporary-password-dialog';
+import { ViewClientModal } from '@/components/clients/view-client-modal';
+import { DeleteClientModal } from '@/components/clients/delete-client-modal';
+import { TemporaryPasswordModal } from '@/components/clients/temporary-password-modal';
 import { Pagination } from '@/components/common/pagination';
 import { ActiveFilters } from '@/components/common/active-filters';
 import { trpc } from '@/lib/client/trpc';
@@ -297,7 +297,7 @@ export default function ClientsPage() {
         backendErrors={backendErrors}
       />
 
-      <ViewClientDialog
+      <ViewClientModal
         client={selectedClient}
         open={modals.view}
         onClose={() => {
@@ -310,7 +310,7 @@ export default function ClientsPage() {
         }}
       />
 
-      <DeleteClientDialog
+      <DeleteClientModal
         client={selectedClient}
         open={modals.delete}
         onClose={() => {
@@ -321,7 +321,7 @@ export default function ClientsPage() {
         isLoading={deleteMutation.isPending}
       />
 
-      <TemporaryPasswordDialog
+      <TemporaryPasswordModal
         tempPassword={tempPassword}
         clientName={selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : ''}
         clientEmail={selectedClient?.email || ''}

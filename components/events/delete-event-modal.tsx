@@ -1,6 +1,6 @@
 'use client';
 
-import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 
 interface Event {
@@ -9,7 +9,7 @@ interface Event {
   eventId: string;
 }
 
-interface DeleteEventDialogProps {
+interface DeleteEventModalProps {
   event: Event | null;
   open: boolean;
   onClose: () => void;
@@ -17,19 +17,19 @@ interface DeleteEventDialogProps {
   isDeleting: boolean;
 }
 
-export function DeleteEventDialog({
+export function DeleteEventModal({
   event,
   open,
   onClose,
   onConfirm,
   isDeleting,
-}: DeleteEventDialogProps) {
+}: DeleteEventModalProps) {
   const { terminology } = useTerminology();
 
   if (!event) return null;
 
   return (
-    <ConfirmDialog
+    <ConfirmModal
       open={open}
       onClose={onClose}
       onConfirm={onConfirm}
@@ -47,6 +47,6 @@ export function DeleteEventDialog({
         <p className="text-sm font-medium text-foreground">{event.title}</p>
         <p className="text-xs text-muted-foreground mt-1">ID: {event.eventId}</p>
       </div>
-    </ConfirmDialog>
+    </ConfirmModal>
   );
 }

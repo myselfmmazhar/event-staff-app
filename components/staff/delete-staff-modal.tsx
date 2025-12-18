@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Staff } from '@prisma/client';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 
-interface DeleteStaffDialogProps {
+interface DeleteStaffModalProps {
     staff: Staff | null;
     open: boolean;
     onClose: () => void;
@@ -19,13 +19,13 @@ interface DeleteStaffDialogProps {
     isDeleting: boolean;
 }
 
-export function DeleteStaffDialog({
+export function DeleteStaffModal({
     staff,
     open,
     onClose,
     onConfirm,
     isDeleting,
-}: DeleteStaffDialogProps) {
+}: DeleteStaffModalProps) {
     const { terminology } = useTerminology();
     if (!staff) return null;
 

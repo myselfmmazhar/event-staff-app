@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { CheckIcon } from '@/components/ui/icons';
 import { useState } from 'react';
 
-interface TemporaryPasswordDialogProps {
+interface TemporaryPasswordModalProps {
   tempPassword: string | null;
   clientName: string;
   clientEmail: string;
@@ -20,13 +20,13 @@ interface TemporaryPasswordDialogProps {
   onClose: () => void;
 }
 
-export function TemporaryPasswordDialog({
+export function TemporaryPasswordModal({
   tempPassword,
   clientName,
   clientEmail,
   open,
   onClose,
-}: TemporaryPasswordDialogProps) {
+}: TemporaryPasswordModalProps) {
   const [copied, setCopied] = useState(false);
 
   if (!tempPassword) return null;

@@ -3,13 +3,13 @@
 import { Button, LinkButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PlusIcon, UsersIcon } from 'lucide-react';
-import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import { StaffFormModal } from '@/components/staff/staff-form-modal';
 import { StaffTable } from '@/components/staff/staff-table';
 import { StaffSearch } from '@/components/staff/staff-search';
 import { StaffFilters } from '@/components/staff/staff-filters';
-import { ViewStaffDialog } from '@/components/staff/view-staff-dialog';
-import { DeleteStaffDialog } from '@/components/staff/delete-staff-dialog';
+import { ViewStaffModal } from '@/components/staff/view-staff-modal';
+import { DeleteStaffModal } from '@/components/staff/delete-staff-modal';
 import { Pagination } from '@/components/common/pagination';
 import { trpc as api } from '@/lib/client/trpc';
 import type { CreateStaffInput, UpdateStaffInput } from '@/lib/schemas/staff.schema';
@@ -356,7 +356,7 @@ export default function StaffPage() {
                 isSubmitting={createMutation.isPending || updateMutation.isPending}
             />
 
-            <ViewStaffDialog
+            <ViewStaffModal
                 staff={selectedStaff}
                 open={modals.view}
                 onClose={() => {
@@ -369,7 +369,7 @@ export default function StaffPage() {
                 isActioning={grantLoginAccessMutation.isPending || resendInvitationMutation.isPending || bulkDisableMutation.isPending}
             />
 
-            <DeleteStaffDialog
+            <DeleteStaffModal
                 staff={selectedStaff}
                 open={modals.delete}
                 onClose={() => {
@@ -380,8 +380,8 @@ export default function StaffPage() {
                 isDeleting={deleteMutation.isPending}
             />
 
-            {/* Confirmation Dialogs */}
-            <ConfirmDialog
+            {/* Confirmation Modals */}
+            <ConfirmModal
                 open={isResendConfirmOpen}
                 onClose={() => {
                     setIsResendConfirmOpen(false);
@@ -398,9 +398,9 @@ export default function StaffPage() {
                     A new invitation email will be sent to <strong>{staffToResend?.email}</strong>.
                     The previous invitation link will be invalidated.
                 </p>
-            </ConfirmDialog>
+            </ConfirmModal>
 
-            <ConfirmDialog
+            <ConfirmModal
                 open={isDisableConfirmOpen}
                 onClose={() => {
                     setIsDisableConfirmOpen(false);
@@ -417,7 +417,7 @@ export default function StaffPage() {
                     This will prevent the {terminology.staff.lower} from logging in or being assigned to events.
                     You can re-enable the account later if needed.
                 </p>
-            </ConfirmDialog>
+            </ConfirmModal>
         </div>
     );
 }

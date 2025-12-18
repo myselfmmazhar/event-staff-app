@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-interface DeleteCallTimeDialogProps {
+interface DeleteCallTimeModalProps {
   callTime: {
     id: string;
     callTimeId: string;
@@ -21,13 +21,13 @@ interface DeleteCallTimeDialogProps {
   isDeleting: boolean;
 }
 
-export function DeleteCallTimeDialog({
+export function DeleteCallTimeModal({
   callTime,
   open,
   onClose,
   onConfirm,
   isDeleting,
-}: DeleteCallTimeDialogProps) {
+}: DeleteCallTimeModalProps) {
   if (!callTime) return null;
 
   return (

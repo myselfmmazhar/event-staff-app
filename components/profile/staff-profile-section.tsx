@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
@@ -495,8 +495,8 @@ export function StaffProfileSection() {
                 </CardContent>
             </Card>
 
-            {/* Deactivate Confirmation Dialog */}
-            <ConfirmDialog
+            {/* Deactivate Confirmation Modal */}
+            <ConfirmModal
                 open={isDeactivateConfirmOpen}
                 onClose={() => {
                     setIsDeactivateConfirmOpen(false);
@@ -519,7 +519,7 @@ export function StaffProfileSection() {
                         rows={3}
                     />
                 </div>
-            </ConfirmDialog>
+            </ConfirmModal>
         </div>
     );
 }

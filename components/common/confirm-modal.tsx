@@ -12,7 +12,7 @@ import {
 import { AlertIcon } from '@/components/ui/icons';
 import { ReactNode } from 'react';
 
-interface ConfirmDialogProps {
+interface ConfirmModalProps {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -26,7 +26,7 @@ interface ConfirmDialogProps {
   warningMessage?: string;
 }
 
-export function ConfirmDialog({
+export function ConfirmModal({
   open,
   onClose,
   onConfirm,
@@ -38,7 +38,7 @@ export function ConfirmDialog({
   cancelText = 'Cancel',
   variant = 'danger',
   warningMessage,
-}: ConfirmDialogProps) {
+}: ConfirmModalProps) {
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogHeader>

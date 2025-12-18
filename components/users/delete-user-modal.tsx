@@ -1,6 +1,6 @@
 'use client';
 
-import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 
 interface User {
   id: string;
@@ -9,7 +9,7 @@ interface User {
   email: string;
 }
 
-interface DeleteUserDialogProps {
+interface DeleteUserModalProps {
   user: User | null;
   open: boolean;
   onClose: () => void;
@@ -17,17 +17,17 @@ interface DeleteUserDialogProps {
   isDeleting: boolean;
 }
 
-export function DeleteUserDialog({
+export function DeleteUserModal({
   user,
   open,
   onClose,
   onConfirm,
   isDeleting,
-}: DeleteUserDialogProps) {
+}: DeleteUserModalProps) {
   if (!user) return null;
 
   return (
-    <ConfirmDialog
+    <ConfirmModal
       open={open}
       onClose={onClose}
       onConfirm={() => onConfirm(user.id)}
@@ -48,6 +48,6 @@ export function DeleteUserDialog({
       <p className="text-sm text-muted-foreground mt-2">
         Email: {user.email}
       </p>
-    </ConfirmDialog>
+    </ConfirmModal>
   );
 }

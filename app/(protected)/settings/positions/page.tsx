@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { PlusIcon, Edit2Icon, Trash2Icon, Loader2, SearchIcon } from 'lucide-react';
 import { PositionFormModal } from '@/components/settings/position-form-modal';
-import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 
 type Position = {
     id: string;
@@ -291,8 +291,8 @@ export default function PositionsSettingsPage() {
                 isSubmitting={createMutation.isPending || updateMutation.isPending}
             />
 
-            {/* Delete Confirmation Dialog */}
-            <ConfirmDialog
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
                 open={deleteDialogOpen}
                 onClose={() => {
                     setDeleteDialogOpen(false);

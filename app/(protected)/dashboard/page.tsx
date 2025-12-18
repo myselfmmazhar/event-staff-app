@@ -9,7 +9,7 @@ import {
   DashboardTabs,
   UpcomingEventsTable,
 } from "@/components/dashboard";
-import { ViewEventDialog } from "@/components/events/view-event-dialog";
+import { ViewEventModal } from "@/components/events/view-event-modal";
 import { useEventTerm, useTerminology } from "@/lib/hooks/use-terminology";
 import { UserRole } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -207,7 +207,7 @@ export default function DashboardPage() {
         />
 
         {/* View Event Details Modal */}
-        <ViewEventDialog
+        <ViewEventModal
           eventId={selectedEventId}
           open={isViewOpen}
           onClose={handleCloseView}

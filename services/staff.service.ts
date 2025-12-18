@@ -12,6 +12,7 @@ import type {
 } from "@/lib/schemas/staff.schema";
 import { SettingsService } from "./settings.service";
 import { auth } from "@/lib/server/auth";
+import { generateStaffId } from "@/lib/utils/id-generator";
 
 /**
  * Staff Select Type (return type for queries)
@@ -109,41 +110,6 @@ export class StaffService {
     }
 
     /**
-     * Generate a unique Staff ID in format [PREFIX]-YYYY-NNN
-     * Prefix is dynamically determined from terminology settings
-     * Includes race condition protection
-     */
-    async generateStaffId(): Promise<string> {
-        // Get current terminology to determine prefix
-        const terminology = await this.settingsService.getTerminology();
-        const currentYear = new Date().getFullYear();
-        const prefix = `${terminology.staffIdPrefix}-${currentYear}`;
-
-        // Find the last staff ID for the current year
-        const lastStaff = await this.prisma.staff.findFirst({
-            where: {
-                staffId: {
-                    startsWith: prefix,
-                },
-            },
-            orderBy: {
-                staffId: "desc",
-            },
-            select: {
-                staffId: true,
-            },
-        });
-
-        let nextNumber = 1;
-        if (lastStaff) {
-            const lastNumber = parseInt(lastStaff.staffId.split("-")[2]);
-            nextNumber = lastNumber + 1;
-        }
-
-        return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
-    }
-
-    /**
      * Generate invitation token
      */
     private generateInvitationToken(): string {
@@ -173,8 +139,9 @@ export class StaffService {
     ): Promise<{ staff: StaffSelect; invitationToken: string }> {
         const { positionIds, ...staffData } = data;
 
-        // Generate unique Staff ID
-        const staffId = await this.generateStaffId();
+        // Generate unique Staff ID using shared utility
+        const terminology = await this.settingsService.getTerminology();
+        const staffId = await generateStaffId(this.prisma, terminology.staffIdPrefix);
 
         // Generate invitation token for email
         const invitationToken = this.generateInvitationToken();
@@ -246,7 +213,7 @@ export class StaffService {
             });
         }
 
-        const staffId = await this.generateStaffId();
+        const staffId = await generateStaffId(this.prisma, terminology.staffIdPrefix);
         const invitationToken = this.generateInvitationToken();
         const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 

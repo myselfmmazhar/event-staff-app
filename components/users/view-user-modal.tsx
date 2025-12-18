@@ -16,7 +16,7 @@ import { UserRole } from '@prisma/client';
 import { format } from 'date-fns';
 import { useRoleTerm } from '@/lib/hooks/use-terminology';
 
-interface ViewUserDialogProps {
+interface ViewUserModalProps {
   userId: string | null;
   open: boolean;
   onClose: () => void;
@@ -39,12 +39,12 @@ const ROLE_LABELS: Record<UserRole, string> = {
   CLIENT: 'Client',
 };
 
-export function ViewUserDialog({
+export function ViewUserModal({
   userId,
   open,
   onClose,
   onEdit,
-}: ViewUserDialogProps) {
+}: ViewUserModalProps) {
   const roleTerm = useRoleTerm();
   const { data: user, isLoading, error } = trpc.user.getById.useQuery(
     { id: userId || '' },

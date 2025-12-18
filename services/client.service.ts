@@ -7,6 +7,7 @@ import type {
   UpdateClientInput,
   QueryClientsInput,
 } from "@/lib/schemas/client.schema";
+import { generateClientId } from "@/lib/utils/id-generator";
 
 type ClientSelect = {
   id: string;
@@ -56,40 +57,6 @@ export class ClientService {
   constructor(private prisma: PrismaClient) {}
 
   /**
-   * Generate a unique Client ID in format CLT-YYYY-NNN
-   * Includes race condition protection
-   */
-  private async generateClientId(): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `CLT-${year}-`;
-
-    // Get the count of clients created this year
-    const count = await this.prisma.client.count({
-      where: {
-        clientId: {
-          startsWith: prefix,
-        },
-      },
-    });
-
-    // Generate the next number (pad with zeros to 3 digits)
-    const nextNumber = (count + 1).toString().padStart(3, "0");
-    const clientId = `${prefix}${nextNumber}`;
-
-    // Check if this ID already exists (race condition protection)
-    const existing = await this.prisma.client.findUnique({
-      where: { clientId },
-    });
-
-    if (existing) {
-      // Recursively try the next number
-      return this.generateClientId();
-    }
-
-    return clientId;
-  }
-
-  /**
    * Generate a secure temporary password
    */
   private generateTemporaryPassword(): string {
@@ -108,7 +75,7 @@ export class ClientService {
     createdByUserId: string
   ): Promise<{ client: ClientSelect; tempPassword: string | null }> {
     try {
-      const clientId = await this.generateClientId();
+      const clientId = await generateClientId(this.prisma);
 
       const client = await this.prisma.client.create({
         data: {

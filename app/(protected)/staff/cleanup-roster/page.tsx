@@ -6,7 +6,7 @@ import { StaffSearch } from '@/components/staff/staff-search';
 import { Pagination } from '@/components/common/pagination';
 import { SelectableStaffTable } from '@/components/staff/selectable-staff-table';
 import { BulkActionBar } from '@/components/staff/bulk-action-bar';
-import { BulkDisableDialog } from '@/components/staff/bulk-disable-dialog';
+import { BulkDisableModal } from '@/components/staff/bulk-disable-modal';
 import { trpc as api } from '@/lib/client/trpc';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
@@ -148,8 +148,8 @@ export default function CleanupRosterPage() {
                 </div>
             </Card>
 
-            {/* Confirmation Dialog */}
-            <BulkDisableDialog
+            {/* Confirmation Modal */}
+            <BulkDisableModal
                 staff={selectedStaff}
                 open={showConfirmDialog}
                 onClose={() => setShowConfirmDialog(false)}
