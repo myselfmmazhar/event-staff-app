@@ -2,10 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SkillLevel, AvailabilityStatus } from '@prisma/client';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
+import { AlertIcon } from '@/components/ui/icons';
 
 interface Staff {
   id: string;
@@ -20,6 +20,8 @@ interface Staff {
   state: string;
   country: string;
   locationMatch: number;
+  userId?: string | null;
+  hasLoginAccess?: boolean;
   positions: Array<{
     position: { id: string; name: string };
   }>;
@@ -51,8 +53,12 @@ export function StaffSearchTable({
   isLoading,
 }: StaffSearchTableProps) {
   const staffTerm = useStaffTerm();
-  const allSelected = staff.length > 0 && selectedIds.length === staff.length;
-  const someSelected = selectedIds.length > 0 && selectedIds.length < staff.length;
+
+  // Filter out unregistered staff from selection counts
+  const registeredStaff = staff.filter((s) => s.userId);
+  const allSelected = registeredStaff.length > 0 &&
+    registeredStaff.every((s) => selectedIds.includes(s.id));
+  const someSelected = selectedIds.length > 0 && !allSelected;
 
   // Track the indeterminate state of the "select all" checkbox
   const selectAllRef = useRef<HTMLInputElement>(null);
@@ -67,15 +73,19 @@ export function StaffSearchTable({
     if (allSelected) {
       onSelectionChange([]);
     } else {
-      onSelectionChange(staff.map((s) => s.id));
+      // Only select registered staff
+      onSelectionChange(registeredStaff.map((s) => s.id));
     }
   };
 
-  const handleSelectOne = (id: string) => {
-    if (selectedIds.includes(id)) {
-      onSelectionChange(selectedIds.filter((i) => i !== id));
+  const handleSelectOne = (member: Staff) => {
+    // Don't allow selecting unregistered staff
+    if (!member.userId) return;
+
+    if (selectedIds.includes(member.id)) {
+      onSelectionChange(selectedIds.filter((i) => i !== member.id));
     } else {
-      onSelectionChange([...selectedIds, id]);
+      onSelectionChange([...selectedIds, member.id]);
     }
   };
 
@@ -87,6 +97,8 @@ export function StaffSearchTable({
     }
     return <Badge variant="outline">Other</Badge>;
   };
+
+  const isUnregistered = (member: Staff) => !member.userId;
 
   if (isLoading) {
     return (
@@ -111,85 +123,115 @@ export function StaffSearchTable({
     );
   }
 
+  const unregisteredCount = staff.filter(isUnregistered).length;
+
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="w-12 px-4 py-3 text-left">
-              <Checkbox
-                ref={selectAllRef}
-                checked={allSelected}
-                onChange={handleSelectAll}
-              />
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-medium">{staffTerm.singular}</th>
-            <th className="px-4 py-3 text-left text-sm font-medium">Contact</th>
-            <th className="px-4 py-3 text-left text-sm font-medium">Skill</th>
-            <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-            <th className="px-4 py-3 text-left text-sm font-medium">Location</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {staff.map((member) => (
-            <tr
-              key={member.id}
-              className={`hover:bg-muted/30 cursor-pointer ${
-                selectedIds.includes(member.id) ? 'bg-primary/5' : ''
-              }`}
-              onClick={() => handleSelectOne(member.id)}
-            >
-              <td className="px-4 py-3">
+    <div className="space-y-2">
+      {unregisteredCount > 0 && (
+        <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm">
+          <AlertIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+          <span className="text-yellow-800 dark:text-yellow-200">
+            {unregisteredCount} {staffTerm.lowerPlural} haven't completed registration and cannot receive invitations.
+          </span>
+        </div>
+      )}
+
+      <div className="border rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="w-12 px-4 py-3 text-left">
                 <Checkbox
-                  checked={selectedIds.includes(member.id)}
-                  onChange={() => handleSelectOne(member.id)}
-                  onClick={(e) => e.stopPropagation()}
+                  ref={selectAllRef}
+                  checked={allSelected}
+                  onChange={handleSelectAll}
+                  disabled={registeredStaff.length === 0}
                 />
-              </td>
-              <td className="px-4 py-3">
-                <div>
-                  <p className="font-medium">
-                    {member.firstName} {member.lastName}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {member.staffId}
-                  </p>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <div className="text-sm">
-                  <p>{member.email}</p>
-                  <p className="text-muted-foreground">{member.phone}</p>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <Badge variant="outline">
-                  {SKILL_LEVEL_LABELS[member.skillLevel]}
-                </Badge>
-              </td>
-              <td className="px-4 py-3">
-                <Badge
-                  variant={
-                    member.availabilityStatus === 'OPEN_TO_OFFERS'
-                      ? 'default'
-                      : 'secondary'
-                  }
-                >
-                  {AVAILABILITY_LABELS[member.availabilityStatus]}
-                </Badge>
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  {getLocationBadge(member.locationMatch)}
-                  <span className="text-sm text-muted-foreground">
-                    {member.city}, {member.state}
-                  </span>
-                </div>
-              </td>
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium">{staffTerm.singular}</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">Contact</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">Skill</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">Location</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {staff.map((member) => {
+              const unregistered = isUnregistered(member);
+              return (
+                <tr
+                  key={member.id}
+                  className={`
+                    ${unregistered
+                      ? 'opacity-60 cursor-not-allowed bg-muted/20'
+                      : 'hover:bg-muted/30 cursor-pointer'
+                    }
+                    ${selectedIds.includes(member.id) && !unregistered ? 'bg-primary/5' : ''}
+                  `}
+                  onClick={() => handleSelectOne(member)}
+                  title={unregistered ? 'This staff member must complete registration first' : undefined}
+                >
+                  <td className="px-4 py-3">
+                    <Checkbox
+                      checked={selectedIds.includes(member.id)}
+                      onChange={() => handleSelectOne(member)}
+                      onClick={(e) => e.stopPropagation()}
+                      disabled={unregistered}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <p className="font-medium flex items-center gap-2">
+                          {member.firstName} {member.lastName}
+                          {unregistered && (
+                            <Badge variant="warning" className="text-xs">
+                              Not Registered
+                            </Badge>
+                          )}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {member.staffId}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm">
+                      <p>{member.email}</p>
+                      <p className="text-muted-foreground">{member.phone}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant="outline">
+                      {SKILL_LEVEL_LABELS[member.skillLevel]}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge
+                      variant={
+                        member.availabilityStatus === 'OPEN_TO_OFFERS'
+                          ? 'default'
+                          : 'secondary'
+                      }
+                    >
+                      {AVAILABILITY_LABELS[member.availabilityStatus]}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {getLocationBadge(member.locationMatch)}
+                      <span className="text-sm text-muted-foreground">
+                        {member.city}, {member.state}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import type {
 } from "@/lib/schemas/event.schema";
 import { SettingsService } from "./settings.service";
 import { generateEventId } from "@/lib/utils/id-generator";
+import { getNotificationTriggerService } from "@/services/notification-trigger.service";
 import type { EventSelect, PaginatedResponse } from "@/lib/types/prisma-types";
 
 // Re-export types from schema for backwards compatibility
@@ -367,6 +368,18 @@ export class EventService {
         },
       });
 
+      // Notify assigned staff about event update (only for meaningful changes)
+      const meaningfulChanges: string[] = [];
+      if (data.title !== undefined) meaningfulChanges.push('title');
+      if (data.startDate !== undefined || data.startTime !== undefined) meaningfulChanges.push('date/time');
+      if (data.venueName !== undefined || data.address !== undefined) meaningfulChanges.push('location');
+      if (data.dressCode !== undefined) meaningfulChanges.push('dress code');
+
+      if (meaningfulChanges.length > 0) {
+        const triggerService = getNotificationTriggerService(this.prisma);
+        await triggerService.onEventUpdated(id, updatedEvent.title, meaningfulChanges);
+      }
+
       return updatedEvent;
     } catch (error) {
       // Re-throw TRPCError as is
@@ -437,6 +450,12 @@ export class EventService {
         updatedAt: true,
       },
     });
+
+    // Notify assigned staff if event is cancelled
+    if (status === 'CANCELLED') {
+      const triggerService = getNotificationTriggerService(this.prisma);
+      await triggerService.onEventCancelled(id, event.title);
+    }
 
     return event;
   }
