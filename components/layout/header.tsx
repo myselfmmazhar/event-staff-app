@@ -4,6 +4,7 @@ import { MenuIcon } from '@/components/ui/icons';
 import { Button } from '@/components/ui/button';
 import { Breadcrumbs } from './breadcrumbs';
 import { UserDropdown } from './user-dropdown';
+import { NotificationBell } from '@/components/notifications';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -28,6 +29,9 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="flex-1">
           <Breadcrumbs />
         </div>
+
+        {/* Notifications */}
+        <NotificationBell />
 
         {/* User Dropdown */}
         <UserDropdown />
