@@ -14,6 +14,7 @@ import type {
   StaffSearchInput,
 } from '@/lib/schemas/call-time.schema';
 import { generateCallTimeId } from '@/lib/utils/id-generator';
+import { getNotificationTriggerService } from '@/services/notification-trigger.service';
 
 // Skill level order for comparison (higher = more skilled)
 const SKILL_LEVEL_ORDER: Record<SkillLevel, number> = {
@@ -26,7 +27,7 @@ const SKILL_LEVEL_ORDER: Record<SkillLevel, number> = {
  * Call Time Service - Business logic for call time operations
  */
 export class CallTimeService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   /**
    * Create a new call time
@@ -316,6 +317,8 @@ export class CallTimeService {
           city: true,
           state: true,
           country: true,
+          userId: true, // Include to show warning for unregistered staff
+          hasLoginAccess: true,
           positions: {
             include: { position: { select: { id: true, name: true } } },
           },
@@ -419,6 +422,7 @@ export class CallTimeService {
                 firstName: true,
                 lastName: true,
                 email: true,
+                userId: true,
               },
             },
             callTime: {
@@ -426,6 +430,7 @@ export class CallTimeService {
                 position: true,
                 event: {
                   select: {
+                    id: true,
                     title: true,
                     venueName: true,
                     city: true,
@@ -438,6 +443,22 @@ export class CallTimeService {
         });
       })
     );
+
+    // Send notifications to invited staff
+    const triggerService = getNotificationTriggerService(this.prisma);
+    for (const invitation of invitations) {
+      if (invitation.staff.userId) {
+        await triggerService.onCallTimeInvitationSent(
+          invitation.staff.userId,
+          {
+            positionName: invitation.callTime.position.name,
+            eventTitle: invitation.callTime.event.title,
+            eventId: invitation.callTime.event.id,
+            callTimeId: invitation.callTime.id,
+          }
+        );
+      }
+    }
 
     return {
       sent: invitations.length,
@@ -454,7 +475,14 @@ export class CallTimeService {
     const invitation = await this.prisma.callTimeInvitation.findUnique({
       where: { id: input.invitationId },
       include: {
-        callTime: true,
+        callTime: {
+          include: {
+            position: true,
+            event: {
+              select: { id: true, title: true, createdBy: true },
+            },
+          },
+        },
         staff: {
           select: { id: true, firstName: true, lastName: true, userId: true },
         },
@@ -483,6 +511,9 @@ export class CallTimeService {
       });
     }
 
+    const triggerService = getNotificationTriggerService(this.prisma);
+    const staffName = `${invitation.staff.firstName} ${invitation.staff.lastName}`;
+
     if (input.accept) {
       // Check if slots are still available
       const confirmedCount = await this.prisma.callTimeInvitation.count({
@@ -496,7 +527,7 @@ export class CallTimeService {
       const hasAvailableSlot =
         confirmedCount < invitation.callTime.numberOfStaffRequired;
 
-      return await this.prisma.callTimeInvitation.update({
+      const updated = await this.prisma.callTimeInvitation.update({
         where: { id: invitation.id },
         data: {
           status: hasAvailableSlot ? 'ACCEPTED' : 'WAITLISTED',
@@ -508,9 +539,36 @@ export class CallTimeService {
           callTime: { include: { position: true, event: true } },
         },
       });
+
+      // Notify the event creator that staff accepted
+      await triggerService.onInvitationResponse(
+        invitation.callTime.event.createdBy,
+        {
+          staffName,
+          positionName: invitation.callTime.position.name,
+          eventTitle: invitation.callTime.event.title,
+          eventId: invitation.callTime.event.id,
+          status: 'ACCEPTED',
+        }
+      );
+
+      // Notify the staff member if confirmed
+      if (hasAvailableSlot && invitation.staff.userId) {
+        await triggerService.onInvitationConfirmed(
+          invitation.staff.userId,
+          {
+            positionName: invitation.callTime.position.name,
+            eventTitle: invitation.callTime.event.title,
+            eventId: invitation.callTime.event.id,
+            callTimeId: invitation.callTime.id,
+          }
+        );
+      }
+
+      return updated;
     } else {
       // Decline
-      return await this.prisma.callTimeInvitation.update({
+      const updated = await this.prisma.callTimeInvitation.update({
         where: { id: invitation.id },
         data: {
           status: 'DECLINED',
@@ -521,6 +579,20 @@ export class CallTimeService {
           callTime: { include: { position: true, event: true } },
         },
       });
+
+      // Notify the event creator that staff declined
+      await triggerService.onInvitationResponse(
+        invitation.callTime.event.createdBy,
+        {
+          staffName,
+          positionName: invitation.callTime.position.name,
+          eventTitle: invitation.callTime.event.title,
+          eventId: invitation.callTime.event.id,
+          status: 'DECLINED',
+        }
+      );
+
+      return updated;
     }
   }
 
@@ -531,8 +603,13 @@ export class CallTimeService {
     const invitation = await this.prisma.callTimeInvitation.findUnique({
       where: { id: invitationId },
       include: {
-        callTime: { include: { event: { select: { createdBy: true } } } },
-        staff: { select: { id: true, firstName: true, lastName: true, email: true } },
+        callTime: {
+          include: {
+            position: true,
+            event: { select: { id: true, title: true, createdBy: true } },
+          },
+        },
+        staff: { select: { id: true, firstName: true, lastName: true, email: true, userId: true } },
       },
     });
 
@@ -554,17 +631,31 @@ export class CallTimeService {
         confirmedAt: null,
       },
       include: {
-        staff: { select: { id: true, firstName: true, lastName: true, email: true } },
+        staff: { select: { id: true, firstName: true, lastName: true, email: true, userId: true } },
         callTime: {
           include: {
             position: true,
             event: {
-              select: { title: true, venueName: true, city: true, state: true },
+              select: { id: true, title: true, venueName: true, city: true, state: true },
             },
           },
         },
       },
     });
+
+    // Send notification to staff
+    if (updated.staff.userId) {
+      const triggerService = getNotificationTriggerService(this.prisma);
+      await triggerService.onCallTimeInvitationSent(
+        updated.staff.userId,
+        {
+          positionName: updated.callTime.position.name,
+          eventTitle: updated.callTime.event.title,
+          eventId: updated.callTime.event.id,
+          callTimeId: updated.callTime.id,
+        }
+      );
+    }
 
     return updated;
   }
@@ -600,12 +691,17 @@ export class CallTimeService {
    * Get call time invitations for a staff member (staff dashboard)
    */
   async getMyInvitations(userId: string, status?: CallTimeInvitationStatus) {
+    console.log('[getMyInvitations] Looking up staff for userId:', userId);
+
     const staff = await this.prisma.staff.findUnique({
       where: { userId },
-      select: { id: true },
+      select: { id: true, firstName: true, lastName: true, email: true },
     });
 
+    console.log('[getMyInvitations] Found staff:', staff);
+
     if (!staff) {
+      console.log('[getMyInvitations] No staff found for userId, returning empty');
       return { pending: [], accepted: [], past: [], declined: [] };
     }
 
@@ -636,23 +732,32 @@ export class CallTimeService {
       orderBy: { callTime: { startDate: 'asc' } },
     });
 
+    // Use start of today for date comparison to include today's events
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    console.log('[getMyInvitations] Found', invitations.length, 'total invitations');
+    console.log('[getMyInvitations] startOfToday:', startOfToday);
+
     // Categorize invitations
     const pending = invitations.filter(
-      (inv) => inv.status === 'PENDING' && inv.callTime.startDate >= now
+      (inv) => inv.status === 'PENDING' && new Date(inv.callTime.startDate) >= startOfToday
     );
     const accepted = invitations.filter(
       (inv) =>
         inv.status === 'ACCEPTED' &&
         inv.isConfirmed &&
-        inv.callTime.startDate >= now
+        new Date(inv.callTime.startDate) >= startOfToday
     );
     const past = invitations.filter(
       (inv) =>
         inv.status === 'ACCEPTED' &&
         inv.isConfirmed &&
-        inv.callTime.endDate < now
+        new Date(inv.callTime.endDate) < startOfToday
     );
     const declined = invitations.filter((inv) => inv.status === 'DECLINED');
+
+    console.log('[getMyInvitations] Categorized - pending:', pending.length, 'accepted:', accepted.length, 'past:', past.length, 'declined:', declined.length);
 
     return { pending, accepted, past, declined };
   }
