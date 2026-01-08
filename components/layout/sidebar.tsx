@@ -193,6 +193,11 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           href: '/settings/positions',
           icon: ListIcon,
         },
+        {
+          label: 'Templates',
+          href: '/settings/templates',
+          icon: ListIcon,
+        },
       ],
     },
   ], [terminology]);

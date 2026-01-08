@@ -1,5 +1,8 @@
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
+import { prisma } from '@/lib/server/prisma';
+import { TemplateService } from './template.service';
+import type { EmailTemplateType } from '@prisma/client';
 
 type EmailProvider = 'resend' | 'smtp' | 'none';
 
@@ -14,10 +17,12 @@ export class EmailService {
   private fromEmail: string;
   private appUrl: string;
   private provider: EmailProvider = 'none';
+  private templateService: TemplateService;
 
   constructor() {
     this.fromEmail = process.env.EMAIL_FROM || 'noreply@example.com';
     this.appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    this.templateService = new TemplateService(prisma);
 
     // Try SMTP first (Mailtrap for development)
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
@@ -112,45 +117,27 @@ export class EmailService {
   ): Promise<{ success: boolean; error?: string }> {
     const inviteUrl = `${this.appUrl}/accept-invitation/staff?token=${invitationToken}`;
 
-    return this.sendEmail(
-      email,
-      `You've been invited to join as ${staffTermLabel}`,
-      `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Welcome, ${firstName}!</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              You've been invited to join the team as ${staffTermLabel}. Click the button below to create your account and complete your profile.
-            </p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${inviteUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
-                Accept Invitation
-              </a>
-            </div>
-            <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
-              This invitation link will expire in 7 days.
-            </p>
-            <p style="font-size: 14px; color: #6b7280;">
-              If you didn't expect this invitation, you can safely ignore this email.
-            </p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-            <p style="font-size: 12px; color: #9ca3af;">
-              If the button doesn't work, copy and paste this link into your browser:<br>
-              <a href="${inviteUrl}" style="color: #667eea; word-break: break-all;">${inviteUrl}</a>
-            </p>
-          </div>
-        </body>
-        </html>
-      `
-    );
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'STAFF_INVITATION',
+        {
+          firstName,
+          email,
+          staffTermLabel,
+          inviteUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering staff invitation template:', error);
+      // Fallback to basic email if template rendering fails
+      return this.sendEmail(
+        email,
+        `You've been invited to join as ${staffTermLabel}`,
+        `<p>Hi ${firstName}, you've been invited to join as ${staffTermLabel}.</p><p><a href="${inviteUrl}">Accept Invitation</a></p>`
+      );
+    }
   }
 
   /**
@@ -163,45 +150,25 @@ export class EmailService {
   ): Promise<{ success: boolean; error?: string }> {
     const inviteUrl = `${this.appUrl}/accept-invitation/client?token=${invitationToken}`;
 
-    return this.sendEmail(
-      email,
-      `You've been invited to the Client Portal`,
-      `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Welcome, ${firstName}!</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              You've been invited to access the Client Portal. Click the button below to create your account and view your events.
-            </p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${inviteUrl}" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
-                Accept Invitation
-              </a>
-            </div>
-            <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
-              This invitation link will expire in 7 days.
-            </p>
-            <p style="font-size: 14px; color: #6b7280;">
-              If you didn't expect this invitation, you can safely ignore this email.
-            </p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-            <p style="font-size: 12px; color: #9ca3af;">
-              If the button doesn't work, copy and paste this link into your browser:<br>
-              <a href="${inviteUrl}" style="color: #10b981; word-break: break-all;">${inviteUrl}</a>
-            </p>
-          </div>
-        </body>
-        </html>
-      `
-    );
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'CLIENT_INVITATION',
+        {
+          firstName,
+          email,
+          inviteUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering client invitation template:', error);
+      return this.sendEmail(
+        email,
+        `You've been invited to the Client Portal`,
+        `<p>Hi ${firstName}, you've been invited to access the Client Portal.</p><p><a href="${inviteUrl}">Accept Invitation</a></p>`
+      );
+    }
   }
 
   /**
@@ -215,45 +182,27 @@ export class EmailService {
   ): Promise<{ success: boolean; error?: string }> {
     const inviteUrl = `${this.appUrl}/accept-invitation/user?token=${invitationToken}`;
 
-    return this.sendEmail(
-      email,
-      `You've been invited to join as ${role}`,
-      `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Welcome, ${firstName}!</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              You've been invited to join as a <strong>${role}</strong>. Click the button below to create your password and activate your account.
-            </p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${inviteUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
-                Accept Invitation
-              </a>
-            </div>
-            <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
-              This invitation link will expire in 7 days.
-            </p>
-            <p style="font-size: 14px; color: #6b7280;">
-              If you didn't expect this invitation, you can safely ignore this email.
-            </p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-            <p style="font-size: 12px; color: #9ca3af;">
-              If the button doesn't work, copy and paste this link into your browser:<br>
-              <a href="${inviteUrl}" style="color: #667eea; word-break: break-all;">${inviteUrl}</a>
-            </p>
-          </div>
-        </body>
-        </html>
-      `
-    );
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'USER_INVITATION',
+        {
+          firstName,
+          email,
+          role,
+          inviteUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering user invitation template:', error);
+      // Fallback to basic email if template rendering fails
+      return this.sendEmail(
+        email,
+        `You've been invited to join as ${role}`,
+        `<p>Hi ${firstName}, you've been invited to join as ${role}.</p><p><a href="${inviteUrl}">Accept Invitation</a></p>`
+      );
+    }
   }
 
   /**
@@ -267,41 +216,27 @@ export class EmailService {
   ): Promise<{ success: boolean; error?: string }> {
     const loginUrl = `${this.appUrl}/login`;
 
-    return this.sendEmail(
-      email,
-      `Your ${staffTermLabel} account has been activated`,
-      `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Account Activated!</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              Hi ${firstName}, your ${staffTermLabel} account has been activated. You can now log in using the following credentials:
-            </p>
-            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 20px 0;">
-              <p style="margin: 0 0 10px 0;"><strong>Email:</strong> ${email}</p>
-              <p style="margin: 0;"><strong>Temporary Password:</strong> <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">${tempPassword}</code></p>
-            </div>
-            <p style="font-size: 14px; color: #ef4444; font-weight: 500;">
-              Please change your password after your first login.
-            </p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${loginUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
-                Log In Now
-              </a>
-            </div>
-          </div>
-        </body>
-        </html>
-      `
-    );
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'STAFF_CREDENTIALS',
+        {
+          firstName,
+          email,
+          staffTermLabel,
+          tempPassword,
+          loginUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering staff credentials template:', error);
+      return this.sendEmail(
+        email,
+        `Your ${staffTermLabel} account has been activated`,
+        `<p>Hi ${firstName}, your ${staffTermLabel} account has been activated.</p><p>Email: ${email}</p><p>Temporary Password: ${tempPassword}</p><p><a href="${loginUrl}">Log In Now</a></p>`
+      );
+    }
   }
 
   /**
@@ -356,54 +291,35 @@ export class EmailService {
       callTimeDetails.startDate.toDateString() ===
       callTimeDetails.endDate.toDateString();
 
-    return this.sendEmail(
-      email,
-      `You're invited: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
-      `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">You're Invited, ${firstName}!</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              You've been invited to work as <strong>${callTimeDetails.positionName}</strong> at the following event:
-            </p>
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'CALL_TIME_INVITATION',
+        {
+          firstName,
+          email,
+          positionName: callTimeDetails.positionName,
+          eventTitle: callTimeDetails.eventTitle,
+          eventVenue: callTimeDetails.eventVenue,
+          eventLocation: callTimeDetails.eventLocation,
+          startDate: formatDate(callTimeDetails.startDate),
+          endDate: isSameDay ? formatDate(callTimeDetails.startDate) : formatDate(callTimeDetails.endDate),
+          startTime: formatTime(callTimeDetails.startTime),
+          endTime: formatTime(callTimeDetails.endTime),
+          payRate: `$${callTimeDetails.payRate.toFixed(2)}`,
+          payRateType: formatRateType(callTimeDetails.payRateType),
+          dashboardUrl,
+        }
+      );
 
-            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 20px 0;">
-              <h2 style="margin: 0 0 15px 0; color: #667eea; font-size: 20px;">${callTimeDetails.eventTitle}</h2>
-              <p style="margin: 8px 0;"><strong>Location:</strong> ${callTimeDetails.eventVenue}, ${callTimeDetails.eventLocation}</p>
-              <p style="margin: 8px 0;"><strong>Date:</strong> ${formatDate(callTimeDetails.startDate)}${!isSameDay ? ` - ${formatDate(callTimeDetails.endDate)}` : ''}</p>
-              <p style="margin: 8px 0;"><strong>Time:</strong> ${formatTime(callTimeDetails.startTime)} - ${formatTime(callTimeDetails.endTime)}</p>
-              <p style="margin: 8px 0;"><strong>Pay Rate:</strong> $${callTimeDetails.payRate.toFixed(2)} ${formatRateType(callTimeDetails.payRateType)}</p>
-            </div>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${dashboardUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
-                View & Respond
-              </a>
-            </div>
-
-            <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
-              Please respond as soon as possible. Positions are filled on a first-come, first-served basis.
-            </p>
-
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-
-            <p style="font-size: 12px; color: #9ca3af;">
-              If the button doesn't work, copy and paste this link into your browser:<br>
-              <a href="${dashboardUrl}" style="color: #667eea; word-break: break-all;">${dashboardUrl}</a>
-            </p>
-          </div>
-        </body>
-        </html>
-      `
-    );
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering call time invitation template:', error);
+      return this.sendEmail(
+        email,
+        `You're invited: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
+        `<p>Hi ${firstName}, you've been invited to work as ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}.</p><p><a href="${dashboardUrl}">View & Respond</a></p>`
+      );
+    }
   }
 
   /**
@@ -440,46 +356,31 @@ export class EmailService {
       return `${hour > 12 ? hour - 12 : hour}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
     };
 
-    return this.sendEmail(
-      email,
-      `Confirmed: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
-      `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">You're Confirmed, ${firstName}!</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              Great news! You've been confirmed for <strong>${callTimeDetails.positionName}</strong> at the following event:
-            </p>
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'CALL_TIME_CONFIRMATION',
+        {
+          firstName,
+          email,
+          positionName: callTimeDetails.positionName,
+          eventTitle: callTimeDetails.eventTitle,
+          eventVenue: callTimeDetails.eventVenue,
+          eventLocation: callTimeDetails.eventLocation,
+          startDate: formatDate(callTimeDetails.startDate),
+          startTime: formatTime(callTimeDetails.startTime),
+          dashboardUrl,
+        }
+      );
 
-            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 20px 0;">
-              <h2 style="margin: 0 0 15px 0; color: #10b981; font-size: 20px;">${callTimeDetails.eventTitle}</h2>
-              <p style="margin: 8px 0;"><strong>Location:</strong> ${callTimeDetails.eventVenue}, ${callTimeDetails.eventLocation}</p>
-              <p style="margin: 8px 0;"><strong>Date:</strong> ${formatDate(callTimeDetails.startDate)}</p>
-              <p style="margin: 8px 0;"><strong>Time:</strong> ${formatTime(callTimeDetails.startTime)}</p>
-            </div>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${dashboardUrl}" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
-                View My Schedule
-              </a>
-            </div>
-
-            <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
-              Please make sure to arrive on time. If you need to cancel, please do so as soon as possible.
-            </p>
-          </div>
-        </body>
-        </html>
-      `
-    );
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering call time confirmation template:', error);
+      return this.sendEmail(
+        email,
+        `Confirmed: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
+        `<p>Hi ${firstName}, you've been confirmed for ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}.</p><p><a href="${dashboardUrl}">View My Schedule</a></p>`
+      );
+    }
   }
 
   /**
@@ -495,39 +396,27 @@ export class EmailService {
   ): Promise<{ success: boolean; error?: string }> {
     const dashboardUrl = `${this.appUrl}/my-schedule`;
 
-    return this.sendEmail(
-      email,
-      `Waitlisted: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
-      `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">You're on the Waitlist, ${firstName}</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              Thank you for accepting the invitation for <strong>${callTimeDetails.positionName}</strong> at <strong>${callTimeDetails.eventTitle}</strong>.
-            </p>
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'CALL_TIME_WAITLISTED',
+        {
+          firstName,
+          email,
+          positionName: callTimeDetails.positionName,
+          eventTitle: callTimeDetails.eventTitle,
+          dashboardUrl,
+        }
+      );
 
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              Unfortunately, all positions have been filled. You've been added to the waitlist and will be notified if a spot becomes available.
-            </p>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${dashboardUrl}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
-                View My Schedule
-              </a>
-            </div>
-          </div>
-        </body>
-        </html>
-      `
-    );
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering call time waitlisted template:', error);
+      return this.sendEmail(
+        email,
+        `Waitlisted: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
+        `<p>Hi ${firstName}, you're on the waitlist for ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}.</p><p><a href="${dashboardUrl}">View My Schedule</a></p>`
+      );
+    }
   }
 }
 

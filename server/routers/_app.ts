@@ -8,6 +8,7 @@ import { staffRouter } from "./staff.router";
 import { settingsRouter } from "./settings.router";
 import { callTimeRouter } from "./call-time.router";
 import { notificationRouter } from "./notification.router";
+import { templateRouter } from "./template.router";
 
 /**
  * Main application router
@@ -23,6 +24,7 @@ export const appRouter = router({
   settings: settingsRouter,
   callTime: callTimeRouter,
   notification: notificationRouter,
+  template: templateRouter,
 });
 
 export type AppRouter = typeof appRouter;

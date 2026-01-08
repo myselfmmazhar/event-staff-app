@@ -410,3 +410,62 @@ enum NotificationPriority {
   HIGH
   URGENT
 }
+
+enum EmailTemplateType {
+  STAFF_INVITATION
+  CLIENT_INVITATION
+  CALL_TIME_INVITATION
+  CALL_TIME_CONFIRMATION
+  CALL_TIME_WAITLISTED
+  STAFF_CREDENTIALS
+  USER_INVITATION
+}
+
+enum SmsTemplateType {
+  STAFF_INVITATION
+  CLIENT_INVITATION
+  CALL_TIME_INVITATION
+  CALL_TIME_CONFIRMATION
+  CALL_TIME_WAITLISTED
+  STAFF_CREDENTIALS
+  USER_INVITATION
+}
+
+model EmailTemplate {
+  id           String            @id @default(uuid()) @db.Uuid
+  type         EmailTemplateType @unique
+  subject      String
+  bodyHtml     String            @db.Text
+  isCustomized Boolean           @default(false)
+  createdAt    DateTime          @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime          @updatedAt @db.Timestamp(6)
+
+  @@map("email_templates")
+}
+
+model SmsTemplate {
+  id           String          @id @default(uuid()) @db.Uuid
+  type         SmsTemplateType @unique
+  body         String          @db.Text
+  isCustomized Boolean         @default(false)
+  createdAt    DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime        @updatedAt @db.Timestamp(6)
+
+  @@map("sms_templates")
+}
+
+model EmailBrandingSettings {
+  id                 String   @id @default(uuid()) @db.Uuid
+  logoUrl            String?
+  primaryColor       String   @default("#667eea")
+  secondaryColor     String   @default("#764ba2")
+  buttonStyle        String   @default("gradient")
+  buttonBorderRadius String   @default("8px")
+  fontFamily         String   @default("system-ui")
+  headerBackground   String   @default("gradient")
+  footerText         String?
+  createdAt          DateTime @default(now()) @db.Timestamp(6)
+  updatedAt          DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("email_branding_settings")
+}
