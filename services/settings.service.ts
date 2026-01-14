@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import type { UpdateTerminologyInput } from "@/lib/schemas/settings.schema";
 import type { UpdateGlobalLabelsInput, PageIdentifier, ResetLabelsInput } from "@/lib/schemas/labels.schema";
@@ -197,14 +197,14 @@ export class SettingsService {
                 await this.prisma.organizationSettings.update({
                     where: { id: existing.id },
                     data: {
-                        globalLabels: mergedLabels as unknown as Record<string, unknown>,
+                        globalLabels: mergedLabels as unknown as Prisma.InputJsonValue,
                         updatedAt: new Date(),
                     },
                 });
             } else {
                 await this.prisma.organizationSettings.create({
                     data: {
-                        globalLabels: mergedLabels as unknown as Record<string, unknown>,
+                        globalLabels: mergedLabels as unknown as Prisma.InputJsonValue,
                     },
                 });
             }
@@ -245,14 +245,14 @@ export class SettingsService {
                 await this.prisma.organizationSettings.update({
                     where: { id: existing.id },
                     data: {
-                        pageLabels: mergedPageLabels as unknown as Record<string, unknown>,
+                        pageLabels: mergedPageLabels as unknown as Prisma.InputJsonValue,
                         updatedAt: new Date(),
                     },
                 });
             } else {
                 await this.prisma.organizationSettings.create({
                     data: {
-                        pageLabels: mergedPageLabels as unknown as Record<string, unknown>,
+                        pageLabels: mergedPageLabels as unknown as Prisma.InputJsonValue,
                     },
                 });
             }
@@ -281,18 +281,18 @@ export class SettingsService {
                 return getDefaultLabels();
             }
 
-            let updateData: { globalLabels?: Record<string, unknown>; pageLabels?: Record<string, unknown> } = {};
+            let updateData: { globalLabels?: Prisma.InputJsonValue; pageLabels?: Prisma.InputJsonValue } = {};
 
             switch (input.scope) {
                 case 'all':
                     updateData = {
-                        globalLabels: {},
-                        pageLabels: {},
+                        globalLabels: {} as Prisma.InputJsonValue,
+                        pageLabels: {} as Prisma.InputJsonValue,
                     };
                     break;
                 case 'global':
                     updateData = {
-                        globalLabels: {},
+                        globalLabels: {} as Prisma.InputJsonValue,
                     };
                     break;
                 case 'page':
@@ -301,7 +301,7 @@ export class SettingsService {
                         // eslint-disable-next-line @typescript-eslint/no-unused-vars
                         const { [input.page]: _, ...rest } = currentPageLabels;
                         updateData = {
-                            pageLabels: rest,
+                            pageLabels: rest as unknown as Prisma.InputJsonValue,
                         };
                     }
                     break;

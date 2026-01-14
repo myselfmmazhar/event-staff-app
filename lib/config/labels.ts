@@ -662,11 +662,11 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
 /**
  * Deep merge two objects, with source values overwriting target values
  */
-export function deepMerge<T extends Record<string, unknown>>(
+export function deepMerge<T extends object>(
   target: T,
   source: Partial<T>
 ): T {
-  const output = { ...target };
+  const output = { ...target } as T;
 
   for (const key of Object.keys(source) as (keyof T)[]) {
     const sourceValue = source[key];
@@ -680,8 +680,8 @@ export function deepMerge<T extends Record<string, unknown>>(
       ) {
         output[key] = deepMerge(
           target[key] as Record<string, unknown>,
-          sourceValue as Record<string, unknown>
-        ) as T[keyof T];
+          sourceValue as Partial<Record<string, unknown>>
+        ) as unknown as T[keyof T];
       } else {
         output[key] = sourceValue as T[keyof T];
       }

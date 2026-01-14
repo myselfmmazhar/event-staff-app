@@ -79,8 +79,9 @@ export default function LabelsSettingsPage() {
       return editedLabels[category][key];
     }
     // Then check saved labels
-    const savedLabels = labels.global[category] as Record<string, string>;
-    return savedLabels[key] ?? (DEFAULT_GLOBAL_LABELS[category] as Record<string, string>)[key];
+    const savedLabels = labels.global[category] as unknown as Record<string, string>;
+    const defaultLabels = DEFAULT_GLOBAL_LABELS[category] as unknown as Record<string, string>;
+    return savedLabels[key] ?? defaultLabels[key] ?? "";
   };
 
   // Check if a label has been modified
@@ -90,7 +91,7 @@ export default function LabelsSettingsPage() {
 
   // Check if there are any unsaved changes
   const hasChanges = Object.keys(editedLabels).some(
-    (category) => Object.keys(editedLabels[category as LabelCategory]).length > 0
+    (category) => Object.keys(editedLabels[category as LabelCategory] ?? {}).length > 0
   );
 
   // Save all changes
@@ -111,7 +112,7 @@ export default function LabelsSettingsPage() {
       toast({
         title: "Error",
         description: "Failed to save labels. Please try again.",
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setIsSaving(false);
@@ -138,7 +139,7 @@ export default function LabelsSettingsPage() {
       toast({
         title: "Error",
         description: "Failed to reset labels. Please try again.",
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setIsSaving(false);
@@ -178,7 +179,7 @@ export default function LabelsSettingsPage() {
       <div className="space-y-4">
         {(Object.keys(DEFAULT_GLOBAL_LABELS) as LabelCategory[]).map((category) => {
           const isExpanded = expandedCategories.has(category);
-          const categoryLabels = DEFAULT_GLOBAL_LABELS[category] as Record<string, string>;
+          const categoryLabels = DEFAULT_GLOBAL_LABELS[category] as unknown as Record<string, string>;
           const labelKeys = Object.keys(categoryLabels);
 
           return (

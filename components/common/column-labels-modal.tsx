@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, type ButtonProps } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -29,9 +29,9 @@ interface ColumnLabelsModalProps {
     /** Column configurations with keys and default labels */
     columns: ColumnLabelConfig[];
     /** Trigger button variant */
-    buttonVariant?: 'default' | 'outline' | 'ghost';
+    buttonVariant?: ButtonProps['variant'];
     /** Trigger button size */
-    buttonSize?: 'default' | 'sm' | 'lg' | 'icon';
+    buttonSize?: ButtonProps['size'];
 }
 
 /**

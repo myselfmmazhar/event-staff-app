@@ -10,8 +10,9 @@ export function useColumnLabels(page: string, defaults: Record<string, string>) 
     // Merge saved labels with defaults
     const labels: Record<string, string> = { ...defaults };
 
-    if (allLabels?.pages?.[page]) {
-        const pageLabels = allLabels.pages[page];
+    const pages = allLabels?.pages as unknown as Record<string, Record<string, string>> | undefined;
+    const pageLabels = pages?.[page];
+    if (pageLabels) {
         Object.keys(defaults).forEach((key) => {
             const savedValue = pageLabels[`columns.${key}`];
             if (savedValue) {
