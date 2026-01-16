@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Edit2Icon, Trash2Icon, EyeIcon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { Staff, StaffPositionAssignment, StaffPosition, AvailabilityStatus } from '@prisma/client';
-import { useStaffTerm } from '@/lib/hooks/use-terminology';
+import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 
 // Define the type with relations included
@@ -22,10 +22,11 @@ interface StaffTableProps {
 
 export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps) {
     const staffTerm = useStaffTerm();
+    const { terminology } = useTerminology();
 
-    // Get column labels from saved configuration
+    // Get column labels from saved configuration (same pattern as events/clients)
     const columnLabels = useColumnLabels('staff', {
-        staffId: `${staffTerm.singular} ID`,
+        staffId: `${terminology.staff.singular} ID`,
         name: 'Name',
         email: 'Email',
         phone: 'Phone',

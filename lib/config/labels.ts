@@ -194,6 +194,7 @@ export interface StaffPageLabels {
   pageSubtitle: string;
   addButton: string;
   cleanupRoster: string;
+  searchPlaceholder: string;
   columns: {
     staffId: string;
     name: string;
@@ -207,6 +208,7 @@ export interface StaffPageLabels {
     actions: string;
   };
   filters: {
+    title: string;
     accountStatus: string;
     staffType: string;
     skillLevel: string;
@@ -221,6 +223,7 @@ export interface EventsPageLabels {
   pageTitle: string;
   pageSubtitle: string;
   addButton: string;
+  searchPlaceholder: string;
   calendarView: string;
   columns: {
     eventId: string;
@@ -234,6 +237,7 @@ export interface EventsPageLabels {
     actions: string;
   };
   filters: {
+    title: string;
     status: string;
     client: string;
     dateRange: string;
@@ -246,6 +250,7 @@ export interface ClientsPageLabels {
   pageTitle: string;
   pageSubtitle: string;
   addButton: string;
+  searchPlaceholder: string;
   columns: {
     clientId: string;
     businessName: string;
@@ -258,6 +263,7 @@ export interface ClientsPageLabels {
     actions: string;
   };
   filters: {
+    title: string;
     loginAccess: string;
     city: string;
   };
@@ -269,6 +275,7 @@ export interface UsersPageLabels {
   pageTitle: string;
   pageSubtitle: string;
   addButton: string;
+  searchPlaceholder: string;
   columns: {
     name: string;
     email: string;
@@ -280,6 +287,9 @@ export interface UsersPageLabels {
   filters: {
     role: string;
     status: string;
+    emailVerified: string;
+    hasPhone: string;
+    createdDate: string;
   };
   emptyState: string;
   emptyStateDescription: string;
@@ -519,6 +529,7 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
     pageSubtitle: 'Manage {staffPlural} and positions',
     addButton: 'Add {Staff}',
     cleanupRoster: 'Cleanup Roster',
+    searchPlaceholder: 'Search by name, email, phone, or {staff} ID...',
     columns: {
       staffId: '{Staff} ID',
       name: 'Name',
@@ -532,6 +543,7 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
       actions: 'Actions',
     },
     filters: {
+      title: 'Filters',
       accountStatus: 'Account Status',
       staffType: '{Staff} Type',
       skillLevel: 'Skill Level',
@@ -544,7 +556,8 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
   events: {
     pageTitle: '{EventPlural}',
     pageSubtitle: 'Manage {eventPlural} and schedules',
-    addButton: 'Create {Event}',
+    addButton: 'New {Event}',
+    searchPlaceholder: 'Search by title, venue, city, or {event} ID...',
     calendarView: 'Calendar View',
     columns: {
       eventId: '{Event} ID',
@@ -558,6 +571,7 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
       actions: 'Actions',
     },
     filters: {
+      title: 'Filters',
       status: 'Status',
       client: 'Client',
       dateRange: 'Date Range',
@@ -567,8 +581,9 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
   },
   clients: {
     pageTitle: 'Clients',
-    pageSubtitle: 'Manage client accounts',
-    addButton: 'Add Client',
+    pageSubtitle: 'Manage clients and their portal access',
+    addButton: 'Create Client',
+    searchPlaceholder: 'Search by business name, contact, or email...',
     columns: {
       clientId: 'Client ID',
       businessName: 'Business Name',
@@ -581,6 +596,7 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
       actions: 'Actions',
     },
     filters: {
+      title: 'Filters',
       loginAccess: 'Portal Access',
       city: 'City',
     },
@@ -591,6 +607,7 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
     pageTitle: 'Users',
     pageSubtitle: 'Manage user accounts and permissions',
     addButton: 'Add User',
+    searchPlaceholder: 'Search by name or email...',
     columns: {
       name: 'Name',
       email: 'Email',
@@ -602,6 +619,9 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
     filters: {
       role: '{Role}',
       status: 'Status',
+      emailVerified: 'Email Status',
+      hasPhone: 'Phone Status',
+      createdDate: 'Created Date',
     },
     emptyState: 'No users found',
     emptyStateDescription: 'Get started by adding your first user.',
@@ -784,6 +804,43 @@ export function getDefaultLabels(): LabelsConfig {
   };
 }
 
+function normalizeDotNotation(obj: Record<string, unknown>): Record<string, unknown> {
+  let result: Record<string, unknown> = {};
+
+  for (const [key, rawValue] of Object.entries(obj)) {
+    const value =
+      rawValue &&
+        typeof rawValue === 'object' &&
+        !Array.isArray(rawValue)
+        ? normalizeDotNotation(rawValue as Record<string, unknown>)
+        : rawValue;
+
+    if (key.includes('.')) {
+      result = setNestedValue(result, key, value);
+      continue;
+    }
+
+    if (
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      result[key] &&
+      typeof result[key] === 'object' &&
+      !Array.isArray(result[key])
+    ) {
+      result[key] = deepMerge(
+        result[key] as Record<string, unknown>,
+        value as Record<string, unknown>
+      );
+      continue;
+    }
+
+    result[key] = value;
+  }
+
+  return result;
+}
+
 /**
  * Build labels config from database data, merging with defaults
  */
@@ -791,6 +848,8 @@ export function buildLabelsConfig(data: {
   globalLabels?: Record<string, unknown>;
   pageLabels?: Record<string, unknown>;
 }): LabelsConfig {
+  const normalizedPageLabels = normalizeDotNotation(data.pageLabels || {});
+
   return {
     global: deepMerge<GlobalLabels>(
       DEFAULT_GLOBAL_LABELS,
@@ -798,7 +857,7 @@ export function buildLabelsConfig(data: {
     ),
     pages: deepMerge<PageLabels>(
       DEFAULT_PAGE_LABELS,
-      (data.pageLabels || {}) as unknown as Partial<PageLabels>
+      normalizedPageLabels as unknown as Partial<PageLabels>
     ),
   };
 }

@@ -7,7 +7,7 @@ import { FilterIcon } from '@/components/ui/icons';
 import { useEventsFilters } from '@/store/events-filters.store';
 import { EventStatus } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
-import { useFilterLabels } from '@/lib/hooks/use-labels';
+import { useFilterLabels, useEventsPageLabels } from '@/lib/hooks/use-labels';
 
 const STATUSES: Array<{ value: EventStatus | 'ALL'; label: string }> = [
   { value: 'ALL', label: 'All Statuses' },
@@ -29,6 +29,7 @@ export function EventFilters() {
   } = useEventsFilters();
 
   const filterLabels = useFilterLabels();
+  const eventsLabels = useEventsPageLabels();
 
   // Fetch clients for filter
   const { data: clientsData } = trpc.clients.getAll.useQuery({
@@ -42,7 +43,7 @@ export function EventFilters() {
     <div className="space-y-4">
       {/* Header with Clear All button */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">{filterLabels.title}</h3>
+        <h3 className="text-sm font-medium text-foreground">{eventsLabels.filters.title}</h3>
         {hasActiveFilters && (
           <Button
             variant="ghost"
@@ -60,7 +61,7 @@ export function EventFilters() {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
-            Status
+            {eventsLabels.filters.status}
           </label>
           <div className="flex flex-wrap gap-2">
             {STATUSES.map((status) => (
@@ -79,7 +80,7 @@ export function EventFilters() {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
-            Client
+            {eventsLabels.filters.client}
           </label>
           <Select
             value={selectedClientId}

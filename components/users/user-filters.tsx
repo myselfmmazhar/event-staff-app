@@ -7,7 +7,7 @@ import { FilterIcon } from '@/components/ui/icons';
 import { useUsersFilters } from '@/store/users-filters.store';
 import { UserRole } from '@prisma/client';
 import { useRoleTerm } from '@/lib/hooks/use-terminology';
-import { useFilterLabels } from '@/lib/hooks/use-labels';
+import { useFilterLabels, useUsersPageLabels } from '@/lib/hooks/use-labels';
 
 // Note: STAFF role is excluded - staff are managed separately in the Staff module
 const ROLE_VALUES: Array<{ value: UserRole | 'ALL'; label: string }> = [
@@ -37,6 +37,7 @@ const PHONE_STATUS: Array<{ value: boolean | 'ALL'; label: string }> = [
 export function UserFilters() {
   const roleTerm = useRoleTerm();
   const filterLabels = useFilterLabels();
+  const usersLabels = useUsersPageLabels();
   const {
     selectedRole,
     selectedStatus,
@@ -89,7 +90,7 @@ export function UserFilters() {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
-            {roleTerm.singular}
+            {usersLabels.filters?.role || roleTerm.singular}
           </label>
           <div className="flex flex-wrap gap-2">
             {ROLES.map((role) => (
@@ -108,7 +109,7 @@ export function UserFilters() {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
-            Status
+            {usersLabels.filters?.status || 'Status'}
           </label>
           <div className="flex flex-wrap gap-2">
             {STATUSES.map((status) => (
@@ -127,7 +128,7 @@ export function UserFilters() {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
-            Email Status
+            {usersLabels.filters?.emailVerified || 'Email Status'}
           </label>
           <div className="flex flex-wrap gap-2">
             {EMAIL_VERIFICATION.map((item) => (
@@ -146,7 +147,7 @@ export function UserFilters() {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
-            Phone Status
+            {usersLabels.filters?.hasPhone || 'Phone Status'}
           </label>
           <div className="flex flex-wrap gap-2">
             {PHONE_STATUS.map((item) => (
@@ -168,10 +169,11 @@ export function UserFilters() {
             toDate={createdTo}
             onFromDateChange={setCreatedFrom}
             onToDateChange={setCreatedTo}
-            label="Created Date"
+            label={usersLabels.filters?.createdDate || 'Created Date'}
           />
         </div>
       </div>
     </div>
   );
 }
+

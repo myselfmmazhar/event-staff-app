@@ -11,7 +11,7 @@ import { EventFilters } from '@/components/events/event-filters';
 import { EventFormModal } from '@/components/events/event-form-modal';
 import { EventSearch } from '@/components/events/event-search';
 import { EventTable } from '@/components/events/event-table';
-import { ColumnLabelsModal } from '@/components/common/column-labels-modal';
+import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
@@ -21,6 +21,7 @@ import { useEventsFilters, type EventSortBy, type SortOrder } from '@/store/even
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { useEventsPageLabels } from '@/lib/hooks/use-labels';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
 
@@ -92,6 +93,7 @@ function mapEventToFormEvent(event: EventListItem): EventFormData {
 export default function EventsPage() {
   const searchParams = useSearchParams();
   const { terminology } = useTerminology();
+  const eventsLabels = useEventsPageLabels();
 
   // Use filters store
   const filters = useEventsFilters();
@@ -303,15 +305,61 @@ export default function EventsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">{terminology.event.plural}</h1>
+          <h1 className="text-3xl font-bold text-foreground">{eventsLabels.pageTitle}</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your {terminology.event.lowerPlural}
+            {eventsLabels.pageSubtitle}
           </p>
         </div>
-        <Button onClick={handleCreateEvent}>
-          <PlusIcon className="h-5 w-5 mr-2" />
-          New {terminology.event.singular}
-        </Button>
+        <div className="flex items-center gap-2">
+          <PageLabelsModal
+            page="events"
+            sections={[
+              {
+                id: 'page',
+                title: 'Page Labels',
+                description: 'Customize heading and button text',
+                prefix: 'page',
+                labels: [
+                  { key: 'pageTitle', label: 'Page Title', defaultLabel: `${terminology.event.plural}` },
+                  { key: 'pageSubtitle', label: 'Page Subtitle', defaultLabel: `Manage ${terminology.event.lowerPlural} and schedules` },
+                  { key: 'addButton', label: 'Add Button', defaultLabel: `New ${terminology.event.singular}` },
+                  { key: 'searchPlaceholder', label: 'Search Placeholder', defaultLabel: `Search by title, venue, city, or ${terminology.event.lower} ID...` },
+                ],
+              },
+              {
+                id: 'filters',
+                title: 'Filter Labels',
+                description: 'Customize filter names',
+                prefix: 'filters',
+                labels: [
+                  { key: 'title', label: 'Filters Heading', defaultLabel: 'Filters' },
+                  { key: 'status', label: 'Status Filter', defaultLabel: 'Status' },
+                  { key: 'client', label: 'Client Filter', defaultLabel: 'Client' },
+                ],
+              },
+              {
+                id: 'columns',
+                title: 'Table Columns',
+                description: 'Customize table column headers',
+                prefix: 'columns',
+                labels: [
+                  { key: 'eventId', label: 'Task ID', defaultLabel: `${terminology.event.singular} ID` },
+                  { key: 'title', label: 'Title', defaultLabel: 'Title' },
+                  { key: 'venue', label: 'Venue', defaultLabel: 'Venue' },
+                  { key: 'startDate', label: 'Start Date', defaultLabel: 'Start Date' },
+                  { key: 'status', label: 'Status', defaultLabel: 'Status' },
+                  { key: 'client', label: 'Client', defaultLabel: 'Client' },
+                  { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
+                ],
+              },
+            ]}
+            buttonVariant="outline"
+          />
+          <Button onClick={handleCreateEvent}>
+            <PlusIcon className="h-5 w-5 mr-2" />
+            {eventsLabels.addButton}
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -320,7 +368,7 @@ export default function EventsPage() {
           <EventSearch
             value={filters.search}
             onChange={filters.setSearch}
-            placeholder={`Search by title, venue, city, or ${terminology.event.lower} ID...`}
+            placeholder={eventsLabels.searchPlaceholder}
           />
           <EventFilters />
           <ActiveFilters filters={activeFilters} />
@@ -329,21 +377,6 @@ export default function EventsPage() {
 
       {/* Events Table */}
       <Card className="p-6">
-        {/* Table Header with Column Settings */}
-        <div className="flex items-center justify-end mb-4">
-          <ColumnLabelsModal
-            page="events"
-            columns={[
-              { key: 'eventId', label: 'Task ID', defaultLabel: `${terminology.event.singular} ID` },
-              { key: 'title', label: 'Title', defaultLabel: 'Title' },
-              { key: 'venue', label: 'Venue', defaultLabel: 'Venue' },
-              { key: 'startDate', label: 'Start Date', defaultLabel: 'Start Date' },
-              { key: 'status', label: 'Status', defaultLabel: 'Status' },
-              { key: 'client', label: 'Client', defaultLabel: 'Client' },
-              { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
-            ]}
-          />
-        </div>
         <div className="relative z-10">
           <EventTable
             events={events}

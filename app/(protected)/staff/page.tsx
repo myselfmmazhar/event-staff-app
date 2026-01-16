@@ -11,13 +11,14 @@ import { StaffFilters } from '@/components/staff/staff-filters';
 import { ViewStaffModal } from '@/components/staff/view-staff-modal';
 import { DeleteStaffModal } from '@/components/staff/delete-staff-modal';
 import { Pagination } from '@/components/common/pagination';
-import { ColumnLabelsModal } from '@/components/common/column-labels-modal';
+import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc as api } from '@/lib/client/trpc';
 import type { CreateStaffInput, UpdateStaffInput } from '@/lib/schemas/staff.schema';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { useStaffPageLabels } from '@/lib/hooks/use-labels';
 import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
 
 type StaffFilterState = {
@@ -63,6 +64,7 @@ function parseStaffFilterValue<K extends StaffFilterKey>(
 
 export default function StaffPage() {
     const { terminology } = useTerminology();
+    const staffLabels = useStaffPageLabels();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -321,23 +323,71 @@ export default function StaffPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground">
-                        {terminology.staff.plural}
+                        {staffLabels.pageTitle}
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage {terminology.staff.lowerPlural} and positions
+                        {staffLabels.pageSubtitle}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <PageLabelsModal
+                        page="staff"
+                        sections={[
+                            {
+                                id: 'page',
+                                title: 'Page Labels',
+                                description: 'Customize heading, buttons, and search text',
+                                prefix: 'page',
+                                labels: [
+                                    { key: 'pageTitle', label: 'Page Title', defaultLabel: `${terminology.staff.plural}` },
+                                    { key: 'pageSubtitle', label: 'Page Subtitle', defaultLabel: `Manage ${terminology.staff.lowerPlural} and positions` },
+                                    { key: 'cleanupRoster', label: 'Cleanup Roster Button', defaultLabel: 'Cleanup Roster' },
+                                    { key: 'addButton', label: 'Add Button', defaultLabel: `Add ${terminology.staff.singular}` },
+                                    { key: 'searchPlaceholder', label: 'Search Placeholder', defaultLabel: `Search by name, email, phone, or ${terminology.staff.lower} ID...` },
+                                ],
+                            },
+                            {
+                                id: 'filters',
+                                title: 'Filter Labels',
+                                description: 'Customize filter names',
+                                prefix: 'filters',
+                                labels: [
+                                    { key: 'title', label: 'Filters Heading', defaultLabel: 'Filters' },
+                                    { key: 'accountStatus', label: 'Account Status', defaultLabel: 'Account Status' },
+                                    { key: 'staffType', label: 'Staff Type', defaultLabel: `${terminology.staff.singular} Type` },
+                                    { key: 'skillLevel', label: 'Skill Level', defaultLabel: 'Skill Level' },
+                                ],
+                            },
+                            {
+                                id: 'columns',
+                                title: 'Table Columns',
+                                description: 'Customize table column headers',
+                                prefix: 'columns',
+                                labels: [
+                                    { key: 'staffId', label: 'Staff ID', defaultLabel: `${terminology.staff.singular} ID` },
+                                    { key: 'name', label: 'Name', defaultLabel: 'Name' },
+                                    { key: 'email', label: 'Email', defaultLabel: 'Email' },
+                                    { key: 'phone', label: 'Phone', defaultLabel: 'Phone' },
+                                    { key: 'type', label: 'Type', defaultLabel: 'Type' },
+                                    { key: 'status', label: 'Status', defaultLabel: 'Status' },
+                                    { key: 'skillLevel', label: 'Experience', defaultLabel: 'Experience' },
+                                    { key: 'availability', label: 'Availability', defaultLabel: 'Availability' },
+                                    { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
+                                ],
+                            },
+                        ]}
+                        buttonVariant="outline"
+                    />
                     {/* Cleanup Roster Button */}
                     <LinkButton href="/staff/cleanup-roster" variant="outline">
                         <UsersIcon className="h-4 w-4 mr-2" />
-                        Cleanup Roster
+                        {staffLabels.cleanupRoster}
                     </LinkButton>
 
                     {/* Add Staff Button */}
                     <Button onClick={handleCreate}>
                         <PlusIcon className="h-4 w-4 mr-2" />
-                        Add {terminology.staff.singular}
+                        {staffLabels.addButton}
                     </Button>
                 </div>
             </div>
@@ -345,7 +395,11 @@ export default function StaffPage() {
             {/* Search and Filters */}
             <Card className="p-6">
                 <div className="space-y-4">
-                    <StaffSearch value={search} onChange={setSearch} />
+                    <StaffSearch
+                        value={search}
+                        onChange={setSearch}
+                        placeholder={staffLabels.searchPlaceholder}
+                    />
                     <StaffFilters
                         filters={{
                             accountStatus: filters.accountStatus === 'ALL' ? '' : filters.accountStatus,
@@ -360,23 +414,6 @@ export default function StaffPage() {
 
             {/* Table */}
             <Card className="p-6">
-                {/* Table Header with Column Settings */}
-                <div className="flex items-center justify-end mb-4">
-                    <ColumnLabelsModal
-                        page="staff"
-                        columns={[
-                            { key: 'staffId', label: 'Staff ID', defaultLabel: `${terminology.staff.singular} ID` },
-                            { key: 'name', label: 'Name', defaultLabel: 'Name' },
-                            { key: 'email', label: 'Email', defaultLabel: 'Email' },
-                            { key: 'phone', label: 'Phone', defaultLabel: 'Phone' },
-                            { key: 'type', label: 'Type', defaultLabel: 'Type' },
-                            { key: 'status', label: 'Status', defaultLabel: 'Status' },
-                            { key: 'skillLevel', label: 'Experience', defaultLabel: 'Experience' },
-                            { key: 'availability', label: 'Availability', defaultLabel: 'Availability' },
-                            { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
-                        ]}
-                    />
-                </div>
                 <div className="relative z-10">
                     {isLoading ? (
                         <div className="text-center py-8 text-muted-foreground">
