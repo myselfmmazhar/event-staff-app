@@ -801,4 +801,203 @@ export class CallTimeService {
 
     return invitation;
   }
+
+  /**
+   * Get upcoming call times for timeline view
+   * Returns call times from today onwards with event and staff details
+   */
+  async getUpcoming(userId: string, limit: number = 50) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const callTimes = await this.prisma.callTime.findMany({
+      where: {
+        // Only upcoming call times
+        OR: [
+          { startDate: { gte: startOfToday } },
+          { endDate: { gte: startOfToday } },
+        ],
+        // Only events created by this user
+        event: {
+          createdBy: userId,
+        },
+      },
+      include: {
+        position: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        event: {
+          select: {
+            id: true,
+            eventId: true,
+            title: true,
+            venueName: true,
+            city: true,
+            state: true,
+          },
+        },
+        invitations: {
+          include: {
+            staff: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { startDate: 'asc' },
+        { startTime: 'asc' },
+      ],
+      take: limit,
+    });
+
+    return {
+      data: callTimes,
+      meta: {
+        total: callTimes.length,
+        limit,
+      },
+    };
+  }
+
+  /**
+   * Get all call times for shifts table view
+   * Supports pagination, sorting, filtering
+   */
+  async getAll(
+    userId: string,
+    input: {
+      page?: number;
+      limit?: number;
+      sortBy?: 'startDate' | 'position' | 'event';
+      sortOrder?: 'asc' | 'desc';
+      eventId?: string;
+      positionId?: string;
+      search?: string;
+      dateFrom?: Date;
+      dateTo?: Date;
+      staffingStatus?: 'needsStaff' | 'fullyStaffed' | 'all';
+    }
+  ) {
+    const page = input.page ?? 1;
+    const limit = input.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const sortOrder = input.sortOrder ?? 'asc';
+
+    // Build where clause
+    const where: any = {
+      event: {
+        createdBy: userId,
+      },
+    };
+
+    if (input.eventId) {
+      where.eventId = input.eventId;
+    }
+
+    if (input.positionId) {
+      where.positionId = input.positionId;
+    }
+
+    if (input.dateFrom || input.dateTo) {
+      where.startDate = {};
+      if (input.dateFrom) where.startDate.gte = input.dateFrom;
+      if (input.dateTo) where.startDate.lte = input.dateTo;
+    }
+
+    if (input.search) {
+      where.OR = [
+        { event: { title: { contains: input.search, mode: 'insensitive' } } },
+        { position: { name: { contains: input.search, mode: 'insensitive' } } },
+      ];
+    }
+
+    // Build orderBy
+    let orderBy: any = { startDate: sortOrder };
+    if (input.sortBy === 'position') {
+      orderBy = { position: { name: sortOrder } };
+    } else if (input.sortBy === 'event') {
+      orderBy = { event: { title: sortOrder } };
+    }
+
+    const [callTimes, total] = await Promise.all([
+      this.prisma.callTime.findMany({
+        where,
+        include: {
+          position: {
+            select: { id: true, name: true },
+          },
+          event: {
+            select: {
+              id: true,
+              eventId: true,
+              title: true,
+              venueName: true,
+              city: true,
+              state: true,
+            },
+          },
+          invitations: {
+            select: {
+              id: true,
+              status: true,
+              isConfirmed: true,
+              staff: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: { invitations: true },
+          },
+        },
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      this.prisma.callTime.count({ where }),
+    ]);
+
+    // Calculate staffing status and filter if needed
+    let filteredData = callTimes.map((ct) => {
+      const confirmedCount = ct.invitations.filter(
+        (inv) => inv.status === 'ACCEPTED' && inv.isConfirmed
+      ).length;
+      const needsStaff = confirmedCount < ct.numberOfStaffRequired;
+
+      return {
+        ...ct,
+        confirmedCount,
+        needsStaff,
+      };
+    });
+
+    // Filter by staffing status if specified
+    if (input.staffingStatus === 'needsStaff') {
+      filteredData = filteredData.filter((ct) => ct.needsStaff);
+    } else if (input.staffingStatus === 'fullyStaffed') {
+      filteredData = filteredData.filter((ct) => !ct.needsStaff);
+    }
+
+    return {
+      data: filteredData,
+      meta: {
+        total: input.staffingStatus === 'all' ? total : filteredData.length,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 }

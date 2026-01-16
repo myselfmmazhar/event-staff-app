@@ -237,6 +237,29 @@ export class CallTimeSchema {
       status: z.nativeEnum(CallTimeInvitationStatus).optional(),
     })
     .optional();
+
+  /**
+   * Get Upcoming Call Times Schema (timeline view)
+   */
+  static getUpcoming = z.object({
+    limit: z.number().int().min(1).max(100).default(50).optional(),
+  });
+
+  /**
+   * Get All Call Times Schema (shift page table view)
+   */
+  static getAll = z.object({
+    page: z.number().int().min(1).default(1).optional(),
+    limit: z.number().int().min(1).max(100).default(20).optional(),
+    sortBy: z.enum(['startDate', 'position', 'event']).default('startDate').optional(),
+    sortOrder: z.enum(['asc', 'desc']).default('asc').optional(),
+    eventId: z.string().uuid().optional(),
+    positionId: z.string().uuid().optional(),
+    search: z.string().optional(),
+    dateFrom: z.coerce.date().optional(),
+    dateTo: z.coerce.date().optional(),
+    staffingStatus: z.enum(['needsStaff', 'fullyStaffed', 'all']).default('all').optional(),
+  });
 }
 
 // Export types

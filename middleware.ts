@@ -70,7 +70,11 @@ export async function middleware(request: NextRequest) {
 
   // Rewrite custom event routes to /events
   // Example: /tasks → /events, /tasks/123 → /events/123
-  if (eventRoute !== "events" && pathname.startsWith(`/${eventRoute}`)) {
+  // Exclude /tasks/timesheet and /tasks/shift as they have dedicated pages
+  const excludedTaskRoutes = ['/tasks/timesheet', '/tasks/shift'];
+  const isExcluded = excludedTaskRoutes.some(route => pathname.startsWith(route));
+
+  if (!isExcluded && eventRoute !== "events" && pathname.startsWith(`/${eventRoute}`)) {
     const rewritePath = pathname.replace(
       new RegExp(`^/${eventRoute}`),
       "/events"

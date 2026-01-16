@@ -62,6 +62,27 @@ export const callTimeRouter = router({
       const service = new CallTimeService(ctx.prisma);
       return await service.remove(input.id, ctx.userId!);
     }),
+  /**
+   * Get upcoming call times for timeline view
+   * Requires: Authentication
+   */
+  getUpcoming: protectedProcedure
+    .input(CallTimeSchema.getUpcoming.optional())
+    .query(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.getUpcoming(ctx.userId!, input?.limit ?? 50);
+    }),
+
+  /**
+   * Get all call times for shifts table view
+   * Requires: Authentication
+   */
+  getAll: protectedProcedure
+    .input(CallTimeSchema.getAll.optional())
+    .query(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.getAll(ctx.userId!, input ?? {});
+    }),
 
   /**
    * Search available staff for a call time
