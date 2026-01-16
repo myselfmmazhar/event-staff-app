@@ -7,6 +7,7 @@ import {
     buildLabelsConfig,
     getDefaultLabels,
     deepMerge,
+    setNestedValue,
     DEFAULT_GLOBAL_LABELS,
     DEFAULT_PAGE_LABELS,
     type LabelsConfig,
@@ -230,15 +231,36 @@ export class SettingsService {
             const currentPageLabels = (existing?.pageLabels as Record<string, unknown>) || {};
             const currentPageSection = (currentPageLabels[page] as Record<string, unknown>) || {};
 
+            // Convert dot-notation keys to nested object structure
+            // e.g., {"columns.staffId": "ID"} -> {columns: {staffId: "ID"}}
+            let nestedLabels: Record<string, unknown> = {};
+            for (const [key, value] of Object.entries(labels)) {
+                nestedLabels = setNestedValue(nestedLabels, key, value);
+            }
+
             // Deep merge the new labels with existing page labels
-            const mergedPageSection = deepMerge(
+            let mergedPageSection = deepMerge(
                 currentPageSection as Record<string, unknown>,
-                labels as Record<string, unknown>
+                nestedLabels as Record<string, unknown>
             );
+
+            // IMPORTANT: Clean up legacy dot-notation keys to prevent them from
+            // overwriting nested values during normalization in buildLabelsConfig.
+            // If we have both "columns: { staffId: 'X' }" and "'columns.staffId': 'Y'",
+            // the legacy key would overwrite the nested value. Remove legacy keys.
+            const legacyPrefixes = ['columns.', 'filters.', 'page.'];
+            const cleanedPageSection: Record<string, unknown> = {};
+            for (const [key, value] of Object.entries(mergedPageSection)) {
+                // Skip legacy dot-notation keys (they're now in nested format)
+                const isLegacyKey = legacyPrefixes.some(prefix => key.startsWith(prefix));
+                if (!isLegacyKey) {
+                    cleanedPageSection[key] = value;
+                }
+            }
 
             const mergedPageLabels = {
                 ...currentPageLabels,
-                [page]: mergedPageSection,
+                [page]: cleanedPageSection,
             };
 
             if (existing) {

@@ -11,7 +11,7 @@ import { UserFilters } from '@/components/users/user-filters';
 import { UserFormModal } from '@/components/users/user-form-modal';
 import { UserSearch } from '@/components/users/user-search';
 import { UserTable } from '@/components/users/user-table';
-import { ColumnLabelsModal } from '@/components/common/column-labels-modal';
+import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
@@ -20,7 +20,8 @@ import type { InviteUserInput, UpdateUserInput } from '@/lib/schemas/user.schema
 import { useUsersFilters, type UserSortBy, type SortOrder } from '@/store/users-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
-import { useRoleTerm } from '@/lib/hooks/use-terminology';
+import { useRoleTerm, useTerminology } from '@/lib/hooks/use-terminology';
+import { useUsersPageLabels } from '@/lib/hooks/use-labels';
 type UserTableRow = ComponentProps<typeof UserTable>['users'][number];
 
 const USER_SORT_FIELDS: UserSortBy[] = ['createdAt', 'updatedAt', 'firstName', 'lastName', 'email', 'role'];
@@ -66,6 +67,8 @@ export default function UsersPage() {
   // Use filters store
   const filters = useUsersFilters();
   const roleTerm = useRoleTerm();
+  const { terminology } = useTerminology();
+  const usersLabels = useUsersPageLabels();
 
   // Use CRUD mutations hook
   const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
@@ -315,21 +318,70 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Users</h1>
+          <h1 className="text-3xl font-bold text-foreground">{usersLabels.pageTitle}</h1>
           <p className="text-muted-foreground mt-1">
-            Manage users and their permissions
+            {usersLabels.pageSubtitle}
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Invite User
-        </Button>
+        <div className="flex items-center gap-2">
+          <PageLabelsModal
+            page="users"
+            sections={[
+              {
+                id: 'page',
+                title: 'Page Labels',
+                description: 'Customize heading and button text',
+                prefix: 'page',
+                labels: [
+                  { key: 'pageTitle', label: 'Page Title', defaultLabel: 'Users' },
+                  { key: 'pageSubtitle', label: 'Page Subtitle', defaultLabel: 'Manage user accounts and permissions' },
+                  { key: 'addButton', label: 'Add Button', defaultLabel: 'Invite User' },
+                  { key: 'searchPlaceholder', label: 'Search Placeholder', defaultLabel: 'Search by name or email...' },
+                ],
+              },
+              {
+                id: 'filters',
+                title: 'Filter Labels',
+                description: 'Customize filter names',
+                prefix: 'filters',
+                labels: [
+                  { key: 'title', label: 'Filters Heading', defaultLabel: 'Filters' },
+                  { key: 'role', label: 'Role Filter', defaultLabel: `${terminology.role.singular}` },
+                  { key: 'status', label: 'Status Filter', defaultLabel: 'Status' },
+                  { key: 'emailVerified', label: 'Email Status Filter', defaultLabel: 'Email Status' },
+                  { key: 'hasPhone', label: 'Phone Status Filter', defaultLabel: 'Phone Status' },
+                  { key: 'createdDate', label: 'Created Date Filter', defaultLabel: 'Created Date' },
+                ],
+              },
+              {
+                id: 'columns',
+                title: 'Table Columns',
+                description: 'Customize table column headers',
+                prefix: 'columns',
+                labels: [
+                  { key: 'name', label: 'Name', defaultLabel: 'Name' },
+                  { key: 'email', label: 'Email', defaultLabel: 'Email' },
+                  { key: 'role', label: 'Permission', defaultLabel: `${terminology.role.singular}` },
+                  { key: 'joined', label: 'Joined', defaultLabel: 'Joined' },
+                  { key: 'invitation', label: 'Invitation', defaultLabel: 'Invitation' },
+                  { key: 'phone', label: 'Phone', defaultLabel: 'Phone' },
+                  { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
+                ],
+              },
+            ]}
+            buttonVariant="outline"
+          />
+          <Button onClick={handleCreate}>
+            <PlusIcon className="h-5 w-5 mr-2" />
+            {usersLabels.addButton}
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
       <Card className="p-6">
         <div className="relative z-10 space-y-4">
-          <UserSearch value={filters.search} onChange={filters.setSearch} />
+          <UserSearch value={filters.search} onChange={filters.setSearch} placeholder={usersLabels.searchPlaceholder} />
           <UserFilters />
           <ActiveFilters filters={activeFilters} />
         </div>
@@ -337,21 +389,6 @@ export default function UsersPage() {
 
       {/* Table */}
       <Card className="p-6">
-        {/* Table Header with Column Settings */}
-        <div className="flex items-center justify-end mb-4">
-          <ColumnLabelsModal
-            page="users"
-            columns={[
-              { key: 'name', label: 'Name', defaultLabel: 'Name' },
-              { key: 'email', label: 'Email', defaultLabel: 'Email' },
-              { key: 'role', label: 'Permission', defaultLabel: roleTerm.singular },
-              { key: 'joined', label: 'Joined', defaultLabel: 'Joined' },
-              { key: 'invitation', label: 'Invitation', defaultLabel: 'Invitation' },
-              { key: 'phone', label: 'Phone', defaultLabel: 'Phone' },
-              { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
-            ]}
-          />
-        </div>
         <div className="relative z-10">
           <UserTable
             users={data?.data || []}

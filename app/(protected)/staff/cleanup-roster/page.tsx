@@ -7,7 +7,7 @@ import { Pagination } from '@/components/common/pagination';
 import { SelectableStaffTable } from '@/components/staff/selectable-staff-table';
 import { BulkActionBar } from '@/components/staff/bulk-action-bar';
 import { BulkDisableModal } from '@/components/staff/bulk-disable-modal';
-import { ColumnLabelsModal } from '@/components/common/column-labels-modal';
+import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc as api } from '@/lib/client/trpc';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
@@ -127,15 +127,23 @@ export default function CleanupRosterPage() {
             <Card className="p-6">
                 {/* Table Header with Column Settings */}
                 <div className="flex items-center justify-end mb-4">
-                    <ColumnLabelsModal
+                    <PageLabelsModal
                         page="cleanup-roster"
-                        columns={[
-                            { key: 'staffId', label: 'Staff ID', defaultLabel: `${terminology.staff.singular} ID` },
-                            { key: 'name', label: 'Name', defaultLabel: 'Name' },
-                            { key: 'email', label: 'Email', defaultLabel: 'Email' },
-                            { key: 'type', label: 'Type', defaultLabel: 'Type' },
-                            { key: 'status', label: 'Status', defaultLabel: 'Status' },
-                            { key: 'positions', label: 'Positions', defaultLabel: 'Positions' },
+                        sections={[
+                            {
+                                id: 'columns',
+                                title: 'Table Columns',
+                                description: 'Customize table column headers',
+                                prefix: 'columns',
+                                labels: [
+                                    { key: 'staffId', label: 'Staff ID', defaultLabel: `${terminology.staff.singular} ID` },
+                                    { key: 'name', label: 'Name', defaultLabel: 'Name' },
+                                    { key: 'email', label: 'Email', defaultLabel: 'Email' },
+                                    { key: 'type', label: 'Type', defaultLabel: 'Type' },
+                                    { key: 'status', label: 'Status', defaultLabel: 'Status' },
+                                    { key: 'positions', label: 'Positions', defaultLabel: 'Positions' },
+                                ],
+                            },
                         ]}
                     />
                 </div>

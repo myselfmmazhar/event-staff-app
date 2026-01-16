@@ -1,4 +1,5 @@
 import { useLabelsContext } from "@/lib/providers/labels-provider";
+import { useTerminology } from "@/lib/hooks/use-terminology";
 import type {
   LabelsConfig,
   GlobalLabels,
@@ -20,7 +21,31 @@ import type {
   MySchedulePageLabels,
   SettingsPageLabels,
 } from "@/lib/config/labels";
-import { getNestedValue } from "@/lib/config/labels";
+import { getNestedValue, interpolateLabel } from "@/lib/config/labels";
+import type { TerminologyConfig } from "@/lib/config/terminology";
+import { useMemo } from "react";
+
+/**
+ * Deep interpolate all string values in an object with terminology
+ */
+function interpolateObject<T>(obj: T, terminology: TerminologyConfig): T {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    return obj;
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as unknown as Record<string, unknown>)) {
+    if (typeof value === "string") {
+      result[key] = interpolateLabel(value, terminology);
+    } else if (value && typeof value === "object" && !Array.isArray(value)) {
+      result[key] = interpolateObject(value as unknown, terminology);
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result as unknown as T;
+}
 
 /**
  * Hook to access full labels configuration
@@ -229,6 +254,7 @@ export function usePageLabels(): PageLabels {
 
 /**
  * Hook to access staff page labels
+ * Interpolates terminology placeholders automatically
  *
  * @example
  * ```tsx
@@ -240,11 +266,17 @@ export function usePageLabels(): PageLabels {
  */
 export function useStaffPageLabels(): StaffPageLabels {
   const { labels } = useLabelsContext();
-  return labels.pages.staff;
+  const { terminology } = useTerminology();
+  
+  return useMemo(
+    () => interpolateObject(labels.pages.staff, terminology),
+    [labels.pages.staff, terminology]
+  );
 }
 
 /**
  * Hook to access events page labels
+ * Interpolates terminology placeholders automatically
  *
  * @example
  * ```tsx
@@ -256,7 +288,12 @@ export function useStaffPageLabels(): StaffPageLabels {
  */
 export function useEventsPageLabels(): EventsPageLabels {
   const { labels } = useLabelsContext();
-  return labels.pages.events;
+  const { terminology } = useTerminology();
+  
+  return useMemo(
+    () => interpolateObject(labels.pages.events, terminology),
+    [labels.pages.events, terminology]
+  );
 }
 
 /**
@@ -277,6 +314,7 @@ export function useClientsPageLabels(): ClientsPageLabels {
 
 /**
  * Hook to access users page labels
+ * Interpolates terminology placeholders automatically
  *
  * @example
  * ```tsx
@@ -288,11 +326,17 @@ export function useClientsPageLabels(): ClientsPageLabels {
  */
 export function useUsersPageLabels(): UsersPageLabels {
   const { labels } = useLabelsContext();
-  return labels.pages.users;
+  const { terminology } = useTerminology();
+  
+  return useMemo(
+    () => interpolateObject(labels.pages.users, terminology),
+    [labels.pages.users, terminology]
+  );
 }
 
 /**
  * Hook to access dashboard page labels
+ * Interpolates terminology placeholders automatically
  *
  * @example
  * ```tsx
@@ -304,11 +348,17 @@ export function useUsersPageLabels(): UsersPageLabels {
  */
 export function useDashboardPageLabels(): DashboardPageLabels {
   const { labels } = useLabelsContext();
-  return labels.pages.dashboard;
+  const { terminology } = useTerminology();
+  
+  return useMemo(
+    () => interpolateObject(labels.pages.dashboard, terminology),
+    [labels.pages.dashboard, terminology]
+  );
 }
 
 /**
  * Hook to access my schedule page labels
+ * Interpolates terminology placeholders automatically
  *
  * @example
  * ```tsx
@@ -320,11 +370,17 @@ export function useDashboardPageLabels(): DashboardPageLabels {
  */
 export function useMySchedulePageLabels(): MySchedulePageLabels {
   const { labels } = useLabelsContext();
-  return labels.pages.mySchedule;
+  const { terminology } = useTerminology();
+  
+  return useMemo(
+    () => interpolateObject(labels.pages.mySchedule, terminology),
+    [labels.pages.mySchedule, terminology]
+  );
 }
 
 /**
  * Hook to access settings page labels
+ * Interpolates terminology placeholders automatically
  *
  * @example
  * ```tsx
@@ -336,7 +392,12 @@ export function useMySchedulePageLabels(): MySchedulePageLabels {
  */
 export function useSettingsPageLabels(): SettingsPageLabels {
   const { labels } = useLabelsContext();
-  return labels.pages.settings;
+  const { terminology } = useTerminology();
+  
+  return useMemo(
+    () => interpolateObject(labels.pages.settings, terminology),
+    [labels.pages.settings, terminology]
+  );
 }
 
 // ============================================================================
