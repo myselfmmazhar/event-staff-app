@@ -3,13 +3,21 @@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Staff, StaffPositionAssignment, StaffPosition } from '@prisma/client';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 
-// Define the type with relations included
-export type StaffWithRelations = Staff & {
-    positions: (StaffPositionAssignment & { position: StaffPosition })[];
+type StaffPosition = { id: string; name: string };
+type StaffPositionAssignment = { position: StaffPosition };
+
+export type StaffWithRelations = {
+    id: string;
+    staffId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    staffType: string;
+    accountStatus: string;
+    positions?: StaffPositionAssignment[];
 };
 
 interface SelectableStaffTableProps {

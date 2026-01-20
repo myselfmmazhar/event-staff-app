@@ -6,7 +6,7 @@ datasource db {
   provider = "postgresql"
 }
 
-model accounts {
+model Account {
   id           String    @id
   userId       String
   accountId    String
@@ -16,15 +16,16 @@ model accounts {
   expiresAt    DateTime? @db.Timestamp(6)
   password     String?
   createdAt    DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime  @db.Timestamp(6)
-  users        users     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt    DateTime  @updatedAt @db.Timestamp(6)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, accountId])
   @@index([userId])
+  @@map("accounts")
 }
 
-model call_time_invitations {
-  id            String                   @id @db.Uuid
+model CallTimeInvitation {
+  id            String                   @id @default(uuid()) @db.Uuid
   callTimeId    String                   @db.Uuid
   staffId       String                   @db.Uuid
   status        CallTimeInvitationStatus @default(PENDING)
@@ -33,18 +34,19 @@ model call_time_invitations {
   isConfirmed   Boolean                  @default(false)
   confirmedAt   DateTime?                @db.Timestamp(6)
   createdAt     DateTime                 @default(now()) @db.Timestamp(6)
-  updatedAt     DateTime                 @db.Timestamp(6)
-  call_times    call_times               @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
-  staff         staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  updatedAt     DateTime                 @updatedAt @db.Timestamp(6)
+  callTime      CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
+  staff         Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@unique([callTimeId, staffId])
   @@index([callTimeId])
   @@index([staffId])
   @@index([status])
+  @@map("call_time_invitations")
 }
 
-model call_times {
-  id                    String                  @id @db.Uuid
+model CallTime {
+  id                    String                  @id @default(uuid()) @db.Uuid
   callTimeId            String                  @unique
   positionId            String                  @db.Uuid
   numberOfStaffRequired Int                     @default(1)
@@ -60,19 +62,20 @@ model call_times {
   notes                 String?
   eventId               String                  @db.Uuid
   createdAt             DateTime                @default(now()) @db.Timestamp(6)
-  updatedAt             DateTime                @db.Timestamp(6)
-  call_time_invitations call_time_invitations[]
-  events                events                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  staff_positions       staff_positions         @relation(fields: [positionId], references: [id])
+  updatedAt             DateTime                @updatedAt @db.Timestamp(6)
+  invitations           CallTimeInvitation[]
+  event                 Event                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  position              StaffPosition           @relation(fields: [positionId], references: [id])
 
   @@index([callTimeId])
   @@index([eventId])
   @@index([positionId])
   @@index([startDate])
+  @@map("call_times")
 }
 
-model clients {
-  id                             String    @id @db.Uuid
+model Client {
+  id                             String    @id @default(uuid()) @db.Uuid
   clientId                       String    @unique
   businessName                   String
   firstName                      String
@@ -93,20 +96,21 @@ model clients {
   userId                         String?   @unique
   createdBy                      String
   createdAt                      DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt                      DateTime  @db.Timestamp(6)
+  updatedAt                      DateTime  @updatedAt @db.Timestamp(6)
   invitationExpiresAt            DateTime? @db.Timestamp(6)
   invitationToken                String?   @unique
-  users_clients_createdByTousers users     @relation("clients_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
-  users_clients_userIdTousers    users?    @relation("clients_userIdTousers", fields: [userId], references: [id])
-  events                         events[]
+  users_clients_createdByTousers User      @relation("clients_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
+  users_clients_userIdTousers    User?     @relation("clients_userIdTousers", fields: [userId], references: [id])
+  events                         Event[]
 
   @@index([clientId])
   @@index([createdBy])
   @@index([email])
+  @@map("clients")
 }
 
-model email_branding_settings {
-  id                 String   @id @db.Uuid
+model EmailBrandingSettings {
+  id                 String   @id @default(uuid()) @db.Uuid
   logoUrl            String?
   primaryColor       String   @default("#667eea")
   secondaryColor     String   @default("#764ba2")
@@ -116,21 +120,23 @@ model email_branding_settings {
   headerBackground   String   @default("gradient")
   footerText         String?
   createdAt          DateTime @default(now()) @db.Timestamp(6)
-  updatedAt          DateTime @db.Timestamp(6)
+  updatedAt          DateTime @updatedAt @db.Timestamp(6)
+  @@map("email_branding_settings")
 }
 
-model email_templates {
-  id           String            @id @db.Uuid
+model EmailTemplate {
+  id           String            @id @default(uuid()) @db.Uuid
   type         EmailTemplateType @unique
   subject      String
   bodyHtml     String
   isCustomized Boolean           @default(false)
   createdAt    DateTime          @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime          @db.Timestamp(6)
+  updatedAt    DateTime          @updatedAt @db.Timestamp(6)
+  @@map("email_templates")
 }
 
-model events {
-  id              String       @id @db.Uuid
+model Event {
+  id              String       @id @default(uuid()) @db.Uuid
   eventId         String       @unique
   title           String
   description     String?
@@ -152,23 +158,24 @@ model events {
   createdBy       String
   clientId        String?      @db.Uuid
   createdAt       DateTime     @default(now()) @db.Timestamp(6)
-  updatedAt       DateTime     @db.Timestamp(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamp(6)
   geocodedAt      DateTime?    @db.Timestamp(6)
   latitude        Float?
   longitude       Float?
-  call_times      call_times[]
-  clients         clients?     @relation(fields: [clientId], references: [id])
-  users           users        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  callTimes       CallTime[]
+  client          Client?      @relation(fields: [clientId], references: [id])
+  createdByUser   User         @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([clientId])
   @@index([createdBy])
   @@index([eventId])
   @@index([startDate])
   @@index([status])
+  @@map("events")
 }
 
-model notification_preferences {
-  id                       String   @id @db.Uuid
+model NotificationPreference {
+  id                       String   @id @default(uuid()) @db.Uuid
   userId                   String   @unique
   emailEnabled             Boolean  @default(true)
   emailCallTimeInvitations Boolean  @default(true)
@@ -176,12 +183,13 @@ model notification_preferences {
   emailShiftReminders      Boolean  @default(true)
   inAppEnabled             Boolean  @default(true)
   createdAt                DateTime @default(now()) @db.Timestamp(6)
-  updatedAt                DateTime @db.Timestamp(6)
-  users                    users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt                DateTime @updatedAt @db.Timestamp(6)
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("notification_preferences")
 }
 
-model notifications {
-  id                String               @id @db.Uuid
+model Notification {
+  id                String               @id @default(uuid()) @db.Uuid
   userId            String
   type              NotificationType
   priority          NotificationPriority @default(NORMAL)
@@ -197,16 +205,17 @@ model notifications {
   readAt            DateTime?            @db.Timestamp(6)
   isArchived        Boolean              @default(false)
   createdAt         DateTime             @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime             @db.Timestamp(6)
-  users             users                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt         DateTime             @updatedAt @db.Timestamp(6)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([batchKey, userId])
   @@index([userId, createdAt])
   @@index([userId, isRead, isArchived])
+  @@map("notifications")
 }
 
-model organization_settings {
-  id                String   @id @db.Uuid
+model OrganizationSettings {
+  id                String   @id @default(uuid()) @db.Uuid
   staffTermSingular String   @default("Staff")
   staffTermPlural   String   @default("Staff")
   eventTermSingular String   @default("Event")
@@ -214,7 +223,7 @@ model organization_settings {
   roleTermSingular  String   @default("Role")
   roleTermPlural    String   @default("Roles")
   createdAt         DateTime @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @db.Timestamp(6)
   globalLabels      Json     @default("{}")
   pageLabels        Json     @default("{}")
   companyAddress    String?
@@ -223,9 +232,10 @@ model organization_settings {
   companyPhone      String?
   companyTagline    String?
   companyWebsite    String?
+  @@map("organization_settings")
 }
 
-model sessions {
+model Session {
   id        String   @id
   userId    String
   expiresAt DateTime @db.Timestamp(6)
@@ -233,23 +243,25 @@ model sessions {
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @db.Timestamp(6)
-  users     users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@map("sessions")
 }
 
-model sms_templates {
-  id           String          @id @db.Uuid
+model SmsTemplate {
+  id           String          @id @default(uuid()) @db.Uuid
   type         SmsTemplateType @unique
   body         String
   isCustomized Boolean         @default(false)
   createdAt    DateTime        @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime        @db.Timestamp(6)
+  updatedAt    DateTime        @updatedAt @db.Timestamp(6)
+  @@map("sms_templates")
 }
 
-model staff {
-  id                           String                       @id @db.Uuid
+model Staff {
+  id                           String                       @id @default(uuid()) @db.Uuid
   staffId                      String                       @unique
   accountStatus                AccountStatus                @default(PENDING)
   staffType                    StaffType                    @default(EMPLOYEE)
@@ -278,13 +290,13 @@ model staff {
   userId                       String?                      @unique
   createdBy                    String
   createdAt                    DateTime                     @default(now()) @db.Timestamp(6)
-  updatedAt                    DateTime                     @db.Timestamp(6)
-  call_time_invitations        call_time_invitations[]
-  staff                        staff?                       @relation("staffTostaff", fields: [contractorId], references: [id])
-  other_staff                  staff[]                      @relation("staffTostaff")
-  users_staff_createdByTousers users                        @relation("staff_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
-  users_staff_userIdTousers    users?                       @relation("staff_userIdTousers", fields: [userId], references: [id])
-  staff_position_assignments   staff_position_assignments[]
+  updatedAt                    DateTime                     @updatedAt @db.Timestamp(6)
+  callTimeInvitations          CallTimeInvitation[]
+  contractor                   Staff?                       @relation("staffTostaff", fields: [contractorId], references: [id])
+  employees                    Staff[]                      @relation("staffTostaff")
+  users_staff_createdByTousers User                         @relation("staff_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
+  users_staff_userIdTousers    User?                        @relation("staff_userIdTousers", fields: [userId], references: [id])
+  positions                    StaffPositionAssignment[]
 
   @@index([accountStatus])
   @@index([availabilityStatus])
@@ -292,33 +304,36 @@ model staff {
   @@index([createdBy])
   @@index([email])
   @@index([staffId])
+  @@map("staff")
 }
 
-model staff_position_assignments {
-  id              String          @id @db.Uuid
+model StaffPositionAssignment {
+  id              String          @id @default(uuid()) @db.Uuid
   staffId         String          @db.Uuid
   positionId      String          @db.Uuid
   assignedAt      DateTime        @default(now()) @db.Timestamp(6)
-  staff_positions staff_positions @relation(fields: [positionId], references: [id], onDelete: Cascade)
-  staff           staff           @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  position        StaffPosition   @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  staff           Staff           @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@unique([staffId, positionId])
   @@index([positionId])
   @@index([staffId])
+  @@map("staff_position_assignments")
 }
 
-model staff_positions {
-  id                         String                       @id @db.Uuid
+model StaffPosition {
+  id                         String                       @id @default(uuid()) @db.Uuid
   name                       String                       @unique
   description                String?
   isActive                   Boolean                      @default(true)
   createdAt                  DateTime                     @default(now()) @db.Timestamp(6)
-  updatedAt                  DateTime                     @db.Timestamp(6)
-  call_times                 call_times[]
-  staff_position_assignments staff_position_assignments[]
+  updatedAt                  DateTime                     @updatedAt @db.Timestamp(6)
+  callTimes                  CallTime[]
+  staff                      StaffPositionAssignment[]
+  @@map("staff_positions")
 }
 
-model users {
+model User {
   id                               String                    @id
   email                            String                    @unique
   emailVerified                    Boolean                   @default(false)
@@ -334,19 +349,20 @@ model users {
   invitationToken                  String?                   @unique
   invitationExpiresAt              DateTime?                 @db.Timestamp(6)
   createdAt                        DateTime                  @default(now()) @db.Timestamp(6)
-  updatedAt                        DateTime                  @db.Timestamp(6)
-  accounts                         accounts[]
-  clients_clients_createdByTousers clients[]                 @relation("clients_createdByTousers")
-  clients_clients_userIdTousers    clients?                  @relation("clients_userIdTousers")
-  events                           events[]
-  notification_preferences         notification_preferences?
-  notifications                    notifications[]
-  sessions                         sessions[]
-  staff_staff_createdByTousers     staff[]                   @relation("staff_createdByTousers")
-  staff_staff_userIdTousers        staff?                    @relation("staff_userIdTousers")
+  updatedAt                        DateTime                  @updatedAt @db.Timestamp(6)
+  accounts                         Account[]
+  clients_clients_createdByTousers Client[]                  @relation("clients_createdByTousers")
+  clients_clients_userIdTousers    Client?                   @relation("clients_userIdTousers")
+  events                           Event[]
+  notification_preferences         NotificationPreference?
+  notifications                    Notification[]
+  sessions                         Session[]
+  staff_staff_createdByTousers     Staff[]                   @relation("staff_createdByTousers")
+  staff_staff_userIdTousers        Staff?                    @relation("staff_userIdTousers")
+  @@map("users")
 }
 
-model verifications {
+model Verification {
   id         String   @id
   identifier String
   value      String
@@ -354,6 +370,7 @@ model verifications {
   createdAt  DateTime @default(now()) @db.Timestamp(6)
 
   @@unique([identifier, value])
+  @@map("verifications")
 }
 
 enum AccountStatus {

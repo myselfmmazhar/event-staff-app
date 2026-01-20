@@ -86,8 +86,8 @@ export function ViewUserModal({
                 <Badge variant={user.isActive ? 'success' : 'danger'} pulse={user.isActive} asSpan>
                   {user.isActive ? 'Active' : 'Inactive'}
                 </Badge>
-                <Badge variant={ROLE_COLORS[user.role]} asSpan>
-                  {ROLE_LABELS[user.role]}
+                <Badge variant={ROLE_COLORS[user.role as keyof typeof ROLE_COLORS]} asSpan>
+                  {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS]}
                 </Badge>
               </div>
               <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ export function ViewUserModal({
                 </div>
                 <div className="grid grid-cols-[140px_1fr] gap-2 text-sm">
                   <span className="text-muted-foreground">{roleTerm.singular}:</span>
-                  <span className="font-medium text-foreground">{ROLE_LABELS[user.role]}</span>
+                  <span className="font-medium text-foreground">{ROLE_LABELS[user.role as keyof typeof ROLE_LABELS]}</span>
                 </div>
                 <div className="grid grid-cols-[140px_1fr] gap-2 text-sm">
                   <span className="text-muted-foreground">Status:</span>

@@ -67,15 +67,18 @@ export function ViewEventModal({
         ) : event ? (
           <div className="space-y-5">
             {/* Header: Event ID + Status */}
-            <div className="flex items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg border border-border">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{terminology.event.singular} ID</p>
-                <p className="font-mono text-sm font-medium">{event.eventId}</p>
-              </div>
-              <Badge variant={EVENT_STATUS_COLORS[event.status]} asSpan>
-                {EVENT_STATUS_LABELS[event.status]}
-              </Badge>
-            </div>
+	            <div className="flex items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg border border-border">
+	              <div>
+	                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{terminology.event.singular} ID</p>
+	                <p className="font-mono text-sm font-medium">{event.eventId}</p>
+	              </div>
+	              <Badge
+	                variant={EVENT_STATUS_COLORS[event.status as keyof typeof EVENT_STATUS_COLORS]}
+	                asSpan
+	              >
+	                {EVENT_STATUS_LABELS[event.status as keyof typeof EVENT_STATUS_LABELS]}
+	              </Badge>
+	            </div>
 
             {/* Event Details Section */}
             <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
@@ -235,4 +238,3 @@ export function ViewEventModal({
     </Dialog>
   );
 }
-

@@ -11,14 +11,9 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CloseIcon } from '@/components/ui/icons';
 import { format } from 'date-fns';
-import { Staff, StaffPositionAssignment, StaffPosition, AccountStatus, AvailabilityStatus } from '@prisma/client';
+import { AccountStatus, AvailabilityStatus } from '@prisma/client';
 import { useTerminology } from '@/lib/hooks/use-terminology';
-
-// Define the type with relations included
-type StaffWithRelations = Staff & {
-    positions: (StaffPositionAssignment & { position: StaffPosition })[];
-    contractor?: Staff | null;
-};
+import type { StaffWithRelations } from '@/components/staff/staff-table';
 
 interface ViewStaffModalProps {
     staff: StaffWithRelations | null;

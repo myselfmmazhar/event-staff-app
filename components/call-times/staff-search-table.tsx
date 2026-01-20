@@ -22,7 +22,7 @@ interface Staff {
   locationMatch: number;
   userId?: string | null;
   hasLoginAccess?: boolean;
-  positions: Array<{
+  positions?: Array<{
     position: { id: string; name: string };
   }>;
 }

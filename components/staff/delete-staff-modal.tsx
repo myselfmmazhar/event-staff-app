@@ -8,11 +8,11 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Staff } from '@prisma/client';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import type { StaffWithRelations } from '@/components/staff/staff-table';
 
 interface DeleteStaffModalProps {
-    staff: Staff | null;
+    staff: Pick<StaffWithRelations, 'firstName' | 'lastName' | 'staffType'> | null;
     open: boolean;
     onClose: () => void;
     onConfirm: () => void;

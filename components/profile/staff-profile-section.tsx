@@ -219,13 +219,13 @@ export function StaffProfileSection() {
                                             : 'secondary'
                                     }
                                 >
-                                    {ACCOUNT_STATUS_LABELS[staffProfile.accountStatus]}
+                                    {ACCOUNT_STATUS_LABELS[staffProfile.accountStatus as AccountStatus]}
                                 </Badge>
                             </div>
                         </div>
                         <div>
                             <Label className="text-muted-foreground text-sm">{terminology.staff.singular} Type</Label>
-                            <p className="font-medium">{STAFF_TYPE_LABELS[staffProfile.staffType]}</p>
+                            <p className="font-medium">{STAFF_TYPE_LABELS[staffProfile.staffType as StaffType]}</p>
                         </div>
                         <div>
                             <Label className="text-muted-foreground text-sm flex items-center gap-1">
@@ -236,13 +236,13 @@ export function StaffProfileSection() {
                         </div>
                         <div>
                             <Label className="text-muted-foreground text-sm">Experience Level</Label>
-                            <p className="font-medium">{SKILL_LEVEL_LABELS[staffProfile.skillLevel]}</p>
+                            <p className="font-medium">{SKILL_LEVEL_LABELS[staffProfile.skillLevel as SkillLevel]}</p>
                         </div>
                         <div>
                             <Label className="text-muted-foreground text-sm">Positions</Label>
                             <div className="flex flex-wrap gap-1 mt-1">
                                 {staffProfile.positions && staffProfile.positions.length > 0 ? (
-                                    staffProfile.positions.map((pa) => (
+                                    staffProfile.positions.map((pa: { position: { id: string; name: string } }) => (
                                         <Badge key={pa.position.id} variant="secondary">
                                             {pa.position.name}
                                         </Badge>

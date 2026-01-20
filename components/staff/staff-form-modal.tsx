@@ -19,19 +19,18 @@ import { SearchIcon } from 'lucide-react';
 import { z } from 'zod';
 import { CloseIcon } from '@/components/ui/icons';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
-import { AccountStatus, StaffType, SkillLevel, StaffRating, AvailabilityStatus, Staff, StaffPositionAssignment, StaffPosition } from '@prisma/client';
+import { AccountStatus, StaffType, SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import type { StaffWithRelations } from '@/components/staff/staff-table';
 
 // Form schema for client-side
 const formSchema = StaffSchema.create;
 type StaffFormInput = z.input<typeof formSchema>;
 type StaffFormOutput = z.infer<typeof formSchema>;
 
-// Define the type with relations included (same as in staff-table)
-type StaffWithRelations = Staff & {
-    positions: (StaffPositionAssignment & { position: StaffPosition })[];
-};
+type PositionOption = { id: string; name: string };
+type ContractorOption = { id: string; firstName: string; lastName: string; staffId: string };
 
 interface StaffFormModalProps {
     staff: StaffWithRelations | null;
@@ -53,11 +52,13 @@ export function StaffFormModal({
     const [positionSearch, setPositionSearch] = useState('');
 
     // Fetch lookup data
-    const { data: positions = [] } = trpc.staff.getPositions.useQuery(undefined, { enabled: open });
-    const { data: contractors = [] } = trpc.staff.getContractors.useQuery(undefined, { enabled: open });
+    const { data: positionsData } = trpc.staff.getPositions.useQuery(undefined, { enabled: open });
+    const { data: contractorsData } = trpc.staff.getContractors.useQuery(undefined, { enabled: open });
+    const positions = (positionsData ?? []) as PositionOption[];
+    const contractors = (contractorsData ?? []) as ContractorOption[];
 
     // Filter positions by search term
-    const filteredPositions = useMemo(() => {
+    const filteredPositions = useMemo<PositionOption[]>(() => {
         if (!positionSearch.trim()) return positions;
         const searchLower = positionSearch.toLowerCase();
         return positions.filter((position) =>
@@ -108,7 +109,7 @@ export function StaffFormModal({
                 timeOffStart: staff.timeOffStart ? new Date(staff.timeOffStart) : null,
                 timeOffEnd: staff.timeOffEnd ? new Date(staff.timeOffEnd) : null,
                 experience: staff.experience || '',
-                staffRating: staff.staffRating,
+                staffRating: staff.staffRating ?? StaffRating.NA,
                 internalNotes: staff.internalNotes || '',
                 contractorId: staff.contractorId || null,
                 positionIds: staff.positions?.map((p) => p.position.id) || [],

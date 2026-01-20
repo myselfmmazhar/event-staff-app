@@ -33,10 +33,11 @@ export default function PositionsSettingsPage() {
     const [positionToDelete, setPositionToDelete] = useState<Position | null>(null);
     const [search, setSearch] = useState('');
 
-    const { data: positions, isLoading, refetch } = trpc.settings.getPositions.useQuery();
+    const { data: positionsData, isLoading, refetch } = trpc.settings.getPositions.useQuery();
+    const positions = positionsData as Position[] | undefined;
 
     // Filter positions by search term
-    const filteredPositions = useMemo(() => {
+    const filteredPositions = useMemo<Position[]>(() => {
         if (!positions) return [];
         if (!search.trim()) return positions;
         const searchLower = search.toLowerCase();

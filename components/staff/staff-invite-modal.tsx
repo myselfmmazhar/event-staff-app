@@ -25,6 +25,8 @@ const formSchema = StaffSchema.invite;
 type InviteFormInput = z.input<typeof formSchema>;
 type InviteFormOutput = z.infer<typeof formSchema>;
 
+type PositionOption = { id: string; name: string };
+
 interface StaffInviteModalProps {
     open: boolean;
     onClose: () => void;
@@ -41,7 +43,8 @@ export function StaffInviteModal({
     const { terminology } = useTerminology();
 
     // Fetch positions
-    const { data: positions = [] } = trpc.staff.getPositions.useQuery(undefined, { enabled: open });
+    const { data: positionsData } = trpc.staff.getPositions.useQuery(undefined, { enabled: open });
+    const positions = (positionsData ?? []) as PositionOption[];
 
     const {
         register,

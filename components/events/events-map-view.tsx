@@ -58,7 +58,7 @@ export function EventsMapView({
   const mapRef = useRef<MapRef>(null);
 
   // Fetch events for map
-  const { data: events, isLoading, error } = trpc.event.getForMap.useQuery(
+  const { data: eventsData, isLoading, error } = trpc.event.getForMap.useQuery(
     {
       status,
       clientId,
@@ -68,6 +68,7 @@ export function EventsMapView({
       refetchOnWindowFocus: false,
     }
   );
+  const events = eventsData as MapEvent[] | undefined;
 
   // Calculate bounds to fit all events
   const fitMapToEvents = useCallback(() => {
@@ -111,13 +112,11 @@ export function EventsMapView({
 
   // Fit map when events load
   useEffect(() => {
-    if (events && events.length > 0) {
-      // Small delay to ensure map is ready
-      const timer = setTimeout(() => {
-        fitMapToEvents();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
+    if (!events || events.length === 0) return;
+    const timer = setTimeout(() => {
+      fitMapToEvents();
+    }, 100);
+    return () => clearTimeout(timer);
   }, [events, fitMapToEvents]);
 
   const selectedEvent = events?.find((e) => e.id === selectedEventId);

@@ -190,6 +190,10 @@ export function CallTimeDetailModal({
       ? (callTime.billRate as { toNumber: () => number }).toNumber()
       : Number(callTime.billRate);
 
+  const payRateTypeLabel = RATE_TYPE_LABELS[callTime.payRateType as RateType];
+  const billRateTypeLabel = RATE_TYPE_LABELS[callTime.billRateType as RateType];
+  const skillLevelLabel = SKILL_LEVEL_LABELS[callTime.skillLevel as SkillLevel];
+
   const isSameDay =
     new Date(callTime.startDate).toDateString() ===
     new Date(callTime.endDate).toDateString();
@@ -246,19 +250,19 @@ export function CallTimeDetailModal({
           <div>
             <p className="text-sm text-muted-foreground">Pay Rate</p>
             <p className="font-medium">
-              ${payRate.toFixed(2)} {RATE_TYPE_LABELS[callTime.payRateType].toLowerCase()}
+              ${payRate.toFixed(2)} {payRateTypeLabel.toLowerCase()}
             </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Bill Rate</p>
             <p className="font-medium">
-              ${billRate.toFixed(2)} {RATE_TYPE_LABELS[callTime.billRateType].toLowerCase()}
+              ${billRate.toFixed(2)} {billRateTypeLabel.toLowerCase()}
             </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Skill Level</p>
             <p className="font-medium">
-              {SKILL_LEVEL_LABELS[callTime.skillLevel]}
+              {skillLevelLabel}
             </p>
           </div>
           <div>

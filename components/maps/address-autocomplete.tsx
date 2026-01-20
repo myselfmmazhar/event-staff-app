@@ -147,7 +147,7 @@ export function AddressAutocomplete({
     if (!city) {
       const parts = suggestion.place_name.split(", ");
       if (parts.length >= 2) {
-        city = parts[1];
+        city = parts[1] ?? "";
       }
     }
 

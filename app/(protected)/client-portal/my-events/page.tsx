@@ -8,6 +8,11 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import type { inferRouterOutputs } from '@trpc/server';
+import type { AppRouter } from '@/server/routers/_app';
+
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type ClientEventListItem = RouterOutputs['profile']['getMyClientEvents'][number];
 
 /**
  * Client Portal - My Events Page  
@@ -29,7 +34,7 @@ export default function ClientPortalMyEvents() {
     );
 
     const isLoading = profileLoading || clientLoading || eventsLoading;
-    const events = eventsData || [];
+    const events = (eventsData || []) as ClientEventListItem[];
 
     const getStatusBadgeVariant = (status: string) => {
         switch (status) {
@@ -89,7 +94,7 @@ export default function ClientPortalMyEvents() {
                 </Card>
             ) : (
                 <div className="space-y-4">
-                    {events.map((event) => (
+                    {events.map((event: ClientEventListItem) => (
                         <Card key={event.id} className="hover:shadow-md transition-shadow">
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between">

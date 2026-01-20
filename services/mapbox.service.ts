@@ -70,6 +70,7 @@ export async function geocodeAddress(
     }
 
     const feature = data.features[0];
+    if (!feature) return null;
     const [longitude, latitude] = feature.center;
 
     // Extract address components from context
@@ -138,6 +139,7 @@ export async function reverseGeocode(
     }
 
     const feature = data.features[0];
+    if (!feature) return null;
     const context = feature.context || [];
 
     let city = "";

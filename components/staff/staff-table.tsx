@@ -4,13 +4,43 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Edit2Icon, Trash2Icon, EyeIcon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
-import { Staff, StaffPositionAssignment, StaffPosition, AvailabilityStatus } from '@prisma/client';
+import { AvailabilityStatus, AccountStatus, StaffType, SkillLevel, StaffRating } from '@prisma/client';
 import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 
-// Define the type with relations included
-export type StaffWithRelations = Staff & {
-    positions: (StaffPositionAssignment & { position: StaffPosition })[];
+export type StaffWithRelations = {
+    id: string;
+    staffId: string;
+    accountStatus: AccountStatus;
+    staffType: StaffType;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    dateOfBirth: Date | string | null;
+    skillLevel: SkillLevel;
+    availabilityStatus: AvailabilityStatus;
+    timeOffStart: Date | string | null;
+    timeOffEnd: Date | string | null;
+    streetAddress: string;
+    aptSuiteUnit: string | null;
+    city: string;
+    country: string;
+    state: string;
+    zipCode: string;
+    experience: string | null;
+    staffRating: StaffRating;
+    internalNotes: string | null;
+    contractorId: string | null;
+    hasLoginAccess: boolean;
+    userId: string | null;
+    invitationToken: string | null;
+    invitationExpiresAt: Date | string | null;
+    createdBy: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    positions: Array<{ position: { id: string; name: string } }>;
+    contractor: { id: string; staffId: string; firstName: string; lastName: string } | null;
 };
 
 interface StaffTableProps {

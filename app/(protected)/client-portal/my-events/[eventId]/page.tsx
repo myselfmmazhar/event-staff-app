@@ -17,6 +17,13 @@ import {
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
+import type { inferRouterOutputs } from '@trpc/server';
+import type { AppRouter } from '@/server/routers/_app';
+
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type ClientEventDetail = RouterOutputs['profile']['getMyClientEventDetail'];
+type ClientCallTime = NonNullable<NonNullable<ClientEventDetail>['callTimes']>[number];
+type ClientCallTimeInvitation = ClientCallTime['invitations'][number];
 
 /**
  * Client Portal - Event Detail Page
@@ -190,7 +197,7 @@ export default function ClientEventDetailPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {event.callTimes.map((callTime) => (
+                            {event.callTimes.map((callTime: ClientCallTime) => (
                                 <div key={callTime.id} className="border rounded-lg p-4 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -212,7 +219,7 @@ export default function ClientEventDetailPage() {
                                         <div className="mt-3">
                                             <p className="text-sm font-medium mb-2">Confirmed Staff</p>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                {callTime.invitations.map((invitation) => (
+                                                {callTime.invitations.map((invitation: ClientCallTimeInvitation) => (
                                                     <div
                                                         key={invitation.id}
                                                         className="flex items-center gap-2 p-2 bg-muted/50 rounded"

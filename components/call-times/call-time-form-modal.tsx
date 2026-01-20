@@ -93,6 +93,8 @@ const RATE_TYPES: Array<{ value: RateType; label: string }> = Object.entries(
   RATE_TYPE_LABELS
 ).map(([value, label]) => ({ value: value as RateType, label }));
 
+type PositionOption = { id: string; name: string };
+
 const formatDateInputValue = (value: Date | string): string => {
   const [datePart = ''] = new Date(value).toISOString().split('T');
   return datePart;
@@ -116,6 +118,7 @@ export function CallTimeFormModal({
   const { data: positionsData } = trpc.staff.getPositions.useQuery(undefined, {
     enabled: open,
   });
+  const positions = (positionsData ?? []) as PositionOption[];
 
   const {
     register,
@@ -277,14 +280,14 @@ export function CallTimeFormModal({
                   id="positionId"
                   {...register('positionId')}
                   disabled={isSubmitting}
-                >
-                  <option value="">Select a position</option>
-                  {positionsData?.map((position) => (
-                    <option key={position.id} value={position.id}>
-                      {position.name}
-                    </option>
-                  ))}
-                </Select>
+	                >
+	                  <option value="">Select a position</option>
+	                  {positions.map((position) => (
+	                    <option key={position.id} value={position.id}>
+	                      {position.name}
+	                    </option>
+	                  ))}
+	                </Select>
                 {errors.positionId && (
                   <p className="text-sm text-destructive mt-1">
                     {errors.positionId.message}
