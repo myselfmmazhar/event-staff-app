@@ -108,6 +108,18 @@ export class EventSchema {
         .max(20, "ZIP code must be 20 characters or less")
         .transform((val) => val.trim()),
 
+      // Location Coordinates (optional, can be auto-filled by geocoding)
+      latitude: z
+        .number()
+        .min(-90, "Latitude must be between -90 and 90")
+        .max(90, "Latitude must be between -90 and 90")
+        .optional(),
+      longitude: z
+        .number()
+        .min(-180, "Longitude must be between -180 and 180")
+        .max(180, "Longitude must be between -180 and 180")
+        .optional(),
+
       // Date and Time
       startDate: z.coerce.date({ message: "Start date is required" }),
       startTime: z
@@ -224,6 +236,18 @@ export class EventSchema {
         .min(1, "ZIP code is required")
         .max(20, "ZIP code must be 20 characters or less")
         .transform((val) => val.trim())
+        .optional(),
+
+      // Location Coordinates (optional, can be auto-filled by geocoding)
+      latitude: z
+        .number()
+        .min(-90, "Latitude must be between -90 and 90")
+        .max(90, "Latitude must be between -90 and 90")
+        .optional(),
+      longitude: z
+        .number()
+        .min(-180, "Longitude must be between -180 and 180")
+        .max(180, "Longitude must be between -180 and 180")
         .optional(),
 
       // Date and Time

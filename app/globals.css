@@ -348,3 +348,26 @@
   background-color: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
 }
+
+
+/* ============================================
+   Mapbox Popup Styles
+   ============================================ */
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0.5rem !important;
+}
+
+.mapboxgl-popup-tip {
+  display: none !important;
+}
+
+.mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.event-popup .mapboxgl-popup-content {
+  overflow: visible !important;
+}
