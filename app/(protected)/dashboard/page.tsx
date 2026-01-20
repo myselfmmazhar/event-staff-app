@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarIcon, ClockIcon, BriefcaseIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { HeatMap } from "@/components/maps/heat-map";
 
 /**
  * Staff Dashboard - Coming Soon view for staff members
@@ -220,6 +221,21 @@ export default function DashboardPage() {
                   isLoading={upcomingLoading}
                   onEventClick={handleViewEvent}
                 />
+              ),
+            },
+            {
+              id: "event-distribution",
+              label: "Event Distribution",
+              content: (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Geographic Distribution</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Heat map showing where your events are located
+                    </p>
+                  </div>
+                  <HeatMap />
+                </div>
               ),
             },
           ]}

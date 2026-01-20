@@ -22,6 +22,7 @@ import { z } from 'zod';
 import { CloseIcon, PlusIcon, XIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;
@@ -39,6 +40,8 @@ const editFormSchema = z.object({
   city: z.string().min(1, "City is required").max(100).transform(val => val.trim()),
   state: z.string().min(1, "State is required").max(50).transform(val => val.trim()),
   zipCode: z.string().min(1, "ZIP code is required").max(20).transform(val => val.trim()),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   startDate: z.coerce.date({ message: "Start date is required" }),
   startTime: z.string().optional(),
   startTimeTBD: z.boolean().default(false),
@@ -83,6 +86,8 @@ interface Event {
   city: string;
   state: string;
   zipCode: string;
+  latitude?: number | null;
+  longitude?: number | null;
   startDate: Date;
   startTime?: string | null;
   endDate: Date;
@@ -175,6 +180,15 @@ export function EventFormModal({
     if (event) {
       const fileLinksData = event.fileLinks as FileLink[] | null;
 
+      // Format dates to YYYY-MM-DD for date inputs
+      const formatDateForInput = (date: Date | string) => {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
       reset({
         title: event.title,
         description: event.description || '',
@@ -187,9 +201,11 @@ export function EventFormModal({
         city: event.city,
         state: event.state,
         zipCode: event.zipCode,
-        startDate: new Date(event.startDate),
+        latitude: event.latitude || undefined,
+        longitude: event.longitude || undefined,
+        startDate: formatDateForInput(event.startDate) as any,
         startTime: event.startTime === 'TBD' ? '' : (event.startTime || ''),
-        endDate: new Date(event.endDate),
+        endDate: formatDateForInput(event.endDate) as any,
         endTime: event.endTime === 'TBD' ? '' : (event.endTime || ''),
         timezone: event.timezone,
         dailyDigestMode: event.dailyDigestMode,
@@ -200,6 +216,13 @@ export function EventFormModal({
       setStartTimeTBD(event.startTime === 'TBD');
       setEndTimeTBD(event.endTime === 'TBD');
     } else {
+      // Format today's date to YYYY-MM-DD for date inputs
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayFormatted = `${year}-${month}-${day}`;
+
       reset({
         title: '',
         description: '',
@@ -212,9 +235,9 @@ export function EventFormModal({
         city: '',
         state: '',
         zipCode: '',
-        startDate: new Date(),
+        startDate: todayFormatted as any,
         startTime: '',
-        endDate: new Date(),
+        endDate: todayFormatted as any,
         endTime: '',
         timezone: 'America/New_York',
         dailyDigestMode: false,
@@ -372,6 +395,26 @@ export function EventFormModal({
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Venue Information</h3>
             <div className="space-y-4">
+
+              {/* Address Autocomplete */}
+              <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
+                <AddressAutocomplete
+                  label="Search Address (Optional)"
+                  placeholder="Type to search for an address..."
+                  onSelect={(addressData) => {
+                    // Auto-fill the address fields
+                    setValue('address', addressData.address);
+                    setValue('city', addressData.city);
+                    setValue('state', addressData.state);
+                    setValue('zipCode', addressData.zipCode);
+                    setValue('latitude', addressData.latitude);
+                    setValue('longitude', addressData.longitude);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Start typing to search for an address, or fill in the fields below manually
+                </p>
+              </div>
 
               <div>
                 <Label htmlFor="venueName" required>Venue Name</Label>

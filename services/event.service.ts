@@ -67,6 +67,9 @@ export class EventService {
         city: data.city.trim(),
         state: data.state.trim(),
         zipCode: data.zipCode.trim(),
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+        geocodedAt: data.latitude && data.longitude ? new Date() : null,
         startDate: data.startDate,
         startTime: data.startTime || null,
         endDate: data.endDate,
@@ -94,6 +97,9 @@ export class EventService {
           city: true,
           state: true,
           zipCode: true,
+          latitude: true,
+          longitude: true,
+          geocodedAt: true,
           startDate: true,
           startTime: true,
           endDate: true,
@@ -327,6 +333,11 @@ export class EventService {
       if (data.city !== undefined) sanitizedData.city = data.city.trim();
       if (data.state !== undefined) sanitizedData.state = data.state.trim();
       if (data.zipCode !== undefined) sanitizedData.zipCode = data.zipCode.trim();
+      if (data.latitude !== undefined) sanitizedData.latitude = data.latitude ?? null;
+      if (data.longitude !== undefined) sanitizedData.longitude = data.longitude ?? null;
+      if (data.latitude !== undefined && data.longitude !== undefined && data.latitude && data.longitude) {
+        sanitizedData.geocodedAt = new Date();
+      }
       if (data.startDate !== undefined) sanitizedData.startDate = data.startDate;
       if (data.startTime !== undefined) sanitizedData.startTime = data.startTime || null;
       if (data.endDate !== undefined) sanitizedData.endDate = data.endDate;
@@ -355,6 +366,9 @@ export class EventService {
           city: true,
           state: true,
           zipCode: true,
+          latitude: true,
+          longitude: true,
+          geocodedAt: true,
           startDate: true,
           startTime: true,
           endDate: true,

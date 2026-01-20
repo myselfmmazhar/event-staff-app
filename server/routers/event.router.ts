@@ -1,6 +1,8 @@
 import { router, protectedProcedure } from "../trpc";
 import { EventService } from "@/services/event.service";
 import { EventSchema } from "@/lib/schemas/event.schema";
+import { EventStatus } from "@prisma/client";
+import { z } from "zod";
 
 /**
  * Event Router - All event-related tRPC procedures
@@ -110,5 +112,157 @@ export const eventRouter = router({
     .query(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
       return await eventService.getByDateRange(input, ctx.userId!);
+    }),
+
+  /**
+   * Get events for map view
+   * Returns lightweight event data with coordinates for map rendering
+   * Users can only see their own events
+   * Requires: Authentication
+   */
+  getForMap: protectedProcedure
+    .input(
+      z.object({
+        status: z.nativeEnum(EventStatus).optional(),
+        clientId: z.string().optional(),
+        search: z.string().optional(),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+
+      // Build where clause
+      const where: any = {
+        createdBy: ctx.userId!,
+        AND: [
+          // Only events with coordinates
+          {
+            latitude: { not: null },
+            longitude: { not: null },
+          },
+        ],
+      };
+
+      if (input?.status) {
+        where.status = input.status;
+      }
+
+      if (input?.clientId) {
+        if (input.clientId === "NONE") {
+          where.clientId = null;
+        } else {
+          where.clientId = input.clientId;
+        }
+      }
+
+      if (input?.search) {
+        where.OR = [
+          { title: { contains: input.search, mode: "insensitive" } },
+          { venueName: { contains: input.search, mode: "insensitive" } },
+          { city: { contains: input.search, mode: "insensitive" } },
+          { eventId: { contains: input.search, mode: "insensitive" } },
+        ];
+      }
+
+      const events = await ctx.prisma.event.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          venueName: true,
+          city: true,
+          state: true,
+          startDate: true,
+          status: true,
+          latitude: true,
+          longitude: true,
+        },
+        orderBy: {
+          startDate: "asc",
+        },
+      });
+
+      return events;
+    }),
+
+  /**
+   * Get event location data for heat map analytics
+   * Returns aggregated location data grouped by coordinates
+   * Users can only see their own events
+   * Requires: Authentication
+   */
+  getLocationData: protectedProcedure
+    .input(
+      z.object({
+        startDate: z.coerce.date().optional(),
+        endDate: z.coerce.date().optional(),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      // Build where clause
+      const where: any = {
+        createdBy: ctx.userId!,
+        latitude: { not: null },
+        longitude: { not: null },
+      };
+
+      if (input?.startDate && input?.endDate) {
+        where.startDate = {
+          gte: input.startDate,
+          lte: input.endDate,
+        };
+      }
+
+      const events = await ctx.prisma.event.findMany({
+        where,
+        select: {
+          id: true,
+          latitude: true,
+          longitude: true,
+          city: true,
+          state: true,
+        },
+      });
+
+      return events;
+    }),
+
+  /**
+   * Get events by state for choropleth map modal
+   * Returns events in a specific state with basic details
+   * Users can only see their own events
+   * Requires: Authentication
+   */
+  getByState: protectedProcedure
+    .input(
+      z.object({
+        state: z.string().min(1),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const events = await ctx.prisma.event.findMany({
+        where: {
+          createdBy: ctx.userId!,
+          state: input.state,
+          latitude: { not: null },
+          longitude: { not: null },
+        },
+        select: {
+          id: true,
+          eventId: true,
+          title: true,
+          venueName: true,
+          city: true,
+          state: true,
+          startDate: true,
+          endDate: true,
+          status: true,
+        },
+        orderBy: {
+          startDate: 'desc',
+        },
+      });
+
+      return events;
     }),
 });

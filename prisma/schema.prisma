@@ -6,39 +6,132 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id                     String                  @id
-  email                  String                  @unique
-  emailVerified          Boolean                 @default(false)
-  name                   String
-  password               String?
-  firstName              String
-  lastName               String
-  role                   UserRole                @default(STAFF)
-  isActive               Boolean                 @default(true)
-  phone                  String?
-  profilePhoto           String?
-  lastLoginAt            DateTime?               @db.Timestamp(6)
-  invitationToken        String?                 @unique
-  invitationExpiresAt    DateTime?               @db.Timestamp(6)
-  createdAt              DateTime                @default(now()) @db.Timestamp(6)
-  updatedAt              DateTime                @updatedAt @db.Timestamp(6)
-  accounts               Account[]
-  createdClients         Client[]                @relation("ClientCreator")
-  client                 Client?                 @relation("ClientUser")
-  createdEvents          Event[]                 @relation("EventCreator")
-  notificationPreference NotificationPreference? @relation("UserNotificationPrefs")
-  notifications          Notification[]          @relation("UserNotifications")
-  sessions               Session[]
-  createdStaff           Staff[]                 @relation("StaffCreator")
-  staff                  Staff?                  @relation("StaffUser")
+model accounts {
+  id           String    @id
+  userId       String
+  accountId    String
+  providerId   String
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime? @db.Timestamp(6)
+  password     String?
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime  @db.Timestamp(6)
+  users        users     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("users")
+  @@unique([providerId, accountId])
+  @@index([userId])
 }
 
-model Event {
-  id              String      @id @default(uuid()) @db.Uuid
-  eventId         String      @unique
+model call_time_invitations {
+  id            String                   @id @db.Uuid
+  callTimeId    String                   @db.Uuid
+  staffId       String                   @db.Uuid
+  status        CallTimeInvitationStatus @default(PENDING)
+  respondedAt   DateTime?                @db.Timestamp(6)
+  declineReason String?
+  isConfirmed   Boolean                  @default(false)
+  confirmedAt   DateTime?                @db.Timestamp(6)
+  createdAt     DateTime                 @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime                 @db.Timestamp(6)
+  call_times    call_times               @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
+  staff         staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([callTimeId, staffId])
+  @@index([callTimeId])
+  @@index([staffId])
+  @@index([status])
+}
+
+model call_times {
+  id                    String                  @id @db.Uuid
+  callTimeId            String                  @unique
+  positionId            String                  @db.Uuid
+  numberOfStaffRequired Int                     @default(1)
+  skillLevel            SkillLevel              @default(BEGINNER)
+  startDate             DateTime                @db.Date
+  startTime             String?
+  endDate               DateTime                @db.Date
+  endTime               String?
+  payRate               Decimal                 @db.Decimal(10, 2)
+  payRateType           RateType
+  billRate              Decimal                 @db.Decimal(10, 2)
+  billRateType          RateType
+  notes                 String?
+  eventId               String                  @db.Uuid
+  createdAt             DateTime                @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime                @db.Timestamp(6)
+  call_time_invitations call_time_invitations[]
+  events                events                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  staff_positions       staff_positions         @relation(fields: [positionId], references: [id])
+
+  @@index([callTimeId])
+  @@index([eventId])
+  @@index([positionId])
+  @@index([startDate])
+}
+
+model clients {
+  id                             String    @id @db.Uuid
+  clientId                       String    @unique
+  businessName                   String
+  firstName                      String
+  lastName                       String
+  email                          String
+  cellPhone                      String
+  businessPhone                  String?
+  details                        String?
+  venueName                      String?
+  room                           String?
+  streetAddress                  String
+  aptSuiteUnit                   String?
+  city                           String
+  country                        String
+  state                          String
+  zipCode                        String
+  hasLoginAccess                 Boolean   @default(false)
+  userId                         String?   @unique
+  createdBy                      String
+  createdAt                      DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt                      DateTime  @db.Timestamp(6)
+  invitationExpiresAt            DateTime? @db.Timestamp(6)
+  invitationToken                String?   @unique
+  users_clients_createdByTousers users     @relation("clients_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
+  users_clients_userIdTousers    users?    @relation("clients_userIdTousers", fields: [userId], references: [id])
+  events                         events[]
+
+  @@index([clientId])
+  @@index([createdBy])
+  @@index([email])
+}
+
+model email_branding_settings {
+  id                 String   @id @db.Uuid
+  logoUrl            String?
+  primaryColor       String   @default("#667eea")
+  secondaryColor     String   @default("#764ba2")
+  buttonStyle        String   @default("gradient")
+  buttonBorderRadius String   @default("8px")
+  fontFamily         String   @default("system-ui")
+  headerBackground   String   @default("gradient")
+  footerText         String?
+  createdAt          DateTime @default(now()) @db.Timestamp(6)
+  updatedAt          DateTime @db.Timestamp(6)
+}
+
+model email_templates {
+  id           String            @id @db.Uuid
+  type         EmailTemplateType @unique
+  subject      String
+  bodyHtml     String
+  isCustomized Boolean           @default(false)
+  createdAt    DateTime          @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime          @db.Timestamp(6)
+}
+
+model events {
+  id              String       @id @db.Uuid
+  eventId         String       @unique
   title           String
   description     String?
   dressCode       String?
@@ -49,260 +142,46 @@ model Event {
   city            String
   state           String
   zipCode         String
-  startDate       DateTime    @db.Date
+  startDate       DateTime     @db.Date
   startTime       String?
-  endDate         DateTime    @db.Date
+  endDate         DateTime     @db.Date
   endTime         String?
   timezone        String
-  status          EventStatus @default(DRAFT)
+  status          EventStatus  @default(DRAFT)
   fileLinks       Json?
   createdBy       String
-  clientId        String?     @db.Uuid
-  createdAt       DateTime    @default(now()) @db.Timestamp(6)
-  updatedAt       DateTime    @updatedAt @db.Timestamp(6)
-  callTimes       CallTime[]  @relation("EventCallTimes")
-  client          Client?     @relation("EventClient", fields: [clientId], references: [id])
-  creator         User        @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  clientId        String?      @db.Uuid
+  createdAt       DateTime     @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime     @db.Timestamp(6)
+  geocodedAt      DateTime?    @db.Timestamp(6)
+  latitude        Float?
+  longitude       Float?
+  call_times      call_times[]
+  clients         clients?     @relation(fields: [clientId], references: [id])
+  users           users        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
-  @@index([createdBy])
   @@index([clientId])
-  @@index([status])
-  @@index([startDate])
-  @@index([eventId])
-  @@map("events")
-}
-
-model Client {
-  id                  String    @id @default(uuid()) @db.Uuid
-  clientId            String    @unique
-  businessName        String
-  firstName           String
-  lastName            String
-  email               String
-  cellPhone           String
-  businessPhone       String?
-  details             String?
-  venueName           String?
-  room                String?
-  streetAddress       String
-  aptSuiteUnit        String?
-  city                String
-  country             String
-  state               String
-  zipCode             String
-  hasLoginAccess      Boolean   @default(false)
-  userId              String?   @unique
-  invitationToken     String?   @unique
-  invitationExpiresAt DateTime? @db.Timestamp(6)
-  createdBy           String
-  createdAt           DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt           DateTime  @updatedAt @db.Timestamp(6)
-  creator             User      @relation("ClientCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  user                User?     @relation("ClientUser", fields: [userId], references: [id])
-  events              Event[]   @relation("EventClient")
-
   @@index([createdBy])
-  @@index([email])
-  @@index([clientId])
-  @@map("clients")
-}
-
-model Session {
-  id        String   @id
-  userId    String
-  expiresAt DateTime @db.Timestamp(6)
-  token     String   @unique
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("sessions")
-}
-
-model Account {
-  id           String    @id
-  userId       String
-  accountId    String
-  providerId   String
-  accessToken  String?
-  refreshToken String?
-  expiresAt    DateTime? @db.Timestamp(6)
-  password     String?
-  createdAt    DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime  @updatedAt @db.Timestamp(6)
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([providerId, accountId])
-  @@index([userId])
-  @@map("accounts")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime @db.Timestamp(6)
-  createdAt  DateTime @default(now()) @db.Timestamp(6)
-
-  @@unique([identifier, value])
-  @@map("verifications")
-}
-
-model Staff {
-  id                  String                    @id @default(uuid()) @db.Uuid
-  staffId             String                    @unique
-  accountStatus       AccountStatus             @default(PENDING)
-  staffType           StaffType                 @default(EMPLOYEE)
-  firstName           String
-  lastName            String
-  phone               String                    @default("")
-  email               String                    @unique
-  dateOfBirth         DateTime?                 @db.Date
-  skillLevel          SkillLevel                @default(BEGINNER)
-  availabilityStatus  AvailabilityStatus        @default(OPEN_TO_OFFERS)
-  timeOffStart        DateTime?                 @db.Date
-  timeOffEnd          DateTime?                 @db.Date
-  streetAddress       String                    @default("")
-  aptSuiteUnit        String?
-  city                String                    @default("")
-  country             String                    @default("")
-  state               String                    @default("")
-  zipCode             String                    @default("")
-  experience          String?
-  staffRating         StaffRating               @default(NA)
-  internalNotes       String?
-  invitationToken     String?                   @unique
-  invitationExpiresAt DateTime?                 @db.Timestamp(6)
-  hasLoginAccess      Boolean                   @default(false)
-  contractorId        String?                   @db.Uuid
-  userId              String?                   @unique
-  createdBy           String
-  createdAt           DateTime                  @default(now()) @db.Timestamp(6)
-  updatedAt           DateTime                  @updatedAt @db.Timestamp(6)
-  callTimeInvitations CallTimeInvitation[]      @relation("StaffCallTimeInvitations")
-  contractor          Staff?                    @relation("EmployeeToContractor", fields: [contractorId], references: [id])
-  employees           Staff[]                   @relation("EmployeeToContractor")
-  creator             User                      @relation("StaffCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  user                User?                     @relation("StaffUser", fields: [userId], references: [id])
-  positions           StaffPositionAssignment[]
-
-  @@index([createdBy])
-  @@index([contractorId])
-  @@index([staffId])
-  @@index([accountStatus])
-  @@index([email])
-  @@index([availabilityStatus])
-  @@map("staff")
-}
-
-model StaffPosition {
-  id          String                    @id @default(uuid()) @db.Uuid
-  name        String                    @unique
-  description String?
-  isActive    Boolean                   @default(true)
-  createdAt   DateTime                  @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime                  @updatedAt @db.Timestamp(6)
-  callTimes   CallTime[]                @relation("CallTimePosition")
-  staff       StaffPositionAssignment[]
-
-  @@map("staff_positions")
-}
-
-model StaffPositionAssignment {
-  id         String        @id @default(uuid()) @db.Uuid
-  staffId    String        @db.Uuid
-  positionId String        @db.Uuid
-  assignedAt DateTime      @default(now()) @db.Timestamp(6)
-  position   StaffPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
-  staff      Staff         @relation(fields: [staffId], references: [id], onDelete: Cascade)
-
-  @@unique([staffId, positionId])
-  @@index([staffId])
-  @@index([positionId])
-  @@map("staff_position_assignments")
-}
-
-model OrganizationSettings {
-  id                String   @id @default(uuid()) @db.Uuid
-  // Terminology settings
-  staffTermSingular String   @default("Staff")
-  staffTermPlural   String   @default("Staff")
-  eventTermSingular String   @default("Event")
-  eventTermPlural   String   @default("Events")
-  roleTermSingular  String   @default("Role")
-  roleTermPlural    String   @default("Roles")
-  // Labels
-  globalLabels      Json     @default("{}")
-  pageLabels        Json     @default("{}")
-  // Company profile
-  companyName       String?
-  companyLogoUrl    String?
-  companyTagline    String?
-  companyWebsite    String?
-  companyPhone      String?
-  companyAddress    String?
-  // Timestamps
-  createdAt         DateTime @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime @updatedAt @db.Timestamp(6)
-
-  @@map("organization_settings")
-}
-
-model CallTime {
-  id                    String               @id @default(uuid()) @db.Uuid
-  callTimeId            String               @unique
-  positionId            String               @db.Uuid
-  numberOfStaffRequired Int                  @default(1)
-  skillLevel            SkillLevel           @default(BEGINNER)
-  startDate             DateTime             @db.Date
-  startTime             String?
-  endDate               DateTime             @db.Date
-  endTime               String?
-  payRate               Decimal              @db.Decimal(10, 2)
-  payRateType           RateType
-  billRate              Decimal              @db.Decimal(10, 2)
-  billRateType          RateType
-  notes                 String?
-  eventId               String               @db.Uuid
-  createdAt             DateTime             @default(now()) @db.Timestamp(6)
-  updatedAt             DateTime             @updatedAt @db.Timestamp(6)
-  invitations           CallTimeInvitation[]
-  event                 Event                @relation("EventCallTimes", fields: [eventId], references: [id], onDelete: Cascade)
-  position              StaffPosition        @relation("CallTimePosition", fields: [positionId], references: [id])
-
   @@index([eventId])
-  @@index([positionId])
   @@index([startDate])
-  @@index([callTimeId])
-  @@map("call_times")
-}
-
-model CallTimeInvitation {
-  id            String                   @id @default(uuid()) @db.Uuid
-  callTimeId    String                   @db.Uuid
-  staffId       String                   @db.Uuid
-  status        CallTimeInvitationStatus @default(PENDING)
-  respondedAt   DateTime?                @db.Timestamp(6)
-  declineReason String?
-  isConfirmed   Boolean                  @default(false)
-  confirmedAt   DateTime?                @db.Timestamp(6)
-  createdAt     DateTime                 @default(now()) @db.Timestamp(6)
-  updatedAt     DateTime                 @updatedAt @db.Timestamp(6)
-  callTime      CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
-  staff         Staff                    @relation("StaffCallTimeInvitations", fields: [staffId], references: [id], onDelete: Cascade)
-
-  @@unique([callTimeId, staffId])
-  @@index([staffId])
-  @@index([callTimeId])
   @@index([status])
-  @@map("call_time_invitations")
 }
 
-model Notification {
-  id                String               @id @default(uuid()) @db.Uuid
+model notification_preferences {
+  id                       String   @id @db.Uuid
+  userId                   String   @unique
+  emailEnabled             Boolean  @default(true)
+  emailCallTimeInvitations Boolean  @default(true)
+  emailEventUpdates        Boolean  @default(true)
+  emailShiftReminders      Boolean  @default(true)
+  inAppEnabled             Boolean  @default(true)
+  createdAt                DateTime @default(now()) @db.Timestamp(6)
+  updatedAt                DateTime @db.Timestamp(6)
+  users                    users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model notifications {
+  id                String               @id @db.Uuid
   userId            String
   type              NotificationType
   priority          NotificationPriority @default(NORMAL)
@@ -318,36 +197,193 @@ model Notification {
   readAt            DateTime?            @db.Timestamp(6)
   isArchived        Boolean              @default(false)
   createdAt         DateTime             @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime             @updatedAt @db.Timestamp(6)
-  user              User                 @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt         DateTime             @db.Timestamp(6)
+  users             users                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, isRead, isArchived])
-  @@index([userId, createdAt])
   @@index([batchKey, userId])
-  @@map("notifications")
+  @@index([userId, createdAt])
+  @@index([userId, isRead, isArchived])
 }
 
-model NotificationPreference {
-  id                       String   @id @default(uuid()) @db.Uuid
-  userId                   String   @unique
-  emailEnabled             Boolean  @default(true)
-  emailCallTimeInvitations Boolean  @default(true)
-  emailEventUpdates        Boolean  @default(true)
-  emailShiftReminders      Boolean  @default(true)
-  inAppEnabled             Boolean  @default(true)
-  createdAt                DateTime @default(now()) @db.Timestamp(6)
-  updatedAt                DateTime @updatedAt @db.Timestamp(6)
-  user                     User     @relation("UserNotificationPrefs", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("notification_preferences")
+model organization_settings {
+  id                String   @id @db.Uuid
+  staffTermSingular String   @default("Staff")
+  staffTermPlural   String   @default("Staff")
+  eventTermSingular String   @default("Event")
+  eventTermPlural   String   @default("Events")
+  roleTermSingular  String   @default("Role")
+  roleTermPlural    String   @default("Roles")
+  createdAt         DateTime @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime @db.Timestamp(6)
+  globalLabels      Json     @default("{}")
+  pageLabels        Json     @default("{}")
+  companyAddress    String?
+  companyLogoUrl    String?
+  companyName       String?
+  companyPhone      String?
+  companyTagline    String?
+  companyWebsite    String?
 }
 
-enum UserRole {
-  SUPER_ADMIN
-  ADMIN
-  MANAGER
-  STAFF
-  CLIENT
+model sessions {
+  id        String   @id
+  userId    String
+  expiresAt DateTime @db.Timestamp(6)
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @db.Timestamp(6)
+  users     users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model sms_templates {
+  id           String          @id @db.Uuid
+  type         SmsTemplateType @unique
+  body         String
+  isCustomized Boolean         @default(false)
+  createdAt    DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime        @db.Timestamp(6)
+}
+
+model staff {
+  id                           String                       @id @db.Uuid
+  staffId                      String                       @unique
+  accountStatus                AccountStatus                @default(PENDING)
+  staffType                    StaffType                    @default(EMPLOYEE)
+  firstName                    String
+  lastName                     String
+  phone                        String                       @default("")
+  email                        String                       @unique
+  dateOfBirth                  DateTime?                    @db.Date
+  skillLevel                   SkillLevel                   @default(BEGINNER)
+  availabilityStatus           AvailabilityStatus           @default(OPEN_TO_OFFERS)
+  timeOffStart                 DateTime?                    @db.Date
+  timeOffEnd                   DateTime?                    @db.Date
+  streetAddress                String                       @default("")
+  aptSuiteUnit                 String?
+  city                         String                       @default("")
+  country                      String                       @default("")
+  state                        String                       @default("")
+  zipCode                      String                       @default("")
+  experience                   String?
+  staffRating                  StaffRating                  @default(NA)
+  internalNotes                String?
+  invitationToken              String?                      @unique
+  invitationExpiresAt          DateTime?                    @db.Timestamp(6)
+  hasLoginAccess               Boolean                      @default(false)
+  contractorId                 String?                      @db.Uuid
+  userId                       String?                      @unique
+  createdBy                    String
+  createdAt                    DateTime                     @default(now()) @db.Timestamp(6)
+  updatedAt                    DateTime                     @db.Timestamp(6)
+  call_time_invitations        call_time_invitations[]
+  staff                        staff?                       @relation("staffTostaff", fields: [contractorId], references: [id])
+  other_staff                  staff[]                      @relation("staffTostaff")
+  users_staff_createdByTousers users                        @relation("staff_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
+  users_staff_userIdTousers    users?                       @relation("staff_userIdTousers", fields: [userId], references: [id])
+  staff_position_assignments   staff_position_assignments[]
+
+  @@index([accountStatus])
+  @@index([availabilityStatus])
+  @@index([contractorId])
+  @@index([createdBy])
+  @@index([email])
+  @@index([staffId])
+}
+
+model staff_position_assignments {
+  id              String          @id @db.Uuid
+  staffId         String          @db.Uuid
+  positionId      String          @db.Uuid
+  assignedAt      DateTime        @default(now()) @db.Timestamp(6)
+  staff_positions staff_positions @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  staff           staff           @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, positionId])
+  @@index([positionId])
+  @@index([staffId])
+}
+
+model staff_positions {
+  id                         String                       @id @db.Uuid
+  name                       String                       @unique
+  description                String?
+  isActive                   Boolean                      @default(true)
+  createdAt                  DateTime                     @default(now()) @db.Timestamp(6)
+  updatedAt                  DateTime                     @db.Timestamp(6)
+  call_times                 call_times[]
+  staff_position_assignments staff_position_assignments[]
+}
+
+model users {
+  id                               String                    @id
+  email                            String                    @unique
+  emailVerified                    Boolean                   @default(false)
+  name                             String
+  password                         String?
+  firstName                        String
+  lastName                         String
+  role                             UserRole                  @default(STAFF)
+  isActive                         Boolean                   @default(true)
+  phone                            String?
+  profilePhoto                     String?
+  lastLoginAt                      DateTime?                 @db.Timestamp(6)
+  invitationToken                  String?                   @unique
+  invitationExpiresAt              DateTime?                 @db.Timestamp(6)
+  createdAt                        DateTime                  @default(now()) @db.Timestamp(6)
+  updatedAt                        DateTime                  @db.Timestamp(6)
+  accounts                         accounts[]
+  clients_clients_createdByTousers clients[]                 @relation("clients_createdByTousers")
+  clients_clients_userIdTousers    clients?                  @relation("clients_userIdTousers")
+  events                           events[]
+  notification_preferences         notification_preferences?
+  notifications                    notifications[]
+  sessions                         sessions[]
+  staff_staff_createdByTousers     staff[]                   @relation("staff_createdByTousers")
+  staff_staff_userIdTousers        staff?                    @relation("staff_userIdTousers")
+}
+
+model verifications {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamp(6)
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([identifier, value])
+}
+
+enum AccountStatus {
+  ACTIVE
+  DISABLED
+  PENDING
+}
+
+enum AvailabilityStatus {
+  OPEN_TO_OFFERS
+  BUSY
+  TIME_OFF
+}
+
+enum CallTimeInvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  WAITLISTED
+}
+
+enum EmailTemplateType {
+  STAFF_INVITATION
+  CLIENT_INVITATION
+  CALL_TIME_INVITATION
+  CALL_TIME_CONFIRMATION
+  CALL_TIME_WAITLISTED
+  STAFF_CREDENTIALS
+  USER_INVITATION
 }
 
 enum EventStatus {
@@ -359,49 +395,11 @@ enum EventStatus {
   CANCELLED
 }
 
-enum AccountStatus {
-  ACTIVE
-  DISABLED
-  PENDING
-}
-
-enum StaffType {
-  EMPLOYEE
-  CONTRACTOR
-}
-
-enum AvailabilityStatus {
-  OPEN_TO_OFFERS
-  BUSY
-  TIME_OFF
-}
-
-enum SkillLevel {
-  BEGINNER
-  INTERMEDIATE
-  ADVANCED
-}
-
-enum StaffRating {
-  NA
-  A
-  B
-  C
-}
-
-enum RateType {
-  PER_HOUR
-  PER_SHIFT
-  PER_DAY
-  PER_EVENT
-}
-
-enum CallTimeInvitationStatus {
-  PENDING
-  ACCEPTED
-  DECLINED
-  CANCELLED
-  WAITLISTED
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 enum NotificationType {
@@ -416,21 +414,17 @@ enum NotificationType {
   GENERAL
 }
 
-enum NotificationPriority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
+enum RateType {
+  PER_HOUR
+  PER_SHIFT
+  PER_DAY
+  PER_EVENT
 }
 
-enum EmailTemplateType {
-  STAFF_INVITATION
-  CLIENT_INVITATION
-  CALL_TIME_INVITATION
-  CALL_TIME_CONFIRMATION
-  CALL_TIME_WAITLISTED
-  STAFF_CREDENTIALS
-  USER_INVITATION
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
 }
 
 enum SmsTemplateType {
@@ -443,41 +437,22 @@ enum SmsTemplateType {
   USER_INVITATION
 }
 
-model EmailTemplate {
-  id           String            @id @default(uuid()) @db.Uuid
-  type         EmailTemplateType @unique
-  subject      String
-  bodyHtml     String            @db.Text
-  isCustomized Boolean           @default(false)
-  createdAt    DateTime          @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime          @updatedAt @db.Timestamp(6)
-
-  @@map("email_templates")
+enum StaffRating {
+  NA
+  A
+  B
+  C
 }
 
-model SmsTemplate {
-  id           String          @id @default(uuid()) @db.Uuid
-  type         SmsTemplateType @unique
-  body         String          @db.Text
-  isCustomized Boolean         @default(false)
-  createdAt    DateTime        @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime        @updatedAt @db.Timestamp(6)
-
-  @@map("sms_templates")
+enum StaffType {
+  EMPLOYEE
+  CONTRACTOR
 }
 
-model EmailBrandingSettings {
-  id                 String   @id @default(uuid()) @db.Uuid
-  logoUrl            String?
-  primaryColor       String   @default("#667eea")
-  secondaryColor     String   @default("#764ba2")
-  buttonStyle        String   @default("gradient")
-  buttonBorderRadius String   @default("8px")
-  fontFamily         String   @default("system-ui")
-  headerBackground   String   @default("gradient")
-  footerText         String?
-  createdAt          DateTime @default(now()) @db.Timestamp(6)
-  updatedAt          DateTime @updatedAt @db.Timestamp(6)
-
-  @@map("email_branding_settings")
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  STAFF
+  CLIENT
 }

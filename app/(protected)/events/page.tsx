@@ -24,6 +24,8 @@ import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useEventsPageLabels } from '@/lib/hooks/use-labels';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
+import { EventsMapView } from '@/components/events/events-map-view';
+import { Map, TableIcon } from 'lucide-react';
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type EventsQueryOutput = RouterOutputs['event']['getAll'];
@@ -107,6 +109,9 @@ export default function EventsPage() {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
   const [selectedViewEventId, setSelectedViewEventId] = useState<string | null>(null);
+
+  // View toggle state (table or map)
+  const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
 
   // Initialize store from URL params on mount
   useEffect(() => {
@@ -375,18 +380,41 @@ export default function EventsPage() {
         </div>
       </Card>
 
+      {/* View Mode Toggle */}
+      <div className="flex justify-end gap-2 mb-4">
+        <Button
+          variant={viewMode === 'table' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setViewMode('table')}
+          className="gap-2"
+        >
+          <TableIcon size={16} />
+          Table View
+        </Button>
+        <Button
+          variant={viewMode === 'map' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setViewMode('map')}
+          className="gap-2"
+        >
+          <Map size={16} />
+          Map View
+        </Button>
+      </div>
+
       {/* Events Table */}
-      <Card className="p-6">
-        <div className="relative z-10">
-          <EventTable
-            events={events}
-            isLoading={isLoading}
-            sortBy={filters.sortBy}
-            sortOrder={filters.sortOrder}
-            onView={handleViewEventFromTable}
-            onEdit={handleEditEventFromTable}
-            onDelete={handleDeleteEventFromTable}
-            onSort={handleSort}
+      {viewMode === 'table' && (
+        <Card className="p-6">
+          <div className="relative z-10">
+            <EventTable
+              events={events}
+              isLoading={isLoading}
+              sortBy={filters.sortBy}
+              sortOrder={filters.sortOrder}
+              onView={handleViewEventFromTable}
+              onEdit={handleEditEventFromTable}
+              onDelete={handleDeleteEventFromTable}
+              onSort={handleSort}
           />
 
           {/* Pagination */}
@@ -404,6 +432,28 @@ export default function EventsPage() {
           )}
         </div>
       </Card>
+      )}
+
+      {/* Events Map View */}
+      {viewMode === 'map' && (
+        <EventsMapView
+          status={filters.selectedStatus !== 'ALL' ? filters.selectedStatus : undefined}
+          clientId={filters.selectedClientId !== 'ALL' ? filters.selectedClientId : undefined}
+          search={filters.search || undefined}
+          onViewEvent={(id) => {
+            const eventDetails = getEventDetails(id);
+            if (eventDetails) {
+              handleViewEvent(eventDetails);
+            }
+          }}
+          onEditEvent={(id) => {
+            const eventDetails = getEventDetails(id);
+            if (eventDetails) {
+              handleEditEvent(eventDetails);
+            }
+          }}
+        />
+      )}
 
       {/* Form Modal */}
       <EventFormModal
