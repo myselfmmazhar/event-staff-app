@@ -47,6 +47,7 @@ export function StaffFormModal({
     onSubmit,
     isSubmitting,
 }: StaffFormModalProps) {
+    
     const { terminology } = useTerminology();
     const isEdit = !!staff;
     const [positionSearch, setPositionSearch] = useState('');
