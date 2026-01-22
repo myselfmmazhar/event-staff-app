@@ -5,7 +5,7 @@ import { SettingsIcon } from '@/components/ui/icons';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-export default function CustomizationPage() {
+export default function PreferencesPage() {
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-3">
@@ -13,7 +13,7 @@ export default function CustomizationPage() {
                     <SettingsIcon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Customization</h1>
+                    <h1 className="text-2xl font-bold text-foreground">Preferences</h1>
                     <p className="text-sm text-muted-foreground">Terminology and label settings</p>
                 </div>
             </div>
@@ -24,7 +24,7 @@ export default function CustomizationPage() {
                     <p className="text-sm text-muted-foreground mb-4">
                         Customize the terms used throughout the application (e.g., Events, Staff, Clients).
                     </p>
-                    <Link href="/settings/customization/terminology">
+                    <Link href="/settings/preferences/terminology">
                         <Button variant="outline" size="sm">
                             Manage Terminology
                         </Button>
@@ -36,7 +36,7 @@ export default function CustomizationPage() {
                     <p className="text-sm text-muted-foreground mb-4">
                         Configure column labels and display options for data tables.
                     </p>
-                    <Link href="/settings/customization/labels">
+                    <Link href="/settings/preferences/labels">
                         <Button variant="outline" size="sm">
                             Manage Labels
                         </Button>

@@ -4,19 +4,19 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/lib/client/auth';
-import { signOut } from '@/lib/client/auth';
 import {
   DashboardIcon,
   UsersIcon,
   UserIcon,
-  LogoutIcon,
   CloseIcon,
   CalendarIcon,
+  ClockIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   PlusIcon,
   ListIcon,
   SettingsIcon,
+  BellIcon,
 } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,14 +27,17 @@ import {
   getStaffRoute,
   getEventRoute,
   getEventCalendarRoute,
+  getTimesheetRoute,
 } from '@/lib/utils/route-helpers';
 import { trpc } from '@/lib/client/trpc';
 
 interface SubNavItem {
   label: string;
-  href: string;
+  href?: string;  // Optional for sub-section headers
   icon: React.ComponentType<{ className?: string }>;
   featureFlag?: keyof FeatureFlags;
+  comingSoon?: boolean;  // For "Coming Soon" disabled state
+  subItems?: SubNavItem[];  // For nested sub-sections
 }
 
 interface NavItem {
@@ -52,6 +55,21 @@ interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   isMobile?: boolean;
+}
+
+function ComingSoonIndicator() {
+  return (
+    <Badge
+      variant="secondary"
+      size="sm"
+      asSpan
+      className="px-1"
+      title="Coming Soon"
+      aria-label="Coming Soon"
+    >
+      <ClockIcon aria-hidden="true" className="h-3 w-3" />
+    </Badge>
+  );
 }
 
 export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarProps) {
@@ -122,83 +140,224 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       requiresAdmin: false,
       clientOnly: true, // Only show for CLIENT users - uses existing profile page
     },
-    // Admin items - Task Section
+    // Admin items - Task Pod Section
     {
-      label: terminology.event.plural,
+      label: 'Task Pod',
       icon: ListIcon,
       requiresAdmin: false,
       subItems: [
         {
-          label: 'Inventory',
-          href: '/clients',
-          icon: ListIcon,
-        },
-        {
-          label: terminology.event.singular,
-          href: getEventRoute(terminology),
+          label: `${terminology.event.singular} Manager`,
           icon: CalendarIcon,
-          featureFlag: 'events',
+          subItems: [
+            {
+              label: 'Overview',
+              href: getEventRoute(terminology),
+              icon: ListIcon,
+              featureFlag: 'events',
+            },
+            {
+              label: `Add ${terminology.event.singular}`,
+              href: `${getEventRoute(terminology)}?create=true`,
+              icon: PlusIcon,
+              featureFlag: 'events',
+            },
+            {
+              label: `${terminology.event.singular} Templates`,
+              href: '/templates/tasks',
+              icon: ListIcon,
+              comingSoon: true,
+            },
+          ],
         },
         {
-          label: 'Task Manager',
-          href: `${getEventRoute(terminology)}?create=true`,
-          icon: PlusIcon,
-          featureFlag: 'events',
+          label: 'Client Manager',
+          icon: UsersIcon,
+          subItems: [
+            {
+              label: 'Overview',
+              href: '/clients',
+              icon: ListIcon,
+              featureFlag: 'clients',
+            },
+            {
+              label: 'Add Client',
+              href: '/clients?create=true',
+              icon: PlusIcon,
+              featureFlag: 'clients',
+            },
+          ],
         },
       ],
     },
-    // Talent Section
+    // Talent Pod Section
     {
-      label: 'Talent',
+      label: 'Talent Pod',
       icon: UsersIcon,
       requiresAdmin: false,
       subItems: [
         {
-          label: 'Work Force',
-          href: getStaffRoute(terminology),
+          label: `${terminology.staff.singular} Manager`,
           icon: UsersIcon,
-          featureFlag: 'staff',
+          subItems: [
+            {
+              label: 'Overview',
+              href: getStaffRoute(terminology),
+              icon: ListIcon,
+              featureFlag: 'staff',
+            },
+            {
+              label: `Add ${terminology.staff.singular}`,
+              href: `${getStaffRoute(terminology)}?create=true`,
+              icon: PlusIcon,
+              featureFlag: 'staff',
+            },
+          ],
         },
         {
-          label: 'Skills and Roles',
-          href: `${getStaffRoute(terminology)}?create=true`,
-          icon: PlusIcon,
-          featureFlag: 'staff',
-        },
-        {
-          label: 'Assignments',
-          href: getEventRoute(terminology),
-          icon: CalendarIcon,
-          featureFlag: 'events',
-        },
-        {
-          label: 'Positions',
-          href: '/positions',
+          label: 'Catalog Manager',
           icon: ListIcon,
+          subItems: [
+            {
+              label: 'Services',
+              icon: ListIcon,
+              subItems: [
+                {
+                  label: 'Overview',
+                  href: '/catalog/services',
+                  icon: ListIcon,
+                  comingSoon: true,
+                },
+                {
+                  label: 'Add Service',
+                  href: '/catalog/services?create=true',
+                  icon: PlusIcon,
+                  comingSoon: true,
+                },
+              ],
+            },
+            {
+              label: 'Products',
+              icon: ListIcon,
+              subItems: [
+                {
+                  label: 'Overview',
+                  href: '/catalog/products',
+                  icon: ListIcon,
+                  comingSoon: true,
+                },
+                {
+                  label: 'Add Product',
+                  href: '/catalog/products?create=true',
+                  icon: PlusIcon,
+                  comingSoon: true,
+                },
+              ],
+            },
+            {
+              label: 'Locations',
+              icon: ListIcon,
+              subItems: [
+                {
+                  label: 'Overview',
+                  href: '/catalog/locations',
+                  icon: ListIcon,
+                  comingSoon: true,
+                },
+                {
+                  label: 'Add Location',
+                  href: '/catalog/locations?create=true',
+                  icon: PlusIcon,
+                  comingSoon: true,
+                },
+              ],
+            },
+          ],
         },
       ],
     },
-    // Time Section
+    // Time Pod Section
     {
-      label: 'Time',
+      label: 'Time Pod',
       icon: CalendarIcon,
       requiresAdmin: false,
       subItems: [
         {
-          label: 'Schedule',
-          href: getEventCalendarRoute(terminology),
+          label: 'Time Manager',
           icon: CalendarIcon,
-          featureFlag: 'events',
+          subItems: [
+            {
+              label: `${terminology.event.singular} Calendar`,
+              href: getEventCalendarRoute(terminology),
+              icon: CalendarIcon,
+              featureFlag: 'events',
+            },
+            {
+              label: 'Time Sheet',
+              href: getTimesheetRoute(terminology),
+              icon: ListIcon,
+            },
+          ],
         },
         {
-          label: 'Shift',
-          href: '/tasks/shift',
+          label: 'Finance Manager',
           icon: ListIcon,
-        },
-        {
-          label: 'Time Sheet',
-          href: '/tasks/timesheet',
-          icon: ListIcon,
+          subItems: [
+            {
+              label: 'Proposals',
+              icon: ListIcon,
+              subItems: [
+                {
+                  label: 'Overview',
+                  href: '/finance/proposals',
+                  icon: ListIcon,
+                  comingSoon: true,
+                },
+                {
+                  label: 'Add Proposal',
+                  href: '/finance/proposals?create=true',
+                  icon: PlusIcon,
+                  comingSoon: true,
+                },
+              ],
+            },
+            {
+              label: 'Invoices',
+              icon: ListIcon,
+              subItems: [
+                {
+                  label: 'Overview',
+                  href: '/finance/invoices',
+                  icon: ListIcon,
+                  comingSoon: true,
+                },
+                {
+                  label: 'Add Invoice',
+                  href: '/finance/invoices?create=true',
+                  icon: PlusIcon,
+                  comingSoon: true,
+                },
+              ],
+            },
+            {
+              label: 'Bills',
+              icon: ListIcon,
+              subItems: [
+                {
+                  label: 'Overview',
+                  href: '/finance/bills',
+                  icon: ListIcon,
+                  comingSoon: true,
+                },
+                {
+                  label: 'Add Bill',
+                  href: '/finance/bills?create=true',
+                  icon: PlusIcon,
+                  comingSoon: true,
+                },
+              ],
+            },
+          ],
         },
       ],
     },
@@ -209,13 +368,8 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       requiresAdmin: true, // Only ADMIN and SUPER_ADMIN
       subItems: [
         {
-          label: 'Profile',
-          href: '/settings/profile',
-          icon: UserIcon,
-        },
-        {
-          label: 'Customization',
-          href: '/settings/customization',
+          label: 'Preferences',
+          href: '/settings/preferences',
           icon: SettingsIcon,
         },
         {
@@ -224,18 +378,13 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           icon: ListIcon,
         },
         {
-          label: 'Users',
-          href: '/settings/users',
-          icon: UsersIcon,
+          label: 'Notifications',
+          href: '/settings/notifications',
+          icon: BellIcon,
         },
       ],
     },
   ], [terminology]);
-
-  const handleLogout = async () => {
-    await signOut();
-    window.location.href = '/login';
-  };
 
   // Filter navigation items based on user role only (show all features regardless of status)
   const visibleNavItems = navItems
@@ -280,37 +429,32 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
     return false;
   };
 
-  // Check if any sub-item is active
-  const hasActiveSubItem = (subItems?: SubNavItem[]) => {
+  // Check if any sub-item is active (supports nested items)
+  const hasActiveSubItem = (subItems?: SubNavItem[]): boolean => {
     if (!subItems) return false;
-    return subItems.some(subItem => isActive(subItem.href));
+    return subItems.some(subItem => {
+      if (subItem.href && isActive(subItem.href)) return true;
+      if (subItem.subItems) return hasActiveSubItem(subItem.subItems);
+      return false;
+    });
   };
 
-  // Toggle expanded state
-  const toggleExpanded = (label: string) => {
+  // Toggle expanded state (supports hierarchical keys like "Task Pod.Task Manager")
+  const toggleExpanded = (label: string, parentLabel?: string) => {
+    const key = parentLabel ? `${parentLabel}.${label}` : label;
     setExpandedItems(prev =>
-      prev.includes(label) ? prev.filter(item => item !== label) : [...prev, label]
+      prev.includes(key) ? prev.filter(item => item !== key) : [...prev, key]
     );
   };
 
-  // Get role badge variant
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'SUPER_ADMIN':
-        return 'purple';
-      case 'ADMIN':
-        return 'primary';
-      case 'MANAGER':
-        return 'info';
-      case 'STAFF':
-        return 'secondary';
-      default:
-        return 'default';
-    }
+  // Check if item is expanded (supports hierarchical keys)
+  const isItemExpanded = (label: string, parentLabel?: string) => {
+    const key = parentLabel ? `${parentLabel}.${label}` : label;
+    return expandedItems.includes(key);
   };
 
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-card border-r border-border">
+    <div className="flex h-full min-h-0 flex-col bg-card border-r border-border">
       {/* Logo/Brand */}
       <div className="flex h-16 items-center justify-between border-b border-border px-6">
         <div className="flex items-center gap-2">
@@ -325,12 +469,12 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           ) : (
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80">
               <span className="text-sm font-bold text-primary-foreground">
-                {getCompanyInitials(companyProfile?.companyName)}
+                TP
               </span>
             </div>
           )}
           <span className="text-lg font-semibold text-card-foreground">
-            {companyProfile?.companyName || 'Event Staff'}
+            Tripod
           </span>
         </div>
         {isMobile && (
@@ -345,7 +489,7 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 min-h-0 overflow-y-auto space-y-1 px-3 py-4">
         {visibleNavItems.filter(item => item.label !== 'Settings').map((item) => {
           const Icon = item.icon;
           const hasSubItems = item.subItems && item.subItems.length > 0;
@@ -380,13 +524,202 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                   <div className="ml-4 mt-1 space-y-1 border-l-2 border-border pl-2">
                     {item.subItems.map((subItem) => {
                       const SubIcon = subItem.icon;
-                      const subActive = isActive(subItem.href);
-                      const featureStatus = subItem.featureFlag ? getFeatureStatus(subItem.featureFlag) : 'enabled';
-                      const isDisabled = featureStatus === 'disabled';
-                      const isBeta = featureStatus === 'beta';
-                      const isClickable = featureStatus === 'enabled';
+                      const hasNestedItems = subItem.subItems && subItem.subItems.length > 0;
 
-                      // Render as button if disabled/beta, Link if enabled
+                      // If this sub-item has nested items, render as expandable sub-section
+                      if (hasNestedItems) {
+                        const subSectionExpanded = isItemExpanded(subItem.label, item.label) || hasActiveSubItem(subItem.subItems);
+
+                        return (
+                          <div key={subItem.label}>
+                            {/* Sub-section Header */}
+                            <button
+                              onClick={() => toggleExpanded(subItem.label, item.label)}
+                              className={`
+                                flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
+                                ${hasActiveSubItem(subItem.subItems)
+                                  ? 'bg-primary/5 text-primary'
+                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                }
+                              `}
+                            >
+                              <SubIcon className="h-4 w-4" />
+                              <span className="flex-1 text-left">{subItem.label}</span>
+                              {subSectionExpanded ? (
+                                <ChevronDownIcon className="h-3 w-3" />
+                              ) : (
+                                <ChevronRightIcon className="h-3 w-3" />
+                              )}
+                            </button>
+
+                            {/* Nested Items (Level 3) */}
+                            {subSectionExpanded && subItem.subItems && (
+                              <div className="ml-4 mt-1 space-y-0.5 border-l border-border/50 pl-2">
+                                {subItem.subItems.map((leafItem) => {
+                                  const LeafIcon = leafItem.icon;
+                                  const hasDeepNestedItems = leafItem.subItems && leafItem.subItems.length > 0;
+
+                                  // Level 3 item with sub-items (e.g., Services > Overview, Add)
+                                  if (hasDeepNestedItems) {
+                                    const parentKey = `${item.label}.${subItem.label}`;
+                                    const deepSectionExpanded = isItemExpanded(leafItem.label, parentKey) || hasActiveSubItem(leafItem.subItems);
+                                    const isParentComingSoon = leafItem.comingSoon;
+
+                                    return (
+                                      <div key={leafItem.label}>
+                                        {/* Level 3 Section Header */}
+                                        <button
+                                          onClick={() => toggleExpanded(leafItem.label, parentKey)}
+                                          className={`
+                                            flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200
+                                            ${hasActiveSubItem(leafItem.subItems)
+                                              ? 'bg-primary/5 text-primary'
+                                              : isParentComingSoon
+                                                ? 'text-muted-foreground opacity-60'
+                                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                            }
+                                          `}
+                                        >
+                                          <LeafIcon className="h-3.5 w-3.5" />
+                                          <span className="flex-1 text-left">{leafItem.label}</span>
+                                          {isParentComingSoon && (
+                                            <ComingSoonIndicator />
+                                          )}
+                                          {deepSectionExpanded ? (
+                                            <ChevronDownIcon className="h-3 w-3" />
+                                          ) : (
+                                            <ChevronRightIcon className="h-3 w-3" />
+                                          )}
+                                        </button>
+
+                                        {/* Level 4 Leaf Items */}
+                                        {deepSectionExpanded && leafItem.subItems && (
+                                          <div className="ml-4 mt-1 space-y-0.5 border-l border-border/30 pl-2">
+                                            {leafItem.subItems.map((deepLeafItem) => {
+                                              const DeepLeafIcon = deepLeafItem.icon;
+                                              const deepLeafActive = deepLeafItem.href ? isActive(deepLeafItem.href) : false;
+                                              const deepFeatureStatus = deepLeafItem.featureFlag ? getFeatureStatus(deepLeafItem.featureFlag) : 'enabled';
+                                              const deepIsDisabled = deepFeatureStatus === 'disabled' || deepLeafItem.comingSoon || isParentComingSoon;
+                                              const deepIsBeta = deepFeatureStatus === 'beta';
+                                              const deepIsClickable = deepFeatureStatus === 'enabled' && !deepLeafItem.comingSoon && !isParentComingSoon;
+
+                                              const deepLeafContent = (
+                                                <>
+                                                  <DeepLeafIcon className="h-3 w-3" />
+                                                  <span className="flex-1">{deepLeafItem.label}</span>
+                                                  {deepIsBeta && (
+                                                    <Badge variant="info" size="sm">
+                                                      Beta
+                                                    </Badge>
+                                                  )}
+                                                  {deepLeafItem.comingSoon && (
+                                                    <ComingSoonIndicator />
+                                                  )}
+                                                </>
+                                              );
+
+                                              if (!deepIsClickable) {
+                                                return (
+                                                  <div
+                                                    key={deepLeafItem.href || deepLeafItem.label}
+                                                    className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-medium transition-all duration-200 cursor-not-allowed opacity-60 text-muted-foreground"
+                                                  >
+                                                    {deepLeafContent}
+                                                  </div>
+                                                );
+                                              }
+
+                                              return (
+                                                <Link
+                                                  key={deepLeafItem.href}
+                                                  href={deepLeafItem.href!}
+                                                  onClick={isMobile ? onClose : undefined}
+                                                  className={`
+                                                    flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-medium transition-all duration-200
+                                                    ${deepLeafActive
+                                                      ? 'bg-primary text-primary-foreground shadow-md'
+                                                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                                    }
+                                                  `}
+                                                >
+                                                  {deepLeafContent}
+                                                </Link>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+
+                                  // Regular leaf item without sub-items
+                                  const leafActive = leafItem.href ? isActive(leafItem.href) : false;
+                                  const featureStatus = leafItem.featureFlag ? getFeatureStatus(leafItem.featureFlag) : 'enabled';
+                                  const isDisabled = featureStatus === 'disabled' || leafItem.comingSoon;
+                                  const isBeta = featureStatus === 'beta';
+                                  const isClickable = featureStatus === 'enabled' && !leafItem.comingSoon;
+
+                                  const leafContent = (
+                                    <>
+                                      <LeafIcon className="h-3.5 w-3.5" />
+                                      <span className="flex-1">{leafItem.label}</span>
+                                      {isBeta && (
+                                        <Badge variant="info" size="sm">
+                                          Beta
+                                        </Badge>
+                                      )}
+                                      {leafItem.comingSoon && (
+                                        <ComingSoonIndicator />
+                                      )}
+                                      {isDisabled && !leafItem.comingSoon && (
+                                        <Badge variant="secondary" size="sm">
+                                          Disabled
+                                        </Badge>
+                                      )}
+                                    </>
+                                  );
+
+                                  if (!isClickable) {
+                                    return (
+                                      <div
+                                        key={leafItem.href || leafItem.label}
+                                        className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 cursor-not-allowed opacity-60 text-muted-foreground"
+                                      >
+                                        {leafContent}
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <Link
+                                      key={leafItem.href}
+                                      href={leafItem.href!}
+                                      onClick={isMobile ? onClose : undefined}
+                                      className={`
+                                        flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200
+                                        ${leafActive
+                                          ? 'bg-primary text-primary-foreground shadow-md'
+                                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                        }
+                                      `}
+                                    >
+                                      {leafContent}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      // Regular sub-item without nested items (original logic)
+                      const subActive = subItem.href ? isActive(subItem.href) : false;
+                      const featureStatus = subItem.featureFlag ? getFeatureStatus(subItem.featureFlag) : 'enabled';
+                      const isDisabled = featureStatus === 'disabled' || subItem.comingSoon;
+                      const isBeta = featureStatus === 'beta';
+                      const isClickable = featureStatus === 'enabled' && !subItem.comingSoon;
+
                       const content = (
                         <>
                           <SubIcon className="h-4 w-4" />
@@ -396,7 +729,10 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                               Beta
                             </Badge>
                           )}
-                          {isDisabled && (
+                          {subItem.comingSoon && (
+                            <ComingSoonIndicator />
+                          )}
+                          {isDisabled && !subItem.comingSoon && (
                             <Badge variant="secondary" size="sm">
                               Disabled
                             </Badge>
@@ -407,7 +743,7 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                       if (!isClickable) {
                         return (
                           <div
-                            key={subItem.href}
+                            key={subItem.href || subItem.label}
                             className={`
                               flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
                               cursor-not-allowed opacity-60
@@ -422,7 +758,7 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                       return (
                         <Link
                           key={subItem.href}
-                          href={subItem.href}
+                          href={subItem.href!}
                           onClick={isMobile ? onClose : undefined}
                           className={`
                             flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
@@ -499,12 +835,102 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
         })}
       </nav>
 
+      {/* User Profile Section - Above Settings */}
+      {user && (
+        <div className="px-3 py-2">
+          <button
+            onClick={() => toggleExpanded('UserProfile')}
+            className={`
+              flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
+              ${pathname.startsWith('/profile')
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }
+            `}
+          >
+            <UserIcon className="h-5 w-5" />
+            <span className="flex-1 text-left truncate">{user.firstName} {user.lastName}</span>
+            <ChevronDownIcon
+              className={`h-4 w-4 transition-transform duration-200 ${expandedItems.includes('UserProfile') ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {expandedItems.includes('UserProfile') && (
+            <div className="ml-3 mt-1 space-y-1 border-l-2 border-border pl-4">
+              <Link
+                href="/profile"
+                onClick={isMobile ? onClose : undefined}
+                className={`
+                  flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
+                  ${pathname === '/profile'
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }
+                `}
+              >
+                <UserIcon className="h-4 w-4" />
+                <span className="flex-1">My Profile</span>
+              </Link>
+              <Link
+                href="/profile/company"
+                onClick={isMobile ? onClose : undefined}
+                className={`
+                  flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
+                  ${pathname === '/profile/company'
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }
+                `}
+              >
+                <DashboardIcon className="h-4 w-4" />
+                <span className="flex-1">Company Profile</span>
+              </Link>
+              <Link
+                href="/profile/team"
+                onClick={isMobile ? onClose : undefined}
+                className={`
+                  flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
+                  ${pathname === '/profile/team'
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }
+                `}
+              >
+                <UsersIcon className="h-4 w-4" />
+                <span className="flex-1">Team</span>
+              </Link>
+              <Link
+                href="/profile/reports"
+                onClick={(e) => e.preventDefault()}
+                aria-disabled="true"
+                tabIndex={-1}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 cursor-not-allowed opacity-60 text-muted-foreground"
+              >
+                <ListIcon className="h-4 w-4" />
+                <span className="flex-1">Reports</span>
+                <ComingSoonIndicator />
+              </Link>
+              <Link
+                href="/profile/billing"
+                onClick={(e) => e.preventDefault()}
+                aria-disabled="true"
+                tabIndex={-1}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 cursor-not-allowed opacity-60 text-muted-foreground"
+              >
+                <ListIcon className="h-4 w-4" />
+                <span className="flex-1">Billing</span>
+                <ComingSoonIndicator />
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Settings Section - Positioned at Bottom */}
       {visibleNavItems.filter(item => item.label === 'Settings').map((item) => {
         const Icon = item.icon;
         const hasSubItems = item.subItems && item.subItems.length > 0;
         const isExpanded = expandedItems.includes(item.label) || hasActiveSubItem(item.subItems);
-        const active = item.href ? isActive(item.href) : false;
 
         if (hasSubItems) {
           return (
@@ -531,7 +957,7 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                 <div className="ml-3 mt-1 space-y-1 border-l-2 border-border pl-4">
                   {item.subItems!.map((subItem) => {
                     const SubIcon = subItem.icon;
-                    const subActive = isActive(subItem.href);
+                    const subActive = subItem.href ? isActive(subItem.href) : false;
 
                     const content = (
                       <>
@@ -539,6 +965,8 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                         <span className="flex-1">{subItem.label}</span>
                       </>
                     );
+
+                    if (!subItem.href) return null;
 
                     return (
                       <Link
@@ -565,51 +993,6 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
 
         return null;
       })}
-
-      {/* User Profile Section */}
-      {user && (
-        <div className="border-t border-border p-4">
-          <div className="mb-3 rounded-lg bg-muted p-3">
-            <div className="flex items-center gap-3">
-              {/* Profile Photo */}
-              <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full">
-                {user.profilePhoto ? (
-                  <img
-                    src={user.profilePhoto}
-                    alt={`${user.firstName} ${user.lastName}`}
-                    className="aspect-square h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-secondary text-sm font-bold text-primary-foreground">
-                    {user.firstName?.[0]}
-                    {user.lastName?.[0]}
-                  </div>
-                )}
-              </div>
-
-              {/* Name, Role, and Email */}
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-foreground truncate mb-1">
-                  {user.firstName} {user.lastName}
-                </div>
-                <Badge variant={getRoleBadgeVariant(user.role)} size="sm" className="mb-1">
-                  {user.role?.replace('_', ' ')}
-                </Badge>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-              </div>
-            </div>
-          </div>
-
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className="w-full justify-start gap-2"
-          >
-            <LogoutIcon className="h-4 w-4" />
-            <span>Logout</span>
-          </Button>
-        </div>
-      )}
     </div>
   );
 

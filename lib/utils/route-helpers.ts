@@ -101,6 +101,23 @@ export function getEventCalendarRoute(terminology: TerminologyConfig): string {
 }
 
 /**
+ * Get the timesheet route
+ *
+ * @param terminology - The terminology configuration
+ * @returns The timesheet route (e.g., "/events/timesheet" or "/tasks/timesheet")
+ *
+ * @example
+ * ```tsx
+ * const { terminology } = useTerminology();
+ * const route = getTimesheetRoute(terminology); // "/tasks/timesheet"
+ * <Link href={route}>Time Sheet</Link>
+ * ```
+ */
+export function getTimesheetRoute(terminology: TerminologyConfig): string {
+  return `/${terminology.event.route}/timesheet`;
+}
+
+/**
  * Get the dashboard route
  *
  * @returns The dashboard route
