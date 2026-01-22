@@ -34,9 +34,11 @@ export const ALL_ROLES = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER
  * Get optional auth session from request headers
  * Returns null if not authenticated
  */
-export async function getOptionalAuth(): Promise<Session | null> {
+export async function getOptionalAuth(
+  requestHeaders?: Headers
+): Promise<Session | null> {
   try {
-    const headersList = await headers();
+    const headersList = requestHeaders ?? (await headers());
     const session = await auth.api.getSession({
       headers: headersList,
     });

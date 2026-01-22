@@ -1,4 +1,5 @@
 import { initTRPC, TRPCError } from "@trpc/server";
+import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import { prisma } from "@/lib/server/prisma";
 import { getOptionalAuth } from "@/lib/server/auth-utils";
 import { UserRole, hasRole } from "@/lib/server/auth-utils";
@@ -12,8 +13,8 @@ import { extractZodFieldErrors, mapPrismaError } from "@/lib/utils/error-handler
 /**
  * Create context for each request
  */
-export async function createContext() {
-  const session = await getOptionalAuth();
+export async function createContext(opts?: FetchCreateContextFnOptions) {
+  const session = await getOptionalAuth(opts?.req?.headers);
 
   return {
     prisma,
@@ -43,6 +44,18 @@ const t = initTRPC.context<Context>().create({
           zodError: error.cause.flatten(),
         },
       };
+    }
+
+    // Handle known database connection/pool errors (driver adapters, poolers)
+    if (error.cause instanceof Error) {
+      const message = error.cause.message;
+      if (message.includes("MaxClientsInSessionMode")) {
+        return {
+          ...shape,
+          message:
+            "Database connection limit reached (pool exhausted). Try lowering PRISMA_PG_POOL_MAX or switch to a pooled DATABASE_URL.",
+        };
+      }
     }
 
     // Map Prisma errors to user-friendly messages
