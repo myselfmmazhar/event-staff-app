@@ -3,6 +3,7 @@ import { userRouter } from "./user.router";
 import { profileRouter } from "./profile.router";
 import { sessionRouter } from "./session.router";
 import { eventRouter } from "./event.router";
+import { eventTemplateRouter } from "./event-template.router";
 import { clientRouter } from "./client.router";
 import { staffRouter } from "./staff.router";
 import { settingsRouter } from "./settings.router";
@@ -19,6 +20,7 @@ export const appRouter = router({
   profile: profileRouter,
   session: sessionRouter,
   event: eventRouter,
+  eventTemplate: eventTemplateRouter,
   clients: clientRouter,
   staff: staffRouter,
   settings: settingsRouter,

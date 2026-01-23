@@ -164,9 +164,8 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
             },
             {
               label: `${terminology.event.singular} Templates`,
-              href: '/templates/tasks',
+              href: '/templates/events',
               icon: ListIcon,
-              comingSoon: true,
             },
           ],
         },

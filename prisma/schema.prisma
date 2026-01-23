@@ -99,9 +99,10 @@ model Client {
   updatedAt                      DateTime  @updatedAt @db.Timestamp(6)
   invitationExpiresAt            DateTime? @db.Timestamp(6)
   invitationToken                String?   @unique
-  users_clients_createdByTousers User      @relation("clients_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
-  users_clients_userIdTousers    User?     @relation("clients_userIdTousers", fields: [userId], references: [id])
+  users_clients_createdByTousers User            @relation("clients_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
+  users_clients_userIdTousers    User?           @relation("clients_userIdTousers", fields: [userId], references: [id])
   events                         Event[]
+  eventTemplates                 EventTemplate[]
 
   @@index([clientId])
   @@index([createdBy])
@@ -172,6 +173,51 @@ model Event {
   @@index([startDate])
   @@index([status])
   @@map("events")
+}
+
+model EventTemplate {
+  id               String    @id @default(uuid()) @db.Uuid
+  name             String    @db.VarChar(200)
+  description      String?   @db.VarChar(500)
+
+  // Event fields to prefill
+  title            String?   @db.VarChar(200)
+  eventDescription String?
+  dressCode        String?   @db.VarChar(200)
+  privateComments  String?
+
+  // Venue fields
+  venueName        String?   @db.VarChar(200)
+  address          String?   @db.VarChar(300)
+  room             String?   @db.VarChar(100)
+  city             String?   @db.VarChar(100)
+  state            String?   @db.VarChar(50)
+  zipCode          String?   @db.VarChar(20)
+  latitude         Float?
+  longitude        Float?
+
+  // Date & Time fields
+  startDate        DateTime? @db.Date
+  startTime        String?   @db.VarChar(5)
+  endDate          DateTime? @db.Date
+  endTime          String?   @db.VarChar(5)
+  timezone         String?   @db.VarChar(50)
+
+  // Attachments
+  fileLinks        Json?
+
+  // Default client (optional)
+  clientId         String?   @db.Uuid
+  client           Client?   @relation(fields: [clientId], references: [id])
+
+  // Ownership & audit
+  createdBy        String
+  createdByUser    User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([createdBy])
+  @@map("event_templates")
 }
 
 model NotificationPreference {
@@ -354,6 +400,7 @@ model User {
   clients_clients_createdByTousers Client[]                  @relation("clients_createdByTousers")
   clients_clients_userIdTousers    Client?                   @relation("clients_userIdTousers")
   events                           Event[]
+  eventTemplates                   EventTemplate[]
   notification_preferences         NotificationPreference?
   notifications                    Notification[]
   sessions                         Session[]

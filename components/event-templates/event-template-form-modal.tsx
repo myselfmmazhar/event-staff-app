@@ -12,9 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
-import { EventSchema, TIMEZONES } from '@/lib/schemas/event.schema';
-import type { CreateEventInput, UpdateEventInput, FileLink } from '@/lib/schemas/event.schema';
-import { EventStatus } from '@prisma/client';
+import type { CreateEventTemplateInput, UpdateEventTemplateInput, FileLink } from '@/lib/schemas/event-template.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form';
@@ -24,112 +22,127 @@ import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 
-// Use the create schema directly for create mode
-const createFormSchema = EventSchema.create;
+// Common timezones
+const TIMEZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Phoenix",
+  "America/Anchorage",
+  "Pacific/Honolulu",
+  "America/Toronto",
+  "America/Vancouver",
+  "Europe/London",
+  "Europe/Paris",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+];
 
-// Build edit form schema (all fields optional except those being updated)
-const editFormSchema = z.object({
-  title: z.string().min(1, "Title is required").max(200).transform(val => val.trim()),
-  description: z.string().max(5000).optional().transform(val => val?.trim()),
-  dressCode: z.string().max(200).optional().transform(val => val?.trim()),
-  privateComments: z.string().max(5000).optional().transform(val => val?.trim()),
-  clientId: z.string().optional(),
-  venueName: z.string().min(1, "Venue name is required").max(200).transform(val => val.trim()),
-  address: z.string().min(1, "Address is required").max(300).transform(val => val.trim()),
-  room: z.string().min(1, "Room/Place is required").max(100).transform(val => val.trim()),
-  city: z.string().min(1, "City is required").max(100).transform(val => val.trim()),
-  state: z.string().min(1, "State is required").max(50).transform(val => val.trim()),
-  zipCode: z.string().min(1, "ZIP code is required").max(20).transform(val => val.trim()),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  startDate: z.coerce.date({ message: "Start date is required" }),
-  startTime: z.string().optional(),
-  startTimeTBD: z.boolean().default(false),
-  endDate: z.coerce.date({ message: "End date is required" }),
-  endTime: z.string().optional(),
-  endTimeTBD: z.boolean().default(false),
-  timezone: z.string().min(1, "Timezone is required"),
-  dailyDigestMode: z.boolean().default(false),
-  requireStaff: z.boolean().default(false),
-  status: z.nativeEnum(EventStatus).default(EventStatus.DRAFT),
-  fileLinks: z.array(z.object({
-    name: z.string().min(1, "File name is required"),
-    link: z.string().url("Invalid URL"),
-  })).optional(),
-}).refine((data) => data.endDate >= data.startDate, {
-  message: "End date must be after or equal to start date",
-  path: ["endDate"],
+// Time format validation
+const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+
+// File link schema
+const fileLinkSchema = z.object({
+  name: z.string().min(1, "File name is required").max(100, "File name too long"),
+  link: z.string().url("Invalid file link URL"),
 });
 
-type CreateFormInput = z.input<typeof createFormSchema>;
-type EditFormInput = z.input<typeof editFormSchema>;
-type FormInput = (CreateFormInput | EditFormInput) & {
-  startTimeTBD?: boolean;
-  endTimeTBD?: boolean;
-};
-type CreateFormOutput = z.infer<typeof createFormSchema>;
-type EditFormOutput = z.infer<typeof editFormSchema>;
-type FormOutput = CreateFormOutput | EditFormOutput;
-type FormFieldName = keyof FormInput;
+// Form schema - define directly to avoid refinement extension issues
+const formSchema = z.object({
+  // Template metadata
+  name: z.string().min(1, "Template name is required").max(200).transform((val) => val.trim()),
+  description: z.string().max(500).optional().transform((val) => val?.trim()),
 
-interface Event {
+  // Event fields to prefill
+  title: z.string().max(200).optional().transform((val) => val?.trim()),
+  eventDescription: z.string().max(5000).optional().transform((val) => val?.trim()),
+  dressCode: z.string().max(200).optional().transform((val) => val?.trim()),
+  privateComments: z.string().max(5000).optional().transform((val) => val?.trim()),
+
+  // Client relationship
+  clientId: z.string().uuid().optional().or(z.literal("")),
+
+  // Venue Information
+  venueName: z.string().max(200).optional().transform((val) => val?.trim()),
+  address: z.string().max(300).optional().transform((val) => val?.trim()),
+  room: z.string().max(100).optional().transform((val) => val?.trim()),
+  city: z.string().max(100).optional().transform((val) => val?.trim()),
+  state: z.string().max(50).optional().transform((val) => val?.trim()),
+  zipCode: z.string().max(20).optional().transform((val) => val?.trim()),
+
+  // Location Coordinates
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+
+  // Date and Time
+  startDate: z.coerce.date().optional(),
+  startTime: z.string().refine((val) => !val || val === "TBD" || timeRegex.test(val), {
+    message: "Start time must be in HH:MM format or TBD",
+  }).optional(),
+  endDate: z.coerce.date().optional(),
+  endTime: z.string().refine((val) => !val || val === "TBD" || timeRegex.test(val), {
+    message: "End time must be in HH:MM format or TBD",
+  }).optional(),
+  timezone: z.string().optional(),
+
+  // File Links
+  fileLinks: z.array(fileLinkSchema).max(20).optional(),
+
+  // UI-only fields
+  startTimeTBD: z.boolean().default(false),
+  endTimeTBD: z.boolean().default(false),
+});
+
+type FormInput = z.input<typeof formSchema>;
+type FormOutput = z.infer<typeof formSchema>;
+
+interface EventTemplate {
   id: string;
-  eventId: string;
-  title: string;
+  name: string;
   description?: string | null;
+  title?: string | null;
+  eventDescription?: string | null;
   dressCode?: string | null;
   privateComments?: string | null;
   clientId?: string | null;
-  venueName: string;
-  address: string;
-  room: string;
-  city: string;
-  state: string;
-  zipCode: string;
+  venueName?: string | null;
+  address?: string | null;
+  room?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  startDate: Date;
+  startDate?: Date | null;
   startTime?: string | null;
-  endDate: Date;
+  endDate?: Date | null;
   endTime?: string | null;
-  timezone: string;
-  dailyDigestMode: boolean;
-  requireStaff: boolean;
-  status: EventStatus;
+  timezone?: string | null;
   fileLinks?: FileLink[] | null;
 }
 
-interface EventFormModalProps {
-  event: Event | null;
+interface EventTemplateFormModalProps {
+  template: EventTemplate | null;
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateEventInput | Omit<UpdateEventInput, 'id'>) => void;
+  onSubmit: (data: CreateEventTemplateInput | Omit<UpdateEventTemplateInput, 'id'>) => void;
   isSubmitting: boolean;
   backendErrors?: Array<{ field: string; message: string }>;
 }
 
-const STATUSES: Array<{ value: EventStatus; label: string }> = [
-  { value: EventStatus.DRAFT, label: 'Draft' },
-  { value: EventStatus.PUBLISHED, label: 'Published' },
-  { value: EventStatus.CONFIRMED, label: 'Confirmed' },
-  { value: EventStatus.IN_PROGRESS, label: 'In Progress' },
-  { value: EventStatus.COMPLETED, label: 'Completed' },
-  { value: EventStatus.CANCELLED, label: 'Cancelled' },
-];
-
-export function EventFormModal({
-  event,
+export function EventTemplateFormModal({
+  template,
   open,
   onClose,
   onSubmit,
   isSubmitting,
   backendErrors = [],
-}: EventFormModalProps) {
+}: EventTemplateFormModalProps) {
   const { terminology } = useTerminology();
-  const isEdit = !!event;
+  const isEdit = !!template;
   const [startTimeTBD, setStartTimeTBD] = useState(false);
   const [endTimeTBD, setEndTimeTBD] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
   // Fetch clients for dropdown
   const { data: clientsData } = trpc.clients.getAll.useQuery({
@@ -137,31 +150,21 @@ export function EventFormModal({
     limit: 100
   });
 
-  // Fetch templates for dropdown (only in create mode)
-  const { data: templatesData } = trpc.eventTemplate.getForSelection.useQuery(undefined, {
-    enabled: !isEdit,
-  });
-
-  // Fetch full template data when selected
-  const { data: selectedTemplateData } = trpc.eventTemplate.getById.useQuery(
-    { id: selectedTemplateId },
-    { enabled: !!selectedTemplateId && !isEdit }
-  );
-
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-    watch,
     setError,
     setValue,
     control,
   } = useForm<FormInput, undefined, FormOutput>({
-    resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      title: '',
+      name: '',
       description: '',
+      title: '',
+      eventDescription: '',
       dressCode: '',
       privateComments: '',
       clientId: '',
@@ -171,15 +174,14 @@ export function EventFormModal({
       city: '',
       state: '',
       zipCode: '',
-      startDate: new Date(),
+      startDate: undefined,
       startTime: '',
-      endDate: new Date(),
+      endDate: undefined,
       endTime: '',
-      timezone: 'America/New_York',
-      dailyDigestMode: false,
-      requireStaff: false,
-      status: EventStatus.DRAFT,
+      timezone: '',
       fileLinks: [],
+      startTimeTBD: false,
+      endTimeTBD: false,
     },
   });
 
@@ -189,97 +191,10 @@ export function EventFormModal({
   });
 
   useEffect(() => {
-    if (event) {
-      const fileLinksData = event.fileLinks as FileLink[] | null;
+    if (template) {
+      const fileLinksData = template.fileLinks as FileLink[] | null;
 
       // Format dates to YYYY-MM-DD for date inputs
-      const formatDateForInput = (date: Date | string) => {
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-
-      reset({
-        title: event.title,
-        description: event.description || '',
-        dressCode: event.dressCode || '',
-        privateComments: event.privateComments || '',
-        clientId: event.clientId || '',
-        venueName: event.venueName,
-        address: event.address,
-        room: event.room,
-        city: event.city,
-        state: event.state,
-        zipCode: event.zipCode,
-        latitude: event.latitude || undefined,
-        longitude: event.longitude || undefined,
-        startDate: formatDateForInput(event.startDate) as any,
-        startTime: event.startTime === 'TBD' ? '' : (event.startTime || ''),
-        endDate: formatDateForInput(event.endDate) as any,
-        endTime: event.endTime === 'TBD' ? '' : (event.endTime || ''),
-        timezone: event.timezone,
-        dailyDigestMode: event.dailyDigestMode,
-        requireStaff: event.requireStaff,
-        status: event.status,
-        fileLinks: fileLinksData || [],
-      });
-      setStartTimeTBD(event.startTime === 'TBD');
-      setEndTimeTBD(event.endTime === 'TBD');
-    } else {
-      // Format today's date to YYYY-MM-DD for date inputs
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      const todayFormatted = `${year}-${month}-${day}`;
-
-      reset({
-        title: '',
-        description: '',
-        dressCode: '',
-        privateComments: '',
-        clientId: '',
-        venueName: '',
-        address: '',
-        room: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        startDate: todayFormatted as any,
-        startTime: '',
-        endDate: todayFormatted as any,
-        endTime: '',
-        timezone: 'America/New_York',
-        dailyDigestMode: false,
-        requireStaff: false,
-        status: EventStatus.DRAFT,
-        fileLinks: [],
-      });
-      setStartTimeTBD(false);
-      setEndTimeTBD(false);
-    }
-  }, [event, reset, open]);
-
-  // Map backend errors to form fields
-  useEffect(() => {
-    if (backendErrors && backendErrors.length > 0) {
-      backendErrors.forEach((error) => {
-        setError(error.field as FormFieldName, {
-          type: 'manual',
-          message: error.message,
-        });
-      });
-    }
-  }, [backendErrors, setError]);
-
-  // Apply template data when a template is selected
-  useEffect(() => {
-    if (selectedTemplateData && !isEdit) {
-      const template = selectedTemplateData;
-
-      // Format date for input
       const formatDateForInput = (date: Date | string | null | undefined) => {
         if (!date) return undefined;
         const d = new Date(date);
@@ -289,15 +204,11 @@ export function EventFormModal({
         return `${year}-${month}-${day}`;
       };
 
-      // Get today's date as fallback
-      const today = new Date();
-      const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
-      const fileLinksData = template.fileLinks as FileLink[] | null;
-
       reset({
+        name: template.name,
+        description: template.description || '',
         title: template.title || '',
-        description: template.eventDescription || '',
+        eventDescription: template.eventDescription || '',
         dressCode: template.dressCode || '',
         privateComments: template.privateComments || '',
         clientId: template.clientId || '',
@@ -309,42 +220,68 @@ export function EventFormModal({
         zipCode: template.zipCode || '',
         latitude: template.latitude || undefined,
         longitude: template.longitude || undefined,
-        startDate: (formatDateForInput(template.startDate) || todayFormatted) as any,
+        startDate: formatDateForInput(template.startDate) as any,
         startTime: template.startTime === 'TBD' ? '' : (template.startTime || ''),
-        endDate: (formatDateForInput(template.endDate) || todayFormatted) as any,
+        endDate: formatDateForInput(template.endDate) as any,
         endTime: template.endTime === 'TBD' ? '' : (template.endTime || ''),
-        timezone: template.timezone || 'America/New_York',
-        dailyDigestMode: false,
-        requireStaff: false,
-        status: EventStatus.DRAFT,
+        timezone: template.timezone || '',
         fileLinks: fileLinksData || [],
+        startTimeTBD: template.startTime === 'TBD',
+        endTimeTBD: template.endTime === 'TBD',
       });
       setStartTimeTBD(template.startTime === 'TBD');
       setEndTimeTBD(template.endTime === 'TBD');
+    } else {
+      reset({
+        name: '',
+        description: '',
+        title: '',
+        eventDescription: '',
+        dressCode: '',
+        privateComments: '',
+        clientId: '',
+        venueName: '',
+        address: '',
+        room: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        startDate: undefined,
+        startTime: '',
+        endDate: undefined,
+        endTime: '',
+        timezone: '',
+        fileLinks: [],
+        startTimeTBD: false,
+        endTimeTBD: false,
+      });
+      setStartTimeTBD(false);
+      setEndTimeTBD(false);
     }
-  }, [selectedTemplateData, isEdit, reset]);
+  }, [template, reset, open]);
 
-  // Reset template selection when modal closes
+  // Map backend errors to form fields
   useEffect(() => {
-    if (!open) {
-      setSelectedTemplateId('');
+    if (backendErrors && backendErrors.length > 0) {
+      backendErrors.forEach((error) => {
+        setError(error.field as keyof FormInput, {
+          type: 'manual',
+          message: error.message,
+        });
+      });
     }
-  }, [open]);
+  }, [backendErrors, setError]);
 
   const handleFormSubmit: SubmitHandler<FormOutput> = (data) => {
+    // Remove UI-only fields and normalize time values
+    const { startTimeTBD: _s, endTimeTBD: _e, ...submitData } = data;
     const normalizedData = {
-      ...data,
-      startTime: startTimeTBD ? 'TBD' : (data.startTime || undefined),
-      endTime: endTimeTBD ? 'TBD' : (data.endTime || undefined),
+      ...submitData,
+      startTime: startTimeTBD ? 'TBD' : (submitData.startTime || undefined),
+      endTime: endTimeTBD ? 'TBD' : (submitData.endTime || undefined),
     };
 
-    if (isEdit) {
-      const finalData = editFormSchema.parse(normalizedData);
-      onSubmit(finalData);
-    } else {
-      const finalData = createFormSchema.parse(normalizedData);
-      onSubmit(finalData);
-    }
+    onSubmit(normalizedData);
   };
 
   return (
@@ -352,7 +289,9 @@ export function EventFormModal({
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>{isEdit ? `Edit ${terminology.event.singular}` : `Create New ${terminology.event.singular}`}</DialogTitle>
+            <DialogTitle>
+              {isEdit ? `Edit ${terminology.event.singular} Template` : `Create ${terminology.event.singular} Template`}
+            </DialogTitle>
             <button
               type="button"
               onClick={onClose}
@@ -364,92 +303,54 @@ export function EventFormModal({
         </DialogHeader>
 
         <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
-          {/* Event ID (Read-only in edit mode) */}
-          {isEdit && (
-            <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
-              <p className="text-sm text-muted-foreground">{terminology.event.singular} ID</p>
-              <p className="text-base font-medium">{event?.eventId}</p>
-            </div>
-          )}
-
-          {/* Template Selector (only in create mode) */}
-          {!isEdit && templatesData && templatesData.length > 0 && (
-            <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-              <Label htmlFor="templateSelect">Start from Template (Optional)</Label>
-              <div className="flex gap-2 mt-1">
-                <Select
-                  id="templateSelect"
-                  value={selectedTemplateId}
-                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+          {/* Template Information */}
+          <div className="bg-primary/5 border border-primary/20 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Template Information</h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name" required>Template Name</Label>
+                <Input
+                  id="name"
+                  {...register('name')}
+                  error={!!errors.name}
                   disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  <option value="">Select a template...</option>
-                  {templatesData.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </Select>
-                {selectedTemplateId && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedTemplateId('');
-                      // Reset to default values
-                      const today = new Date();
-                      const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                      reset({
-                        title: '',
-                        description: '',
-                        dressCode: '',
-                        privateComments: '',
-                        clientId: '',
-                        venueName: '',
-                        address: '',
-                        room: '',
-                        city: '',
-                        state: '',
-                        zipCode: '',
-                        startDate: todayFormatted as any,
-                        startTime: '',
-                        endDate: todayFormatted as any,
-                        endTime: '',
-                        timezone: 'America/New_York',
-                        dailyDigestMode: false,
-                        requireStaff: false,
-                        status: EventStatus.DRAFT,
-                        fileLinks: [],
-                      });
-                      setStartTimeTBD(false);
-                      setEndTimeTBD(false);
-                    }}
-                  >
-                    Clear
-                  </Button>
+                  placeholder="e.g., Corporate Conference"
+                />
+                {errors.name && (
+                  <p className="text-sm text-destructive mt-1">{errors.name.message}</p>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Select a template to prefill the form. You can modify any field before saving.
-              </p>
-            </div>
-          )}
-
-          {/* Basic Information */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Basic Information</h3>
-            <div className="space-y-4">
 
               <div>
-                <Label htmlFor="title" required>Title</Label>
+                <Label htmlFor="description">Template Description</Label>
+                <Textarea
+                  id="description"
+                  {...register('description')}
+                  disabled={isSubmitting}
+                  rows={2}
+                  placeholder="Brief description of when to use this template"
+                />
+                {errors.description && (
+                  <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Event Details to Prefill */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
+              {terminology.event.singular} Details (Prefill Values)
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="title">{terminology.event.singular} Title</Label>
                 <Input
                   id="title"
                   {...register('title')}
                   error={!!errors.title}
                   disabled={isSubmitting}
-                  placeholder={`${terminology.event.singular} title`}
+                  placeholder={`Default ${terminology.event.lower} title`}
                 />
                 {errors.title && (
                   <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
@@ -457,13 +358,13 @@ export function EventFormModal({
               </div>
 
               <div>
-                <Label htmlFor="clientId">Client</Label>
+                <Label htmlFor="clientId">Default Client</Label>
                 <Select
                   id="clientId"
                   {...register('clientId')}
                   disabled={isSubmitting}
                 >
-                  <option value="">Not applicable</option>
+                  <option value="">No default client</option>
                   {clientsData?.data.map((client) => (
                     <option key={client.id} value={client.id}>
                       {client.businessName}
@@ -476,51 +377,31 @@ export function EventFormModal({
               </div>
 
               <div>
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="eventDescription">Description</Label>
                 <Textarea
-                  id="description"
-                  {...register('description')}
+                  id="eventDescription"
+                  {...register('eventDescription')}
                   disabled={isSubmitting}
                   rows={3}
-                  placeholder={`${terminology.event.singular} description`}
+                  placeholder={`Default ${terminology.event.lower} description`}
                 />
-                {errors.description && (
-                  <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
+                {errors.eventDescription && (
+                  <p className="text-sm text-destructive mt-1">{errors.eventDescription.message}</p>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="dressCode">Dress Code</Label>
-                  <Input
-                    id="dressCode"
-                    {...register('dressCode')}
-                    error={!!errors.dressCode}
-                    disabled={isSubmitting}
-                    placeholder="e.g., Business Casual"
-                  />
-                  {errors.dressCode && (
-                    <p className="text-sm text-destructive mt-1">{errors.dressCode.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="status" required>Status</Label>
-                  <Select
-                    id="status"
-                    {...register('status')}
-                    disabled={isSubmitting}
-                  >
-                    {STATUSES.map((status) => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </Select>
-                  {errors.status && (
-                    <p className="text-sm text-destructive mt-1">{errors.status.message}</p>
-                  )}
-                </div>
+              <div>
+                <Label htmlFor="dressCode">Dress Code</Label>
+                <Input
+                  id="dressCode"
+                  {...register('dressCode')}
+                  error={!!errors.dressCode}
+                  disabled={isSubmitting}
+                  placeholder="e.g., Business Casual"
+                />
+                {errors.dressCode && (
+                  <p className="text-sm text-destructive mt-1">{errors.dressCode.message}</p>
+                )}
               </div>
             </div>
           </div>
@@ -529,14 +410,12 @@ export function EventFormModal({
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Venue Information</h3>
             <div className="space-y-4">
-
               {/* Address Autocomplete */}
               <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
                 <AddressAutocomplete
                   label="Search Address (Optional)"
                   placeholder="Type to search for an address..."
                   onSelect={(addressData) => {
-                    // Auto-fill the address fields
                     setValue('address', addressData.address);
                     setValue('city', addressData.city);
                     setValue('state', addressData.state);
@@ -551,7 +430,7 @@ export function EventFormModal({
               </div>
 
               <div>
-                <Label htmlFor="venueName" required>Venue Name</Label>
+                <Label htmlFor="venueName">Venue Name</Label>
                 <Input
                   id="venueName"
                   {...register('venueName')}
@@ -565,7 +444,7 @@ export function EventFormModal({
               </div>
 
               <div>
-                <Label htmlFor="address" required>Address</Label>
+                <Label htmlFor="address">Address</Label>
                 <Input
                   id="address"
                   {...register('address')}
@@ -579,7 +458,7 @@ export function EventFormModal({
               </div>
 
               <div>
-                <Label htmlFor="room" required>Room/Place</Label>
+                <Label htmlFor="room">Room/Place</Label>
                 <Input
                   id="room"
                   {...register('room')}
@@ -594,7 +473,7 @@ export function EventFormModal({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="city" required>City</Label>
+                  <Label htmlFor="city">City</Label>
                   <Input
                     id="city"
                     {...register('city')}
@@ -608,7 +487,7 @@ export function EventFormModal({
                 </div>
 
                 <div>
-                  <Label htmlFor="state" required>State</Label>
+                  <Label htmlFor="state">State</Label>
                   <Input
                     id="state"
                     {...register('state')}
@@ -622,7 +501,7 @@ export function EventFormModal({
                 </div>
 
                 <div>
-                  <Label htmlFor="zipCode" required>ZIP Code</Label>
+                  <Label htmlFor="zipCode">ZIP Code</Label>
                   <Input
                     id="zipCode"
                     {...register('zipCode')}
@@ -642,10 +521,9 @@ export function EventFormModal({
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Date & Time</h3>
             <div className="space-y-4">
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="startDate" required>Start Date</Label>
+                  <Label htmlFor="startDate">Start Date</Label>
                   <Input
                     id="startDate"
                     type="date"
@@ -689,7 +567,7 @@ export function EventFormModal({
                 </div>
 
                 <div>
-                  <Label htmlFor="endDate" required>End Date</Label>
+                  <Label htmlFor="endDate">End Date</Label>
                   <Input
                     id="endDate"
                     type="date"
@@ -734,12 +612,13 @@ export function EventFormModal({
               </div>
 
               <div>
-                <Label htmlFor="timezone" required>Timezone</Label>
+                <Label htmlFor="timezone">Timezone</Label>
                 <Select
                   id="timezone"
                   {...register('timezone')}
                   disabled={isSubmitting}
                 >
+                  <option value="">No default timezone</option>
                   {TIMEZONES.map((tz) => (
                     <option key={tz} value={tz}>
                       {tz}
@@ -823,7 +702,6 @@ export function EventFormModal({
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Private Notes</h3>
             <div className="space-y-4">
-
               <div>
                 <Label htmlFor="privateComments">Private Comments</Label>
                 <Textarea
@@ -846,7 +724,7 @@ export function EventFormModal({
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.event.singular}` : `Create ${terminology.event.singular}`}
+            {isSubmitting ? 'Saving...' : isEdit ? 'Update Template' : 'Create Template'}
           </Button>
         </DialogFooter>
       </form>
