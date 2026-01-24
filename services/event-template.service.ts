@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma, RequestMethod } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import type {
   CreateEventTemplateInput,
@@ -15,12 +15,11 @@ export interface UpdateEventTemplateServiceInput {
   description?: string | null;
   title?: string | null;
   eventDescription?: string | null;
-  dressCode?: string | null;
+  requirements?: string | null;
   privateComments?: string | null;
   clientId?: string | null;
   venueName?: string | null;
   address?: string | null;
-  room?: string | null;
   city?: string | null;
   state?: string | null;
   zipCode?: string | null;
@@ -32,6 +31,20 @@ export interface UpdateEventTemplateServiceInput {
   endTime?: string | null;
   timezone?: string | null;
   fileLinks?: Array<{ name: string; link: string }> | null;
+  // Request Information
+  requestMethod?: RequestMethod | null;
+  requestorName?: string | null;
+  requestorPhone?: string | null;
+  requestorEmail?: string | null;
+  poNumber?: string | null;
+  // Event Instructions & Documents
+  preEventInstructions?: string | null;
+  eventDocuments?: Array<{ name: string; url: string; type?: string; size?: number }> | null;
+  // Onsite Contact & Meeting Point
+  meetingPoint?: string | null;
+  onsitePocName?: string | null;
+  onsitePocPhone?: string | null;
+  onsitePocEmail?: string | null;
 }
 
 // Select fields for event templates
@@ -41,12 +54,11 @@ const eventTemplateSelect = {
   description: true,
   title: true,
   eventDescription: true,
-  dressCode: true,
+  requirements: true,
   privateComments: true,
   clientId: true,
   venueName: true,
   address: true,
-  room: true,
   city: true,
   state: true,
   zipCode: true,
@@ -58,6 +70,20 @@ const eventTemplateSelect = {
   endTime: true,
   timezone: true,
   fileLinks: true,
+  // Request Information
+  requestMethod: true,
+  requestorName: true,
+  requestorPhone: true,
+  requestorEmail: true,
+  poNumber: true,
+  // Event Instructions & Documents
+  preEventInstructions: true,
+  eventDocuments: true,
+  // Onsite Contact & Meeting Point
+  meetingPoint: true,
+  onsitePocName: true,
+  onsitePocPhone: true,
+  onsitePocEmail: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -107,12 +133,11 @@ export class EventTemplateService {
         description: data.description?.trim() || null,
         title: data.title?.trim() || null,
         eventDescription: data.eventDescription?.trim() || null,
-        dressCode: data.dressCode?.trim() || null,
+        requirements: data.requirements?.trim() || null,
         privateComments: data.privateComments?.trim() || null,
         clientId: data.clientId && data.clientId !== "" ? data.clientId : null,
         venueName: data.venueName?.trim() || null,
         address: data.address?.trim() || null,
-        room: data.room?.trim() || null,
         city: data.city?.trim() || null,
         state: data.state?.trim() || null,
         zipCode: data.zipCode?.trim() || null,
@@ -126,6 +151,22 @@ export class EventTemplateService {
         fileLinks: data.fileLinks
           ? JSON.parse(JSON.stringify(data.fileLinks))
           : null,
+        // Request Information
+        requestMethod: data.requestMethod ?? null,
+        requestorName: data.requestorName?.trim() || null,
+        requestorPhone: data.requestorPhone?.trim() || null,
+        requestorEmail: data.requestorEmail?.trim() || null,
+        poNumber: data.poNumber?.trim() || null,
+        // Event Instructions & Documents
+        preEventInstructions: data.preEventInstructions?.trim() || null,
+        eventDocuments: data.eventDocuments
+          ? JSON.parse(JSON.stringify(data.eventDocuments))
+          : null,
+        // Onsite Contact & Meeting Point
+        meetingPoint: data.meetingPoint?.trim() || null,
+        onsitePocName: data.onsitePocName?.trim() || null,
+        onsitePocPhone: data.onsitePocPhone?.trim() || null,
+        onsitePocEmail: data.onsitePocEmail?.trim() || null,
         createdBy: userId,
       };
 
@@ -255,8 +296,8 @@ export class EventTemplateService {
         updateData.title = data.title?.trim() || null;
       if (data.eventDescription !== undefined)
         updateData.eventDescription = data.eventDescription?.trim() || null;
-      if (data.dressCode !== undefined)
-        updateData.dressCode = data.dressCode?.trim() || null;
+      if (data.requirements !== undefined)
+        updateData.requirements = data.requirements?.trim() || null;
       if (data.privateComments !== undefined)
         updateData.privateComments = data.privateComments?.trim() || null;
       if (data.clientId !== undefined) {
@@ -270,7 +311,6 @@ export class EventTemplateService {
         updateData.venueName = data.venueName?.trim() || null;
       if (data.address !== undefined)
         updateData.address = data.address?.trim() || null;
-      if (data.room !== undefined) updateData.room = data.room?.trim() || null;
       if (data.city !== undefined) updateData.city = data.city?.trim() || null;
       if (data.state !== undefined)
         updateData.state = data.state?.trim() || null;
@@ -290,6 +330,23 @@ export class EventTemplateService {
         updateData.fileLinks = data.fileLinks
           ? JSON.parse(JSON.stringify(data.fileLinks))
           : null;
+      // Request Information
+      if (data.requestMethod !== undefined) updateData.requestMethod = data.requestMethod;
+      if (data.requestorName !== undefined) updateData.requestorName = data.requestorName?.trim() || null;
+      if (data.requestorPhone !== undefined) updateData.requestorPhone = data.requestorPhone?.trim() || null;
+      if (data.requestorEmail !== undefined) updateData.requestorEmail = data.requestorEmail?.trim() || null;
+      if (data.poNumber !== undefined) updateData.poNumber = data.poNumber?.trim() || null;
+      // Event Instructions & Documents
+      if (data.preEventInstructions !== undefined) updateData.preEventInstructions = data.preEventInstructions?.trim() || null;
+      if (data.eventDocuments !== undefined)
+        updateData.eventDocuments = data.eventDocuments
+          ? JSON.parse(JSON.stringify(data.eventDocuments))
+          : null;
+      // Onsite Contact & Meeting Point
+      if (data.meetingPoint !== undefined) updateData.meetingPoint = data.meetingPoint?.trim() || null;
+      if (data.onsitePocName !== undefined) updateData.onsitePocName = data.onsitePocName?.trim() || null;
+      if (data.onsitePocPhone !== undefined) updateData.onsitePocPhone = data.onsitePocPhone?.trim() || null;
+      if (data.onsitePocEmail !== undefined) updateData.onsitePocEmail = data.onsitePocEmail?.trim() || null;
 
       const template = await this.prisma.eventTemplate.update({
         where: { id },

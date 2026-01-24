@@ -58,12 +58,11 @@ export class EventService {
         eventId,
         title: data.title.trim(),
         description: data.description?.trim() || null,
-        dressCode: data.dressCode?.trim() || null,
+        requirements: data.requirements?.trim() || null,
         privateComments: data.privateComments?.trim() || null,
         clientId: data.clientId && data.clientId !== '' ? data.clientId : null,
         venueName: data.venueName.trim(),
         address: data.address.trim(),
-        room: data.room.trim(),
         city: data.city.trim(),
         state: data.state.trim(),
         zipCode: data.zipCode.trim(),
@@ -77,6 +76,20 @@ export class EventService {
         timezone: data.timezone,
         status: data.status ?? EventStatus.DRAFT,
         fileLinks: data.fileLinks ? JSON.parse(JSON.stringify(data.fileLinks)) : null,
+        // Request Information
+        requestMethod: data.requestMethod ?? null,
+        requestorName: data.requestorName?.trim() || null,
+        requestorPhone: data.requestorPhone?.trim() || null,
+        requestorEmail: data.requestorEmail?.trim() || null,
+        poNumber: data.poNumber?.trim() || null,
+        // Event Instructions & Documents
+        preEventInstructions: data.preEventInstructions?.trim() || null,
+        eventDocuments: data.eventDocuments ? JSON.parse(JSON.stringify(data.eventDocuments)) : null,
+        // Onsite Contact & Meeting Point
+        meetingPoint: data.meetingPoint?.trim() || null,
+        onsitePocName: data.onsitePocName?.trim() || null,
+        onsitePocPhone: data.onsitePocPhone?.trim() || null,
+        onsitePocEmail: data.onsitePocEmail?.trim() || null,
         createdBy: userId,
       };
 
@@ -88,12 +101,11 @@ export class EventService {
           eventId: true,
           title: true,
           description: true,
-          dressCode: true,
+          requirements: true,
           privateComments: true,
           clientId: true,
           venueName: true,
           address: true,
-          room: true,
           city: true,
           state: true,
           zipCode: true,
@@ -107,6 +119,17 @@ export class EventService {
           timezone: true,
           status: true,
           fileLinks: true,
+          requestMethod: true,
+          requestorName: true,
+          requestorPhone: true,
+          requestorEmail: true,
+          poNumber: true,
+          preEventInstructions: true,
+          eventDocuments: true,
+          meetingPoint: true,
+          onsitePocName: true,
+          onsitePocPhone: true,
+          onsitePocEmail: true,
           createdBy: true,
           createdAt: true,
           updatedAt: true,
@@ -209,7 +232,7 @@ export class EventService {
           eventId: true,
           title: true,
           description: true,
-          dressCode: true,
+          requirements: true,
           privateComments: true,
           clientId: true,
           client: {
@@ -224,7 +247,6 @@ export class EventService {
           },
           venueName: true,
           address: true,
-          room: true,
           city: true,
           state: true,
           zipCode: true,
@@ -235,6 +257,17 @@ export class EventService {
           timezone: true,
           status: true,
           fileLinks: true,
+          requestMethod: true,
+          requestorName: true,
+          requestorPhone: true,
+          requestorEmail: true,
+          poNumber: true,
+          preEventInstructions: true,
+          eventDocuments: true,
+          meetingPoint: true,
+          onsitePocName: true,
+          onsitePocPhone: true,
+          onsitePocEmail: true,
           createdBy: true,
           createdAt: true,
           updatedAt: true,
@@ -272,7 +305,7 @@ export class EventService {
         eventId: true,
         title: true,
         description: true,
-        dressCode: true,
+        requirements: true,
         privateComments: true,
         clientId: true,
         client: {
@@ -283,7 +316,6 @@ export class EventService {
         },
         venueName: true,
         address: true,
-        room: true,
         city: true,
         state: true,
         zipCode: true,
@@ -294,6 +326,17 @@ export class EventService {
         timezone: true,
         status: true,
         fileLinks: true,
+        requestMethod: true,
+        requestorName: true,
+        requestorPhone: true,
+        requestorEmail: true,
+        poNumber: true,
+        preEventInstructions: true,
+        eventDocuments: true,
+        meetingPoint: true,
+        onsitePocName: true,
+        onsitePocPhone: true,
+        onsitePocEmail: true,
         createdBy: true,
         createdAt: true,
         updatedAt: true,
@@ -324,12 +367,11 @@ export class EventService {
       const sanitizedData: any = {};
       if (data.title !== undefined) sanitizedData.title = data.title.trim();
       if (data.description !== undefined) sanitizedData.description = data.description?.trim() || null;
-      if (data.dressCode !== undefined) sanitizedData.dressCode = data.dressCode?.trim() || null;
+      if (data.requirements !== undefined) sanitizedData.requirements = data.requirements?.trim() || null;
       if (data.privateComments !== undefined) sanitizedData.privateComments = data.privateComments?.trim() || null;
       if (data.clientId !== undefined) sanitizedData.clientId = data.clientId && data.clientId !== '' ? data.clientId : null;
       if (data.venueName !== undefined) sanitizedData.venueName = data.venueName.trim();
       if (data.address !== undefined) sanitizedData.address = data.address.trim();
-      if (data.room !== undefined) sanitizedData.room = data.room.trim();
       if (data.city !== undefined) sanitizedData.city = data.city.trim();
       if (data.state !== undefined) sanitizedData.state = data.state.trim();
       if (data.zipCode !== undefined) sanitizedData.zipCode = data.zipCode.trim();
@@ -347,6 +389,22 @@ export class EventService {
       if (data.fileLinks !== undefined) {
         sanitizedData.fileLinks = data.fileLinks ? JSON.parse(JSON.stringify(data.fileLinks)) : null;
       }
+      // Request Information
+      if (data.requestMethod !== undefined) sanitizedData.requestMethod = data.requestMethod ?? null;
+      if (data.requestorName !== undefined) sanitizedData.requestorName = data.requestorName?.trim() || null;
+      if (data.requestorPhone !== undefined) sanitizedData.requestorPhone = data.requestorPhone?.trim() || null;
+      if (data.requestorEmail !== undefined) sanitizedData.requestorEmail = data.requestorEmail?.trim() || null;
+      if (data.poNumber !== undefined) sanitizedData.poNumber = data.poNumber?.trim() || null;
+      // Event Instructions & Documents
+      if (data.preEventInstructions !== undefined) sanitizedData.preEventInstructions = data.preEventInstructions?.trim() || null;
+      if (data.eventDocuments !== undefined) {
+        sanitizedData.eventDocuments = data.eventDocuments ? JSON.parse(JSON.stringify(data.eventDocuments)) : null;
+      }
+      // Onsite Contact & Meeting Point
+      if (data.meetingPoint !== undefined) sanitizedData.meetingPoint = data.meetingPoint?.trim() || null;
+      if (data.onsitePocName !== undefined) sanitizedData.onsitePocName = data.onsitePocName?.trim() || null;
+      if (data.onsitePocPhone !== undefined) sanitizedData.onsitePocPhone = data.onsitePocPhone?.trim() || null;
+      if (data.onsitePocEmail !== undefined) sanitizedData.onsitePocEmail = data.onsitePocEmail?.trim() || null;
 
       // Update the event
       const updatedEvent = await this.prisma.event.update({
@@ -357,12 +415,11 @@ export class EventService {
           eventId: true,
           title: true,
           description: true,
-          dressCode: true,
+          requirements: true,
           privateComments: true,
           clientId: true,
           venueName: true,
           address: true,
-          room: true,
           city: true,
           state: true,
           zipCode: true,
@@ -376,6 +433,17 @@ export class EventService {
           timezone: true,
           status: true,
           fileLinks: true,
+          requestMethod: true,
+          requestorName: true,
+          requestorPhone: true,
+          requestorEmail: true,
+          poNumber: true,
+          preEventInstructions: true,
+          eventDocuments: true,
+          meetingPoint: true,
+          onsitePocName: true,
+          onsitePocPhone: true,
+          onsitePocEmail: true,
           createdBy: true,
           createdAt: true,
           updatedAt: true,
@@ -387,7 +455,7 @@ export class EventService {
       if (data.title !== undefined) meaningfulChanges.push('title');
       if (data.startDate !== undefined || data.startTime !== undefined) meaningfulChanges.push('date/time');
       if (data.venueName !== undefined || data.address !== undefined) meaningfulChanges.push('location');
-      if (data.dressCode !== undefined) meaningfulChanges.push('dress code');
+      if (data.requirements !== undefined) meaningfulChanges.push('requirements');
 
       if (meaningfulChanges.length > 0) {
         const triggerService = getNotificationTriggerService(this.prisma);
@@ -444,11 +512,10 @@ export class EventService {
         eventId: true,
         title: true,
         description: true,
-        dressCode: true,
+        requirements: true,
         privateComments: true,
         venueName: true,
         address: true,
-        room: true,
         city: true,
         state: true,
         zipCode: true,
@@ -459,6 +526,17 @@ export class EventService {
         timezone: true,
         status: true,
         fileLinks: true,
+        requestMethod: true,
+        requestorName: true,
+        requestorPhone: true,
+        requestorEmail: true,
+        poNumber: true,
+        preEventInstructions: true,
+        eventDocuments: true,
+        meetingPoint: true,
+        onsitePocName: true,
+        onsitePocPhone: true,
+        onsitePocEmail: true,
         createdBy: true,
         createdAt: true,
         updatedAt: true,

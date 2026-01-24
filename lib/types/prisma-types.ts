@@ -149,11 +149,10 @@ export type EventSelect = Prisma.EventGetPayload<{
     eventId: true;
     title: true;
     description: true;
-    dressCode: true;
+    requirements: true;
     privateComments: true;
     venueName: true;
     address: true;
-    room: true;
     city: true;
     state: true;
     zipCode: true;
@@ -164,6 +163,20 @@ export type EventSelect = Prisma.EventGetPayload<{
     timezone: true;
     status: true;
     fileLinks: true;
+    // Request Information
+    requestMethod: true;
+    requestorName: true;
+    requestorPhone: true;
+    requestorEmail: true;
+    poNumber: true;
+    // Event Instructions & Documents
+    preEventInstructions: true;
+    eventDocuments: true;
+    // Onsite Contact & Meeting Point
+    meetingPoint: true;
+    onsitePocName: true;
+    onsitePocPhone: true;
+    onsitePocEmail: true;
     createdBy: true;
     clientId: true;
     createdAt: true;

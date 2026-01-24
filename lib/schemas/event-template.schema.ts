@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RequestMethod } from "@prisma/client";
 
 /**
  * Common timezone values for validation
@@ -28,6 +29,16 @@ const fileLinkSchema = z.object({
     .min(1, "File name is required")
     .max(100, "File name too long"),
   link: z.string().url("Invalid file link URL"),
+});
+
+/**
+ * Event document schema for validation (uploaded files)
+ */
+const eventDocumentSchema = z.object({
+  name: z.string().min(1, "Document name is required").max(100, "Document name too long"),
+  url: z.string().url("Invalid document URL"),
+  type: z.string().optional(),
+  size: z.number().optional(),
 });
 
 /**
@@ -67,9 +78,9 @@ export class EventTemplateSchema {
         .max(5000, "Description must be 5000 characters or less")
         .optional()
         .transform((val) => val?.trim()),
-      dressCode: z
+      requirements: z
         .string()
-        .max(200, "Dress code must be 200 characters or less")
+        .max(200, "Requirements must be 200 characters or less")
         .optional()
         .transform((val) => val?.trim()),
       privateComments: z
@@ -90,11 +101,6 @@ export class EventTemplateSchema {
       address: z
         .string()
         .max(300, "Address must be 300 characters or less")
-        .optional()
-        .transform((val) => val?.trim()),
-      room: z
-        .string()
-        .max(100, "Room/Place must be 100 characters or less")
         .optional()
         .transform((val) => val?.trim()),
       city: z
@@ -156,6 +162,64 @@ export class EventTemplateSchema {
         .array(fileLinkSchema)
         .max(20, "Maximum 20 file links allowed")
         .optional(),
+
+      // Request Information
+      requestMethod: z.nativeEnum(RequestMethod).optional(),
+      requestorName: z
+        .string()
+        .max(200, "Requestor name must be 200 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      requestorPhone: z
+        .string()
+        .max(50, "Requestor phone must be 50 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      requestorEmail: z
+        .string()
+        .email("Invalid requestor email")
+        .max(255, "Requestor email must be 255 characters or less")
+        .optional()
+        .or(z.literal("")),
+      poNumber: z
+        .string()
+        .max(100, "PO number must be 100 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+
+      // Event Instructions & Documents
+      preEventInstructions: z
+        .string()
+        .max(10000, "Pre-event instructions must be 10000 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      eventDocuments: z
+        .array(eventDocumentSchema)
+        .max(20, "Maximum 20 event documents allowed")
+        .optional(),
+
+      // Onsite Contact & Meeting Point
+      meetingPoint: z
+        .string()
+        .max(300, "Meeting point must be 300 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      onsitePocName: z
+        .string()
+        .max(200, "POC name must be 200 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      onsitePocPhone: z
+        .string()
+        .max(50, "POC phone must be 50 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      onsitePocEmail: z
+        .string()
+        .email("Invalid POC email")
+        .max(255, "POC email must be 255 characters or less")
+        .optional()
+        .or(z.literal("")),
     })
     .refine(
       (data) => {
@@ -201,9 +265,9 @@ export class EventTemplateSchema {
         .max(5000, "Description must be 5000 characters or less")
         .transform((val) => val?.trim())
         .optional(),
-      dressCode: z
+      requirements: z
         .string()
-        .max(200, "Dress code must be 200 characters or less")
+        .max(200, "Requirements must be 200 characters or less")
         .transform((val) => val?.trim())
         .optional(),
       privateComments: z
@@ -224,11 +288,6 @@ export class EventTemplateSchema {
       address: z
         .string()
         .max(300, "Address must be 300 characters or less")
-        .transform((val) => val?.trim())
-        .optional(),
-      room: z
-        .string()
-        .max(100, "Room/Place must be 100 characters or less")
         .transform((val) => val?.trim())
         .optional(),
       city: z
@@ -296,6 +355,65 @@ export class EventTemplateSchema {
         .max(20, "Maximum 20 file links allowed")
         .optional()
         .nullable(),
+
+      // Request Information
+      requestMethod: z.nativeEnum(RequestMethod).optional().nullable(),
+      requestorName: z
+        .string()
+        .max(200, "Requestor name must be 200 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      requestorPhone: z
+        .string()
+        .max(50, "Requestor phone must be 50 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      requestorEmail: z
+        .string()
+        .email("Invalid requestor email")
+        .max(255, "Requestor email must be 255 characters or less")
+        .optional()
+        .or(z.literal("")),
+      poNumber: z
+        .string()
+        .max(100, "PO number must be 100 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+
+      // Event Instructions & Documents
+      preEventInstructions: z
+        .string()
+        .max(10000, "Pre-event instructions must be 10000 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      eventDocuments: z
+        .array(eventDocumentSchema)
+        .max(20, "Maximum 20 event documents allowed")
+        .optional()
+        .nullable(),
+
+      // Onsite Contact & Meeting Point
+      meetingPoint: z
+        .string()
+        .max(300, "Meeting point must be 300 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      onsitePocName: z
+        .string()
+        .max(200, "POC name must be 200 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      onsitePocPhone: z
+        .string()
+        .max(50, "POC phone must be 50 characters or less")
+        .optional()
+        .transform((val) => val?.trim()),
+      onsitePocEmail: z
+        .string()
+        .email("Invalid POC email")
+        .max(255, "POC email must be 255 characters or less")
+        .optional()
+        .or(z.literal("")),
     })
     .refine(
       (data) => {
@@ -344,3 +462,8 @@ export type EventTemplateIdInput = z.infer<typeof EventTemplateSchema.id>;
  * File link type
  */
 export type FileLink = z.infer<typeof fileLinkSchema>;
+
+/**
+ * Event document type
+ */
+export type EventDocument = z.infer<typeof eventDocumentSchema>;
