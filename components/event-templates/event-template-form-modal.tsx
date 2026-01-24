@@ -21,6 +21,15 @@ import { CloseIcon, PlusIcon, XIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
+import { EventDocumentUpload, type EventDocument } from '@/components/events/event-document-upload';
+import { RequestMethod } from '@prisma/client';
+
+// Request method options
+const REQUEST_METHODS = [
+  { value: 'EMAIL', label: 'Email' },
+  { value: 'TEXT_SMS', label: 'Text/SMS' },
+  { value: 'PHONE_CALL', label: 'Phone Call' },
+] as const;
 
 // Common timezones
 const TIMEZONES = [
@@ -48,6 +57,14 @@ const fileLinkSchema = z.object({
   link: z.string().url("Invalid file link URL"),
 });
 
+// Event document schema
+const eventDocumentSchema = z.object({
+  name: z.string().min(1, "Document name is required"),
+  url: z.string().url("Invalid document URL"),
+  type: z.string().optional(),
+  size: z.number().optional(),
+});
+
 // Form schema - define directly to avoid refinement extension issues
 const formSchema = z.object({
   // Template metadata
@@ -57,16 +74,22 @@ const formSchema = z.object({
   // Event fields to prefill
   title: z.string().max(200).optional().transform((val) => val?.trim()),
   eventDescription: z.string().max(5000).optional().transform((val) => val?.trim()),
-  dressCode: z.string().max(200).optional().transform((val) => val?.trim()),
+  requirements: z.string().max(500).optional().transform((val) => val?.trim()),
   privateComments: z.string().max(5000).optional().transform((val) => val?.trim()),
 
   // Client relationship
   clientId: z.string().uuid().optional().or(z.literal("")),
 
+  // Request Information
+  requestMethod: z.nativeEnum(RequestMethod).optional().nullable(),
+  requestorName: z.string().max(200).optional().transform((val) => val?.trim()),
+  requestorPhone: z.string().max(50).optional().transform((val) => val?.trim()),
+  requestorEmail: z.string().max(255).email("Invalid email").optional().or(z.literal("")),
+  poNumber: z.string().max(100).optional().transform((val) => val?.trim()),
+
   // Venue Information
   venueName: z.string().max(200).optional().transform((val) => val?.trim()),
   address: z.string().max(300).optional().transform((val) => val?.trim()),
-  room: z.string().max(100).optional().transform((val) => val?.trim()),
   city: z.string().max(100).optional().transform((val) => val?.trim()),
   state: z.string().max(50).optional().transform((val) => val?.trim()),
   zipCode: z.string().max(20).optional().transform((val) => val?.trim()),
@@ -74,6 +97,12 @@ const formSchema = z.object({
   // Location Coordinates
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+
+  // Onsite Contact & Meeting Point
+  meetingPoint: z.string().max(300).optional().transform((val) => val?.trim()),
+  onsitePocName: z.string().max(200).optional().transform((val) => val?.trim()),
+  onsitePocPhone: z.string().max(50).optional().transform((val) => val?.trim()),
+  onsitePocEmail: z.string().max(255).email("Invalid email").optional().or(z.literal("")),
 
   // Date and Time
   startDate: z.coerce.date().optional(),
@@ -85,6 +114,12 @@ const formSchema = z.object({
     message: "End time must be in HH:MM format or TBD",
   }).optional(),
   timezone: z.string().optional(),
+
+  // Pre-Event Instructions
+  preEventInstructions: z.string().max(5000).optional().transform((val) => val?.trim()),
+
+  // Event Documents
+  eventDocuments: z.array(eventDocumentSchema).max(20).optional(),
 
   // File Links
   fileLinks: z.array(fileLinkSchema).max(20).optional(),
@@ -103,22 +138,38 @@ interface EventTemplate {
   description?: string | null;
   title?: string | null;
   eventDescription?: string | null;
-  dressCode?: string | null;
+  requirements?: string | null;
   privateComments?: string | null;
   clientId?: string | null;
+  // Request Information
+  requestMethod?: RequestMethod | null;
+  requestorName?: string | null;
+  requestorPhone?: string | null;
+  requestorEmail?: string | null;
+  poNumber?: string | null;
+  // Venue Information
   venueName?: string | null;
   address?: string | null;
-  room?: string | null;
   city?: string | null;
   state?: string | null;
   zipCode?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  // Onsite Contact & Meeting Point
+  meetingPoint?: string | null;
+  onsitePocName?: string | null;
+  onsitePocPhone?: string | null;
+  onsitePocEmail?: string | null;
+  // Date & Time
   startDate?: Date | null;
   startTime?: string | null;
   endDate?: Date | null;
   endTime?: string | null;
   timezone?: string | null;
+  // Event Instructions & Documents
+  preEventInstructions?: string | null;
+  eventDocuments?: EventDocument[] | null;
+  // File Links
   fileLinks?: FileLink[] | null;
 }
 
@@ -157,6 +208,7 @@ export function EventTemplateFormModal({
     reset,
     setError,
     setValue,
+    watch,
     control,
   } = useForm<FormInput, undefined, FormOutput>({
     resolver: zodResolver(formSchema),
@@ -165,20 +217,36 @@ export function EventTemplateFormModal({
       description: '',
       title: '',
       eventDescription: '',
-      dressCode: '',
+      requirements: '',
       privateComments: '',
       clientId: '',
+      // Request Information
+      requestMethod: undefined,
+      requestorName: '',
+      requestorPhone: '',
+      requestorEmail: '',
+      poNumber: '',
+      // Venue Information
       venueName: '',
       address: '',
-      room: '',
       city: '',
       state: '',
       zipCode: '',
+      // Onsite Contact & Meeting Point
+      meetingPoint: '',
+      onsitePocName: '',
+      onsitePocPhone: '',
+      onsitePocEmail: '',
+      // Date & Time
       startDate: undefined,
       startTime: '',
       endDate: undefined,
       endTime: '',
       timezone: '',
+      // Event Instructions & Documents
+      preEventInstructions: '',
+      eventDocuments: [],
+      // File Links
       fileLinks: [],
       startTimeTBD: false,
       endTimeTBD: false,
@@ -193,6 +261,7 @@ export function EventTemplateFormModal({
   useEffect(() => {
     if (template) {
       const fileLinksData = template.fileLinks as FileLink[] | null;
+      const eventDocumentsData = template.eventDocuments as EventDocument[] | null;
 
       // Format dates to YYYY-MM-DD for date inputs
       const formatDateForInput = (date: Date | string | null | undefined) => {
@@ -209,22 +278,38 @@ export function EventTemplateFormModal({
         description: template.description || '',
         title: template.title || '',
         eventDescription: template.eventDescription || '',
-        dressCode: template.dressCode || '',
+        requirements: template.requirements || '',
         privateComments: template.privateComments || '',
         clientId: template.clientId || '',
+        // Request Information
+        requestMethod: template.requestMethod || undefined,
+        requestorName: template.requestorName || '',
+        requestorPhone: template.requestorPhone || '',
+        requestorEmail: template.requestorEmail || '',
+        poNumber: template.poNumber || '',
+        // Venue Information
         venueName: template.venueName || '',
         address: template.address || '',
-        room: template.room || '',
         city: template.city || '',
         state: template.state || '',
         zipCode: template.zipCode || '',
         latitude: template.latitude || undefined,
         longitude: template.longitude || undefined,
+        // Onsite Contact & Meeting Point
+        meetingPoint: template.meetingPoint || '',
+        onsitePocName: template.onsitePocName || '',
+        onsitePocPhone: template.onsitePocPhone || '',
+        onsitePocEmail: template.onsitePocEmail || '',
+        // Date & Time
         startDate: formatDateForInput(template.startDate) as any,
         startTime: template.startTime === 'TBD' ? '' : (template.startTime || ''),
         endDate: formatDateForInput(template.endDate) as any,
         endTime: template.endTime === 'TBD' ? '' : (template.endTime || ''),
         timezone: template.timezone || '',
+        // Event Instructions & Documents
+        preEventInstructions: template.preEventInstructions || '',
+        eventDocuments: eventDocumentsData || [],
+        // File Links
         fileLinks: fileLinksData || [],
         startTimeTBD: template.startTime === 'TBD',
         endTimeTBD: template.endTime === 'TBD',
@@ -237,20 +322,36 @@ export function EventTemplateFormModal({
         description: '',
         title: '',
         eventDescription: '',
-        dressCode: '',
+        requirements: '',
         privateComments: '',
         clientId: '',
+        // Request Information
+        requestMethod: undefined,
+        requestorName: '',
+        requestorPhone: '',
+        requestorEmail: '',
+        poNumber: '',
+        // Venue Information
         venueName: '',
         address: '',
-        room: '',
         city: '',
         state: '',
         zipCode: '',
+        // Onsite Contact & Meeting Point
+        meetingPoint: '',
+        onsitePocName: '',
+        onsitePocPhone: '',
+        onsitePocEmail: '',
+        // Date & Time
         startDate: undefined,
         startTime: '',
         endDate: undefined,
         endTime: '',
         timezone: '',
+        // Event Instructions & Documents
+        preEventInstructions: '',
+        eventDocuments: [],
+        // File Links
         fileLinks: [],
         startTimeTBD: false,
         endTimeTBD: false,
@@ -391,17 +492,103 @@ export function EventTemplateFormModal({
               </div>
 
               <div>
-                <Label htmlFor="dressCode">Dress Code</Label>
-                <Input
-                  id="dressCode"
-                  {...register('dressCode')}
-                  error={!!errors.dressCode}
+                <Label htmlFor="requirements">Requirements</Label>
+                <Textarea
+                  id="requirements"
+                  {...register('requirements')}
                   disabled={isSubmitting}
-                  placeholder="e.g., Business Casual"
+                  rows={2}
+                  placeholder="e.g., Business casual attire, Steel-toed boots required"
                 />
-                {errors.dressCode && (
-                  <p className="text-sm text-destructive mt-1">{errors.dressCode.message}</p>
+                {errors.requirements && (
+                  <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Request Information */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Request Information</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="requestMethod">Request Method</Label>
+                  <Select
+                    id="requestMethod"
+                    {...register('requestMethod')}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select method...</option>
+                    {REQUEST_METHODS.map((method) => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </Select>
+                  {errors.requestMethod && (
+                    <p className="text-sm text-destructive mt-1">{errors.requestMethod.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="poNumber">PO # (Purchase Order)</Label>
+                  <Input
+                    id="poNumber"
+                    {...register('poNumber')}
+                    error={!!errors.poNumber}
+                    disabled={isSubmitting}
+                    placeholder="PO-12345"
+                  />
+                  {errors.poNumber && (
+                    <p className="text-sm text-destructive mt-1">{errors.poNumber.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="requestorName">Requestor Name</Label>
+                  <Input
+                    id="requestorName"
+                    {...register('requestorName')}
+                    error={!!errors.requestorName}
+                    disabled={isSubmitting}
+                    placeholder="John Smith"
+                  />
+                  {errors.requestorName && (
+                    <p className="text-sm text-destructive mt-1">{errors.requestorName.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="requestorPhone">Requestor Phone</Label>
+                  <Input
+                    id="requestorPhone"
+                    {...register('requestorPhone')}
+                    error={!!errors.requestorPhone}
+                    disabled={isSubmitting}
+                    placeholder="(555) 123-4567"
+                  />
+                  {errors.requestorPhone && (
+                    <p className="text-sm text-destructive mt-1">{errors.requestorPhone.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="requestorEmail">Requestor Email</Label>
+                  <Input
+                    id="requestorEmail"
+                    type="email"
+                    {...register('requestorEmail')}
+                    error={!!errors.requestorEmail}
+                    disabled={isSubmitting}
+                    placeholder="john@example.com"
+                  />
+                  {errors.requestorEmail && (
+                    <p className="text-sm text-destructive mt-1">{errors.requestorEmail.message}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -457,20 +644,6 @@ export function EventTemplateFormModal({
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="room">Room/Place</Label>
-                <Input
-                  id="room"
-                  {...register('room')}
-                  error={!!errors.room}
-                  disabled={isSubmitting}
-                  placeholder="Grand Ballroom"
-                />
-                {errors.room && (
-                  <p className="text-sm text-destructive mt-1">{errors.room.message}</p>
-                )}
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="city">City</Label>
@@ -511,6 +684,71 @@ export function EventTemplateFormModal({
                   />
                   {errors.zipCode && (
                     <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Onsite Contact & Meeting Point */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Onsite Contact & Meeting Point</h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="meetingPoint">Meeting Point</Label>
+                <Input
+                  id="meetingPoint"
+                  {...register('meetingPoint')}
+                  error={!!errors.meetingPoint}
+                  disabled={isSubmitting}
+                  placeholder="e.g., Main entrance, Loading dock B"
+                />
+                {errors.meetingPoint && (
+                  <p className="text-sm text-destructive mt-1">{errors.meetingPoint.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="onsitePocName">Onsite POC Name</Label>
+                  <Input
+                    id="onsitePocName"
+                    {...register('onsitePocName')}
+                    error={!!errors.onsitePocName}
+                    disabled={isSubmitting}
+                    placeholder="Jane Doe"
+                  />
+                  {errors.onsitePocName && (
+                    <p className="text-sm text-destructive mt-1">{errors.onsitePocName.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="onsitePocPhone">Onsite POC Phone</Label>
+                  <Input
+                    id="onsitePocPhone"
+                    {...register('onsitePocPhone')}
+                    error={!!errors.onsitePocPhone}
+                    disabled={isSubmitting}
+                    placeholder="(555) 987-6543"
+                  />
+                  {errors.onsitePocPhone && (
+                    <p className="text-sm text-destructive mt-1">{errors.onsitePocPhone.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="onsitePocEmail">Onsite POC Email</Label>
+                  <Input
+                    id="onsitePocEmail"
+                    type="email"
+                    {...register('onsitePocEmail')}
+                    error={!!errors.onsitePocEmail}
+                    disabled={isSubmitting}
+                    placeholder="jane@example.com"
+                  />
+                  {errors.onsitePocEmail && (
+                    <p className="text-sm text-destructive mt-1">{errors.onsitePocEmail.message}</p>
                   )}
                 </div>
               </div>
@@ -629,6 +867,41 @@ export function EventTemplateFormModal({
                   <p className="text-sm text-destructive mt-1">{errors.timezone.message}</p>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Pre-Event Instructions */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Pre-Event Instructions</h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="preEventInstructions">Instructions for Staff</Label>
+                <Textarea
+                  id="preEventInstructions"
+                  {...register('preEventInstructions')}
+                  disabled={isSubmitting}
+                  rows={4}
+                  placeholder="Enter any pre-event instructions, parking details, check-in procedures, etc."
+                />
+                {errors.preEventInstructions && (
+                  <p className="text-sm text-destructive mt-1">{errors.preEventInstructions.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Event Documents */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Event Documents</h3>
+            <div className="space-y-4">
+              <EventDocumentUpload
+                documents={watch('eventDocuments') || []}
+                onChange={(docs) => setValue('eventDocuments', docs)}
+                disabled={isSubmitting}
+              />
+              {errors.eventDocuments && (
+                <p className="text-sm text-destructive mt-1">{errors.eventDocuments.message}</p>
+              )}
             </div>
           </div>
 

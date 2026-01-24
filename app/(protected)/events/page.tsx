@@ -16,7 +16,7 @@ import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, type ComponentProps } from 'react';
-import type { CreateEventInput, UpdateEventInput, FileLink } from '@/lib/schemas/event.schema';
+import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument } from '@/lib/schemas/event.schema';
 import { useEventsFilters, type EventSortBy, type SortOrder } from '@/store/events-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
@@ -84,9 +84,14 @@ function mapEventToFormEvent(event: EventListItem): EventFormData {
     ? (event.fileLinks as FileLink[])
     : null;
 
+  const normalizedEventDocuments: EventDocument[] | null = Array.isArray(event.eventDocuments)
+    ? (event.eventDocuments as EventDocument[])
+    : null;
+
   return {
     ...event,
     fileLinks: normalizedFileLinks,
+    eventDocuments: normalizedEventDocuments,
     dailyDigestMode: event.dailyDigestMode ?? false,
     requireStaff: event.requireStaff ?? false,
   };

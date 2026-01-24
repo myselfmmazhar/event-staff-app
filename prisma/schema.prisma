@@ -173,11 +173,10 @@ model Event {
   eventId         String       @unique
   title           String
   description     String?
-  dressCode       String?
+  requirements    String?
   privateComments String?
   venueName       String
   address         String
-  room            String
   city            String
   state           String
   zipCode         String
@@ -188,6 +187,24 @@ model Event {
   timezone        String
   status          EventStatus  @default(DRAFT)
   fileLinks       Json?
+
+  // Request Information
+  requestMethod      RequestMethod?
+  requestorName      String?        @db.VarChar(200)
+  requestorPhone     String?        @db.VarChar(50)
+  requestorEmail     String?        @db.VarChar(255)
+  poNumber           String?        @db.VarChar(100)
+
+  // Event Instructions & Documents
+  preEventInstructions String?
+  eventDocuments       Json?
+
+  // Onsite Contact & Meeting Point
+  meetingPoint     String?        @db.VarChar(300)
+  onsitePocName    String?        @db.VarChar(200)
+  onsitePocPhone   String?        @db.VarChar(50)
+  onsitePocEmail   String?        @db.VarChar(255)
+
   createdBy       String
   clientId        String?      @db.Uuid
   createdAt       DateTime     @default(now()) @db.Timestamp(6)
@@ -215,13 +232,12 @@ model EventTemplate {
   // Event fields to prefill
   title            String?   @db.VarChar(200)
   eventDescription String?
-  dressCode        String?   @db.VarChar(200)
+  requirements     String?   @db.VarChar(200)
   privateComments  String?
 
   // Venue fields
   venueName        String?   @db.VarChar(200)
   address          String?   @db.VarChar(300)
-  room             String?   @db.VarChar(100)
   city             String?   @db.VarChar(100)
   state            String?   @db.VarChar(50)
   zipCode          String?   @db.VarChar(20)
@@ -237,6 +253,23 @@ model EventTemplate {
 
   // Attachments
   fileLinks        Json?
+
+  // Request Information
+  requestMethod      RequestMethod?
+  requestorName      String?        @db.VarChar(200)
+  requestorPhone     String?        @db.VarChar(50)
+  requestorEmail     String?        @db.VarChar(255)
+  poNumber           String?        @db.VarChar(100)
+
+  // Event Instructions & Documents
+  preEventInstructions String?
+  eventDocuments       Json?
+
+  // Onsite Contact & Meeting Point
+  meetingPoint     String?        @db.VarChar(300)
+  onsitePocName    String?        @db.VarChar(200)
+  onsitePocPhone   String?        @db.VarChar(50)
+  onsitePocEmail   String?        @db.VarChar(255)
 
   // Default client (optional)
   clientId         String?   @db.Uuid
@@ -489,6 +522,12 @@ enum EventStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+enum RequestMethod {
+  EMAIL
+  TEXT_SMS
+  PHONE_CALL
 }
 
 enum NotificationPriority {

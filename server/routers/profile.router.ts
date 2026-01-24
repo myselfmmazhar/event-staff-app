@@ -84,10 +84,9 @@ export const profileRouter = router({
         eventId: true,
         title: true,
         description: true,
-        dressCode: true,
+        requirements: true,
         venueName: true,
         address: true,
-        room: true,
         city: true,
         state: true,
         zipCode: true,
@@ -97,6 +96,13 @@ export const profileRouter = router({
         endTime: true,
         timezone: true,
         status: true,
+        // Client-visible new fields
+        meetingPoint: true,
+        onsitePocName: true,
+        onsitePocPhone: true,
+        onsitePocEmail: true,
+        preEventInstructions: true,
+        eventDocuments: true,
         _count: {
           select: {
             callTimes: true,
@@ -137,10 +143,9 @@ export const profileRouter = router({
           eventId: true,
           title: true,
           description: true,
-          dressCode: true,
+          requirements: true,
           venueName: true,
           address: true,
-          room: true,
           city: true,
           state: true,
           zipCode: true,
@@ -150,6 +155,13 @@ export const profileRouter = router({
           endTime: true,
           timezone: true,
           status: true,
+          // Client-visible new fields
+          meetingPoint: true,
+          onsitePocName: true,
+          onsitePocPhone: true,
+          onsitePocEmail: true,
+          preEventInstructions: true,
+          eventDocuments: true,
           callTimes: {
             select: {
               id: true,
