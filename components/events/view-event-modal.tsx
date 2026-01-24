@@ -105,10 +105,10 @@ export function ViewEventModal({
                   </div>
                 )}
 
-                {event.dressCode && (
+                {event.requirements && (
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Dress Code</p>
-                    <p className="text-sm text-foreground">{event.dressCode}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Requirements</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{event.requirements}</p>
                   </div>
                 )}
               </div>
@@ -127,13 +127,15 @@ export function ViewEventModal({
                   <span className="text-foreground">{event.address}</span>
                 </div>
                 <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
-                  <span className="text-muted-foreground">Room:</span>
-                  <span className="text-foreground">{event.room}</span>
-                </div>
-                <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
                   <span className="text-muted-foreground">Location:</span>
                   <span className="text-foreground">{event.city}, {event.state} {event.zipCode}</span>
                 </div>
+                {event.meetingPoint && (
+                  <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                    <span className="text-muted-foreground">Meeting Point:</span>
+                    <span className="text-foreground">{event.meetingPoint}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -155,6 +157,106 @@ export function ViewEventModal({
                 </div>
               </div>
             </div>
+
+            {/* Request Information Section */}
+            {(event.requestMethod || event.requestorName || event.poNumber) && (
+              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">Request Information</h3>
+                <div className="space-y-2">
+                  {event.requestMethod && (
+                    <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground">Method:</span>
+                      <span className="text-foreground">{event.requestMethod.replace('_', ' ')}</span>
+                    </div>
+                  )}
+                  {event.poNumber && (
+                    <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground">PO Number:</span>
+                      <span className="text-foreground font-mono">{event.poNumber}</span>
+                    </div>
+                  )}
+                  {event.requestorName && (
+                    <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground">Requestor:</span>
+                      <span className="text-foreground">{event.requestorName}</span>
+                    </div>
+                  )}
+                  {event.requestorPhone && (
+                    <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground">Phone:</span>
+                      <span className="text-foreground">{event.requestorPhone}</span>
+                    </div>
+                  )}
+                  {event.requestorEmail && (
+                    <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground">Email:</span>
+                      <span className="text-foreground">{event.requestorEmail}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Onsite Contact Section */}
+            {(event.onsitePocName || event.onsitePocPhone || event.onsitePocEmail) && (
+              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">Onsite Contact (POC)</h3>
+                <div className="space-y-2">
+                  {event.onsitePocName && (
+                    <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground">Name:</span>
+                      <span className="text-foreground">{event.onsitePocName}</span>
+                    </div>
+                  )}
+                  {event.onsitePocPhone && (
+                    <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground">Phone:</span>
+                      <span className="text-foreground">{event.onsitePocPhone}</span>
+                    </div>
+                  )}
+                  {event.onsitePocEmail && (
+                    <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground">Email:</span>
+                      <span className="text-foreground">{event.onsitePocEmail}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Pre-Event Instructions Section */}
+            {event.preEventInstructions && (
+              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">Pre-Event Instructions</h3>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{event.preEventInstructions}</p>
+              </div>
+            )}
+
+            {/* Event Documents Section */}
+            {event.eventDocuments && Array.isArray(event.eventDocuments) && event.eventDocuments.length > 0 && (
+              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">Event Documents</h3>
+                <div className="space-y-2">
+                  {event.eventDocuments.map((doc: any, index: number) => (
+                    <a
+                      key={index}
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      className="flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer"
+                    >
+                      <span className="truncate">{doc.name}</span>
+                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Files Section */}
             {event.fileLinks && Array.isArray(event.fileLinks) && event.fileLinks.length > 0 && (

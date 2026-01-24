@@ -13,6 +13,7 @@ import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import type { CreateEventTemplateInput, UpdateEventTemplateInput } from '@/lib/schemas/event-template.schema';
+import { RequestMethod } from '@prisma/client';
 
 interface EventTemplate {
   id: string;
@@ -20,22 +21,38 @@ interface EventTemplate {
   description: string | null;
   title: string | null;
   eventDescription: string | null;
-  dressCode: string | null;
+  requirements: string | null;
   privateComments: string | null;
   clientId: string | null;
+  // Request Information
+  requestMethod: RequestMethod | null;
+  requestorName: string | null;
+  requestorPhone: string | null;
+  requestorEmail: string | null;
+  poNumber: string | null;
+  // Venue Information
   venueName: string | null;
   address: string | null;
-  room: string | null;
   city: string | null;
   state: string | null;
   zipCode: string | null;
   latitude: number | null;
   longitude: number | null;
+  // Onsite Contact & Meeting Point
+  meetingPoint: string | null;
+  onsitePocName: string | null;
+  onsitePocPhone: string | null;
+  onsitePocEmail: string | null;
+  // Date & Time
   startDate: Date | null;
   startTime: string | null;
   endDate: Date | null;
   endTime: string | null;
   timezone: string | null;
+  // Event Instructions & Documents
+  preEventInstructions: string | null;
+  eventDocuments: any;
+  // File Links
   fileLinks: any;
   createdBy: string;
   createdAt: Date;

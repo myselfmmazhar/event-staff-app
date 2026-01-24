@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Valid bucket names for file uploads
+type BucketName = 'profile-photos' | 'event-documents';
+
+const VALID_BUCKETS: BucketName[] = ['profile-photos', 'event-documents'];
+
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
         const file = formData.get('file') as File;
+        const bucketParam = formData.get('bucket') as string | null;
 
         if (!file) {
             return NextResponse.json(
@@ -11,6 +17,11 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         }
+
+        // Determine which bucket to use (default to profile-photos for backwards compatibility)
+        const bucket: BucketName = bucketParam && VALID_BUCKETS.includes(bucketParam as BucketName)
+            ? (bucketParam as BucketName)
+            : 'profile-photos';
 
         // Check if Supabase is configured
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,7 +42,7 @@ export async function POST(request: NextRequest) {
             const filename = `${uniqueSuffix}-${originalName}`;
 
             const { error: uploadError } = await supabase.storage
-                .from('profile-photos')
+                .from(bucket)
                 .upload(filename, file);
 
             if (uploadError) {
@@ -40,10 +51,15 @@ export async function POST(request: NextRequest) {
             }
 
             const { data: { publicUrl } } = supabase.storage
-                .from('profile-photos')
+                .from(bucket)
                 .getPublicUrl(filename);
 
-            return NextResponse.json({ url: publicUrl });
+            return NextResponse.json({
+                url: publicUrl,
+                name: file.name,
+                type: file.type,
+                size: file.size,
+            });
         }
 
         // No Supabase configured

@@ -13,6 +13,12 @@ import {
     UsersIcon,
     BuildingIcon,
     InfoIcon,
+    ClipboardListIcon,
+    UserIcon,
+    PhoneIcon,
+    MailIcon,
+    FileTextIcon,
+    DownloadIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -164,7 +170,6 @@ export default function ClientEventDetailPage() {
                                 <div>
                                     <p className="text-sm text-muted-foreground">Location</p>
                                     {event.venueName && <p className="font-medium">{event.venueName}</p>}
-                                    {event.room && <p className="text-sm text-muted-foreground">Room: {event.room}</p>}
                                     {event.address && <p className="text-foreground">{event.address}</p>}
                                     {(event.city || event.state || event.zipCode) && (
                                         <p className="text-foreground">
@@ -175,17 +180,114 @@ export default function ClientEventDetailPage() {
                             </div>
                         )}
 
-                        {event.dressCode && (
+                        {event.meetingPoint && (
                             <div className="flex items-start gap-3">
-                                <BuildingIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <MapPinIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                                 <div>
-                                    <p className="text-sm text-muted-foreground">Dress Code</p>
-                                    <p className="font-medium">{event.dressCode}</p>
+                                    <p className="text-sm text-muted-foreground">Meeting Point</p>
+                                    <p className="font-medium">{event.meetingPoint}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {event.requirements && (
+                            <div className="flex items-start gap-3">
+                                <ClipboardListIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Requirements</p>
+                                    <p className="font-medium whitespace-pre-wrap">{event.requirements}</p>
                                 </div>
                             </div>
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Onsite Contact */}
+                {(event.onsitePocName || event.onsitePocPhone || event.onsitePocEmail) && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <UserIcon className="h-5 w-5 text-primary" />
+                                Onsite Contact
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {event.onsitePocName && (
+                                <div className="flex items-center gap-3">
+                                    <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                    <span className="font-medium">{event.onsitePocName}</span>
+                                </div>
+                            )}
+                            {event.onsitePocPhone && (
+                                <div className="flex items-center gap-3">
+                                    <PhoneIcon className="h-4 w-4 text-muted-foreground" />
+                                    <a href={`tel:${event.onsitePocPhone}`} className="text-primary hover:underline">
+                                        {event.onsitePocPhone}
+                                    </a>
+                                </div>
+                            )}
+                            {event.onsitePocEmail && (
+                                <div className="flex items-center gap-3">
+                                    <MailIcon className="h-4 w-4 text-muted-foreground" />
+                                    <a href={`mailto:${event.onsitePocEmail}`} className="text-primary hover:underline">
+                                        {event.onsitePocEmail}
+                                    </a>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Pre-Event Instructions */}
+                {event.preEventInstructions && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <ClipboardListIcon className="h-5 w-5 text-primary" />
+                                Pre-Event Instructions
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-foreground whitespace-pre-wrap">{event.preEventInstructions}</p>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Event Documents */}
+                {event.eventDocuments && Array.isArray(event.eventDocuments) && event.eventDocuments.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileTextIcon className="h-5 w-5 text-primary" />
+                                Event Documents
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {(event.eventDocuments as Array<{ name: string; url: string; type?: string; size?: number }>).map((doc, index) => (
+                                    <a
+                                        key={index}
+                                        href={doc.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                                    >
+                                        <FileTextIcon className="h-5 w-5 text-muted-foreground" />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium truncate">{doc.name}</p>
+                                            {doc.size && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    {(doc.size / 1024).toFixed(1)} KB
+                                                </p>
+                                            )}
+                                        </div>
+                                        <DownloadIcon className="h-4 w-4 text-muted-foreground" />
+                                    </a>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Call Times & Staff */}
                 {event.callTimes && event.callTimes.length > 0 && (
