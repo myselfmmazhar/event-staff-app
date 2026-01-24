@@ -1,12 +1,24 @@
-import { forwardRef, type InputHTMLAttributes } from 'react'
+import { forwardRef, useEffect, useRef, type InputHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
-export interface CheckboxProps extends InputHTMLAttributes<HTMLInputElement> {
+export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   error?: boolean
+  indeterminate?: boolean
 }
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ className, error = false, ...props }, ref) => {
+  ({ className, error = false, indeterminate = false, ...props }, forwardedRef) => {
+    const internalRef = useRef<HTMLInputElement>(null)
+
+    // Handle both forwarded ref and internal ref
+    const ref = forwardedRef || internalRef
+
+    useEffect(() => {
+      if (typeof ref === 'object' && ref?.current) {
+        ref.current.indeterminate = indeterminate
+      }
+    }, [indeterminate, ref])
+
     return (
       <input
         ref={ref}

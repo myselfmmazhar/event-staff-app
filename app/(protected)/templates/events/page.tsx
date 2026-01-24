@@ -1,18 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PlusIcon, SearchIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PlusIcon, SearchIcon, EditIcon, TrashIcon, UploadIcon } from '@/components/ui/icons';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { Pagination } from '@/components/common/pagination';
 import { EventTemplateFormModal } from '@/components/event-templates/event-template-form-modal';
 import { EventTemplateDeleteModal } from '@/components/event-templates/event-template-delete-modal';
+import { EventTemplateExportDropdown } from '@/components/event-templates/event-template-export-dropdown';
+import { EventTemplateImportModal } from '@/components/event-templates/event-template-import-modal';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import type { CreateEventTemplateInput, UpdateEventTemplateInput } from '@/lib/schemas/event-template.schema';
+import type { EventTemplateExport } from '@/lib/utils/event-template-export';
 import { RequestMethod } from '@prisma/client';
 
 interface EventTemplate {
@@ -75,7 +79,11 @@ export default function EventTemplatesPage() {
   // Modal state
   const [formOpen, setFormOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<EventTemplate | null>(null);
+
+  // Row selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Fetch templates
   const { data, isLoading, refetch } = trpc.eventTemplate.getAll.useQuery({
@@ -89,6 +97,47 @@ export default function EventTemplatesPage() {
   const templates = data?.data ?? [];
   const pagination = data?.pagination;
 
+  // Fetch all templates for export (when exporting all)
+  const { data: allTemplatesData, refetch: refetchExport } = trpc.eventTemplate.getAllForExport.useQuery();
+  const allTemplates = allTemplatesData ?? [];
+
+  // Compute selected templates for export
+  const selectedTemplates = useMemo(() => {
+    return allTemplates.filter((t) => selectedIds.has(t.id)) as EventTemplateExport[];
+  }, [allTemplates, selectedIds]);
+
+  // Row selection handlers
+  const allSelected = templates.length > 0 && templates.every((t) => selectedIds.has(t.id));
+  const someSelected = templates.some((t) => selectedIds.has(t.id));
+
+  const toggleAll = () => {
+    if (allSelected) {
+      // Deselect all on current page
+      const newSet = new Set(selectedIds);
+      templates.forEach((t) => newSet.delete(t.id));
+      setSelectedIds(newSet);
+    } else {
+      // Select all on current page
+      const newSet = new Set(selectedIds);
+      templates.forEach((t) => newSet.add(t.id));
+      setSelectedIds(newSet);
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
   // Mutations
   const createMutation = trpc.eventTemplate.create.useMutation({
     ...createMutationOptions('Template created successfully', {
@@ -96,6 +145,7 @@ export default function EventTemplatesPage() {
         setFormOpen(false);
         setSelectedTemplate(null);
         refetch();
+        refetchExport();
       },
     }),
   });
@@ -106,6 +156,7 @@ export default function EventTemplatesPage() {
         setFormOpen(false);
         setSelectedTemplate(null);
         refetch();
+        refetchExport();
       },
     }),
   });
@@ -116,6 +167,7 @@ export default function EventTemplatesPage() {
         setDeleteOpen(false);
         setSelectedTemplate(null);
         refetch();
+        refetchExport();
       },
     })
   );
@@ -169,6 +221,27 @@ export default function EventTemplatesPage() {
 
   // Table columns
   const columns: ColumnDef<EventTemplate>[] = [
+    {
+      key: 'select',
+      label: (
+        <Checkbox
+          checked={allSelected}
+          indeterminate={someSelected && !allSelected}
+          onChange={toggleAll}
+          aria-label="Select all"
+        />
+      ),
+      headerClassName: 'w-10',
+      className: 'w-10',
+      render: (item) => (
+        <Checkbox
+          checked={selectedIds.has(item.id)}
+          onChange={() => toggleOne(item.id)}
+          aria-label={`Select ${item.name}`}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+    },
     {
       key: 'name',
       label: 'Template Name',
@@ -309,11 +382,36 @@ export default function EventTemplatesPage() {
             Manage templates for quick {terminology.event.lower} creation
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          New Template
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <EventTemplateExportDropdown
+            templates={allTemplates as EventTemplateExport[]}
+            selectedTemplates={selectedTemplates}
+            selectedCount={selectedIds.size}
+          />
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <UploadIcon className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+          <Button onClick={handleCreate}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            New Template
+          </Button>
+        </div>
       </div>
+
+      {/* Selection Info */}
+      {selectedIds.size > 0 && (
+        <Card className="p-3 mb-4 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">
+              {selectedIds.size} template{selectedIds.size !== 1 ? 's' : ''} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Clear selection
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Search */}
       <Card className="p-4 mb-6">
@@ -387,6 +485,17 @@ export default function EventTemplatesPage() {
           isDeleting={deleteMutation.isPending}
         />
       )}
+
+      {/* Import Modal */}
+      <EventTemplateImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSuccess={() => {
+          setImportOpen(false);
+          refetch();
+          refetchExport();
+        }}
+      />
     </div>
   );
 }

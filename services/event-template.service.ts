@@ -429,4 +429,172 @@ export class EventTemplateService {
 
     return templates;
   }
+
+  /**
+   * Get all templates for export (no pagination)
+   */
+  async findAllForExport(): Promise<EventTemplateSelect[]> {
+    const templates = await this.prisma.eventTemplate.findMany({
+      select: eventTemplateSelect,
+      orderBy: { name: "asc" },
+    });
+
+    return templates;
+  }
+
+  /**
+   * Find templates by names (case-insensitive) for update matching
+   */
+  async findByNames(names: string[]): Promise<Map<string, { id: string; name: string }>> {
+    const lowerNames = names.map((n) => n.toLowerCase());
+    const templates = await this.prisma.eventTemplate.findMany({
+      where: {
+        name: {
+          in: names,
+          mode: "insensitive",
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const map = new Map<string, { id: string; name: string }>();
+    for (const template of templates) {
+      map.set(template.name.toLowerCase(), template);
+    }
+    return map;
+  }
+
+  /**
+   * Sanitize input data for create/update
+   */
+  private sanitizeData(data: CreateEventTemplateInput) {
+    return {
+      name: data.name.trim(),
+      description: data.description?.trim() || null,
+      title: data.title?.trim() || null,
+      eventDescription: data.eventDescription?.trim() || null,
+      requirements: data.requirements?.trim() || null,
+      privateComments: data.privateComments?.trim() || null,
+      clientId: data.clientId && data.clientId !== "" ? data.clientId : null,
+      venueName: data.venueName?.trim() || null,
+      address: data.address?.trim() || null,
+      city: data.city?.trim() || null,
+      state: data.state?.trim() || null,
+      zipCode: data.zipCode?.trim() || null,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
+      startDate: data.startDate ?? null,
+      startTime: data.startTime || null,
+      endDate: data.endDate ?? null,
+      endTime: data.endTime || null,
+      timezone: data.timezone || null,
+      fileLinks: data.fileLinks
+        ? JSON.parse(JSON.stringify(data.fileLinks))
+        : null,
+      requestMethod: data.requestMethod ?? null,
+      requestorName: data.requestorName?.trim() || null,
+      requestorPhone: data.requestorPhone?.trim() || null,
+      requestorEmail: data.requestorEmail?.trim() || null,
+      poNumber: data.poNumber?.trim() || null,
+      preEventInstructions: data.preEventInstructions?.trim() || null,
+      eventDocuments: data.eventDocuments
+        ? JSON.parse(JSON.stringify(data.eventDocuments))
+        : null,
+      meetingPoint: data.meetingPoint?.trim() || null,
+      onsitePocName: data.onsitePocName?.trim() || null,
+      onsitePocPhone: data.onsitePocPhone?.trim() || null,
+      onsitePocEmail: data.onsitePocEmail?.trim() || null,
+    };
+  }
+
+  /**
+   * Bulk create templates
+   */
+  async createMany(
+    templates: CreateEventTemplateInput[],
+    userId: string
+  ): Promise<{ created: number; errors: { index: number; message: string }[] }> {
+    const results = { created: 0, errors: [] as { index: number; message: string }[] };
+
+    for (let i = 0; i < templates.length; i++) {
+      const template = templates[i]!;
+      try {
+        const sanitizedData = this.sanitizeData(template);
+        await this.prisma.eventTemplate.create({
+          data: {
+            ...sanitizedData,
+            createdBy: userId,
+          },
+        });
+        results.created++;
+      } catch (error) {
+        let message = "Failed to create template";
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          message = `Template "${template.name}" already exists`;
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+        results.errors.push({ index: i, message });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Bulk upsert templates (create or update by name match)
+   */
+  async upsertMany(
+    templates: CreateEventTemplateInput[],
+    userId: string
+  ): Promise<{ created: number; updated: number; errors: { index: number; message: string }[] }> {
+    const results = {
+      created: 0,
+      updated: 0,
+      errors: [] as { index: number; message: string }[],
+    };
+
+    // Find existing templates by name
+    const existingByName = await this.findByNames(templates.map((t) => t.name));
+
+    for (let i = 0; i < templates.length; i++) {
+      const template = templates[i]!;
+      try {
+        const sanitizedData = this.sanitizeData(template);
+        const existing = existingByName.get(template.name.toLowerCase());
+
+        if (existing) {
+          // Update existing template
+          await this.prisma.eventTemplate.update({
+            where: { id: existing.id },
+            data: sanitizedData,
+          });
+          results.updated++;
+        } else {
+          // Create new template
+          await this.prisma.eventTemplate.create({
+            data: {
+              ...sanitizedData,
+              createdBy: userId,
+            },
+          });
+          results.created++;
+        }
+      } catch (error) {
+        let message = "Failed to process template";
+        if (error instanceof Error) {
+          message = error.message;
+        }
+        results.errors.push({ index: i, message });
+      }
+    }
+
+    return results;
+  }
 }
