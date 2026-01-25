@@ -406,16 +406,51 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters (with Status Tabs) */}
       <Card className="p-6">
-        <div className="relative z-10 space-y-4">
-          <EventSearch
-            value={filters.search}
-            onChange={filters.setSearch}
-            placeholder={eventsLabels.searchPlaceholder}
-          />
-          <EventFilters />
-          <ActiveFilters filters={activeFilters} />
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 items-start">
+          {/* Status Tabs */}
+          <div>
+            <div className="text-sm font-medium text-foreground">{eventsLabels.filters.status}</div>
+            <div className="mt-3 flex gap-2 overflow-x-auto lg:overflow-visible lg:flex-col">
+              <Button
+                variant={filters.selectedStatus === 'ALL' ? 'default' : 'ghost'}
+                size="sm"
+                className="justify-start whitespace-nowrap lg:w-full"
+                onClick={() => {
+                  filters.setSelectedStatus('ALL');
+                  clearSelection();
+                }}
+              >
+                All
+              </Button>
+              {(Object.values(EventStatus) as EventStatus[]).map((status) => (
+                <Button
+                  key={status}
+                  variant={filters.selectedStatus === status ? 'default' : 'ghost'}
+                  size="sm"
+                  className="justify-start whitespace-nowrap lg:w-full"
+                  onClick={() => {
+                    filters.setSelectedStatus(status);
+                    clearSelection();
+                  }}
+                >
+                  {STATUS_LABELS[status]}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Search + other filters */}
+          <div className="space-y-4">
+            <EventSearch
+              value={filters.search}
+              onChange={filters.setSearch}
+              placeholder={eventsLabels.searchPlaceholder}
+            />
+            <EventFilters />
+            <ActiveFilters filters={activeFilters} />
+          </div>
         </div>
       </Card>
 
@@ -470,23 +505,23 @@ export default function EventsPage() {
               onSort={handleSort}
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
-          />
+            />
 
-          {/* Pagination */}
-          {data && data.meta.total > 0 && (
-            <div className="mt-6">
-              <Pagination
-                currentPage={filters.page}
-                totalPages={totalPages}
-                totalItems={data.meta.total}
-                itemsPerPage={filters.limit}
-                onPageChange={filters.setPage}
-                onItemsPerPageChange={filters.setLimit}
-              />
-            </div>
-          )}
-        </div>
-      </Card>
+            {/* Pagination */}
+            {data && data.meta.total > 0 && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={filters.page}
+                  totalPages={totalPages}
+                  totalItems={data.meta.total}
+                  itemsPerPage={filters.limit}
+                  onPageChange={filters.setPage}
+                  onItemsPerPageChange={filters.setLimit}
+                />
+              </div>
+            )}
+          </div>
+        </Card>
       )}
 
       {/* Events Map View */}
