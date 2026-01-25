@@ -1,6 +1,7 @@
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 import { z } from "zod";
 import { ClientSchema } from "@/lib/schemas/client.schema";
+import { clientBulkImportSchema } from "@/lib/schemas/client-import.schema";
 import { emailService } from "@/services/email.service";
 
 /**
@@ -156,5 +157,37 @@ export const clientRouter = router({
   getStats: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.clientService.getStats();
   }),
-});
 
+  /**
+   * Get all clients for export (no pagination)
+   * Returns all clients owned by the user with exportable fields only
+   */
+  getAllForExport: protectedProcedure.query(async ({ ctx }) => {
+    return await ctx.clientService.findAllForExport(ctx.userId!);
+  }),
+
+  /**
+   * Bulk import clients
+   * Supports create-only or upsert modes
+   * Clients are created with createdBy = authenticated user
+   * In upsert mode, email is used to match existing clients for update
+   */
+  bulkImport: protectedProcedure
+    .input(clientBulkImportSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Transform null values to undefined for service compatibility
+      const transformedClients = input.clients.map((client) => {
+        const transformed: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(client)) {
+          transformed[key] = value === null ? undefined : value;
+        }
+        return transformed;
+      });
+
+      if (input.mode === "upsert") {
+        return await ctx.clientService.upsertMany(transformedClients as Parameters<typeof ctx.clientService.upsertMany>[0], ctx.userId!);
+      } else {
+        return await ctx.clientService.createMany(transformedClients as Parameters<typeof ctx.clientService.createMany>[0], ctx.userId!);
+      }
+    }),
+});

@@ -742,4 +742,126 @@ export class ClientService {
       withoutLoginAccess: total - withLoginAccess,
     };
   }
+
+  /**
+   * Get all clients for export (no pagination)
+   * Excludes security-sensitive fields like hasLoginAccess, userId, invitationToken
+   */
+  async findAllForExport(userId: string) {
+    const clients = await this.prisma.client.findMany({
+      where: { createdBy: userId },
+      select: {
+        id: true,
+        clientId: true,
+        businessName: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        cellPhone: true,
+        businessPhone: true,
+        details: true,
+        businessAddress: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        ccEmail: true,
+        billingFirstName: true,
+        billingLastName: true,
+        billingEmail: true,
+        billingPhone: true,
+        createdAt: true,
+      },
+      orderBy: { businessName: 'asc' },
+    });
+
+    return clients;
+  }
+
+  /**
+   * Bulk create clients (create-only mode)
+   * Each client gets a unique clientId auto-generated
+   */
+  async createMany(
+    clients: Array<Partial<CreateClientInput> & Pick<CreateClientInput, 'businessName' | 'firstName' | 'lastName' | 'email' | 'cellPhone' | 'city' | 'state' | 'zipCode'>>,
+    userId: string
+  ): Promise<{ created: number; errors: { index: number; message: string }[] }> {
+    const results = { created: 0, errors: [] as { index: number; message: string }[] };
+
+    for (let i = 0; i < clients.length; i++) {
+      const clientData = clients[i]!;
+      try {
+        await this.create(clientData as CreateClientInput, userId);
+        results.created++;
+      } catch (error) {
+        results.errors.push({
+          index: i,
+          message: error instanceof Error ? error.message : 'Failed to create client',
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Bulk upsert clients (create or update by email match)
+   * If email matches an existing client owned by the user, updates it.
+   * Otherwise, creates a new client.
+   */
+  async upsertMany(
+    clients: Array<Partial<CreateClientInput> & Pick<CreateClientInput, 'businessName' | 'firstName' | 'lastName' | 'email' | 'cellPhone' | 'city' | 'state' | 'zipCode'>>,
+    userId: string
+  ): Promise<{ created: number; updated: number; errors: { index: number; message: string }[] }> {
+    const results = { created: 0, updated: 0, errors: [] as { index: number; message: string }[] };
+
+    // Collect all emails from import data
+    const importEmails = clients
+      .map((c) => c.email.toLowerCase())
+      .filter((email): email is string => !!email);
+
+    // Build a map of existing clients by email
+    const existingClients = importEmails.length > 0
+      ? await this.prisma.client.findMany({
+          where: {
+            createdBy: userId,
+            email: { in: importEmails, mode: 'insensitive' },
+          },
+          select: {
+            id: true,
+            email: true,
+          },
+        })
+      : [];
+
+    // Map email -> database id
+    const existingMap = new Map<string, string>();
+    for (const client of existingClients) {
+      existingMap.set(client.email.toLowerCase(), client.id);
+    }
+
+    for (let i = 0; i < clients.length; i++) {
+      const clientData = clients[i]!;
+      try {
+        // Check if this client's email matches an existing client
+        const existingId = existingMap.get(clientData.email.toLowerCase());
+
+        if (existingId) {
+          // Update existing client (don't touch hasLoginAccess)
+          await this.update(existingId, clientData);
+          results.updated++;
+        } else {
+          // Create new client
+          await this.create(clientData as CreateClientInput, userId);
+          results.created++;
+        }
+      } catch (error) {
+        results.errors.push({
+          index: i,
+          message: error instanceof Error ? error.message : 'Failed to process client',
+        });
+      }
+    }
+
+    return results;
+  }
 }

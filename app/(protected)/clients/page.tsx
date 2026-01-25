@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlusIcon } from '@/components/ui/icons';
+import { PlusIcon, UploadIcon } from '@/components/ui/icons';
 import { ClientFormModal, type CreateClientInputWithLocations } from '@/components/clients/client-form-modal';
 import { ClientTable } from '@/components/clients/client-table';
 import { ClientSearch } from '@/components/clients/client-search';
@@ -10,6 +10,8 @@ import { ClientFilters } from '@/components/clients/client-filters';
 import { ViewClientModal } from '@/components/clients/view-client-modal';
 import { DeleteClientModal } from '@/components/clients/delete-client-modal';
 import { TemporaryPasswordModal } from '@/components/clients/temporary-password-modal';
+import { ClientExportDropdown } from '@/components/clients/client-export-dropdown';
+import { ClientImportModal } from '@/components/clients/client-import-modal';
 import { Pagination } from '@/components/common/pagination';
 import { ActiveFilters } from '@/components/common/active-filters';
 import { PageLabelsModal } from '@/components/common/page-labels-modal';
@@ -18,11 +20,12 @@ import type { Client } from '@/lib/types/client';
 import type { CreateClientInput, UpdateClientInput } from '@/lib/schemas/client.schema';
 import { handleClientMutationError } from '@/lib/utils/client-error-handler';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, type ComponentProps } from 'react';
+import { useState, useEffect, useMemo, type ComponentProps } from 'react';
 import { useClientsFilters, type ClientLoginAccess, type ClientSortBy, type SortOrder } from '@/store/clients-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import { useClientsPageLabels } from '@/lib/hooks/use-labels';
+import type { ClientExport } from '@/lib/utils/client-export';
 
 type ClientTableData = ComponentProps<typeof ClientTable>['clients'][number];
 
@@ -68,6 +71,12 @@ export default function ClientsPage() {
     delete: false,
     tempPassword: false,
   });
+
+  // Import modal state
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
+  // Row selection for export
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Client and form state
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -124,6 +133,16 @@ export default function ClientsPage() {
   });
   const clients = data?.data ?? [];
 
+  // Fetch all clients for export (no pagination)
+  const { data: allClientsData, refetch: refetchExport } = trpc.clients.getAllForExport.useQuery();
+  const allClients = allClientsData ?? [];
+
+  const selectedClients = useMemo(() => {
+    return allClients.filter((c) => selectedIds.has(c.id)) as ClientExport[];
+  }, [allClients, selectedIds]);
+
+  const clearSelection = () => setSelectedIds(new Set());
+
   // tRPC mutations with standardized error handling
   const createMutation = trpc.clients.create.useMutation({
     ...createMutationOptions('Client created successfully', {}),
@@ -147,6 +166,7 @@ export default function ClientsPage() {
         setModals((prev) => ({ ...prev, form: false, view: false }));
         setSelectedClient(null);
         refetch();
+        refetchExport();
       },
     }),
     onError: (error) => {
@@ -160,6 +180,7 @@ export default function ClientsPage() {
         setModals((prev) => ({ ...prev, delete: false }));
         setSelectedClient(null);
         refetch();
+        refetchExport();
       },
     })
   );
@@ -237,6 +258,7 @@ export default function ClientsPage() {
           }
           setModals((prev) => ({ ...prev, form: false }));
           refetch();
+          refetchExport();
         },
       });
     }
@@ -339,6 +361,15 @@ export default function ClientsPage() {
             ]}
             buttonVariant="outline"
           />
+          <ClientExportDropdown
+            clients={allClients as ClientExport[]}
+            selectedClients={selectedClients}
+            selectedCount={selectedIds.size}
+          />
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <UploadIcon className="h-4 w-4 mr-2" />
+            Import
+          </Button>
           <Button onClick={handleCreate}>
             <PlusIcon className="h-5 w-5 mr-2" />
             {clientsLabels.addButton}
@@ -359,6 +390,20 @@ export default function ClientsPage() {
         </div>
       </Card>
 
+      {/* Selection Info */}
+      {selectedIds.size > 0 && (
+        <Card className="p-3 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">
+              {selectedIds.size} client{selectedIds.size !== 1 ? 's' : ''} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Clear selection
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Table */}
       <Card className="p-6">
         <div className="relative z-10">
@@ -371,6 +416,8 @@ export default function ClientsPage() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onSort={handleSort}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
           />
 
           {/* Pagination */}
@@ -437,6 +484,16 @@ export default function ClientsPage() {
           setModals((prev) => ({ ...prev, tempPassword: false }));
           setTempPassword(null);
           setSelectedClient(null);
+        }}
+      />
+
+      <ClientImportModal
+        open={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onSuccess={() => {
+          setIsImportOpen(false);
+          refetch();
+          refetchExport();
         }}
       />
     </div>

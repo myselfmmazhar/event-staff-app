@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { EditIcon, TrashIcon, EyeIcon } from '@/components/ui/icons';
 import type { ClientTableRow } from '@/lib/types/client';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
@@ -16,6 +17,9 @@ interface ClientTableProps {
   onSort: (column: string) => void;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  // Optional selection props (used for export selected)
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
 export function ClientTable({
@@ -27,6 +31,8 @@ export function ClientTable({
   onSort,
   sortBy,
   sortOrder,
+  selectedIds,
+  onSelectionChange,
 }: ClientTableProps) {
   // Get column labels from saved configuration
   const columnLabels = useColumnLabels('clients', {
@@ -40,7 +46,61 @@ export function ClientTable({
     actions: 'Actions',
   });
 
+  // Selection handlers
+  const allSelected =
+    selectedIds && clients.length > 0 && clients.every((c) => selectedIds.has(c.id));
+  const someSelected = selectedIds && clients.some((c) => selectedIds.has(c.id));
+
+  const toggleAll = () => {
+    if (!onSelectionChange || !selectedIds) return;
+    if (allSelected) {
+      const newSet = new Set(selectedIds);
+      clients.forEach((c) => newSet.delete(c.id));
+      onSelectionChange(newSet);
+    } else {
+      const newSet = new Set(selectedIds);
+      clients.forEach((c) => newSet.add(c.id));
+      onSelectionChange(newSet);
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    if (!onSelectionChange || !selectedIds) return;
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    onSelectionChange(newSet);
+  };
+
   const columns: ColumnDef<ClientTableRow>[] = [
+    ...(selectedIds && onSelectionChange
+      ? [
+          {
+            key: 'select' as const,
+            label: (
+              <Checkbox
+                checked={allSelected}
+                indeterminate={someSelected && !allSelected}
+                onChange={toggleAll}
+                aria-label="Select all"
+              />
+            ),
+            headerClassName: 'w-10',
+            className: 'w-10',
+            render: (client: ClientTableRow) => (
+              <Checkbox
+                checked={selectedIds.has(client.id)}
+                onChange={() => toggleOne(client.id)}
+                aria-label={`Select ${client.businessName}`}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       key: 'clientId',
       label: columnLabels.clientId,
