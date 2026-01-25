@@ -191,6 +191,25 @@ export type EventSelect = Prisma.EventGetPayload<{
         email: true;
       };
     };
+    callTimes: {
+      select: {
+        id: true;
+        numberOfStaffRequired: true;
+        position: {
+          select: {
+            id: true;
+            name: true;
+          };
+        };
+        invitations: {
+          select: {
+            id: true;
+            status: true;
+            isConfirmed: true;
+          };
+        };
+      };
+    };
   };
 }>;
 

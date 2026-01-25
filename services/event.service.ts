@@ -245,6 +245,25 @@ export class EventService {
               email: true,
             },
           },
+          callTimes: {
+            select: {
+              id: true,
+              numberOfStaffRequired: true,
+              position: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              invitations: {
+                select: {
+                  id: true,
+                  status: true,
+                  isConfirmed: true,
+                },
+              },
+            },
+          },
           venueName: true,
           address: true,
           city: true,
