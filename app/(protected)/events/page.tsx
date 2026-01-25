@@ -2,9 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlusIcon } from '@/components/ui/icons';
+import { PlusIcon, UploadIcon } from '@/components/ui/icons';
 import { DeleteEventModal } from '@/components/events/delete-event-modal';
 import { ViewEventModal } from '@/components/events/view-event-modal';
+import { EventExportDropdown } from '@/components/events/event-export-dropdown';
+import { EventImportModal } from '@/components/events/event-import-modal';
 import { Pagination } from '@/components/common/pagination';
 import { ActiveFilters } from '@/components/common/active-filters';
 import { EventFilters } from '@/components/events/event-filters';
@@ -15,7 +17,7 @@ import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, type ComponentProps } from 'react';
+import { useState, useEffect, useMemo, type ComponentProps } from 'react';
 import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument } from '@/lib/schemas/event.schema';
 import { useEventsFilters, type EventSortBy, type SortOrder } from '@/store/events-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
@@ -26,6 +28,7 @@ import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
 import { EventsMapView } from '@/components/events/events-map-view';
 import { Map, TableIcon } from 'lucide-react';
+import type { EventExport } from '@/lib/utils/event-export';
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type EventsQueryOutput = RouterOutputs['event']['getAll'];
@@ -118,6 +121,12 @@ export default function EventsPage() {
   // View toggle state (table or map)
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
 
+  // Import modal state
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
+  // Row selection for export
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   // Initialize store from URL params on mount
   useEffect(() => {
     const page = parseNumberParam(searchParams.get('page'), 1);
@@ -165,6 +174,18 @@ export default function EventsPage() {
   });
   const events = data?.data ?? [];
 
+  // Fetch all events for export
+  const { data: allEventsData, refetch: refetchExport } = trpc.event.getAllForExport.useQuery();
+  const allEvents = allEventsData ?? [];
+
+  // Compute selected events for export
+  const selectedEvents = useMemo(() => {
+    return allEvents.filter((e) => selectedIds.has(e.id)) as EventExport[];
+  }, [allEvents, selectedIds]);
+
+  // Row selection handlers
+  const clearSelection = () => setSelectedIds(new Set());
+
   // tRPC mutations with standardized error handling
   const createMutation = trpc.event.create.useMutation(
     createMutationOptions(`${terminology.event.singular} created successfully`, {
@@ -175,6 +196,7 @@ export default function EventsPage() {
         filters.setSearch('');
         filters.setPage(1);
         refetch();
+        refetchExport();
       },
     })
   );
@@ -185,6 +207,7 @@ export default function EventsPage() {
         setIsFormOpen(false);
         setSelectedEvent(null);
         refetch();
+        refetchExport();
       },
     })
   );
@@ -195,6 +218,7 @@ export default function EventsPage() {
         setIsDeleteOpen(false);
         setSelectedEvent(null);
         refetch();
+        refetchExport();
       },
     })
   );
@@ -365,6 +389,15 @@ export default function EventsPage() {
             ]}
             buttonVariant="outline"
           />
+          <EventExportDropdown
+            events={allEvents as EventExport[]}
+            selectedEvents={selectedEvents}
+            selectedCount={selectedIds.size}
+          />
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <UploadIcon className="h-4 w-4 mr-2" />
+            Import
+          </Button>
           <Button onClick={handleCreateEvent}>
             <PlusIcon className="h-5 w-5 mr-2" />
             {eventsLabels.addButton}
@@ -384,6 +417,20 @@ export default function EventsPage() {
           <ActiveFilters filters={activeFilters} />
         </div>
       </Card>
+
+      {/* Selection Info */}
+      {selectedIds.size > 0 && (
+        <Card className="p-3 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">
+              {selectedIds.size} {terminology.event.lower}{selectedIds.size !== 1 ? 's' : ''} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Clear selection
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* View Mode Toggle */}
       <div className="flex justify-end gap-2 mb-4">
@@ -420,6 +467,8 @@ export default function EventsPage() {
               onEdit={handleEditEventFromTable}
               onDelete={handleDeleteEventFromTable}
               onSort={handleSort}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
           />
 
           {/* Pagination */}
@@ -495,6 +544,17 @@ export default function EventsPage() {
         }}
         onConfirm={handleDeleteConfirm}
         isDeleting={deleteMutation.isPending}
+      />
+
+      {/* Import Modal */}
+      <EventImportModal
+        open={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onSuccess={() => {
+          setIsImportOpen(false);
+          refetch();
+          refetchExport();
+        }}
       />
     </div>
   );

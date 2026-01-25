@@ -1,7 +1,7 @@
 import { router, protectedProcedure } from "../trpc";
 import { EventService } from "@/services/event.service";
 import { EventSchema } from "@/lib/schemas/event.schema";
-import { EventStatus } from "@prisma/client";
+import { EventStatus, RequestMethod } from "@prisma/client";
 import { z } from "zod";
 
 /**
@@ -264,5 +264,85 @@ export const eventRouter = router({
       });
 
       return events;
+    }),
+
+  /**
+   * Get all events for export (no pagination)
+   * Returns all events owned by the user
+   * Requires: Authentication
+   */
+  getAllForExport: protectedProcedure.query(async ({ ctx }) => {
+    const eventService = new EventService(ctx.prisma);
+    return await eventService.findAllForExport(ctx.userId!);
+  }),
+
+  /**
+   * Bulk import events
+   * Supports create-only or upsert modes
+   * Events are created with createdBy = authenticated user
+   * In upsert mode, eventId is used to match existing events for update
+   * Requires: Authentication
+   */
+  bulkImport: protectedProcedure
+    .input(
+      z.object({
+        events: z.array(
+          z.object({
+            // For upsert matching - optional eventId to match existing events
+            eventId: z.string().max(50).optional().nullable(),
+            // Required fields
+            title: z.string().min(1).max(200),
+            venueName: z.string().min(1).max(200),
+            address: z.string().min(1).max(300),
+            city: z.string().min(1).max(100),
+            state: z.string().min(1).max(50),
+            zipCode: z.string().min(1).max(20),
+            startDate: z.coerce.date(),
+            endDate: z.coerce.date(),
+            timezone: z.string().min(1).max(50),
+            // Optional fields
+            description: z.string().max(5000).optional(),
+            requirements: z.string().max(200).optional(),
+            privateComments: z.string().max(5000).optional(),
+            status: z.nativeEnum(EventStatus).optional().default("DRAFT"),
+            clientId: z.string().uuid().optional().nullable(),
+            latitude: z.number().optional().nullable(),
+            longitude: z.number().optional().nullable(),
+            startTime: z.string().optional().nullable(),
+            endTime: z.string().optional().nullable(),
+            requestMethod: z.nativeEnum(RequestMethod).optional().nullable(),
+            requestorName: z.string().max(200).optional().nullable(),
+            requestorPhone: z.string().max(50).optional().nullable(),
+            requestorEmail: z.string().max(255).optional().nullable(),
+            poNumber: z.string().max(100).optional().nullable(),
+            preEventInstructions: z.string().max(10000).optional().nullable(),
+            meetingPoint: z.string().max(300).optional().nullable(),
+            onsitePocName: z.string().max(200).optional().nullable(),
+            onsitePocPhone: z.string().max(50).optional().nullable(),
+            onsitePocEmail: z.string().max(255).optional().nullable(),
+            fileLinks: z.array(z.object({ name: z.string(), link: z.string() })).optional().nullable(),
+            eventDocuments: z.array(z.object({ name: z.string(), url: z.string(), type: z.string().optional(), size: z.number().optional() })).optional().nullable(),
+          })
+        ),
+        mode: z.enum(["create", "upsert"]).default("create"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+
+      // Transform null values to undefined for service compatibility
+      const transformedEvents = input.events.map((event) => {
+        const transformed: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(event)) {
+          transformed[key] = value === null ? undefined : value;
+        }
+        return transformed;
+      });
+
+      if (input.mode === "upsert") {
+        return await eventService.upsertMany(transformedEvents as Parameters<typeof eventService.upsertMany>[0], ctx.userId!);
+      } else {
+        return await eventService.createMany(transformedEvents as Parameters<typeof eventService.createMany>[0], ctx.userId!);
+      }
     }),
 });

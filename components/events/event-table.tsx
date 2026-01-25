@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { EyeIcon, EditIcon, TrashIcon, UsersIcon } from '@/components/ui/icons';
 import { EventStatus } from '@prisma/client';
 import { useRouter } from 'next/navigation';
@@ -42,6 +43,9 @@ interface EventTableProps {
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onSort: (field: SortableField) => void;
+  // Optional selection props
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
 export function EventTable({
@@ -53,6 +57,8 @@ export function EventTable({
   onEdit,
   onDelete,
   onSort,
+  selectedIds,
+  onSelectionChange,
 }: EventTableProps) {
   const router = useRouter();
   const { terminology } = useTerminology();
@@ -68,7 +74,59 @@ export function EventTable({
     actions: 'Actions',
   });
 
+  // Selection handlers
+  const allSelected = selectedIds && events.length > 0 && events.every((e) => selectedIds.has(e.id));
+  const someSelected = selectedIds && events.some((e) => selectedIds.has(e.id));
+
+  const toggleAll = () => {
+    if (!onSelectionChange || !selectedIds) return;
+    if (allSelected) {
+      // Deselect all on current page
+      const newSet = new Set(selectedIds);
+      events.forEach((e) => newSet.delete(e.id));
+      onSelectionChange(newSet);
+    } else {
+      // Select all on current page
+      const newSet = new Set(selectedIds);
+      events.forEach((e) => newSet.add(e.id));
+      onSelectionChange(newSet);
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    if (!onSelectionChange || !selectedIds) return;
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    onSelectionChange(newSet);
+  };
+
   const columns: ColumnDef<Event>[] = [
+    // Selection column (only if selection is enabled)
+    ...(selectedIds && onSelectionChange ? [{
+      key: 'select' as const,
+      label: (
+        <Checkbox
+          checked={allSelected}
+          indeterminate={someSelected && !allSelected}
+          onChange={toggleAll}
+          aria-label="Select all"
+        />
+      ),
+      headerClassName: 'w-10',
+      className: 'w-10',
+      render: (event: Event) => (
+        <Checkbox
+          checked={selectedIds.has(event.id)}
+          onChange={() => toggleOne(event.id)}
+          aria-label={`Select ${event.title}`}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        />
+      ),
+    }] : []),
     {
       key: 'eventId',
       label: columnLabels.eventId,

@@ -691,4 +691,148 @@ export class EventService {
 
     return events;
   }
+
+  /**
+   * Get all events for export (no pagination)
+   * Returns all events owned by the user
+   */
+  async findAllForExport(userId: string) {
+    const events = await this.prisma.event.findMany({
+      where: { createdBy: userId },
+      select: {
+        id: true,
+        eventId: true,
+        title: true,
+        description: true,
+        requirements: true,
+        privateComments: true,
+        status: true,
+        clientId: true,
+        client: {
+          select: {
+            businessName: true,
+          },
+        },
+        venueName: true,
+        address: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        latitude: true,
+        longitude: true,
+        startDate: true,
+        startTime: true,
+        endDate: true,
+        endTime: true,
+        timezone: true,
+        requestMethod: true,
+        requestorName: true,
+        requestorPhone: true,
+        requestorEmail: true,
+        poNumber: true,
+        preEventInstructions: true,
+        meetingPoint: true,
+        onsitePocName: true,
+        onsitePocPhone: true,
+        onsitePocEmail: true,
+        fileLinks: true,
+        eventDocuments: true,
+        createdAt: true,
+      },
+      orderBy: { startDate: 'desc' },
+    });
+
+    return events;
+  }
+
+  /**
+   * Bulk create events (create-only mode)
+   * Each event gets a unique eventId auto-generated
+   */
+  async createMany(
+    events: Array<Partial<CreateEventInput> & Pick<CreateEventInput, 'title' | 'venueName' | 'address' | 'city' | 'state' | 'zipCode' | 'startDate' | 'endDate' | 'timezone'>>,
+    userId: string
+  ): Promise<{ created: number; errors: { index: number; message: string }[] }> {
+    const results = { created: 0, errors: [] as { index: number; message: string }[] };
+
+    for (let i = 0; i < events.length; i++) {
+      const eventData = events[i]!;
+      try {
+        await this.create(eventData as CreateEventInput, userId);
+        results.created++;
+      } catch (error) {
+        results.errors.push({
+          index: i,
+          message: error instanceof Error ? error.message : 'Failed to create event',
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Bulk upsert events (create or update by eventId match)
+   * If eventId is provided and matches an existing event, updates it.
+   * Otherwise, creates a new event.
+   */
+  async upsertMany(
+    events: Array<Partial<CreateEventInput> & Pick<CreateEventInput, 'title' | 'venueName' | 'address' | 'city' | 'state' | 'zipCode' | 'startDate' | 'endDate' | 'timezone'> & { eventId?: string | null }>,
+    userId: string
+  ): Promise<{ created: number; updated: number; errors: { index: number; message: string }[] }> {
+    const results = { created: 0, updated: 0, errors: [] as { index: number; message: string }[] };
+
+    // Collect all eventIds from import data
+    const importEventIds = events
+      .map((e) => e.eventId)
+      .filter((id): id is string => !!id);
+
+    // Build a map of existing events by eventId
+    const existingEvents = importEventIds.length > 0
+      ? await this.prisma.event.findMany({
+          where: {
+            createdBy: userId,
+            eventId: { in: importEventIds },
+          },
+          select: {
+            id: true,
+            eventId: true,
+          },
+        })
+      : [];
+
+    // Map eventId -> database id
+    const existingMap = new Map<string, string>();
+    for (const event of existingEvents) {
+      existingMap.set(event.eventId, event.id);
+    }
+
+    for (let i = 0; i < events.length; i++) {
+      const eventData = events[i]!;
+      try {
+        // Check if this event has an eventId that matches an existing event
+        const existingId = eventData.eventId ? existingMap.get(eventData.eventId) : undefined;
+
+        // Remove eventId from data before create/update (it's auto-generated)
+        const { eventId: _, ...dataWithoutEventId } = eventData;
+
+        if (existingId) {
+          // Update existing event
+          await this.update(existingId, dataWithoutEventId as CreateEventInput, userId);
+          results.updated++;
+        } else {
+          // Create new event
+          await this.create(dataWithoutEventId as CreateEventInput, userId);
+          results.created++;
+        }
+      } catch (error) {
+        results.errors.push({
+          index: i,
+          message: error instanceof Error ? error.message : 'Failed to process event',
+        });
+      }
+    }
+
+    return results;
+  }
 }
