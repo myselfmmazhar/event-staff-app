@@ -93,3 +93,41 @@ export function formatDollar(amount: DecimalValue): string {
   const numericAmount = normalizeDecimal(amount);
   return `$${numericAmount.toFixed(2)}`;
 }
+
+/**
+ * Safely convert a nullable decimal value to a number
+ * Returns null if the value is null, undefined, or not a valid number
+ * @param value - The decimal value (can be null/undefined)
+ * @returns The numeric value or null
+ */
+export function decimalToNumber(value: DecimalValue | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  if (typeof value === 'object' && 'toNumber' in value) {
+    try {
+      const parsed = value.toNumber();
+      return Number.isFinite(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Format a nullable dollar amount
+ * @param amount - The amount (can be null/undefined)
+ * @param placeholder - What to show when null (default: '-')
+ * @returns Formatted string (e.g., "$25.00") or placeholder
+ */
+export function formatDollarOrPlaceholder(
+  amount: DecimalValue | null | undefined,
+  placeholder = '-'
+): string {
+  const numericAmount = decimalToNumber(amount);
+  return numericAmount === null ? placeholder : `$${numericAmount.toFixed(2)}`;
+}

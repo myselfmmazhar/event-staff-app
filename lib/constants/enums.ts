@@ -4,6 +4,8 @@ import {
   StaffType,
   StaffRating,
   RateType,
+  CostUnitType,
+  ExperienceRequirement,
 } from '@prisma/client';
 
 /**
@@ -86,4 +88,45 @@ export const RATE_TYPE_OPTIONS: Array<{ value: RateType; label: string }> = [
   { value: 'PER_SHIFT', label: 'Per Shift' },
   { value: 'PER_DAY', label: 'Per Day' },
   { value: 'PER_EVENT', label: 'Per Event' },
+];
+
+/**
+ * Cost Unit Type Labels for display
+ */
+export const COST_UNIT_TYPE_LABELS: Record<CostUnitType, string> = {
+  EVENT: 'Per Event',
+  ASSIGNMENT: 'Per Assignment',
+  HOURLY: 'Hourly',
+};
+
+/**
+ * Cost Unit Type Options for forms
+ */
+export const COST_UNIT_TYPE_OPTIONS: Array<{ value: CostUnitType; label: string }> = [
+  { value: 'EVENT', label: 'Per Event' },
+  { value: 'ASSIGNMENT', label: 'Per Assignment' },
+  { value: 'HOURLY', label: 'Hourly' },
+];
+
+/**
+ * Experience Requirement Labels for display
+ */
+export const EXPERIENCE_REQUIREMENT_LABELS: Record<ExperienceRequirement, string> = {
+  ANY: 'Any',
+  BEGINNER: 'Beginner',
+  INTERMEDIATE: 'Intermediate',
+  ADVANCED: 'Advanced',
+};
+
+/**
+ * Experience Requirement Options for forms
+ */
+export const EXPERIENCE_REQUIREMENT_OPTIONS: Array<{
+  value: ExperienceRequirement;
+  label: string;
+}> = [
+  { value: 'ANY', label: 'Any' },
+  { value: 'BEGINNER', label: 'Beginner' },
+  { value: 'INTERMEDIATE', label: 'Intermediate' },
+  { value: 'ADVANCED', label: 'Advanced' },
 ];
