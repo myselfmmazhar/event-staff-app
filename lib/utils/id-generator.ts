@@ -1,10 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 
-export type IdEntityType = 'event' | 'staff' | 'client' | 'callTime';
+export type IdEntityType = 'event' | 'staff' | 'client' | 'callTime' | 'service';
 
 interface IdGeneratorConfig {
   entityType: IdEntityType;
   prefix: string;
+  includeYear?: boolean;
+  padLength?: number;
 }
 
 type PrismaModelWithId = {
@@ -21,6 +23,7 @@ const ID_FIELD_MAP: Record<IdEntityType, { model: string; field: string }> = {
   staff: { model: 'staff', field: 'staffId' },
   client: { model: 'client', field: 'clientId' },
   callTime: { model: 'callTime', field: 'callTimeId' },
+  service: { model: 'service', field: 'serviceId' },
 };
 
 /**
@@ -47,14 +50,13 @@ const ID_FIELD_MAP: Record<IdEntityType, { model: string; field: string }> = {
  * });
  * // Returns: 'CT-2025-001'
  */
-export async function generateUniqueId(
-  prisma: PrismaClient,
-  config: IdGeneratorConfig
-): Promise<string> {
+export async function generateUniqueId(prisma: PrismaClient, config: IdGeneratorConfig): Promise<string> {
   const { entityType, prefix } = config;
+  const includeYear = config.includeYear ?? true;
+  const padLength = config.padLength ?? 3;
   const { model, field } = ID_FIELD_MAP[entityType];
   const year = new Date().getFullYear();
-  const fullPrefix = `${prefix}-${year}`;
+  const fullPrefix = includeYear ? `${prefix}-${year}` : prefix;
 
   // Get the Prisma model dynamically
   const prismaModel = (prisma as unknown as Record<string, PrismaModelWithId>)[model];
@@ -89,7 +91,7 @@ export async function generateUniqueId(
     }
   }
 
-  const generatedId = `${fullPrefix}-${String(nextNumber).padStart(3, '0')}`;
+  const generatedId = `${fullPrefix}-${String(nextNumber).padStart(padLength, '0')}`;
 
   // Race condition protection: verify the ID doesn't exist
   const existing = await prismaModel.findUnique({
@@ -147,5 +149,17 @@ export async function generateCallTimeId(prisma: PrismaClient): Promise<string> 
   return generateUniqueId(prisma, {
     entityType: 'callTime',
     prefix: 'CT',
+  });
+}
+
+/**
+ * Generate a unique Service ID (static SVC prefix)
+ */
+export async function generateServiceId(prisma: PrismaClient): Promise<string> {
+  return generateUniqueId(prisma, {
+    entityType: 'service',
+    prefix: 'SVC',
+    includeYear: false,
+    padLength: 4,
   });
 }

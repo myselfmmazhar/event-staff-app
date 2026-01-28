@@ -161,13 +161,11 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
                   label: 'Service Details',
                   href: '/catalog/services',
                   icon: EyeIcon,
-                  comingSoon: true,
                 },
                 {
                   label: 'Add Service',
                   href: '/catalog/services?create=true',
                   icon: PlusIcon,
-                  comingSoon: true,
                 },
               ],
             },

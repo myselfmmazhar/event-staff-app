@@ -306,6 +306,27 @@ export type StaffPositionSelect = Prisma.StaffPositionGetPayload<{
 }>;
 
 /**
+ * Service Select Type
+ * Used by ServiceService for all query return types
+ */
+export type ServiceSelect = Prisma.ServiceGetPayload<{
+  select: {
+    id: true;
+    serviceId: true;
+    title: true;
+    costUnitType: true;
+    description: true;
+    experienceRequirement: true;
+    ratingRequirement: true;
+    cost: true;
+    isActive: true;
+    createdBy: true;
+    createdAt: true;
+    updatedAt: true;
+  };
+}>;
+
+/**
  * Generic Paginated Response Type
  * Used across all services for paginated queries
  */
