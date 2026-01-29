@@ -3,15 +3,14 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { FilterIcon, CalendarIcon } from '@/components/ui/icons';
 import { useEventsFilters } from '@/store/events-filters.store';
 import { trpc } from '@/lib/client/trpc';
 import { useFilterLabels, useEventsPageLabels } from '@/lib/hooks/use-labels';
 import { EventStatus } from '@prisma/client';
 
-const STATUS_OPTIONS: Array<{ value: EventStatus | 'ALL'; label: string }> = [
-  { value: 'ALL', label: '—' },
+const STATUS_OPTIONS: Array<{ value: EventStatus; label: string }> = [
   { value: 'DRAFT', label: 'Draft' },
   { value: 'PUBLISHED', label: 'Published' },
   { value: 'CONFIRMED', label: 'Confirmed' },
@@ -22,10 +21,10 @@ const STATUS_OPTIONS: Array<{ value: EventStatus | 'ALL'; label: string }> = [
 
 export function EventFilters() {
   const {
-    selectedStatus,
-    setSelectedStatus,
-    selectedClientId,
-    setSelectedClientId,
+    selectedStatuses,
+    setSelectedStatuses,
+    selectedClientIds,
+    setSelectedClientIds,
     startDateFrom,
     setStartDateFrom,
     startDateTo,
@@ -42,9 +41,15 @@ export function EventFilters() {
     limit: 100
   });
 
+  // Build client options for multi-select
+  const clientOptions = (clientsData?.data || []).map((client) => ({
+    value: client.id,
+    label: client.businessName,
+  }));
+
   const hasActiveFilters =
-    selectedStatus !== 'ALL' ||
-    selectedClientId !== 'ALL' ||
+    selectedStatuses.length > 0 ||
+    selectedClientIds.length > 0 ||
     startDateFrom !== null ||
     startDateTo !== null;
 
@@ -72,16 +77,12 @@ export function EventFilters() {
             <FilterIcon className="h-4 w-4" />
             {eventsLabels.filters.status}
           </Label>
-          <Select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as EventStatus | 'ALL')}
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
+          <MultiSelect
+            options={STATUS_OPTIONS}
+            value={selectedStatuses}
+            onChange={setSelectedStatuses}
+            placeholder="All"
+          />
         </div>
 
         {/* Client Filter */}
@@ -90,17 +91,12 @@ export function EventFilters() {
             <FilterIcon className="h-4 w-4" />
             {eventsLabels.filters.client}
           </Label>
-          <Select
-            value={selectedClientId}
-            onChange={(e) => setSelectedClientId(e.target.value)}
-          >
-            <option value="ALL">—</option>
-            {clientsData?.data.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.businessName}
-              </option>
-            ))}
-          </Select>
+          <MultiSelect
+            options={clientOptions}
+            value={selectedClientIds}
+            onChange={setSelectedClientIds}
+            placeholder="All"
+          />
         </div>
 
         {/* Date From Filter */}

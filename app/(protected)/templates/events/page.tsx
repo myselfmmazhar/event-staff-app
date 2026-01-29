@@ -231,8 +231,8 @@ export default function EventTemplatesPage() {
           aria-label="Select all"
         />
       ),
-      headerClassName: 'w-10',
-      className: 'w-10',
+      headerClassName: 'w-12 py-3 px-4',
+      className: 'w-12 py-4 px-4',
       render: (item) => (
         <Checkbox
           checked={selectedIds.has(item.id)}
@@ -306,10 +306,11 @@ export default function EventTemplatesPage() {
       headerClassName: 'text-right py-3 px-4',
       className: 'text-right',
       render: (item) => (
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-1">
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => handleEdit(item)}
             title="Edit template"
           >
@@ -318,8 +319,8 @@ export default function EventTemplatesPage() {
           <Button
             variant="ghost"
             size="sm"
+            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => handleDelete(item)}
-            className="text-destructive hover:text-destructive"
             title="Delete template"
           >
             <TrashIcon className="h-4 w-4" />

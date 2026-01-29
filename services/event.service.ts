@@ -186,13 +186,17 @@ export class EventService {
       createdBy: userId,
     };
 
-    // Status filter
-    if (query.status) {
+    // Status filter - support both single and array
+    if (query.statuses && query.statuses.length > 0) {
+      where.status = { in: query.statuses };
+    } else if (query.status) {
       where.status = query.status;
     }
 
-    // Client filter
-    if (query.clientId) {
+    // Client filter - support both single and array
+    if (query.clientIds && query.clientIds.length > 0) {
+      where.clientId = { in: query.clientIds };
+    } else if (query.clientId) {
       if (query.clientId === 'NONE') {
         // Filter for events without a client
         where.clientId = null;

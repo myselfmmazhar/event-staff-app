@@ -23,8 +23,8 @@ const STATUS_LEGEND: { status: EventStatus; label: string; color: string }[] = [
 ];
 
 interface EventsMapViewProps {
-  status?: EventStatus;
-  clientId?: string;
+  statuses?: EventStatus[];
+  clientIds?: string[];
   search?: string;
   onViewEvent?: (id: string) => void;
   onEditEvent?: (id: string) => void;
@@ -47,8 +47,8 @@ interface MapEvent {
  * Displays events on an interactive map with markers
  */
 export function EventsMapView({
-  status,
-  clientId,
+  statuses,
+  clientIds,
   search,
   onViewEvent,
   onEditEvent,
@@ -60,8 +60,8 @@ export function EventsMapView({
   // Fetch events for map
   const { data: eventsData, isLoading, error } = trpc.event.getForMap.useQuery(
     {
-      status,
-      clientId,
+      statuses,
+      clientIds,
       search,
     },
     {

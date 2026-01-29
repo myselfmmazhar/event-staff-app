@@ -360,6 +360,7 @@ export default function ClientsPage() {
               },
             ]}
             buttonVariant="outline"
+            buttonSize="md"
           />
           <ClientExportDropdown
             clients={allClients as ClientExport[]}

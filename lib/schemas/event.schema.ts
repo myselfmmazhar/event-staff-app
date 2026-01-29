@@ -474,8 +474,12 @@ export class EventSchema {
       .default("createdAt")
       .optional(),
     sortOrder: z.enum(["asc", "desc"]).default("desc").optional(),
+    // Single value filters (deprecated, kept for backwards compatibility)
     status: z.nativeEnum(EventStatus).optional(),
-    clientId: z.string().optional(), // "NONE" for events without client, or UUID for specific client
+    clientId: z.string().optional(),
+    // Multi-select filters (preferred)
+    statuses: z.array(z.nativeEnum(EventStatus)).optional(),
+    clientIds: z.array(z.string()).optional(),
     startDateFrom: z.coerce.date().optional(),
     startDateTo: z.coerce.date().optional(),
     endDateFrom: z.coerce.date().optional(),

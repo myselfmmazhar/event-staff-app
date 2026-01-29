@@ -109,10 +109,11 @@ export function ServiceTable({
       className: 'py-4 px-4',
       headerClassName: 'text-right py-3 px-4',
       render: (service) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => onView(service.id)}
             title="View service details"
           >
@@ -121,6 +122,7 @@ export function ServiceTable({
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => onEdit(service.id)}
             title="Edit service"
           >
@@ -137,8 +139,8 @@ export function ServiceTable({
           <Button
             variant="ghost"
             size="sm"
+            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => onDelete(service.id)}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
             title="Delete service"
           >
             <TrashIcon className="h-4 w-4" />

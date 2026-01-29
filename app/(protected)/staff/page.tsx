@@ -377,6 +377,7 @@ export default function StaffPage() {
                             },
                         ]}
                         buttonVariant="outline"
+                        buttonSize="md"
                     />
                     {/* Cleanup Roster Button */}
                     <LinkButton href="/staff/cleanup-roster" variant="outline">

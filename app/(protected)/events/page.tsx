@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { Button, LinkButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlusIcon, UploadIcon } from '@/components/ui/icons';
+import { PlusIcon, UploadIcon, DocumentDuplicateIcon } from '@/components/ui/icons';
 import { DeleteEventModal } from '@/components/events/delete-event-modal';
 import { ViewEventModal } from '@/components/events/view-event-modal';
 import { EventExportDropdown } from '@/components/events/event-export-dropdown';
@@ -59,16 +59,15 @@ function parseNumberParam(value: string | null, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function parseStatusParam(value: string | null): EventStatus | 'ALL' {
-  if (value && EVENT_STATUS_SET.has(value as EventStatus)) {
-    return value as EventStatus;
-  }
-  return 'ALL';
+function parseStatusesParam(value: string | null): EventStatus[] {
+  if (!value) return [];
+  const statuses = value.split(',').filter((s) => EVENT_STATUS_SET.has(s as EventStatus));
+  return statuses as EventStatus[];
 }
 
-function parseClientIdParam(value: string | null): string | 'ALL' {
-  if (!value) return 'ALL';
-  return value === 'ALL' || value === 'all' ? 'ALL' : value;
+function parseClientIdsParam(value: string | null): string[] {
+  if (!value) return [];
+  return value.split(',').filter((id) => id && id !== 'ALL' && id !== 'all');
 }
 
 function parseSortByParam(value: string | null): EventSortBy {
@@ -132,8 +131,8 @@ export default function EventsPage() {
     const page = parseNumberParam(searchParams.get('page'), 1);
     const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
-    const status = parseStatusParam(searchParams.get('status'));
-    const clientId = parseClientIdParam(searchParams.get('clientId'));
+    const statuses = parseStatusesParam(searchParams.get('statuses'));
+    const clientIds = parseClientIdsParam(searchParams.get('clientIds'));
     const sortBy = parseSortByParam(searchParams.get('sortBy'));
     const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
     const startDateFrom = searchParams.get('startDateFrom') || null;
@@ -142,8 +141,8 @@ export default function EventsPage() {
     filters.setPage(page);
     filters.setLimit(limit);
     filters.setSearch(search);
-    filters.setSelectedStatus(status);
-    filters.setSelectedClientId(clientId);
+    filters.setSelectedStatuses(statuses);
+    filters.setSelectedClientIds(clientIds);
     filters.setSortBy(sortBy);
     filters.setSortOrder(sortOrder);
     filters.setStartDateFrom(startDateFrom);
@@ -163,7 +162,7 @@ export default function EventsPage() {
 
   // Sync store with URL
   useUrlSync(filters, {
-    keys: ['page', 'limit', 'search', 'selectedStatus', 'selectedClientId', 'sortBy', 'sortOrder', 'startDateFrom', 'startDateTo'],
+    keys: ['page', 'limit', 'search', 'selectedStatuses', 'selectedClientIds', 'sortBy', 'sortOrder', 'startDateFrom', 'startDateTo'],
   });
 
   // tRPC queries
@@ -171,8 +170,8 @@ export default function EventsPage() {
     page: filters.page,
     limit: filters.limit,
     search: filters.search || undefined,
-    status: filters.selectedStatus === 'ALL' ? undefined : filters.selectedStatus,
-    clientId: filters.selectedClientId === 'ALL' ? undefined : filters.selectedClientId,
+    statuses: filters.selectedStatuses.length > 0 ? filters.selectedStatuses : undefined,
+    clientIds: filters.selectedClientIds.length > 0 ? filters.selectedClientIds : undefined,
     sortBy: filters.sortBy,
     sortOrder: filters.sortOrder,
     startDateFrom: filters.startDateFrom ? new Date(filters.startDateFrom) : undefined,
@@ -198,7 +197,7 @@ export default function EventsPage() {
       onSuccess: () => {
         setIsFormOpen(false);
         // Clear filters to show the newly created event
-        filters.setSelectedStatus('ALL');
+        filters.setSelectedStatuses([]);
         filters.setSearch('');
         filters.setPage(1);
         refetch();
@@ -375,21 +374,22 @@ export default function EventsPage() {
     });
   }
 
-  if (filters.selectedStatus !== 'ALL') {
+  if (filters.selectedStatuses.length > 0) {
+    const statusLabels = filters.selectedStatuses.map((s) => STATUS_LABELS[s]).join(', ');
     activeFilters.push({
-      key: 'status',
+      key: 'statuses',
       label: 'Status',
-      value: STATUS_LABELS[filters.selectedStatus],
-      onRemove: () => filters.setSelectedStatus('ALL'),
+      value: filters.selectedStatuses.length === 1 ? statusLabels : `${filters.selectedStatuses.length} selected`,
+      onRemove: () => filters.setSelectedStatuses([]),
     });
   }
 
-  if (filters.selectedClientId !== 'ALL') {
+  if (filters.selectedClientIds.length > 0) {
     activeFilters.push({
-      key: 'client',
+      key: 'clients',
       label: 'Client',
-      value: 'Selected',
-      onRemove: () => filters.setSelectedClientId('ALL'),
+      value: filters.selectedClientIds.length === 1 ? 'Selected' : `${filters.selectedClientIds.length} selected`,
+      onRemove: () => filters.setSelectedClientIds([]),
     });
   }
 
@@ -466,7 +466,12 @@ export default function EventsPage() {
               },
             ]}
             buttonVariant="outline"
+            buttonSize="md"
           />
+          <LinkButton href="/templates/events" variant="outline">
+            <DocumentDuplicateIcon className="h-4 w-4 mr-2" />
+            Templates
+          </LinkButton>
           <EventExportDropdown
             events={allEvents as EventExport[]}
             selectedEvents={selectedEvents}
@@ -484,8 +489,8 @@ export default function EventsPage() {
       </div>
 
       {/* Filters */}
-      <Card className="p-6">
-        <div className="relative z-10 space-y-4">
+      <Card className="p-6 overflow-visible relative z-20">
+        <div className="space-y-4">
           <EventSearch
             value={filters.search}
             onChange={filters.setSearch}
@@ -569,8 +574,8 @@ export default function EventsPage() {
       {/* Events Map View */}
       {viewMode === 'map' && (
         <EventsMapView
-          status={filters.selectedStatus !== 'ALL' ? filters.selectedStatus : undefined}
-          clientId={filters.selectedClientId !== 'ALL' ? filters.selectedClientId : undefined}
+          statuses={filters.selectedStatuses.length > 0 ? filters.selectedStatuses : undefined}
+          clientIds={filters.selectedClientIds.length > 0 ? filters.selectedClientIds : undefined}
           search={filters.search || undefined}
           onViewEvent={(id) => {
             const eventDetails = getEventDetails(id);

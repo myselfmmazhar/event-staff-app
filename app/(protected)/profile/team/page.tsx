@@ -370,6 +370,7 @@ export default function UsersPage() {
               },
             ]}
             buttonVariant="outline"
+            buttonSize="md"
           />
           <Button onClick={handleCreate}>
             <PlusIcon className="h-5 w-5 mr-2" />

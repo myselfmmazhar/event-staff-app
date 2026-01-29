@@ -170,8 +170,8 @@ export function EventTable({
           aria-label="Select all"
         />
       ),
-      headerClassName: 'w-10',
-      className: 'w-10',
+      headerClassName: 'w-12 py-3 px-4',
+      className: 'w-12 py-4 px-4',
       render: (event: Event) => (
         <Checkbox
           checked={selectedIds.has(event.id)}
@@ -187,10 +187,11 @@ export function EventTable({
       className: 'py-4 px-4',
       headerClassName: 'text-left py-3 px-4',
       render: (event) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => router.push(`/events/${event.id}/call-times`)}
             title="Manage call times"
           >
@@ -199,6 +200,7 @@ export function EventTable({
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => onView(event)}
             title={`View ${terminology.event.lower} details`}
           >
@@ -207,6 +209,7 @@ export function EventTable({
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => onEdit(event)}
             title={`Edit ${terminology.event.lower}`}
           >
@@ -215,8 +218,8 @@ export function EventTable({
           <Button
             variant="ghost"
             size="sm"
+            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => onDelete(event)}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
             title={`Delete ${terminology.event.lower}`}
           >
             <TrashIcon className="h-4 w-4" />

@@ -88,8 +88,8 @@ export function ClientTable({
                 aria-label="Select all"
               />
             ),
-            headerClassName: 'w-10',
-            className: 'w-10',
+            headerClassName: 'w-12 py-3 px-4',
+            className: 'w-12 py-4 px-4',
             render: (client: ClientTableRow) => (
               <Checkbox
                 checked={selectedIds.has(client.id)}
@@ -163,10 +163,11 @@ export function ClientTable({
       className: 'py-4 px-4',
       headerClassName: 'text-right py-3 px-4',
       render: (client) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => onView(client.id)}
             title="View client details"
           >
@@ -175,6 +176,7 @@ export function ClientTable({
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => onEdit(client.id)}
             title="Edit client"
           >
@@ -183,8 +185,8 @@ export function ClientTable({
           <Button
             variant="ghost"
             size="sm"
+            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => onDelete(client.id)}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
             title="Delete client"
           >
             <TrashIcon className="h-4 w-4" />

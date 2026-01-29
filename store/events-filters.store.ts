@@ -11,8 +11,8 @@ interface EventsFiltersState {
 
   // Search & Filters
   search: string;
-  selectedStatus: EventStatus | "ALL";
-  selectedClientId: string | "ALL";
+  selectedStatuses: EventStatus[];
+  selectedClientIds: string[];
 
   // Date Filters
   startDateFrom: string | null;
@@ -28,8 +28,8 @@ interface EventsFiltersState {
 
   // Actions - Search & Filters
   setSearch: (search: string) => void;
-  setSelectedStatus: (status: EventStatus | "ALL") => void;
-  setSelectedClientId: (clientId: string | "ALL") => void;
+  setSelectedStatuses: (statuses: EventStatus[]) => void;
+  setSelectedClientIds: (clientIds: string[]) => void;
 
   // Actions - Date Filters
   setStartDateFrom: (date: string | null) => void;
@@ -46,8 +46,8 @@ interface EventsFiltersState {
 
 const DEFAULT_FILTERS = {
   search: "",
-  selectedStatus: "ALL" as EventStatus | "ALL",
-  selectedClientId: "ALL" as string | "ALL",
+  selectedStatuses: [] as EventStatus[],
+  selectedClientIds: [] as string[],
   startDateFrom: null as string | null,
   startDateTo: null as string | null,
 };
@@ -69,8 +69,8 @@ export const useEventsFilters = create<EventsFiltersState>((set) => ({
 
   // Search & Filter actions
   setSearch: (search) => set({ search, page: 1 }),
-  setSelectedStatus: (selectedStatus) => set({ selectedStatus, page: 1 }),
-  setSelectedClientId: (selectedClientId) => set({ selectedClientId, page: 1 }),
+  setSelectedStatuses: (selectedStatuses) => set({ selectedStatuses, page: 1 }),
+  setSelectedClientIds: (selectedClientIds) => set({ selectedClientIds, page: 1 }),
 
   // Date Filter actions
   setStartDateFrom: (startDateFrom) => set({ startDateFrom, page: 1 }),
