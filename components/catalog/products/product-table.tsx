@@ -110,10 +110,11 @@ export function ProductTable({
       className: 'py-4 px-4',
       headerClassName: 'text-right py-3 px-4',
       render: (product) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => onView(product.id)}
             title="View product details"
           >
@@ -122,6 +123,7 @@ export function ProductTable({
           <Button
             variant="ghost"
             size="sm"
+            className="px-0"
             onClick={() => onEdit(product.id)}
             title="Edit product"
           >
@@ -138,8 +140,8 @@ export function ProductTable({
           <Button
             variant="ghost"
             size="sm"
+            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => onDelete(product.id)}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
             title="Delete product"
           >
             <TrashIcon className="h-4 w-4" />

@@ -178,10 +178,11 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
             className: 'py-4 px-4',
             headerClassName: 'text-right py-3 px-4',
             render: (member) => (
-                <div className="flex items-center justify-end gap-2">
+                <div className="flex items-center justify-end gap-1">
                     <Button
                         variant="ghost"
                         size="sm"
+                        className="px-0"
                         onClick={() => onView(member)}
                         title="View details"
                     >
@@ -190,6 +191,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
                     <Button
                         variant="ghost"
                         size="sm"
+                        className="px-0"
                         onClick={() => onEdit(member)}
                         title={`Edit ${staffTerm.lower}`}
                     >
@@ -200,7 +202,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
                         size="sm"
                         onClick={() => onDelete(member)}
                         title={`Delete ${staffTerm.lower}`}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                         <Trash2Icon className="h-4 w-4" />
                     </Button>

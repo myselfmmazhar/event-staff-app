@@ -378,6 +378,22 @@ export function Breadcrumbs() {
       return breadcrumbs;
     }
 
+    // Templates routes - show as child of the relevant section
+    if (firstSegment === 'templates') {
+      if (secondSegment === 'events') {
+        // Event Templates: Task Pod > Event Manager > Templates
+        breadcrumbs.push({ label: 'Task Pod' });
+        breadcrumbs.push({
+          label: `${terminology.event.singular} Manager`,
+          href: `/${terminology.event.route}`
+        });
+        breadcrumbs.push({ label: 'Templates' });
+        return breadcrumbs;
+      }
+      // Other template types can be added here
+      return breadcrumbs;
+    }
+
     // Settings routes - Settings label should not be clickable
     if (firstSegment === 'settings') {
       breadcrumbs.push({ label: 'Settings' }); // No href - not clickable

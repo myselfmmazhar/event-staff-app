@@ -4,13 +4,11 @@ import {
   UserIcon,
   CalendarIcon,
   ClockIcon,
-  PlusIcon,
   SettingsIcon,
   BellIcon,
   ClipboardListIcon,
   BuildingOfficeIcon,
   DocumentDuplicateIcon,
-  EyeIcon,
   UserGroupIcon,
   SquaresIcon,
   WrenchScrewdriverIcon,
@@ -84,44 +82,15 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
       subItems: [
         {
           label: `${terminology.event.singular} Manager`,
+          href: getEventRoute(terminology),
           icon: CalendarIcon,
-          subItems: [
-            {
-              label: `${terminology.event.singular} Details`,
-              href: getEventRoute(terminology),
-              icon: EyeIcon,
-              featureFlag: 'events',
-            },
-            {
-              label: `Add ${terminology.event.singular}`,
-              href: `${getEventRoute(terminology)}?create=true`,
-              icon: PlusIcon,
-              featureFlag: 'events',
-            },
-            {
-              label: `${terminology.event.singular} Templates`,
-              href: '/templates/events',
-              icon: DocumentDuplicateIcon,
-            },
-          ],
+          featureFlag: 'events',
         },
         {
           label: 'Client Manager',
+          href: '/clients',
           icon: BuildingOfficeIcon,
-          subItems: [
-            {
-              label: 'Client Details',
-              href: '/clients',
-              icon: EyeIcon,
-              featureFlag: 'clients',
-            },
-            {
-              label: 'Add Client',
-              href: '/clients?create=true',
-              icon: PlusIcon,
-              featureFlag: 'clients',
-            },
-          ],
+          featureFlag: 'clients',
         },
       ],
     },
@@ -133,21 +102,9 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
       subItems: [
         {
           label: `${terminology.staff.singular} Manager`,
+          href: getStaffRoute(terminology),
           icon: UsersIcon,
-          subItems: [
-            {
-              label: `${terminology.staff.singular} Details`,
-              href: getStaffRoute(terminology),
-              icon: EyeIcon,
-              featureFlag: 'staff',
-            },
-            {
-              label: `Add ${terminology.staff.singular}`,
-              href: `${getStaffRoute(terminology)}?create=true`,
-              icon: PlusIcon,
-              featureFlag: 'staff',
-            },
-          ],
+          featureFlag: 'staff',
         },
         {
           label: 'Catalog Manager',
@@ -155,53 +112,19 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           subItems: [
             {
               label: 'Services',
+              href: '/catalog/services',
               icon: WrenchScrewdriverIcon,
-              subItems: [
-                {
-                  label: 'Service Details',
-                  href: '/catalog/services',
-                  icon: EyeIcon,
-                },
-                {
-                  label: 'Add Service',
-                  href: '/catalog/services?create=true',
-                  icon: PlusIcon,
-                },
-              ],
             },
             {
               label: 'Products',
+              href: '/catalog/products',
               icon: CubeIcon,
-              subItems: [
-                {
-                  label: 'Product Details',
-                  href: '/catalog/products',
-                  icon: EyeIcon,
-                },
-                {
-                  label: 'Add Product',
-                  href: '/catalog/products?create=true',
-                  icon: PlusIcon,
-                },
-              ],
             },
             {
               label: 'Locations',
+              href: '/catalog/locations',
               icon: MapPinIcon,
-              subItems: [
-                {
-                  label: 'Location Details',
-                  href: '/catalog/locations',
-                  icon: EyeIcon,
-                  comingSoon: true,
-                },
-                {
-                  label: 'Add Location',
-                  href: '/catalog/locations?create=true',
-                  icon: PlusIcon,
-                  comingSoon: true,
-                },
-              ],
+              comingSoon: true,
             },
           ],
         },
@@ -236,57 +159,21 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           subItems: [
             {
               label: 'Proposals',
+              href: '/finance/proposals',
               icon: DocumentTextIcon,
-              subItems: [
-                {
-                  label: 'Proposal Details',
-                  href: '/finance/proposals',
-                  icon: EyeIcon,
-                  comingSoon: true,
-                },
-                {
-                  label: 'Add Proposal',
-                  href: '/finance/proposals?create=true',
-                  icon: PlusIcon,
-                  comingSoon: true,
-                },
-              ],
+              comingSoon: true,
             },
             {
               label: 'Invoices',
+              href: '/finance/invoices',
               icon: DocumentTextIcon,
-              subItems: [
-                {
-                  label: 'Invoice Details',
-                  href: '/finance/invoices',
-                  icon: EyeIcon,
-                  comingSoon: true,
-                },
-                {
-                  label: 'Add Invoice',
-                  href: '/finance/invoices?create=true',
-                  icon: PlusIcon,
-                  comingSoon: true,
-                },
-              ],
+              comingSoon: true,
             },
             {
               label: 'Bills',
+              href: '/finance/bills',
               icon: BanknotesIcon,
-              subItems: [
-                {
-                  label: 'Bill Details',
-                  href: '/finance/bills',
-                  icon: EyeIcon,
-                  comingSoon: true,
-                },
-                {
-                  label: 'Add Bill',
-                  href: '/finance/bills?create=true',
-                  icon: PlusIcon,
-                  comingSoon: true,
-                },
-              ],
+              comingSoon: true,
             },
           ],
         },

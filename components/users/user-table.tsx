@@ -171,7 +171,7 @@ export function UserTable({
         const canResendInvitation = invitationStatus === 'pending' || invitationStatus === 'expired';
 
         return (
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-1">
             {/* Resend Invitation - for pending/expired users */}
             {canResendInvitation && (
               <Button
@@ -199,6 +199,7 @@ export function UserTable({
             <Button
               variant="ghost"
               size="sm"
+              className="px-0"
               onClick={() => onEdit(user)}
               title="Edit user"
             >
@@ -208,8 +209,8 @@ export function UserTable({
               <Button
                 variant="ghost"
                 size="sm"
+                className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={() => onDelete(user)}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 title="Delete user"
               >
                 <TrashIcon className="h-4 w-4" />

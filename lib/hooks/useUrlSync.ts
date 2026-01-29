@@ -2,12 +2,15 @@ import { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
 /**
- * Valid filter value types
+ * Valid filter value types (including arrays)
  */
-type FilterValue = string | number | boolean | null | undefined;
+type FilterValue = string | number | boolean | null | undefined | string[];
 
+/**
+ * Type constraint for filter defaults object
+ */
 type FilterDefaults<T> = {
-  [K in keyof T]: T[K] extends FilterValue ? T[K] : never;
+  [K in keyof T]: FilterValue;
 };
 
 interface UseUrlSyncOptions<TKey extends string> {
@@ -69,6 +72,11 @@ function defaultTransform(value: FilterValue): string | null {
   // Skip default/empty values
   if (value === undefined || value === null || value === "" || value === "ALL" || value === "all") {
     return null;
+  }
+
+  // Handle arrays - join with commas
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(",") : null;
   }
 
   // Convert booleans to strings
@@ -143,6 +151,7 @@ function isFilterValue(value: unknown): value is FilterValue {
     value === undefined ||
     typeof value === "string" ||
     typeof value === "number" ||
-    typeof value === "boolean"
+    typeof value === "boolean" ||
+    (Array.isArray(value) && value.every((v) => typeof v === "string"))
   );
 }

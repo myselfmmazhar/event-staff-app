@@ -125,6 +125,8 @@ export const eventRouter = router({
       z.object({
         status: z.nativeEnum(EventStatus).optional(),
         clientId: z.string().optional(),
+        statuses: z.array(z.nativeEnum(EventStatus)).optional(),
+        clientIds: z.array(z.string()).optional(),
         search: z.string().optional(),
       }).optional()
     )
@@ -143,11 +145,17 @@ export const eventRouter = router({
         ],
       };
 
-      if (input?.status) {
+      // Status filter - support both single and array
+      if (input?.statuses && input.statuses.length > 0) {
+        where.status = { in: input.statuses };
+      } else if (input?.status) {
         where.status = input.status;
       }
 
-      if (input?.clientId) {
+      // Client filter - support both single and array
+      if (input?.clientIds && input.clientIds.length > 0) {
+        where.clientId = { in: input.clientIds };
+      } else if (input?.clientId) {
         if (input.clientId === "NONE") {
           where.clientId = null;
         } else {
