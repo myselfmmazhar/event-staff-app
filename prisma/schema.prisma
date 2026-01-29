@@ -205,6 +205,16 @@ model Event {
   onsitePocPhone   String?        @db.VarChar(50)
   onsitePocEmail   String?        @db.VarChar(255)
 
+  // Billing & Rate Settings
+  estimate              Boolean?
+  taskRateType          AmountType?
+  commission            Boolean?
+  commissionAmount      Decimal?     @db.Decimal(10, 2)
+  commissionAmountType  AmountType?
+  approveForOvertime    Boolean?
+  overtimeRate          Decimal?     @db.Decimal(10, 2)
+  overtimeRateType      AmountType?
+
   createdBy       String
   clientId        String?      @db.Uuid
   createdAt       DateTime     @default(now()) @db.Timestamp(6)
@@ -213,6 +223,8 @@ model Event {
   latitude        Float?
   longitude       Float?
   callTimes       CallTime[]
+  eventServices   EventService[]
+  eventProducts   EventProduct[]
   client          Client?      @relation(fields: [clientId], references: [id])
   createdByUser   User         @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
@@ -299,6 +311,7 @@ model Service {
   createdAt             DateTime               @default(now()) @db.Timestamp(6)
   updatedAt             DateTime               @updatedAt @db.Timestamp(6)
   createdByUser         User                   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  eventServices         EventService[]
 
   @@index([serviceId])
   @@index([title])
@@ -323,12 +336,49 @@ model Product {
   createdAt       DateTime         @default(now()) @db.Timestamp(6)
   updatedAt       DateTime         @updatedAt @db.Timestamp(6)
   createdByUser   User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  eventProducts   EventProduct[]
 
   @@index([productId])
   @@index([title])
   @@index([isActive])
   @@index([category])
   @@map("products")
+}
+
+model EventService {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @db.Uuid
+  serviceId   String   @db.Uuid
+  quantity    Int      @default(1)
+  customPrice Decimal? @db.Decimal(10, 2)
+  notes       String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, serviceId])
+  @@index([eventId])
+  @@index([serviceId])
+  @@map("event_services")
+}
+
+model EventProduct {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @db.Uuid
+  productId   String   @db.Uuid
+  quantity    Int      @default(1)
+  customPrice Decimal? @db.Decimal(10, 2)
+  notes       String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, productId])
+  @@index([eventId])
+  @@index([productId])
+  @@map("event_products")
 }
 
 model NotificationPreference {
@@ -602,6 +652,11 @@ enum RateType {
   PER_SHIFT
   PER_DAY
   PER_EVENT
+}
+
+enum AmountType {
+  MULTIPLIER
+  FIXED
 }
 
 enum CostUnitType {

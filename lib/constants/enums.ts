@@ -4,6 +4,7 @@ import {
   StaffType,
   StaffRating,
   RateType,
+  AmountType,
   CostUnitType,
   ExperienceRequirement,
   MinimumPurchase,
@@ -90,6 +91,22 @@ export const RATE_TYPE_OPTIONS: Array<{ value: RateType; label: string }> = [
   { value: 'PER_SHIFT', label: 'Per Shift' },
   { value: 'PER_DAY', label: 'Per Day' },
   { value: 'PER_EVENT', label: 'Per Event' },
+];
+
+/**
+ * Amount Type Labels for display
+ */
+export const AMOUNT_TYPE_LABELS: Record<AmountType, string> = {
+  MULTIPLIER: 'Multiplier',
+  FIXED: 'Fixed',
+};
+
+/**
+ * Amount Type Options for forms
+ */
+export const AMOUNT_TYPE_OPTIONS: Array<{ value: AmountType; label: string }> = [
+  { value: 'MULTIPLIER', label: 'Multiplier' },
+  { value: 'FIXED', label: 'Fixed' },
 ];
 
 /**
