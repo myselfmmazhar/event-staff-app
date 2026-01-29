@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EventStatus, RequestMethod } from "@prisma/client";
+import { EventStatus, RequestMethod, AmountType } from "@prisma/client";
 
 /**
  * Common timezone values for validation
@@ -218,6 +218,24 @@ export class EventSchema {
         .max(255, "POC email must be 255 characters or less")
         .optional()
         .or(z.literal("")),
+
+      // Billing & Rate Settings
+      estimate: z.boolean().optional(),
+      taskRateType: z.nativeEnum(AmountType).optional(),
+      commission: z.boolean().optional(),
+      commissionAmount: z
+        .number()
+        .min(0, "Commission amount must be positive")
+        .transform((val) => parseFloat(val.toFixed(2)))
+        .optional(),
+      commissionAmountType: z.nativeEnum(AmountType).optional(),
+      approveForOvertime: z.boolean().optional(),
+      overtimeRate: z
+        .number()
+        .min(0, "Overtime rate must be positive")
+        .transform((val) => parseFloat(val.toFixed(2)))
+        .optional(),
+      overtimeRateType: z.nativeEnum(AmountType).optional(),
     })
     .refine((data) => data.endDate >= data.startDate, {
       message: "End date must be after or equal to start date",
@@ -401,6 +419,26 @@ export class EventSchema {
         .max(255, "POC email must be 255 characters or less")
         .optional()
         .or(z.literal("")),
+
+      // Billing & Rate Settings
+      estimate: z.boolean().optional().nullable(),
+      taskRateType: z.nativeEnum(AmountType).optional().nullable(),
+      commission: z.boolean().optional().nullable(),
+      commissionAmount: z
+        .number()
+        .min(0, "Commission amount must be positive")
+        .transform((val) => parseFloat(val.toFixed(2)))
+        .optional()
+        .nullable(),
+      commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
+      approveForOvertime: z.boolean().optional().nullable(),
+      overtimeRate: z
+        .number()
+        .min(0, "Overtime rate must be positive")
+        .transform((val) => parseFloat(val.toFixed(2)))
+        .optional()
+        .nullable(),
+      overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
     })
     .refine(
       (data) => {

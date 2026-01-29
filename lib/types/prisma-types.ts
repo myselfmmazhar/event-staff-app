@@ -177,6 +177,15 @@ export type EventSelect = Prisma.EventGetPayload<{
     onsitePocName: true;
     onsitePocPhone: true;
     onsitePocEmail: true;
+    // Billing & Rate Settings
+    estimate: true;
+    taskRateType: true;
+    commission: true;
+    commissionAmount: true;
+    commissionAmountType: true;
+    approveForOvertime: true;
+    overtimeRate: true;
+    overtimeRateType: true;
     createdBy: true;
     clientId: true;
     createdAt: true;

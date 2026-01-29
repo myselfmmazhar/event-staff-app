@@ -13,6 +13,7 @@ import { notificationRouter } from "./notification.router";
 import { templateRouter } from "./template.router";
 import { serviceRouter } from "./service.router";
 import { productRouter } from "./product.router";
+import { eventAttachmentRouter } from "./event-attachment.router";
 
 /**
  * Main application router
@@ -33,6 +34,7 @@ export const appRouter = router({
   template: templateRouter,
   service: serviceRouter,
   product: productRouter,
+  eventAttachment: eventAttachmentRouter,
 });
 
 export type AppRouter = typeof appRouter;

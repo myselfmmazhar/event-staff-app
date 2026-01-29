@@ -279,11 +279,55 @@ export default function EventsPage() {
     }
   };
 
-  const handleFormSubmit = (data: CreateEventInput | Omit<UpdateEventInput, 'id'>) => {
-    if (selectedEvent) {
-      updateMutation.mutate({ id: selectedEvent.id, ...data });
-    } else {
-      createMutation.mutate(data as CreateEventInput);
+  // Mutations for attachments
+  const bulkUpdateServicesMutation = trpc.eventAttachment.bulkUpdateServices.useMutation();
+  const bulkUpdateProductsMutation = trpc.eventAttachment.bulkUpdateProducts.useMutation();
+
+  const handleFormSubmit = async (
+    data: CreateEventInput | Omit<UpdateEventInput, 'id'>,
+    attachments?: {
+      services: Array<{ serviceId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
+      products: Array<{ productId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
+    }
+  ) => {
+    try {
+      if (selectedEvent) {
+        // Update existing event
+        await updateMutation.mutateAsync({ id: selectedEvent.id, ...data });
+
+        // Update attachments if provided
+        if (attachments) {
+          await Promise.all([
+            bulkUpdateServicesMutation.mutateAsync({
+              eventId: selectedEvent.id,
+              services: attachments.services,
+            }),
+            bulkUpdateProductsMutation.mutateAsync({
+              eventId: selectedEvent.id,
+              products: attachments.products,
+            }),
+          ]);
+        }
+      } else {
+        // Create new event
+        const newEvent = await createMutation.mutateAsync(data as CreateEventInput);
+
+        // Save attachments if provided
+        if (attachments && newEvent?.id) {
+          await Promise.all([
+            bulkUpdateServicesMutation.mutateAsync({
+              eventId: newEvent.id,
+              services: attachments.services,
+            }),
+            bulkUpdateProductsMutation.mutateAsync({
+              eventId: newEvent.id,
+              products: attachments.products,
+            }),
+          ]);
+        }
+      }
+    } catch {
+      // Errors are already handled by mutation options
     }
   };
 

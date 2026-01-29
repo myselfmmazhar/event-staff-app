@@ -14,7 +14,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { EventSchema, TIMEZONES, REQUEST_METHODS } from '@/lib/schemas/event.schema';
 import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument } from '@/lib/schemas/event.schema';
-import { EventStatus, RequestMethod } from '@prisma/client';
+import { EventStatus, RequestMethod, AmountType } from '@prisma/client';
+import { AMOUNT_TYPE_OPTIONS } from '@/lib/constants/enums';
 import { EventDocumentUpload } from './event-document-upload';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
@@ -24,6 +25,11 @@ import { CloseIcon, PlusIcon, XIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
+import {
+  EventAttachmentsSection,
+  type AttachedServiceItem,
+  type AttachedProductItem,
+} from './event-attachments-section';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;
@@ -75,6 +81,15 @@ const editFormSchema = z.object({
   onsitePocName: z.string().max(200).optional().transform(val => val?.trim()),
   onsitePocPhone: z.string().max(50).optional().transform(val => val?.trim()),
   onsitePocEmail: z.string().email().max(255).optional().or(z.literal('')),
+  // Billing & Rate Settings
+  estimate: z.boolean().optional(),
+  taskRateType: z.nativeEnum(AmountType).optional().nullable(),
+  commission: z.boolean().optional(),
+  commissionAmount: z.number().min(0).optional().nullable(),
+  commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
+  approveForOvertime: z.boolean().optional(),
+  overtimeRate: z.number().min(0).optional().nullable(),
+  overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
 }).refine((data) => data.endDate >= data.startDate, {
   message: "End date must be after or equal to start date",
   path: ["endDate"],
@@ -129,13 +144,30 @@ interface Event {
   onsitePocName?: string | null;
   onsitePocPhone?: string | null;
   onsitePocEmail?: string | null;
+  // Billing & Rate Settings
+  estimate?: boolean | null;
+  taskRateType?: AmountType | null;
+  commission?: boolean | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  commissionAmount?: number | any | null;
+  commissionAmountType?: AmountType | null;
+  approveForOvertime?: boolean | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  overtimeRate?: number | any | null;
+  overtimeRateType?: AmountType | null;
 }
 
 interface EventFormModalProps {
   event: Event | null;
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateEventInput | Omit<UpdateEventInput, 'id'>) => void;
+  onSubmit: (
+    data: CreateEventInput | Omit<UpdateEventInput, 'id'>,
+    attachments?: {
+      services: Array<{ serviceId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
+      products: Array<{ productId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
+    }
+  ) => void;
   isSubmitting: boolean;
   backendErrors?: Array<{ field: string; message: string }>;
 }
@@ -162,6 +194,8 @@ export function EventFormModal({
   const [startTimeTBD, setStartTimeTBD] = useState(false);
   const [endTimeTBD, setEndTimeTBD] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [attachedServices, setAttachedServices] = useState<AttachedServiceItem[]>([]);
+  const [attachedProducts, setAttachedProducts] = useState<AttachedProductItem[]>([]);
 
   // Fetch clients for dropdown
   const { data: clientsData } = trpc.clients.getAll.useQuery({
@@ -178,6 +212,12 @@ export function EventFormModal({
   const { data: selectedTemplateData } = trpc.eventTemplate.getById.useQuery(
     { id: selectedTemplateId },
     { enabled: !!selectedTemplateId && !isEdit }
+  );
+
+  // Fetch existing attachments when editing
+  const { data: existingAttachments } = trpc.eventAttachment.getByEventId.useQuery(
+    { eventId: event?.id || '' },
+    { enabled: isEdit && !!event?.id }
   );
 
   const {
@@ -225,6 +265,15 @@ export function EventFormModal({
       onsitePocName: '',
       onsitePocPhone: '',
       onsitePocEmail: '',
+      // Billing & Rate Settings
+      estimate: false,
+      taskRateType: undefined,
+      commission: false,
+      commissionAmount: undefined,
+      commissionAmountType: undefined,
+      approveForOvertime: false,
+      overtimeRate: undefined,
+      overtimeRateType: undefined,
     },
   });
 
@@ -283,6 +332,15 @@ export function EventFormModal({
         onsitePocName: event.onsitePocName || '',
         onsitePocPhone: event.onsitePocPhone || '',
         onsitePocEmail: event.onsitePocEmail || '',
+        // Billing & Rate Settings
+        estimate: event.estimate ?? false,
+        taskRateType: event.taskRateType || undefined,
+        commission: event.commission ?? false,
+        commissionAmount: event.commissionAmount ? Number(event.commissionAmount) : undefined,
+        commissionAmountType: event.commissionAmountType || undefined,
+        approveForOvertime: event.approveForOvertime ?? false,
+        overtimeRate: event.overtimeRate ? Number(event.overtimeRate) : undefined,
+        overtimeRateType: event.overtimeRateType || undefined,
       });
       setStartTimeTBD(event.startTime === 'TBD');
       setEndTimeTBD(event.endTime === 'TBD');
@@ -328,6 +386,15 @@ export function EventFormModal({
         onsitePocName: '',
         onsitePocPhone: '',
         onsitePocEmail: '',
+        // Billing & Rate Settings
+        estimate: false,
+        taskRateType: undefined,
+        commission: false,
+        commissionAmount: undefined,
+        commissionAmountType: undefined,
+        approveForOvertime: false,
+        overtimeRate: undefined,
+        overtimeRateType: undefined,
       });
       setStartTimeTBD(false);
       setEndTimeTBD(false);
@@ -404,6 +471,15 @@ export function EventFormModal({
         onsitePocName: template.onsitePocName || '',
         onsitePocPhone: template.onsitePocPhone || '',
         onsitePocEmail: template.onsitePocEmail || '',
+        // Billing & Rate Settings (templates don't have these, use defaults)
+        estimate: false,
+        taskRateType: undefined,
+        commission: false,
+        commissionAmount: undefined,
+        commissionAmountType: undefined,
+        approveForOvertime: false,
+        overtimeRate: undefined,
+        overtimeRateType: undefined,
       });
       setStartTimeTBD(template.startTime === 'TBD');
       setEndTimeTBD(template.endTime === 'TBD');
@@ -414,8 +490,53 @@ export function EventFormModal({
   useEffect(() => {
     if (!open) {
       setSelectedTemplateId('');
+      setAttachedServices([]);
+      setAttachedProducts([]);
     }
   }, [open]);
+
+  // Populate attachments when editing
+  useEffect(() => {
+    if (existingAttachments && isEdit) {
+      // Map existing services to AttachedServiceItem format
+      const services: AttachedServiceItem[] = existingAttachments.services.map((s) => ({
+        serviceId: s.serviceId,
+        quantity: s.quantity,
+        customPrice: s.customPrice ? Number(s.customPrice) : null,
+        notes: s.notes,
+        service: {
+          id: s.service.id,
+          serviceId: s.service.serviceId,
+          title: s.service.title,
+          cost: s.service.cost ? Number(s.service.cost) : null,
+          costUnitType: s.service.costUnitType,
+          description: s.service.description,
+          isActive: s.service.isActive,
+        },
+      }));
+
+      // Map existing products to AttachedProductItem format
+      const products: AttachedProductItem[] = existingAttachments.products.map((p) => ({
+        productId: p.productId,
+        quantity: p.quantity,
+        customPrice: p.customPrice ? Number(p.customPrice) : null,
+        notes: p.notes,
+        product: {
+          id: p.product.id,
+          productId: p.product.productId,
+          title: p.product.title,
+          cost: p.product.cost ? Number(p.product.cost) : null,
+          priceUnitType: p.product.priceUnitType,
+          description: p.product.description,
+          category: p.product.category,
+          isActive: p.product.isActive,
+        },
+      }));
+
+      setAttachedServices(services);
+      setAttachedProducts(products);
+    }
+  }, [existingAttachments, isEdit]);
 
   const handleFormSubmit: SubmitHandler<FormOutput> = (data) => {
     const normalizedData = {
@@ -424,12 +545,28 @@ export function EventFormModal({
       endTime: endTimeTBD ? 'TBD' : (data.endTime || undefined),
     };
 
+    // Prepare attachments data
+    const attachments = {
+      services: attachedServices.map((s) => ({
+        serviceId: s.serviceId,
+        quantity: s.quantity,
+        customPrice: s.customPrice,
+        notes: s.notes,
+      })),
+      products: attachedProducts.map((p) => ({
+        productId: p.productId,
+        quantity: p.quantity,
+        customPrice: p.customPrice,
+        notes: p.notes,
+      })),
+    };
+
     if (isEdit) {
       const finalData = editFormSchema.parse(normalizedData);
-      onSubmit(finalData);
+      onSubmit(finalData, attachments);
     } else {
       const finalData = createFormSchema.parse(normalizedData);
-      onSubmit(finalData);
+      onSubmit(finalData, attachments);
     }
   };
 
@@ -518,6 +655,15 @@ export function EventFormModal({
                         onsitePocName: '',
                         onsitePocPhone: '',
                         onsitePocEmail: '',
+                        // Billing & Rate Settings
+                        estimate: false,
+                        taskRateType: undefined,
+                        commission: false,
+                        commissionAmount: undefined,
+                        commissionAmountType: undefined,
+                        approveForOvertime: false,
+                        overtimeRate: undefined,
+                        overtimeRateType: undefined,
                       });
                       setStartTimeTBD(false);
                       setEndTimeTBD(false);
@@ -1040,6 +1186,151 @@ export function EventFormModal({
               ))}
             </div>
           </div>
+
+          {/* Billing & Rate Settings */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Billing & Rate Settings</h3>
+            <div className="space-y-4">
+
+              {/* Estimate Flag */}
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    {...register('estimate')}
+                    disabled={isSubmitting}
+                    className="rounded border-input"
+                  />
+                  <span className="text-sm font-medium">This is an estimate</span>
+                </label>
+              </div>
+
+              {/* Task Rate Type */}
+              <div>
+                <Label htmlFor="taskRateType">Task Rate Type</Label>
+                <Select
+                  id="taskRateType"
+                  {...register('taskRateType')}
+                  disabled={isSubmitting}
+                >
+                  <option value="">Select type...</option>
+                  {AMOUNT_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Commission Section */}
+              <div className="border-t border-border/30 pt-4">
+                <h4 className="text-sm font-medium mb-3">Commission</h4>
+
+                <div className="mb-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      {...register('commission')}
+                      disabled={isSubmitting}
+                      className="rounded border-input"
+                    />
+                    <span className="text-sm">Has commission</span>
+                  </label>
+                </div>
+
+                {watch('commission') && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <Label htmlFor="commissionAmount">Commission Amount</Label>
+                      <Input
+                        id="commissionAmount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...register('commissionAmount', { valueAsNumber: true })}
+                        disabled={isSubmitting}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="commissionAmountType">Commission Type</Label>
+                      <Select
+                        id="commissionAmountType"
+                        {...register('commissionAmountType')}
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Select type...</option>
+                        {AMOUNT_TYPE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Overtime Section */}
+              <div className="border-t border-border/30 pt-4">
+                <h4 className="text-sm font-medium mb-3">Overtime</h4>
+
+                <div className="mb-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      {...register('approveForOvertime')}
+                      disabled={isSubmitting}
+                      className="rounded border-input"
+                    />
+                    <span className="text-sm">Approved for overtime</span>
+                  </label>
+                </div>
+
+                {watch('approveForOvertime') && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <Label htmlFor="overtimeRate">Overtime Rate</Label>
+                      <Input
+                        id="overtimeRate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...register('overtimeRate', { valueAsNumber: true })}
+                        disabled={isSubmitting}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="overtimeRateType">Overtime Rate Type</Label>
+                      <Select
+                        id="overtimeRateType"
+                        {...register('overtimeRateType')}
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Select type...</option>
+                        {AMOUNT_TYPE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+
+          {/* Services & Products */}
+          <EventAttachmentsSection
+            attachedServices={attachedServices}
+            attachedProducts={attachedProducts}
+            onServicesChange={setAttachedServices}
+            onProductsChange={setAttachedProducts}
+            disabled={isSubmitting}
+          />
 
           {/* Private Notes */}
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">

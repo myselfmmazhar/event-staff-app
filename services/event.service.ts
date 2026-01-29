@@ -90,6 +90,15 @@ export class EventService {
         onsitePocName: data.onsitePocName?.trim() || null,
         onsitePocPhone: data.onsitePocPhone?.trim() || null,
         onsitePocEmail: data.onsitePocEmail?.trim() || null,
+        // Billing & Rate Settings
+        estimate: data.estimate ?? null,
+        taskRateType: data.taskRateType ?? null,
+        commission: data.commission ?? null,
+        commissionAmount: data.commissionAmount ?? null,
+        commissionAmountType: data.commissionAmountType ?? null,
+        approveForOvertime: data.approveForOvertime ?? null,
+        overtimeRate: data.overtimeRate ?? null,
+        overtimeRateType: data.overtimeRateType ?? null,
         createdBy: userId,
       };
 
@@ -130,6 +139,14 @@ export class EventService {
           onsitePocName: true,
           onsitePocPhone: true,
           onsitePocEmail: true,
+          estimate: true,
+          taskRateType: true,
+          commission: true,
+          commissionAmount: true,
+          commissionAmountType: true,
+          approveForOvertime: true,
+          overtimeRate: true,
+          overtimeRateType: true,
           createdBy: true,
           createdAt: true,
           updatedAt: true,
@@ -287,6 +304,14 @@ export class EventService {
           onsitePocName: true,
           onsitePocPhone: true,
           onsitePocEmail: true,
+          estimate: true,
+          taskRateType: true,
+          commission: true,
+          commissionAmount: true,
+          commissionAmountType: true,
+          approveForOvertime: true,
+          overtimeRate: true,
+          overtimeRateType: true,
           createdBy: true,
           createdAt: true,
           updatedAt: true,
@@ -356,6 +381,14 @@ export class EventService {
         onsitePocName: true,
         onsitePocPhone: true,
         onsitePocEmail: true,
+        estimate: true,
+        taskRateType: true,
+        commission: true,
+        commissionAmount: true,
+        commissionAmountType: true,
+        approveForOvertime: true,
+        overtimeRate: true,
+        overtimeRateType: true,
         createdBy: true,
         createdAt: true,
         updatedAt: true,
@@ -424,6 +457,15 @@ export class EventService {
       if (data.onsitePocName !== undefined) sanitizedData.onsitePocName = data.onsitePocName?.trim() || null;
       if (data.onsitePocPhone !== undefined) sanitizedData.onsitePocPhone = data.onsitePocPhone?.trim() || null;
       if (data.onsitePocEmail !== undefined) sanitizedData.onsitePocEmail = data.onsitePocEmail?.trim() || null;
+      // Billing & Rate Settings
+      if (data.estimate !== undefined) sanitizedData.estimate = data.estimate ?? null;
+      if (data.taskRateType !== undefined) sanitizedData.taskRateType = data.taskRateType ?? null;
+      if (data.commission !== undefined) sanitizedData.commission = data.commission ?? null;
+      if (data.commissionAmount !== undefined) sanitizedData.commissionAmount = data.commissionAmount ?? null;
+      if (data.commissionAmountType !== undefined) sanitizedData.commissionAmountType = data.commissionAmountType ?? null;
+      if (data.approveForOvertime !== undefined) sanitizedData.approveForOvertime = data.approveForOvertime ?? null;
+      if (data.overtimeRate !== undefined) sanitizedData.overtimeRate = data.overtimeRate ?? null;
+      if (data.overtimeRateType !== undefined) sanitizedData.overtimeRateType = data.overtimeRateType ?? null;
 
       // Update the event
       const updatedEvent = await this.prisma.event.update({
@@ -463,6 +505,14 @@ export class EventService {
           onsitePocName: true,
           onsitePocPhone: true,
           onsitePocEmail: true,
+          estimate: true,
+          taskRateType: true,
+          commission: true,
+          commissionAmount: true,
+          commissionAmountType: true,
+          approveForOvertime: true,
+          overtimeRate: true,
+          overtimeRateType: true,
           createdBy: true,
           createdAt: true,
           updatedAt: true,
@@ -556,6 +606,14 @@ export class EventService {
         onsitePocName: true,
         onsitePocPhone: true,
         onsitePocEmail: true,
+        estimate: true,
+        taskRateType: true,
+        commission: true,
+        commissionAmount: true,
+        commissionAmountType: true,
+        approveForOvertime: true,
+        overtimeRate: true,
+        overtimeRateType: true,
         createdBy: true,
         createdAt: true,
         updatedAt: true,
@@ -754,6 +812,14 @@ export class EventService {
         onsitePocName: true,
         onsitePocPhone: true,
         onsitePocEmail: true,
+        estimate: true,
+        taskRateType: true,
+        commission: true,
+        commissionAmount: true,
+        commissionAmountType: true,
+        approveForOvertime: true,
+        overtimeRate: true,
+        overtimeRateType: true,
         fileLinks: true,
         eventDocuments: true,
         createdAt: true,
