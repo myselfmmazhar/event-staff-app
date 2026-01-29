@@ -14,6 +14,10 @@ interface EventsFiltersState {
   selectedStatus: EventStatus | "ALL";
   selectedClientId: string | "ALL";
 
+  // Date Filters
+  startDateFrom: string | null;
+  startDateTo: string | null;
+
   // Sorting
   sortBy: EventSortBy;
   sortOrder: SortOrder;
@@ -26,6 +30,10 @@ interface EventsFiltersState {
   setSearch: (search: string) => void;
   setSelectedStatus: (status: EventStatus | "ALL") => void;
   setSelectedClientId: (clientId: string | "ALL") => void;
+
+  // Actions - Date Filters
+  setStartDateFrom: (date: string | null) => void;
+  setStartDateTo: (date: string | null) => void;
 
   // Actions - Sorting
   setSortBy: (sortBy: EventSortBy) => void;
@@ -40,6 +48,8 @@ const DEFAULT_FILTERS = {
   search: "",
   selectedStatus: "ALL" as EventStatus | "ALL",
   selectedClientId: "ALL" as string | "ALL",
+  startDateFrom: null as string | null,
+  startDateTo: null as string | null,
 };
 
 const DEFAULT_STATE = {
@@ -61,6 +71,10 @@ export const useEventsFilters = create<EventsFiltersState>((set) => ({
   setSearch: (search) => set({ search, page: 1 }),
   setSelectedStatus: (selectedStatus) => set({ selectedStatus, page: 1 }),
   setSelectedClientId: (selectedClientId) => set({ selectedClientId, page: 1 }),
+
+  // Date Filter actions
+  setStartDateFrom: (startDateFrom) => set({ startDateFrom, page: 1 }),
+  setStartDateTo: (startDateTo) => set({ startDateTo, page: 1 }),
 
   // Sorting actions
   setSortBy: (sortBy) => set({ sortBy }),

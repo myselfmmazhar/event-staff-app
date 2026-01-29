@@ -136,6 +136,8 @@ export default function EventsPage() {
     const clientId = parseClientIdParam(searchParams.get('clientId'));
     const sortBy = parseSortByParam(searchParams.get('sortBy'));
     const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
+    const startDateFrom = searchParams.get('startDateFrom') || null;
+    const startDateTo = searchParams.get('startDateTo') || null;
 
     filters.setPage(page);
     filters.setLimit(limit);
@@ -144,6 +146,8 @@ export default function EventsPage() {
     filters.setSelectedClientId(clientId);
     filters.setSortBy(sortBy);
     filters.setSortOrder(sortOrder);
+    filters.setStartDateFrom(startDateFrom);
+    filters.setStartDateTo(startDateTo);
   }, []); // Only run on mount
 
   // Handle create query parameter
@@ -159,7 +163,7 @@ export default function EventsPage() {
 
   // Sync store with URL
   useUrlSync(filters, {
-    keys: ['page', 'limit', 'search', 'selectedStatus', 'selectedClientId', 'sortBy', 'sortOrder'],
+    keys: ['page', 'limit', 'search', 'selectedStatus', 'selectedClientId', 'sortBy', 'sortOrder', 'startDateFrom', 'startDateTo'],
   });
 
   // tRPC queries
@@ -171,6 +175,8 @@ export default function EventsPage() {
     clientId: filters.selectedClientId === 'ALL' ? undefined : filters.selectedClientId,
     sortBy: filters.sortBy,
     sortOrder: filters.sortOrder,
+    startDateFrom: filters.startDateFrom ? new Date(filters.startDateFrom) : undefined,
+    startDateTo: filters.startDateTo ? new Date(filters.startDateTo) : undefined,
   });
   const events = data?.data ?? [];
 
@@ -378,6 +384,33 @@ export default function EventsPage() {
     });
   }
 
+  if (filters.selectedClientId !== 'ALL') {
+    activeFilters.push({
+      key: 'client',
+      label: 'Client',
+      value: 'Selected',
+      onRemove: () => filters.setSelectedClientId('ALL'),
+    });
+  }
+
+  if (filters.startDateFrom) {
+    activeFilters.push({
+      key: 'startDateFrom',
+      label: 'From',
+      value: filters.startDateFrom,
+      onRemove: () => filters.setStartDateFrom(null),
+    });
+  }
+
+  if (filters.startDateTo) {
+    activeFilters.push({
+      key: 'startDateTo',
+      label: 'To',
+      value: filters.startDateTo,
+      onRemove: () => filters.setStartDateTo(null),
+    });
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -450,51 +483,16 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* Filters (with Status Tabs) */}
+      {/* Filters */}
       <Card className="p-6">
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 items-start">
-          {/* Status Tabs */}
-          <div>
-            <div className="text-sm font-medium text-foreground">{eventsLabels.filters.status}</div>
-            <div className="mt-3 flex gap-2 overflow-x-auto lg:overflow-visible lg:flex-col">
-              <Button
-                variant={filters.selectedStatus === 'ALL' ? 'default' : 'ghost'}
-                size="sm"
-                className="justify-start whitespace-nowrap lg:w-full"
-                onClick={() => {
-                  filters.setSelectedStatus('ALL');
-                  clearSelection();
-                }}
-              >
-                All
-              </Button>
-              {(Object.values(EventStatus) as EventStatus[]).map((status) => (
-                <Button
-                  key={status}
-                  variant={filters.selectedStatus === status ? 'default' : 'ghost'}
-                  size="sm"
-                  className="justify-start whitespace-nowrap lg:w-full"
-                  onClick={() => {
-                    filters.setSelectedStatus(status);
-                    clearSelection();
-                  }}
-                >
-                  {STATUS_LABELS[status]}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Search + other filters */}
-          <div className="space-y-4">
-            <EventSearch
-              value={filters.search}
-              onChange={filters.setSearch}
-              placeholder={eventsLabels.searchPlaceholder}
-            />
-            <EventFilters />
-            <ActiveFilters filters={activeFilters} />
-          </div>
+        <div className="relative z-10 space-y-4">
+          <EventSearch
+            value={filters.search}
+            onChange={filters.setSearch}
+            placeholder={eventsLabels.searchPlaceholder}
+          />
+          <EventFilters />
+          <ActiveFilters filters={activeFilters} />
         </div>
       </Card>
 
