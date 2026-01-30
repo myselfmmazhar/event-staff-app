@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,22 +11,31 @@ import { trpc } from '@/lib/client/trpc';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import { ServiceSearch } from '@/components/catalog/services/service-search';
+import { ServiceFilters } from '@/components/catalog/services/service-filters';
 import { ServiceTable } from '@/components/catalog/services/service-table';
 import { ServiceFormModal } from '@/components/catalog/services/service-form-modal';
 import { DeleteServiceModal } from '@/components/catalog/services/delete-service-modal';
 import { ViewServiceModal } from '@/components/catalog/services/view-service-modal';
-import { useServicesFilters, type ServiceActiveFilter, type ServiceSortBy, type SortOrder } from '@/store/services-filters.store';
+import { useServicesFilters, type ServiceStatus, type ServiceSortBy, type SortOrder } from '@/store/services-filters.store';
 import type { Service } from '@/lib/types/service';
 import type { CreateServiceInput } from '@/lib/schemas/service.schema';
+
+const STATUS_LABELS: Record<ServiceStatus, string> = {
+  active: 'Active',
+  inactive: 'Inactive',
+};
 
 function parseNumberParam(value: string | null, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function parseActiveParam(value: string | null): ServiceActiveFilter {
-  if (value === 'active' || value === 'inactive') return value;
-  return 'all';
+function parseStatusesParam(value: string | null): ServiceStatus[] {
+  if (!value) return [];
+  const statuses = value.split(',').filter((s): s is ServiceStatus =>
+    s === 'active' || s === 'inactive'
+  );
+  return statuses;
 }
 
 const SERVICE_SORT_FIELDS: ServiceSortBy[] = ['title', 'cost', 'createdAt'];
@@ -68,14 +77,14 @@ export default function ServicesPage() {
     const page = parseNumberParam(searchParams.get('page'), 1);
     const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
-    const active = parseActiveParam(searchParams.get('active'));
+    const statuses = parseStatusesParam(searchParams.get('statuses'));
     const sortBy = parseSortByParam(searchParams.get('sortBy'));
     const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
 
     filters.setPage(page);
     filters.setLimit(limit);
     filters.setSearch(search);
-    filters.setActive(active);
+    filters.setStatuses(statuses);
     filters.setSortBy(sortBy);
     filters.setSortOrder(sortOrder);
   }, []); // only on mount
@@ -98,20 +107,23 @@ export default function ServicesPage() {
   }, [searchParams]);
 
   useUrlSync(filters, {
-    keys: ['page', 'limit', 'search', 'active', 'sortBy', 'sortOrder'],
+    keys: ['page', 'limit', 'search', 'statuses', 'sortBy', 'sortOrder'],
   });
 
-  const activeFilterValue = useMemo(() => {
-    if (filters.active === 'active') return true;
-    if (filters.active === 'inactive') return false;
+  // Convert statuses array to isActive filter for API
+  const getIsActiveFilter = (): boolean | undefined => {
+    if (filters.statuses.length === 0) return undefined;
+    if (filters.statuses.length === 2) return undefined; // Both selected = all
+    if (filters.statuses.includes('active')) return true;
+    if (filters.statuses.includes('inactive')) return false;
     return undefined;
-  }, [filters.active]);
+  };
 
   const { data, isLoading, refetch } = trpc.service.getAll.useQuery({
     page: filters.page,
     limit: filters.limit,
     search: filters.search || undefined,
-    isActive: activeFilterValue,
+    isActive: getIsActiveFilter(),
     sortBy: filters.sortBy,
     sortOrder: filters.sortOrder,
   });
@@ -216,12 +228,13 @@ export default function ServicesPage() {
     });
   }
 
-  if (filters.active !== 'all') {
+  if (filters.statuses.length > 0) {
+    const statusLabels = filters.statuses.map((s) => STATUS_LABELS[s]).join(', ');
     activeFilters.push({
-      key: 'active',
+      key: 'statuses',
       label: 'Status',
-      value: filters.active === 'active' ? 'Active' : 'Inactive',
-      onRemove: () => filters.setActive('all'),
+      value: statusLabels,
+      onRemove: () => filters.setStatuses([]),
     });
   }
 
@@ -240,24 +253,10 @@ export default function ServicesPage() {
         </div>
       </div>
 
-      <Card className="p-6">
-        <div className="relative z-10 space-y-4">
+      <Card className="p-6 overflow-visible relative z-20">
+        <div className="space-y-4">
           <ServiceSearch value={filters.search} onChange={filters.setSearch} />
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-muted-foreground">Status</label>
-              <select
-                value={filters.active}
-                onChange={(e) => filters.setActive(e.target.value as ServiceActiveFilter)}
-                className="rounded-lg border-2 border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary"
-              >
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
+          <ServiceFilters />
 
           <ActiveFilters filters={activeFilters} />
         </div>
