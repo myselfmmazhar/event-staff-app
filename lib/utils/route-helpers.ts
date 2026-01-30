@@ -87,17 +87,17 @@ export function getEventDetailsRoute(
  * Get the event calendar route
  *
  * @param terminology - The terminology configuration
- * @returns The calendar route (e.g., "/events/calendar" or "/tasks/calendar")
+ * @returns The calendar route (e.g., "/events?view=calendar" or "/tasks?view=calendar")
  *
  * @example
  * ```tsx
  * const { terminology } = useTerminology();
- * const route = getEventCalendarRoute(terminology); // "/tasks/calendar"
+ * const route = getEventCalendarRoute(terminology); // "/tasks?view=calendar"
  * <Link href={route}>Calendar View</Link>
  * ```
  */
 export function getEventCalendarRoute(terminology: TerminologyConfig): string {
-  return `/${terminology.event.route}/calendar`;
+  return `/${terminology.event.route}?view=calendar`;
 }
 
 /**

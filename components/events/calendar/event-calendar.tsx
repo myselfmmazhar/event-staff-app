@@ -10,6 +10,7 @@ import { CalendarListView } from './calendar-list-view';
 import { CalendarEventTooltip } from './calendar-event-tooltip';
 import { ViewMode, CalendarEvent } from '@/lib/utils/calendar-helpers';
 import { trpc } from '@/lib/client/trpc';
+import { EventStatus } from '@prisma/client';
 import {
   startOfMonth,
   endOfMonth,
@@ -27,9 +28,14 @@ import {
 
 interface EventCalendarProps {
   onEventClick: (eventId: string) => void;
+  statuses?: EventStatus[];
+  clientIds?: string[];
+  search?: string;
+  startDateFrom?: Date;
+  startDateTo?: Date;
 }
 
-export function EventCalendar({ onEventClick }: EventCalendarProps) {
+export function EventCalendar({ onEventClick, statuses, clientIds, search, startDateFrom, startDateTo }: EventCalendarProps) {
   // State management
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     // Check localStorage for saved preference
@@ -89,6 +95,11 @@ export function EventCalendar({ onEventClick }: EventCalendarProps) {
   const { data: events = [], isLoading } = trpc.event.getByDateRange.useQuery({
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
+    statuses: statuses && statuses.length > 0 ? statuses : undefined,
+    clientIds: clientIds && clientIds.length > 0 ? clientIds : undefined,
+    search: search || undefined,
+    startDateFrom,
+    startDateTo,
   });
 
   // Navigation handlers
