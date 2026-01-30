@@ -92,6 +92,12 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           icon: BuildingOfficeIcon,
           featureFlag: 'clients',
         },
+        {
+          label: 'Assignment Manager',
+          href: '/assignments',
+          icon: ClipboardListIcon,
+          comingSoon: true,
+        },
       ],
     },
     // Talent Pod Section
