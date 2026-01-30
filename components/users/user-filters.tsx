@@ -1,37 +1,40 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DateRangePicker } from '@/components/ui/date-picker';
-import { FilterIcon } from '@/components/ui/icons';
-import { useUsersFilters } from '@/store/users-filters.store';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { CalendarIcon, FilterIcon } from '@/components/ui/icons';
+import {
+  useUsersFilters,
+  type UserStatusFilter,
+  type UserEmailVerifiedFilter,
+  type UserPhoneFilter,
+} from '@/store/users-filters.store';
 import { UserRole } from '@prisma/client';
 import { useRoleTerm } from '@/lib/hooks/use-terminology';
 import { useFilterLabels, useUsersPageLabels } from '@/lib/hooks/use-labels';
 
 // Note: STAFF role is excluded - staff are managed separately in the Staff module
-const ROLE_VALUES: Array<{ value: UserRole | 'ALL'; label: string }> = [
+const ROLE_OPTIONS: Array<{ value: UserRole; label: string }> = [
   { value: 'SUPER_ADMIN', label: 'Super Admin' },
   { value: 'ADMIN', label: 'Admin' },
   { value: 'MANAGER', label: 'Manager' },
 ];
 
-const STATUSES: Array<{ value: boolean | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'All Status' },
-  { value: true, label: 'Active' },
-  { value: false, label: 'Inactive' },
+const STATUS_OPTIONS: Array<{ value: UserStatusFilter; label: string }> = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
 ];
 
-const EMAIL_VERIFICATION: Array<{ value: boolean | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'All' },
-  { value: true, label: 'Verified' },
-  { value: false, label: 'Unverified' },
+const EMAIL_VERIFICATION_OPTIONS: Array<{ value: UserEmailVerifiedFilter; label: string }> = [
+  { value: 'verified', label: 'Verified' },
+  { value: 'unverified', label: 'Unverified' },
 ];
 
-const PHONE_STATUS: Array<{ value: boolean | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'All' },
-  { value: true, label: 'Has Phone' },
-  { value: false, label: 'No Phone' },
+const PHONE_STATUS_OPTIONS: Array<{ value: UserPhoneFilter; label: string }> = [
+  { value: 'hasPhone', label: 'Has Phone' },
+  { value: 'noPhone', label: 'No Phone' },
 ];
 
 export function UserFilters() {
@@ -39,32 +42,28 @@ export function UserFilters() {
   const filterLabels = useFilterLabels();
   const usersLabels = useUsersPageLabels();
   const {
-    selectedRole,
-    selectedStatus,
-    selectedEmailVerified,
-    selectedHasPhone,
+    roles,
+    statuses,
+    emailVerified,
+    hasPhone,
     createdFrom,
     createdTo,
-    setSelectedRole,
-    setSelectedStatus,
-    setSelectedEmailVerified,
-    setSelectedHasPhone,
+    setRoles,
+    setStatuses,
+    setEmailVerified,
+    setHasPhone,
     setCreatedFrom,
     setCreatedTo,
     resetFilters,
   } = useUsersFilters();
 
-  // Build ROLES array with dynamic "All Roles" label
-  const ROLES = [
-    { value: 'ALL' as const, label: `All ${roleTerm.plural}` },
-    ...ROLE_VALUES,
-  ];
+  const createdDateLabel = usersLabels.filters?.createdDate || 'Created Date';
 
   const hasActiveFilters =
-    selectedRole !== 'ALL' ||
-    selectedStatus !== 'ALL' ||
-    selectedEmailVerified !== 'ALL' ||
-    selectedHasPhone !== 'ALL' ||
+    roles.length > 0 ||
+    statuses.length > 0 ||
+    emailVerified.length > 0 ||
+    hasPhone.length > 0 ||
     createdFrom !== '' ||
     createdTo !== '';
 
@@ -88,92 +87,86 @@ export function UserFilters() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Role Filter */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground flex items-center gap-2">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
             {usersLabels.filters?.role || roleTerm.singular}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {ROLES.map((role) => (
-              <Badge
-                key={role.value}
-                variant={selectedRole === role.value ? 'primary' : 'secondary'}
-                onClick={() => setSelectedRole(role.value)}
-              >
-                {role.label}
-              </Badge>
-            ))}
-          </div>
+          </Label>
+          <MultiSelect
+            options={ROLE_OPTIONS}
+            value={roles}
+            onChange={setRoles}
+            placeholder={`All ${roleTerm.plural}`}
+          />
         </div>
 
         {/* Status Filter */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground flex items-center gap-2">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
             {usersLabels.filters?.status || 'Status'}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {STATUSES.map((status) => (
-              <Badge
-                key={String(status.value)}
-                variant={selectedStatus === status.value ? 'primary' : 'secondary'}
-                onClick={() => setSelectedStatus(status.value)}
-              >
-                {status.label}
-              </Badge>
-            ))}
-          </div>
+          </Label>
+          <MultiSelect
+            options={STATUS_OPTIONS}
+            value={statuses}
+            onChange={setStatuses}
+            placeholder="All"
+          />
         </div>
 
         {/* Email Verification Filter */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground flex items-center gap-2">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
             {usersLabels.filters?.emailVerified || 'Email Status'}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {EMAIL_VERIFICATION.map((item) => (
-              <Badge
-                key={String(item.value)}
-                variant={selectedEmailVerified === item.value ? 'primary' : 'secondary'}
-                onClick={() => setSelectedEmailVerified(item.value)}
-              >
-                {item.label}
-              </Badge>
-            ))}
-          </div>
+          </Label>
+          <MultiSelect
+            options={EMAIL_VERIFICATION_OPTIONS}
+            value={emailVerified}
+            onChange={setEmailVerified}
+            placeholder="All"
+          />
         </div>
 
         {/* Phone Status Filter */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground flex items-center gap-2">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
             {usersLabels.filters?.hasPhone || 'Phone Status'}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {PHONE_STATUS.map((item) => (
-              <Badge
-                key={String(item.value)}
-                variant={selectedHasPhone === item.value ? 'primary' : 'secondary'}
-                onClick={() => setSelectedHasPhone(item.value)}
-              >
-                {item.label}
-              </Badge>
-            ))}
-          </div>
+          </Label>
+          <MultiSelect
+            options={PHONE_STATUS_OPTIONS}
+            value={hasPhone}
+            onChange={setHasPhone}
+            placeholder="All"
+          />
         </div>
 
-        {/* Date Range Filter */}
+        {/* Date From Filter */}
         <div className="flex flex-col gap-2">
-          <DateRangePicker
-            fromDate={createdFrom}
-            toDate={createdTo}
-            onFromDateChange={setCreatedFrom}
-            onToDateChange={setCreatedTo}
-            label={usersLabels.filters?.createdDate || 'Created Date'}
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4" />
+            {createdDateLabel} (From)
+          </Label>
+          <Input
+            type="date"
+            value={createdFrom || ''}
+            onChange={(e) => setCreatedFrom(e.target.value || '')}
+          />
+        </div>
+
+        {/* Date To Filter */}
+        <div className="flex flex-col gap-2">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4" />
+            {createdDateLabel} (To)
+          </Label>
+          <Input
+            type="date"
+            value={createdTo || ''}
+            onChange={(e) => setCreatedTo(e.target.value || '')}
           />
         </div>
       </div>
     </div>
   );
 }
-

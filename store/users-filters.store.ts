@@ -3,6 +3,9 @@ import { UserRole } from "@prisma/client";
 
 export type UserSortBy = "createdAt" | "updatedAt" | "firstName" | "lastName" | "email" | "role";
 export type SortOrder = "asc" | "desc";
+export type UserStatusFilter = "active" | "inactive";
+export type UserEmailVerifiedFilter = "verified" | "unverified";
+export type UserPhoneFilter = "hasPhone" | "noPhone";
 
 interface UsersFiltersState {
   // Pagination
@@ -11,10 +14,10 @@ interface UsersFiltersState {
 
   // Search & Filters
   search: string;
-  selectedRole: UserRole | "ALL";
-  selectedStatus: boolean | "ALL";
-  selectedEmailVerified: boolean | "ALL";
-  selectedHasPhone: boolean | "ALL";
+  roles: UserRole[];
+  statuses: UserStatusFilter[];
+  emailVerified: UserEmailVerifiedFilter[];
+  hasPhone: UserPhoneFilter[];
   createdFrom: string;
   createdTo: string;
 
@@ -28,10 +31,10 @@ interface UsersFiltersState {
 
   // Actions - Search & Filters
   setSearch: (search: string) => void;
-  setSelectedRole: (role: UserRole | "ALL") => void;
-  setSelectedStatus: (status: boolean | "ALL") => void;
-  setSelectedEmailVerified: (verified: boolean | "ALL") => void;
-  setSelectedHasPhone: (hasPhone: boolean | "ALL") => void;
+  setRoles: (roles: UserRole[]) => void;
+  setStatuses: (statuses: UserStatusFilter[]) => void;
+  setEmailVerified: (emailVerified: UserEmailVerifiedFilter[]) => void;
+  setHasPhone: (hasPhone: UserPhoneFilter[]) => void;
   setCreatedFrom: (date: string) => void;
   setCreatedTo: (date: string) => void;
 
@@ -46,10 +49,10 @@ interface UsersFiltersState {
 
 const DEFAULT_FILTERS = {
   search: "",
-  selectedRole: "ALL" as UserRole | "ALL",
-  selectedStatus: "ALL" as boolean | "ALL",
-  selectedEmailVerified: "ALL" as boolean | "ALL",
-  selectedHasPhone: "ALL" as boolean | "ALL",
+  roles: [] as UserRole[],
+  statuses: [] as UserStatusFilter[],
+  emailVerified: [] as UserEmailVerifiedFilter[],
+  hasPhone: [] as UserPhoneFilter[],
   createdFrom: "",
   createdTo: "",
 };
@@ -71,10 +74,10 @@ export const useUsersFilters = create<UsersFiltersState>((set) => ({
 
   // Search & Filter actions
   setSearch: (search) => set({ search, page: 1 }), // Reset to page 1 when searching
-  setSelectedRole: (selectedRole) => set({ selectedRole, page: 1 }),
-  setSelectedStatus: (selectedStatus) => set({ selectedStatus, page: 1 }),
-  setSelectedEmailVerified: (selectedEmailVerified) => set({ selectedEmailVerified, page: 1 }),
-  setSelectedHasPhone: (selectedHasPhone) => set({ selectedHasPhone, page: 1 }),
+  setRoles: (roles) => set({ roles, page: 1 }),
+  setStatuses: (statuses) => set({ statuses, page: 1 }),
+  setEmailVerified: (emailVerified) => set({ emailVerified, page: 1 }),
+  setHasPhone: (hasPhone) => set({ hasPhone, page: 1 }),
   setCreatedFrom: (createdFrom) => set({ createdFrom, page: 1 }),
   setCreatedTo: (createdTo) => set({ createdTo, page: 1 }),
 

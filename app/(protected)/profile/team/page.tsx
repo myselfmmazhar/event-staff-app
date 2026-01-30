@@ -17,7 +17,14 @@ import { UserRole } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, type ComponentProps } from 'react';
 import type { InviteUserInput, UpdateUserInput } from '@/lib/schemas/user.schema';
-import { useUsersFilters, type UserSortBy, type SortOrder } from '@/store/users-filters.store';
+import {
+  useUsersFilters,
+  type UserSortBy,
+  type SortOrder,
+  type UserStatusFilter,
+  type UserEmailVerifiedFilter,
+  type UserPhoneFilter,
+} from '@/store/users-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import { useRoleTerm, useTerminology } from '@/lib/hooks/use-terminology';
@@ -33,17 +40,37 @@ function parseNumberParam(value: string | null, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function parseRoleParam(value: string | null): UserRole | 'ALL' {
-  if (value && USER_ROLE_SET.has(value as UserRole)) {
-    return value as UserRole;
-  }
-  return 'ALL';
+function parseCsvParam(value: string | null): string[] {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
 }
 
-function parseTriStateBoolean(value: string | null): boolean | 'ALL' {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return 'ALL';
+function parseRolesParam(value: string | null): UserRole[] {
+  return parseCsvParam(value).filter((v): v is UserRole => USER_ROLE_SET.has(v as UserRole));
+}
+
+function parseStatusesParam(value: string | null): UserStatusFilter[] {
+  if (value === 'true') return ['active'];
+  if (value === 'false') return ['inactive'];
+  if (value === 'ALL' || value === 'all') return [];
+  return parseCsvParam(value).filter((v): v is UserStatusFilter => v === 'active' || v === 'inactive');
+}
+
+function parseEmailVerifiedParam(value: string | null): UserEmailVerifiedFilter[] {
+  if (value === 'true') return ['verified'];
+  if (value === 'false') return ['unverified'];
+  if (value === 'ALL' || value === 'all') return [];
+  return parseCsvParam(value).filter((v): v is UserEmailVerifiedFilter => v === 'verified' || v === 'unverified');
+}
+
+function parseHasPhoneParam(value: string | null): UserPhoneFilter[] {
+  if (value === 'true') return ['hasPhone'];
+  if (value === 'false') return ['noPhone'];
+  if (value === 'ALL' || value === 'all') return [];
+  return parseCsvParam(value).filter((v): v is UserPhoneFilter => v === 'hasPhone' || v === 'noPhone');
 }
 
 function parseSortByParam(value: string | null): UserSortBy {
@@ -86,10 +113,10 @@ export default function UsersPage() {
     const page = parseNumberParam(searchParams.get('page'), 1);
     const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
-    const role = parseRoleParam(searchParams.get('role'));
-    const status = parseTriStateBoolean(searchParams.get('status'));
-    const emailVerified = parseTriStateBoolean(searchParams.get('emailVerified'));
-    const hasPhone = parseTriStateBoolean(searchParams.get('hasPhone'));
+    const roles = parseRolesParam(searchParams.get('roles') ?? searchParams.get('selectedRole') ?? searchParams.get('role'));
+    const statuses = parseStatusesParam(searchParams.get('statuses') ?? searchParams.get('selectedStatus') ?? searchParams.get('status'));
+    const emailVerified = parseEmailVerifiedParam(searchParams.get('emailVerified') ?? searchParams.get('selectedEmailVerified'));
+    const hasPhone = parseHasPhoneParam(searchParams.get('hasPhone') ?? searchParams.get('selectedHasPhone'));
     const createdFrom = parseDateParam(searchParams.get('createdFrom'));
     const createdTo = parseDateParam(searchParams.get('createdTo'));
     const sortBy = parseSortByParam(searchParams.get('sortBy'));
@@ -98,10 +125,10 @@ export default function UsersPage() {
     filters.setPage(page);
     filters.setLimit(limit);
     filters.setSearch(search);
-    filters.setSelectedRole(role);
-    filters.setSelectedStatus(status);
-    filters.setSelectedEmailVerified(emailVerified);
-    filters.setSelectedHasPhone(hasPhone);
+    filters.setRoles(roles);
+    filters.setStatuses(statuses);
+    filters.setEmailVerified(emailVerified);
+    filters.setHasPhone(hasPhone);
     filters.setCreatedFrom(createdFrom);
     filters.setCreatedTo(createdTo);
     filters.setSortBy(sortBy);
@@ -110,7 +137,7 @@ export default function UsersPage() {
 
   // Sync store with URL
   useUrlSync(filters, {
-    keys: ['page', 'limit', 'search', 'selectedRole', 'selectedStatus', 'selectedEmailVerified', 'selectedHasPhone', 'createdFrom', 'createdTo', 'sortBy', 'sortOrder'],
+    keys: ['page', 'limit', 'search', 'roles', 'statuses', 'emailVerified', 'hasPhone', 'createdFrom', 'createdTo', 'sortBy', 'sortOrder'],
   });
 
   // tRPC queries
@@ -118,10 +145,30 @@ export default function UsersPage() {
     page: filters.page,
     limit: filters.limit,
     search: filters.search || undefined,
-    role: filters.selectedRole === 'ALL' ? undefined : filters.selectedRole,
-    isActive: filters.selectedStatus === 'ALL' ? undefined : filters.selectedStatus,
-    emailVerified: filters.selectedEmailVerified === 'ALL' ? undefined : filters.selectedEmailVerified,
-    hasPhone: filters.selectedHasPhone === 'ALL' ? undefined : filters.selectedHasPhone,
+    role:
+      filters.roles.length === 0
+        ? undefined
+        : filters.roles.length === 1
+          ? filters.roles[0]
+          : filters.roles,
+    isActive:
+      filters.statuses.length === 0 || filters.statuses.length === 2
+        ? undefined
+        : filters.statuses.includes('active')
+          ? true
+          : false,
+    emailVerified:
+      filters.emailVerified.length === 0 || filters.emailVerified.length === 2
+        ? undefined
+        : filters.emailVerified.includes('verified')
+          ? true
+          : false,
+    hasPhone:
+      filters.hasPhone.length === 0 || filters.hasPhone.length === 2
+        ? undefined
+        : filters.hasPhone.includes('hasPhone')
+          ? true
+          : false,
     createdFrom: filters.createdFrom || undefined,
     createdTo: filters.createdTo || undefined,
     sortBy: filters.sortBy,
@@ -262,39 +309,39 @@ export default function UsersPage() {
     });
   }
 
-  if (filters.selectedRole !== 'ALL') {
+  if (filters.roles.length > 0) {
     activeFilters.push({
-      key: 'role',
+      key: 'roles',
       label: roleTerm.singular,
-      value: ROLE_LABELS[filters.selectedRole],
-      onRemove: () => filters.setSelectedRole('ALL'),
+      value: filters.roles.length === 1 ? ROLE_LABELS[filters.roles[0]] : `${filters.roles.length} selected`,
+      onRemove: () => filters.setRoles([]),
     });
   }
 
-  if (filters.selectedStatus !== 'ALL') {
+  if (filters.statuses.length > 0) {
     activeFilters.push({
-      key: 'status',
+      key: 'statuses',
       label: 'Status',
-      value: filters.selectedStatus ? 'Active' : 'Inactive',
-      onRemove: () => filters.setSelectedStatus('ALL'),
+      value: filters.statuses.length === 1 ? (filters.statuses[0] === 'active' ? 'Active' : 'Inactive') : `${filters.statuses.length} selected`,
+      onRemove: () => filters.setStatuses([]),
     });
   }
 
-  if (filters.selectedEmailVerified !== 'ALL') {
+  if (filters.emailVerified.length > 0) {
     activeFilters.push({
       key: 'emailVerified',
       label: 'Email',
-      value: filters.selectedEmailVerified ? 'Verified' : 'Unverified',
-      onRemove: () => filters.setSelectedEmailVerified('ALL'),
+      value: filters.emailVerified.length === 1 ? (filters.emailVerified[0] === 'verified' ? 'Verified' : 'Unverified') : `${filters.emailVerified.length} selected`,
+      onRemove: () => filters.setEmailVerified([]),
     });
   }
 
-  if (filters.selectedHasPhone !== 'ALL') {
+  if (filters.hasPhone.length > 0) {
     activeFilters.push({
       key: 'hasPhone',
       label: 'Phone',
-      value: filters.selectedHasPhone ? 'Has Phone' : 'No Phone',
-      onRemove: () => filters.setSelectedHasPhone('ALL'),
+      value: filters.hasPhone.length === 1 ? (filters.hasPhone[0] === 'hasPhone' ? 'Has Phone' : 'No Phone') : `${filters.hasPhone.length} selected`,
+      onRemove: () => filters.setHasPhone([]),
     });
   }
 
@@ -383,8 +430,8 @@ export default function UsersPage() {
       </div>
 
       {/* Filters */}
-      <Card className="p-6">
-        <div className="relative z-10 space-y-4">
+      <Card className="p-6 overflow-visible relative z-20">
+        <div className="space-y-4">
           <UserSearch value={filters.search} onChange={filters.setSearch} placeholder={usersLabels.searchPlaceholder} />
           <UserFilters />
           <ActiveFilters filters={activeFilters} />

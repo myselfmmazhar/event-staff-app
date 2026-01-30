@@ -424,7 +424,7 @@ export class UserService {
 
     // Role filter
     if (query.role) {
-      where.role = query.role;
+      where.role = Array.isArray(query.role) ? { in: query.role } : query.role;
     }
 
     // Active/Inactive filter

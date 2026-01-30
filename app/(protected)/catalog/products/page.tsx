@@ -6,12 +6,12 @@ import { ActiveFilters } from '@/components/common/active-filters';
 import { Pagination } from '@/components/common/pagination';
 import { ProductFormModal } from '@/components/catalog/products/product-form-modal';
 import { ProductSearch } from '@/components/catalog/products/product-search';
+import { ProductFilters } from '@/components/catalog/products/product-filters';
 import { ProductTable } from '@/components/catalog/products/product-table';
 import { DeleteProductModal } from '@/components/catalog/products/delete-product-modal';
 import { ViewProductModal } from '@/components/catalog/products/view-product-modal';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { PlusIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
@@ -20,7 +20,7 @@ import type { Product } from '@/lib/types/product';
 import type { CreateProductInput } from '@/lib/schemas/product.schema';
 import {
   useProductsFilters,
-  type ProductActiveFilter,
+  type ProductStatus,
   type ProductSortBy,
   type SortOrder,
 } from '@/store/products-filters.store';
@@ -30,9 +30,12 @@ function parseNumberParam(value: string | null, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function parseActiveParam(value: string | null): ProductActiveFilter {
-  if (value === 'active' || value === 'inactive') return value;
-  return 'all';
+function parseStatusesParam(value: string | null): ProductStatus[] {
+  if (!value) return [];
+  const statuses = value.split(',').filter((s): s is ProductStatus =>
+    s === 'active' || s === 'inactive'
+  );
+  return statuses;
 }
 
 const PRODUCT_SORT_FIELDS: ProductSortBy[] = ['title', 'cost', 'category', 'createdAt'];
@@ -74,18 +77,37 @@ export default function ProductsPage() {
     const page = parseNumberParam(searchParams.get('page'), 1);
     const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
-    const active = parseActiveParam(searchParams.get('active'));
-    const category = searchParams.get('category') || '';
+    const statusesFromParam = parseStatusesParam(searchParams.get('statuses'));
+    const activeParam = searchParams.get('active');
+    const statuses =
+      statusesFromParam.length > 0
+        ? statusesFromParam
+        : activeParam === 'active'
+          ? (['active'] as ProductStatus[])
+          : activeParam === 'inactive'
+            ? (['inactive'] as ProductStatus[])
+            : [];
     const sortBy = parseSortByParam(searchParams.get('sortBy'));
     const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
 
     filters.setPage(page);
     filters.setLimit(limit);
     filters.setSearch(search);
-    filters.setActive(active);
-    filters.setCategory(category);
+    filters.setStatuses(statuses);
     filters.setSortBy(sortBy);
     filters.setSortOrder(sortOrder);
+
+    // Category filtering was removed; strip any stale URL param.
+    // Active filter was replaced by statuses multi-select; strip old param.
+    if (searchParams.has('category') || searchParams.has('active')) {
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.delete('category');
+      urlParams.delete('active');
+      const newUrl = urlParams.toString()
+        ? `${window.location.pathname}?${urlParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
   }, []); // only on mount
 
   useEffect(() => {
@@ -106,21 +128,22 @@ export default function ProductsPage() {
   }, [searchParams]);
 
   useUrlSync(filters, {
-    keys: ['page', 'limit', 'search', 'active', 'category', 'sortBy', 'sortOrder'],
+    keys: ['page', 'limit', 'search', 'statuses', 'sortBy', 'sortOrder'],
   });
 
   const activeFilterValue = useMemo(() => {
-    if (filters.active === 'active') return true;
-    if (filters.active === 'inactive') return false;
+    if (filters.statuses.length === 0) return undefined;
+    if (filters.statuses.length === 2) return undefined;
+    if (filters.statuses.includes('active')) return true;
+    if (filters.statuses.includes('inactive')) return false;
     return undefined;
-  }, [filters.active]);
+  }, [filters.statuses]);
 
   const { data, isLoading, refetch } = trpc.product.getAll.useQuery({
     page: filters.page,
     limit: filters.limit,
     search: filters.search || undefined,
     isActive: activeFilterValue,
-    category: filters.category || undefined,
     sortBy: filters.sortBy,
     sortOrder: filters.sortOrder,
   });
@@ -225,21 +248,12 @@ export default function ProductsPage() {
     });
   }
 
-  if (filters.active !== 'all') {
+  if (filters.statuses.length > 0) {
     activeFilters.push({
-      key: 'active',
+      key: 'statuses',
       label: 'Status',
-      value: filters.active === 'active' ? 'Active' : 'Inactive',
-      onRemove: () => filters.setActive('all'),
-    });
-  }
-
-  if (filters.category) {
-    activeFilters.push({
-      key: 'category',
-      label: 'Category',
-      value: filters.category,
-      onRemove: () => filters.setCategory(''),
+      value: filters.statuses.map((s) => (s === 'active' ? 'Active' : 'Inactive')).join(', '),
+      onRemove: () => filters.setStatuses([]),
     });
   }
 
@@ -258,34 +272,10 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <Card className="p-6">
-        <div className="relative z-10 space-y-4">
+      <Card className="p-6 overflow-visible relative z-20">
+        <div className="space-y-4">
           <ProductSearch value={filters.search} onChange={filters.setSearch} />
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-muted-foreground">Status</label>
-              <select
-                value={filters.active}
-                onChange={(e) => filters.setActive(e.target.value as ProductActiveFilter)}
-                className="rounded-lg border-2 border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary"
-              >
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-muted-foreground">Category</label>
-              <Input
-                value={filters.category}
-                onChange={(e) => filters.setCategory(e.target.value)}
-                placeholder="All categories"
-                className="h-10 max-w-xs"
-              />
-            </div>
-          </div>
+          <ProductFilters />
 
           <ActiveFilters filters={activeFilters} />
         </div>
@@ -377,4 +367,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type ProductActiveFilter = 'all' | 'active' | 'inactive';
+export type ProductStatus = 'active' | 'inactive';
 export type ProductSortBy = 'title' | 'cost' | 'category' | 'createdAt';
 export type SortOrder = 'asc' | 'desc';
 
@@ -11,8 +11,7 @@ interface ProductsFiltersState {
 
   // Search & Filters
   search: string;
-  active: ProductActiveFilter;
-  category: string;
+  statuses: ProductStatus[];
 
   // Sorting
   sortBy: ProductSortBy;
@@ -24,8 +23,7 @@ interface ProductsFiltersState {
 
   // Actions - Search & Filters
   setSearch: (search: string) => void;
-  setActive: (active: ProductActiveFilter) => void;
-  setCategory: (category: string) => void;
+  setStatuses: (statuses: ProductStatus[]) => void;
 
   // Actions - Sorting
   setSortBy: (sortBy: ProductSortBy) => void;
@@ -38,8 +36,7 @@ interface ProductsFiltersState {
 
 const DEFAULT_FILTERS = {
   search: '',
-  active: 'all' as ProductActiveFilter,
-  category: '',
+  statuses: [] as ProductStatus[],
 };
 
 const DEFAULT_STATE = {
@@ -57,8 +54,7 @@ export const useProductsFilters = create<ProductsFiltersState>((set) => ({
   setLimit: (limit) => set({ limit, page: 1 }),
 
   setSearch: (search) => set({ search, page: 1 }),
-  setActive: (active) => set({ active, page: 1 }),
-  setCategory: (category) => set({ category, page: 1 }),
+  setStatuses: (statuses) => set({ statuses, page: 1 }),
 
   setSortBy: (sortBy) => set({ sortBy }),
   setSortOrder: (sortOrder) => set({ sortOrder }),
@@ -66,4 +62,3 @@ export const useProductsFilters = create<ProductsFiltersState>((set) => ({
   resetFilters: () => set({ ...DEFAULT_FILTERS, page: 1 }),
   resetAll: () => set(DEFAULT_STATE),
 }));
-

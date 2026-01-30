@@ -14,7 +14,6 @@ export function UserSearch({ value, onChange, placeholder = 'Search by name or e
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      className="w-full md:w-96"
     />
   );
 }

@@ -208,7 +208,9 @@ export class UserSchema {
       .default("createdAt")
       .optional(),
     sortOrder: z.enum(["asc", "desc"]).default("desc").optional(),
-    role: z.nativeEnum(UserRole).optional(),
+    role: z
+      .union([z.nativeEnum(UserRole), z.array(z.nativeEnum(UserRole)).min(1)])
+      .optional(),
     isActive: z.boolean().optional(),
     emailVerified: z.boolean().optional(),
     hasPhone: z.boolean().optional(),
