@@ -1,7 +1,7 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { ClipboardClipboardListIcon } from '@/components/ui/icons';
+import { ClipboardListIcon } from '@/components/ui/icons';
 
 export default function AssignmentManagerPage() {
     return (

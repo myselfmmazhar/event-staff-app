@@ -15,9 +15,7 @@ import type { EventSelect, PaginatedResponse } from "@/lib/types/prisma-types";
 export type { CreateEventInput, QueryEventsInput };
 
 // Update input type for service (Zod already validates, service receives validated data)
-export interface UpdateEventInput extends Omit<UpdateEventInputType, "id"> {
-  // id is handled separately in the method signature
-}
+export type UpdateEventInput = Omit<UpdateEventInputType, "id">;
 
 export type PaginatedEvents = PaginatedResponse<EventSelect>;
 
@@ -450,18 +448,18 @@ export class EventService {
    * Update an event
    * Includes ownership check
    */
-  async update(id: string, data: UpdateEventInput, userId: string) {
-    try {
-      // Check if event exists and user owns it
-      await this.findOne(id, userId);
+	  async update(id: string, data: UpdateEventInput, userId: string) {
+	    try {
+	      // Check if event exists and user owns it
+	      await this.findOne(id, userId);
 
-      // Sanitize input data
-      const sanitizedData: any = {};
-      if (data.title !== undefined) sanitizedData.title = data.title.trim();
-      if (data.description !== undefined) sanitizedData.description = data.description?.trim() || null;
-      if (data.requirements !== undefined) sanitizedData.requirements = data.requirements?.trim() || null;
-      if (data.privateComments !== undefined) sanitizedData.privateComments = data.privateComments?.trim() || null;
-      if (data.clientId !== undefined) sanitizedData.clientId = data.clientId && data.clientId !== '' ? data.clientId : null;
+	      // Sanitize input data
+	      const sanitizedData: Prisma.EventUncheckedUpdateInput = {};
+	      if (data.title !== undefined) sanitizedData.title = data.title.trim();
+	      if (data.description !== undefined) sanitizedData.description = data.description?.trim() || null;
+	      if (data.requirements !== undefined) sanitizedData.requirements = data.requirements?.trim() || null;
+	      if (data.privateComments !== undefined) sanitizedData.privateComments = data.privateComments?.trim() || null;
+	      if (data.clientId !== undefined) sanitizedData.clientId = data.clientId && data.clientId !== '' ? data.clientId : null;
       if (data.venueName !== undefined) sanitizedData.venueName = data.venueName.trim();
       if (data.address !== undefined) sanitizedData.address = data.address.trim();
       if (data.city !== undefined) sanitizedData.city = data.city.trim();
