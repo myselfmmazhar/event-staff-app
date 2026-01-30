@@ -8,6 +8,7 @@ import { StaffFormModal } from '@/components/staff/staff-form-modal';
 import { StaffTable, type StaffWithRelations } from '@/components/staff/staff-table';
 import { StaffSearch } from '@/components/staff/staff-search';
 import { StaffFilters } from '@/components/staff/staff-filters';
+import { ActiveFilters } from '@/components/common/active-filters';
 import { ViewStaffModal } from '@/components/staff/view-staff-modal';
 import { DeleteStaffModal } from '@/components/staff/delete-staff-modal';
 import { Pagination } from '@/components/common/pagination';
@@ -22,45 +23,16 @@ import { useStaffPageLabels } from '@/lib/hooks/use-labels';
 import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
 
 type StaffFilterState = {
-    accountStatus: AccountStatus | 'ALL';
-    staffType: StaffType | 'ALL';
-    skillLevel: SkillLevel | 'ALL';
+    accountStatuses: AccountStatus[];
+    staffTypes: StaffType[];
+    skillLevels: SkillLevel[];
 };
 
 const DEFAULT_FILTERS: StaffFilterState = {
-    accountStatus: 'ALL',
-    staffType: 'ALL',
-    skillLevel: 'ALL',
+    accountStatuses: [],
+    staffTypes: [],
+    skillLevels: [],
 };
-
-type StaffFilterKey = keyof StaffFilterState;
-
-const ACCOUNT_STATUS_VALUES = new Set<AccountStatus>(Object.values(AccountStatus));
-const STAFF_TYPE_VALUES = new Set<StaffType>(Object.values(StaffType));
-const SKILL_LEVEL_VALUES = new Set<SkillLevel>(Object.values(SkillLevel));
-
-function parseStaffFilterValue<K extends StaffFilterKey>(
-    key: K,
-    value: string
-): StaffFilterState[K] {
-    if (!value) {
-        return 'ALL' as StaffFilterState[K];
-    }
-
-    if (key === 'accountStatus' && ACCOUNT_STATUS_VALUES.has(value as AccountStatus)) {
-        return value as StaffFilterState[K];
-    }
-
-    if (key === 'staffType' && STAFF_TYPE_VALUES.has(value as StaffType)) {
-        return value as StaffFilterState[K];
-    }
-
-    if (key === 'skillLevel' && SKILL_LEVEL_VALUES.has(value as SkillLevel)) {
-        return value as StaffFilterState[K];
-    }
-
-    return 'ALL' as StaffFilterState[K];
-}
 
 export default function StaffPage() {
     const { terminology } = useTerminology();
@@ -103,9 +75,9 @@ export default function StaffPage() {
         page,
         limit,
         search: search || undefined,
-        accountStatus: filters.accountStatus === 'ALL' ? undefined : filters.accountStatus,
-        staffType: filters.staffType === 'ALL' ? undefined : filters.staffType,
-        skillLevel: filters.skillLevel === 'ALL' ? undefined : filters.skillLevel,
+        accountStatuses: filters.accountStatuses.length > 0 ? filters.accountStatuses : undefined,
+        staffTypes: filters.staffTypes.length > 0 ? filters.staffTypes : undefined,
+        skillLevels: filters.skillLevels.length > 0 ? filters.skillLevels : undefined,
         sortBy: 'createdAt',
         sortOrder: 'desc',
     });
@@ -302,23 +274,81 @@ export default function StaffPage() {
         }
     };
 
-    const handleFilterChange = <K extends StaffFilterKey>(
-        key: K,
-        value: string
-    ) => {
-        setFilters((prev) => ({
-            ...prev,
-            [key]: parseStaffFilterValue(key, value),
-        }));
-        setPage(1);
-    };
-
     const handleClearFilters = () => {
         setFilters(DEFAULT_FILTERS);
+        setSearch('');
         setPage(1);
     };
 
     const totalPages = data ? Math.ceil(data.meta.total / limit) : 0;
+
+    // Build active filters for display
+    const STATUS_LABELS: Record<AccountStatus, string> = {
+        ACTIVE: 'Active',
+        PENDING: 'Pending',
+        DISABLED: 'Disabled',
+    };
+
+    const TYPE_LABELS: Record<StaffType, string> = {
+        EMPLOYEE: 'Employee',
+        CONTRACTOR: 'Contractor',
+    };
+
+    const SKILL_LABELS: Record<SkillLevel, string> = {
+        BEGINNER: 'Beginner',
+        INTERMEDIATE: 'Intermediate',
+        ADVANCED: 'Advanced',
+    };
+
+    const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];
+
+    if (search) {
+        activeFilters.push({
+            key: 'search',
+            label: 'Search',
+            value: search,
+            onRemove: () => setSearch(''),
+        });
+    }
+
+    if (filters.accountStatuses.length > 0) {
+        const statusLabels = filters.accountStatuses.map((s) => STATUS_LABELS[s]).join(', ');
+        activeFilters.push({
+            key: 'statuses',
+            label: 'Status',
+            value: filters.accountStatuses.length === 1 ? statusLabels : `${filters.accountStatuses.length} selected`,
+            onRemove: () => {
+                setFilters((prev) => ({ ...prev, accountStatuses: [] }));
+                setPage(1);
+            },
+        });
+    }
+
+    if (filters.staffTypes.length > 0) {
+        const typeLabels = filters.staffTypes.map((t) => TYPE_LABELS[t]).join(', ');
+        activeFilters.push({
+            key: 'types',
+            label: 'Type',
+            value: filters.staffTypes.length === 1 ? typeLabels : `${filters.staffTypes.length} selected`,
+            onRemove: () => {
+                setFilters((prev) => ({ ...prev, staffTypes: [] }));
+                setPage(1);
+            },
+        });
+    }
+
+    if (filters.skillLevels.length > 0) {
+        const skillLabels = filters.skillLevels.map((l) => SKILL_LABELS[l]).join(', ');
+        activeFilters.push({
+            key: 'skillLevels',
+            label: 'Skill Level',
+            value: filters.skillLevels.length === 1 ? skillLabels : `${filters.skillLevels.length} selected`,
+            onRemove: () => {
+                setFilters((prev) => ({ ...prev, skillLevels: [] }));
+                setPage(1);
+            },
+        });
+    }
 
     return (
         <div className="p-6 space-y-6">
@@ -397,7 +427,7 @@ export default function StaffPage() {
             </div>
 
             {/* Search and Filters */}
-            <Card className="p-6">
+            <Card className="p-6 overflow-visible relative z-20">
                 <div className="space-y-4">
                     <StaffSearch
                         value={search}
@@ -405,14 +435,24 @@ export default function StaffPage() {
                         placeholder={staffLabels.searchPlaceholder}
                     />
                     <StaffFilters
-                        filters={{
-                            accountStatus: filters.accountStatus === 'ALL' ? '' : filters.accountStatus,
-                            staffType: filters.staffType === 'ALL' ? '' : filters.staffType,
-                            skillLevel: filters.skillLevel === 'ALL' ? '' : filters.skillLevel,
+                        selectedStatuses={filters.accountStatuses}
+                        selectedTypes={filters.staffTypes}
+                        selectedSkillLevels={filters.skillLevels}
+                        onStatusChange={(statuses) => {
+                            setFilters((prev) => ({ ...prev, accountStatuses: statuses }));
+                            setPage(1);
                         }}
-                        onFilterChange={handleFilterChange}
+                        onTypeChange={(types) => {
+                            setFilters((prev) => ({ ...prev, staffTypes: types }));
+                            setPage(1);
+                        }}
+                        onSkillLevelChange={(levels) => {
+                            setFilters((prev) => ({ ...prev, skillLevels: levels }));
+                            setPage(1);
+                        }}
                         onClearFilters={handleClearFilters}
                     />
+                    <ActiveFilters filters={activeFilters} />
                 </div>
             </Card>
 

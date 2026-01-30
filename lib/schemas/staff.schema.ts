@@ -174,9 +174,10 @@ export class StaffSchema {
             .default("createdAt")
             .optional(),
         sortOrder: z.enum(["asc", "desc"]).default("desc").optional(),
-        accountStatus: z.nativeEnum(AccountStatus).optional(),
-        staffType: z.nativeEnum(StaffType).optional(),
-        skillLevel: z.nativeEnum(SkillLevel).optional(),
+        // Multi-select filters (arrays)
+        accountStatuses: z.array(z.nativeEnum(AccountStatus)).optional(),
+        staffTypes: z.array(z.nativeEnum(StaffType)).optional(),
+        skillLevels: z.array(z.nativeEnum(SkillLevel)).optional(),
         availabilityStatus: z.nativeEnum(AvailabilityStatus).optional(),
         contractorId: z.string().uuid("Invalid contractor ID").optional(),
         positionId: z.string().uuid("Invalid position ID").optional(),
