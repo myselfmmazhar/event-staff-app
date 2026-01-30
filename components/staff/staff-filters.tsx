@@ -1,77 +1,113 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
 import { FilterIcon, XIcon } from '@/components/ui/icons';
 import { useFilterLabels, useStaffPageLabels } from '@/lib/hooks/use-labels';
 
-type StaffFilterKey = 'accountStatus' | 'staffType' | 'skillLevel';
+const STATUS_OPTIONS: Array<{ value: AccountStatus; label: string }> = [
+    { value: AccountStatus.ACTIVE, label: 'Active' },
+    { value: AccountStatus.PENDING, label: 'Pending' },
+    { value: AccountStatus.DISABLED, label: 'Disabled' },
+];
+
+const STAFF_TYPE_OPTIONS: Array<{ value: StaffType; label: string }> = [
+    { value: StaffType.EMPLOYEE, label: 'Employee' },
+    { value: StaffType.CONTRACTOR, label: 'Contractor' },
+];
+
+const SKILL_LEVEL_OPTIONS: Array<{ value: SkillLevel; label: string }> = [
+    { value: SkillLevel.BEGINNER, label: 'Beginner' },
+    { value: SkillLevel.INTERMEDIATE, label: 'Intermediate' },
+    { value: SkillLevel.ADVANCED, label: 'Advanced' },
+];
 
 interface StaffFiltersProps {
-    filters: Partial<Record<StaffFilterKey, string>>;
-    onFilterChange: (key: StaffFilterKey, value: string) => void;
+    selectedStatuses: AccountStatus[];
+    selectedTypes: StaffType[];
+    selectedSkillLevels: SkillLevel[];
+    onStatusChange: (statuses: AccountStatus[]) => void;
+    onTypeChange: (types: StaffType[]) => void;
+    onSkillLevelChange: (levels: SkillLevel[]) => void;
     onClearFilters: () => void;
 }
 
-export function StaffFilters({ filters, onFilterChange, onClearFilters }: StaffFiltersProps) {
+export function StaffFilters({
+    selectedStatuses,
+    selectedTypes,
+    selectedSkillLevels,
+    onStatusChange,
+    onTypeChange,
+    onSkillLevelChange,
+    onClearFilters,
+}: StaffFiltersProps) {
     const filterLabels = useFilterLabels();
     const staffLabels = useStaffPageLabels();
-    const hasActiveFilters = filters.accountStatus || filters.staffType || filters.skillLevel;
+    const hasActiveFilters =
+        selectedStatuses.length > 0 ||
+        selectedTypes.length > 0 ||
+        selectedSkillLevels.length > 0;
 
     return (
-        <div className="border rounded-lg p-4 space-y-4">
+        <div className="space-y-4">
+            {/* Header with Clear All button */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <FilterIcon className="h-4 w-4" />
-                    <h3 className="font-semibold">{staffLabels.filters.title}</h3>
-                </div>
+                <h3 className="text-sm font-medium text-foreground">{staffLabels.filters.title}</h3>
                 {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={onClearFilters}>
-                        <XIcon className="h-4 w-4 mr-1" />
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onClearFilters}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
                         {filterLabels.clearAll}
                     </Button>
                 )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <Label>{staffLabels.filters.accountStatus}</Label>
-                    <Select
-                        value={filters.accountStatus || ''}
-                        onChange={(e) => onFilterChange('accountStatus', e.target.value)}
-                    >
-                        <option value="">All statuses</option>
-                        <option value={AccountStatus.ACTIVE}>Active</option>
-                        <option value={AccountStatus.PENDING}>Pending</option>
-                        <option value={AccountStatus.DISABLED}>Disabled</option>
-                    </Select>
+                {/* Account Status Filter */}
+                <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <FilterIcon className="h-4 w-4" />
+                        {staffLabels.filters.accountStatus}
+                    </Label>
+                    <MultiSelect
+                        options={STATUS_OPTIONS}
+                        value={selectedStatuses}
+                        onChange={onStatusChange}
+                        placeholder="All"
+                    />
                 </div>
 
-                <div>
-                    <Label>{staffLabels.filters.staffType}</Label>
-                    <Select
-                        value={filters.staffType || ''}
-                        onChange={(e) => onFilterChange('staffType', e.target.value)}
-                    >
-                        <option value="">All types</option>
-                        <option value={StaffType.EMPLOYEE}>Employee</option>
-                        <option value={StaffType.CONTRACTOR}>Contractor</option>
-                    </Select>
+                {/* Staff Type Filter */}
+                <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <FilterIcon className="h-4 w-4" />
+                        {staffLabels.filters.staffType}
+                    </Label>
+                    <MultiSelect
+                        options={STAFF_TYPE_OPTIONS}
+                        value={selectedTypes}
+                        onChange={onTypeChange}
+                        placeholder="All"
+                    />
                 </div>
 
-                <div>
-                    <Label>{staffLabels.filters.skillLevel}</Label>
-                    <Select
-                        value={filters.skillLevel || ''}
-                        onChange={(e) => onFilterChange('skillLevel', e.target.value)}
-                    >
-                        <option value="">All levels</option>
-                        <option value={SkillLevel.BEGINNER}>Beginner</option>
-                        <option value={SkillLevel.INTERMEDIATE}>Intermediate</option>
-                        <option value={SkillLevel.ADVANCED}>Advanced</option>
-                    </Select>
+                {/* Skill Level Filter */}
+                <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <FilterIcon className="h-4 w-4" />
+                        {staffLabels.filters.skillLevel}
+                    </Label>
+                    <MultiSelect
+                        options={SKILL_LEVEL_OPTIONS}
+                        value={selectedSkillLevels}
+                        onChange={onSkillLevelChange}
+                        placeholder="All"
+                    />
                 </div>
             </div>
         </div>

@@ -133,7 +133,9 @@ export function DataTable<T>({
       {/* Mobile Cards */}
       {mobileCard && (
         <div className="lg:hidden space-y-4">
-          {data.map((item) => mobileCard(item))}
+          {data.map((item) => (
+            <div key={getRowKey(item)}>{mobileCard(item)}</div>
+          ))}
         </div>
       )}
     </>
