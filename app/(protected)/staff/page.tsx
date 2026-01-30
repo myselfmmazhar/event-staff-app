@@ -79,6 +79,7 @@ export default function StaffPage() {
         delete: false,
     });
     const [selectedStaff, setSelectedStaff] = useState<StaffWithRelations | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     // Confirmation dialog states
     const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
@@ -241,6 +242,8 @@ export default function StaffPage() {
         setSelectedStaff(staff);
         setModals((prev) => ({ ...prev, form: true }));
     };
+
+    const clearSelection = () => setSelectedIds(new Set());
 
     const handleDelete = (staff: StaffWithRelations) => {
         setSelectedStaff(staff);
@@ -413,6 +416,20 @@ export default function StaffPage() {
                 </div>
             </Card>
 
+            {/* Selection Info */}
+            {selectedIds.size > 0 && (
+                <Card className="p-3 bg-primary/5 border-primary/20">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-foreground">
+                            {selectedIds.size} {terminology.staff.lower}{selectedIds.size !== 1 ? 's' : ''} selected
+                        </span>
+                        <Button variant="ghost" size="sm" onClick={clearSelection}>
+                            Clear selection
+                        </Button>
+                    </div>
+                </Card>
+            )}
+
             {/* Table */}
             <Card className="p-6">
                 <div className="relative z-10">
@@ -427,6 +444,8 @@ export default function StaffPage() {
                                 onView={handleView}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
+                                selectedIds={selectedIds}
+                                onSelectionChange={setSelectedIds}
                             />
 
                             {/* Pagination */}

@@ -62,6 +62,7 @@ export default function ProductsPage() {
   });
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const handleCreate = () => {
     setSelectedProduct(null);
@@ -165,6 +166,8 @@ export default function ProductsPage() {
 
   const getProductById = (id: string): Product | undefined =>
     products.find((product) => product.id === id);
+
+  const clearSelection = () => setSelectedIds(new Set());
 
   const handleView = (id: string) => {
     const product = getProductById(id);
@@ -288,6 +291,20 @@ export default function ProductsPage() {
         </div>
       </Card>
 
+      {/* Selection Info */}
+      {selectedIds.size > 0 && (
+        <Card className="p-3 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">
+              {selectedIds.size} product{selectedIds.size !== 1 ? 's' : ''} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Clear selection
+            </Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-6">
         <div className="relative z-10">
           <ProductTable
@@ -300,6 +317,8 @@ export default function ProductsPage() {
             onDelete={handleDelete}
             onToggleActive={handleToggleActive}
             onSort={handleSort}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
           />
 
           {data && data.meta.total > 0 && (

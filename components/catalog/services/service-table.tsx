@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { EditIcon, EyeIcon, TrashIcon } from '@/components/ui/icons';
 import type { ServiceTableRow } from '@/lib/types/service';
@@ -23,6 +24,9 @@ interface ServiceTableProps {
   onSort: (column: string) => void;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  // Optional selection props
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
 export function ServiceTable({
@@ -35,6 +39,8 @@ export function ServiceTable({
   onSort,
   sortBy,
   sortOrder,
+  selectedIds,
+  onSelectionChange,
 }: ServiceTableProps) {
   const columnLabels = useColumnLabels('services', {
     serviceId: 'Service ID',
@@ -47,7 +53,116 @@ export function ServiceTable({
     actions: 'Actions',
   });
 
+  // Selection handlers
+  const allSelected =
+    selectedIds && services.length > 0 && services.every((s) => selectedIds.has(s.id));
+  const someSelected = selectedIds && services.some((s) => selectedIds.has(s.id));
+
+  const toggleAll = () => {
+    if (!onSelectionChange || !selectedIds) return;
+    if (allSelected) {
+      const newSet = new Set(selectedIds);
+      services.forEach((s) => newSet.delete(s.id));
+      onSelectionChange(newSet);
+    } else {
+      const newSet = new Set(selectedIds);
+      services.forEach((s) => newSet.add(s.id));
+      onSelectionChange(newSet);
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    if (!onSelectionChange || !selectedIds) return;
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    onSelectionChange(newSet);
+  };
+
   const columns: ColumnDef<ServiceTableRow>[] = [
+    ...(selectedIds && onSelectionChange
+      ? [
+        {
+          key: 'select' as const,
+          label: (
+            <Checkbox
+              checked={allSelected}
+              indeterminate={someSelected && !allSelected}
+              onChange={toggleAll}
+              aria-label="Select all"
+            />
+          ),
+          headerClassName: 'w-12 py-3 px-4',
+          className: 'w-12 py-4 px-4',
+          render: (service: ServiceTableRow) => (
+            <Checkbox
+              checked={selectedIds.has(service.id)}
+              onChange={() => toggleOne(service.id)}
+              aria-label={`Select ${service.title}`}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            />
+          ),
+        },
+      ]
+      : []),
+    {
+      key: 'actions',
+      label: columnLabels.actions,
+      className: 'py-4 px-4',
+      headerClassName: 'text-left py-3 px-4',
+      render: (service) => (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0"
+            onClick={() => onView(service.id)}
+            title="View service details"
+          >
+            <EyeIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0"
+            onClick={() => onEdit(service.id)}
+            title="Edit service"
+          >
+            <EditIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete(service.id)}
+            title="Delete service"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleActive(service.id, !service.isActive)}
+            title={service.isActive ? 'Deactivate service' : 'Activate service'}
+          >
+            {service.isActive ? 'Deactivate' : 'Activate'}
+          </Button>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      label: columnLabels.status,
+      className: 'py-4 px-4 whitespace-nowrap',
+      render: (service) => (
+        <Badge variant={service.isActive ? 'success' : 'secondary'} asSpan>
+          {service.isActive ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
     {
       key: 'serviceId',
       label: columnLabels.serviceId,
@@ -92,61 +207,6 @@ export function ServiceTable({
       className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
       render: (service) =>
         service.ratingRequirement ? STAFF_RATING_LABELS[service.ratingRequirement] : '-',
-    },
-    {
-      key: 'status',
-      label: columnLabels.status,
-      className: 'py-4 px-4 whitespace-nowrap',
-      render: (service) => (
-        <Badge variant={service.isActive ? 'success' : 'secondary'} asSpan>
-          {service.isActive ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-right py-3 px-4',
-      render: (service) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onView(service.id)}
-            title="View service details"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onEdit(service.id)}
-            title="Edit service"
-          >
-            <EditIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onToggleActive(service.id, !service.isActive)}
-            title={service.isActive ? 'Deactivate service' : 'Activate service'}
-          >
-            {service.isActive ? 'Deactivate' : 'Activate'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(service.id)}
-            title="Delete service"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
     },
   ];
 

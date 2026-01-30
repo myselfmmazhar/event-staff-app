@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Edit2Icon, Trash2Icon, EyeIcon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { AvailabilityStatus, AccountStatus, StaffType, SkillLevel, StaffRating } from '@prisma/client';
@@ -48,9 +49,12 @@ interface StaffTableProps {
     onView: (staff: StaffWithRelations) => void;
     onEdit: (staff: StaffWithRelations) => void;
     onDelete: (staff: StaffWithRelations) => void;
+    // Optional selection props
+    selectedIds?: Set<string>;
+    onSelectionChange?: (ids: Set<string>) => void;
 }
 
-export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps) {
+export function StaffTable({ staff, onView, onEdit, onDelete, selectedIds, onSelectionChange }: StaffTableProps) {
     const staffTerm = useStaffTerm();
     const { terminology } = useTerminology();
 
@@ -66,6 +70,35 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
         availability: 'Availability',
         actions: 'Actions',
     });
+
+    // Selection handlers
+    const allSelected =
+        selectedIds && staff.length > 0 && staff.every((s) => selectedIds.has(s.id));
+    const someSelected = selectedIds && staff.some((s) => selectedIds.has(s.id));
+
+    const toggleAll = () => {
+        if (!onSelectionChange || !selectedIds) return;
+        if (allSelected) {
+            const newSet = new Set(selectedIds);
+            staff.forEach((s) => newSet.delete(s.id));
+            onSelectionChange(newSet);
+        } else {
+            const newSet = new Set(selectedIds);
+            staff.forEach((s) => newSet.add(s.id));
+            onSelectionChange(newSet);
+        }
+    };
+
+    const toggleOne = (id: string) => {
+        if (!onSelectionChange || !selectedIds) return;
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        onSelectionChange(newSet);
+    };
 
     const getStatusBadge = (status: string) => {
         const variants: Record<string, 'default' | 'secondary' | 'danger'> = {
@@ -118,6 +151,74 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
     };
 
     const columns: ColumnDef<StaffWithRelations>[] = [
+        ...(selectedIds && onSelectionChange
+            ? [
+                {
+                    key: 'select' as const,
+                    label: (
+                        <Checkbox
+                            checked={allSelected}
+                            indeterminate={someSelected && !allSelected}
+                            onChange={toggleAll}
+                            aria-label="Select all"
+                        />
+                    ),
+                    headerClassName: 'w-12 py-3 px-4',
+                    className: 'w-12 py-4 px-4',
+                    render: (member: StaffWithRelations) => (
+                        <Checkbox
+                            checked={selectedIds.has(member.id)}
+                            onChange={() => toggleOne(member.id)}
+                            aria-label={`Select ${member.firstName} ${member.lastName}`}
+                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        />
+                    ),
+                },
+            ]
+            : []),
+        {
+            key: 'actions',
+            label: columnLabels.actions,
+            className: 'py-4 px-4',
+            headerClassName: 'text-left py-3 px-4',
+            render: (member) => (
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="px-0"
+                        onClick={() => onView(member)}
+                        title="View details"
+                    >
+                        <EyeIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="px-0"
+                        onClick={() => onEdit(member)}
+                        title={`Edit ${staffTerm.lower}`}
+                    >
+                        <Edit2Icon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDelete(member)}
+                        title={`Delete ${staffTerm.lower}`}
+                        className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                        <Trash2Icon className="h-4 w-4" />
+                    </Button>
+                </div>
+            ),
+        },
+        {
+            key: 'status',
+            label: columnLabels.status,
+            className: 'py-4 px-4',
+            render: (member) => getStatusBadge(member.accountStatus),
+        },
         {
             key: 'staffId',
             label: columnLabels.staffId,
@@ -155,12 +256,6 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
             render: (member) => getTypeBadge(member.staffType),
         },
         {
-            key: 'status',
-            label: columnLabels.status,
-            className: 'py-4 px-4',
-            render: (member) => getStatusBadge(member.accountStatus),
-        },
-        {
             key: 'skillLevel',
             label: columnLabels.skillLevel,
             className: 'py-4 px-4 text-sm capitalize',
@@ -171,43 +266,6 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
             label: columnLabels.availability,
             className: 'py-4 px-4',
             render: (member) => getAvailabilityBadge(member.availabilityStatus),
-        },
-        {
-            key: 'actions',
-            label: columnLabels.actions,
-            className: 'py-4 px-4',
-            headerClassName: 'text-right py-3 px-4',
-            render: (member) => (
-                <div className="flex items-center justify-end gap-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onView(member)}
-                        title="View details"
-                    >
-                        <EyeIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onEdit(member)}
-                        title={`Edit ${staffTerm.lower}`}
-                    >
-                        <Edit2Icon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDelete(member)}
-                        title={`Delete ${staffTerm.lower}`}
-                        className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                        <Trash2Icon className="h-4 w-4" />
-                    </Button>
-                </div>
-            ),
         },
     ];
 

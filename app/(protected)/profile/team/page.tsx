@@ -79,6 +79,7 @@ export default function UsersPage() {
   const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserTableRow | null>(null);
   const [userToResend, setUserToResend] = useState<UserTableRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Initialize store from URL params on mount
   useEffect(() => {
@@ -185,6 +186,8 @@ export default function UsersPage() {
     setBackendErrors([]);
     setIsFormOpen(true);
   };
+
+  const clearSelection = () => setSelectedIds(new Set());
 
   const handleEdit = (user: UserTableRow) => {
     setSelectedUser(user);
@@ -388,6 +391,20 @@ export default function UsersPage() {
         </div>
       </Card>
 
+      {/* Selection Info */}
+      {selectedIds.size > 0 && (
+        <Card className="p-3 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">
+              {selectedIds.size} user{selectedIds.size !== 1 ? 's' : ''} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Clear selection
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Table */}
       <Card className="p-6">
         <div className="relative z-10">
@@ -401,6 +418,8 @@ export default function UsersPage() {
             onToggleStatus={handleToggleStatus}
             onResendInvitation={handleResendInvitation}
             onSort={handleSort}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
           />
 
           {/* Pagination */}

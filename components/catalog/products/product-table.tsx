@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { EditIcon, EyeIcon, TrashIcon } from '@/components/ui/icons';
 import type { ProductTableRow } from '@/lib/types/product';
@@ -19,6 +20,9 @@ interface ProductTableProps {
   onSort: (column: string) => void;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  // Optional selection props
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
 export function ProductTable({
@@ -31,6 +35,8 @@ export function ProductTable({
   onSort,
   sortBy,
   sortOrder,
+  selectedIds,
+  onSelectionChange,
 }: ProductTableProps) {
   const columnLabels = useColumnLabels('products', {
     productId: 'Product ID',
@@ -44,7 +50,116 @@ export function ProductTable({
     actions: 'Actions',
   });
 
+  // Selection handlers
+  const allSelected =
+    selectedIds && products.length > 0 && products.every((p) => selectedIds.has(p.id));
+  const someSelected = selectedIds && products.some((p) => selectedIds.has(p.id));
+
+  const toggleAll = () => {
+    if (!onSelectionChange || !selectedIds) return;
+    if (allSelected) {
+      const newSet = new Set(selectedIds);
+      products.forEach((p) => newSet.delete(p.id));
+      onSelectionChange(newSet);
+    } else {
+      const newSet = new Set(selectedIds);
+      products.forEach((p) => newSet.add(p.id));
+      onSelectionChange(newSet);
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    if (!onSelectionChange || !selectedIds) return;
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    onSelectionChange(newSet);
+  };
+
   const columns: ColumnDef<ProductTableRow>[] = [
+    ...(selectedIds && onSelectionChange
+      ? [
+        {
+          key: 'select' as const,
+          label: (
+            <Checkbox
+              checked={allSelected}
+              indeterminate={someSelected && !allSelected}
+              onChange={toggleAll}
+              aria-label="Select all"
+            />
+          ),
+          headerClassName: 'w-12 py-3 px-4',
+          className: 'w-12 py-4 px-4',
+          render: (product: ProductTableRow) => (
+            <Checkbox
+              checked={selectedIds.has(product.id)}
+              onChange={() => toggleOne(product.id)}
+              aria-label={`Select ${product.title}`}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            />
+          ),
+        },
+      ]
+      : []),
+    {
+      key: 'actions',
+      label: columnLabels.actions,
+      className: 'py-4 px-4',
+      headerClassName: 'text-left py-3 px-4',
+      render: (product) => (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0"
+            onClick={() => onView(product.id)}
+            title="View product details"
+          >
+            <EyeIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0"
+            onClick={() => onEdit(product.id)}
+            title="Edit product"
+          >
+            <EditIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete(product.id)}
+            title="Delete product"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleActive(product.id, !product.isActive)}
+            title={product.isActive ? 'Deactivate product' : 'Activate product'}
+          >
+            {product.isActive ? 'Deactivate' : 'Activate'}
+          </Button>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      label: columnLabels.status,
+      className: 'py-4 px-4 whitespace-nowrap',
+      render: (product) => (
+        <Badge variant={product.isActive ? 'success' : 'secondary'} asSpan>
+          {product.isActive ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
     {
       key: 'productId',
       label: columnLabels.productId,
@@ -93,61 +208,6 @@ export function ProductTable({
       sortable: true,
       className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
       render: (product) => product.category || '-',
-    },
-    {
-      key: 'status',
-      label: columnLabels.status,
-      className: 'py-4 px-4 whitespace-nowrap',
-      render: (product) => (
-        <Badge variant={product.isActive ? 'success' : 'secondary'} asSpan>
-          {product.isActive ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-right py-3 px-4',
-      render: (product) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onView(product.id)}
-            title="View product details"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onEdit(product.id)}
-            title="Edit product"
-          >
-            <EditIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onToggleActive(product.id, !product.isActive)}
-            title={product.isActive ? 'Deactivate product' : 'Activate product'}
-          >
-            {product.isActive ? 'Deactivate' : 'Activate'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(product.id)}
-            title="Delete product"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
     },
   ];
 

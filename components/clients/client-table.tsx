@@ -78,29 +78,66 @@ export function ClientTable({
   const columns: ColumnDef<ClientTableRow>[] = [
     ...(selectedIds && onSelectionChange
       ? [
-          {
-            key: 'select' as const,
-            label: (
-              <Checkbox
-                checked={allSelected}
-                indeterminate={someSelected && !allSelected}
-                onChange={toggleAll}
-                aria-label="Select all"
-              />
-            ),
-            headerClassName: 'w-12 py-3 px-4',
-            className: 'w-12 py-4 px-4',
-            render: (client: ClientTableRow) => (
-              <Checkbox
-                checked={selectedIds.has(client.id)}
-                onChange={() => toggleOne(client.id)}
-                aria-label={`Select ${client.businessName}`}
-                onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              />
-            ),
-          },
-        ]
+        {
+          key: 'select' as const,
+          label: (
+            <Checkbox
+              checked={allSelected}
+              indeterminate={someSelected && !allSelected}
+              onChange={toggleAll}
+              aria-label="Select all"
+            />
+          ),
+          headerClassName: 'w-12 py-3 px-4',
+          className: 'w-12 py-4 px-4',
+          render: (client: ClientTableRow) => (
+            <Checkbox
+              checked={selectedIds.has(client.id)}
+              onChange={() => toggleOne(client.id)}
+              aria-label={`Select ${client.businessName}`}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            />
+          ),
+        },
+      ]
       : []),
+    {
+      key: 'actions',
+      label: columnLabels.actions,
+      className: 'py-4 px-4',
+      headerClassName: 'text-left py-3 px-4',
+      render: (client) => (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0"
+            onClick={() => onView(client.id)}
+            title="View client details"
+          >
+            <EyeIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0"
+            onClick={() => onEdit(client.id)}
+            title="Edit client"
+          >
+            <EditIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete(client.id)}
+            title="Delete client"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
     {
       key: 'clientId',
       label: columnLabels.clientId,
@@ -155,43 +192,6 @@ export function ClientTable({
         <Badge variant={client.hasLoginAccess ? 'success' : 'secondary'} asSpan>
           {client.hasLoginAccess ? 'Portal Access' : 'No Access'}
         </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-right py-3 px-4',
-      render: (client) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onView(client.id)}
-            title="View client details"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onEdit(client.id)}
-            title="Edit client"
-          >
-            <EditIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(client.id)}
-            title="Delete client"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-        </div>
       ),
     },
   ];

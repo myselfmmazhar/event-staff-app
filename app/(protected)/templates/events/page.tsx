@@ -243,70 +243,12 @@ export default function EventTemplatesPage() {
       ),
     },
     {
-      key: 'name',
-      label: 'Template Name',
-      sortable: true,
-      render: (item) => (
-        <div>
-          <p className="font-medium text-foreground">{item.name}</p>
-          {item.description && (
-            <p className="text-sm text-muted-foreground truncate max-w-xs">{item.description}</p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'title',
-      label: `${terminology.event.singular} Title`,
-      render: (item) => (
-        <span className="text-muted-foreground">{item.title || '-'}</span>
-      ),
-    },
-    {
-      key: 'venue',
-      label: 'Venue',
-      render: (item) => (
-        <div className="text-muted-foreground">
-          {item.venueName ? (
-            <>
-              <p>{item.venueName}</p>
-              {item.city && item.state && (
-                <p className="text-xs">{item.city}, {item.state}</p>
-              )}
-            </>
-          ) : (
-            '-'
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'client',
-      label: 'Default Client',
-      render: (item) => (
-        <span className="text-muted-foreground">
-          {item.client?.businessName || '-'}
-        </span>
-      ),
-    },
-    {
-      key: 'createdAt',
-      label: 'Created',
-      sortable: true,
-      render: (item) => (
-        <div className="text-muted-foreground text-sm">
-          <p>{formatDate(item.createdAt)}</p>
-          <p className="text-xs">by {item.createdByUser.name}</p>
-        </div>
-      ),
-    },
-    {
       key: 'actions',
       label: 'Actions',
-      headerClassName: 'text-right py-3 px-4',
-      className: 'text-right',
+      headerClassName: 'text-left py-3 px-4',
+      className: 'py-4 px-4',
       render: (item) => (
-        <div className="flex justify-end gap-1">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
@@ -325,6 +267,69 @@ export default function EventTemplatesPage() {
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
+        </div>
+      ),
+    },
+    {
+      key: 'name',
+      label: 'Template Name',
+      sortable: true,
+      className: 'py-4 px-4',
+      render: (item) => (
+        <div>
+          <p className="font-medium text-foreground">{item.name}</p>
+          {item.description && (
+            <p className="text-sm text-muted-foreground truncate max-w-xs">{item.description}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'title',
+      label: `${terminology.event.singular} Title`,
+      className: 'py-4 px-4',
+      render: (item) => (
+        <span className="text-muted-foreground">{item.title || '-'}</span>
+      ),
+    },
+    {
+      key: 'venue',
+      label: 'Venue',
+      className: 'py-4 px-4',
+      render: (item) => (
+        <div className="text-muted-foreground">
+          {item.venueName ? (
+            <>
+              <p>{item.venueName}</p>
+              {item.city && item.state && (
+                <p className="text-xs">{item.city}, {item.state}</p>
+              )}
+            </>
+          ) : (
+            '-'
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'client',
+      label: 'Default Client',
+      className: 'py-4 px-4',
+      render: (item) => (
+        <span className="text-muted-foreground">
+          {item.client?.businessName || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'createdAt',
+      label: 'Created',
+      sortable: true,
+      className: 'py-4 px-4',
+      render: (item) => (
+        <div className="text-muted-foreground text-sm">
+          <p>{formatDate(item.createdAt)}</p>
+          <p className="text-xs">by {item.createdByUser.name}</p>
         </div>
       ),
     },

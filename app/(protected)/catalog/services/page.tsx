@@ -56,6 +56,7 @@ export default function ServicesPage() {
   });
 
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const handleCreate = () => {
     setSelectedService(null);
@@ -156,6 +157,8 @@ export default function ServicesPage() {
 
   const getServiceById = (id: string): Service | undefined =>
     services.find((service) => service.id === id);
+
+  const clearSelection = () => setSelectedIds(new Set());
 
   const handleView = (id: string) => {
     const service = getServiceById(id);
@@ -260,6 +263,20 @@ export default function ServicesPage() {
         </div>
       </Card>
 
+      {/* Selection Info */}
+      {selectedIds.size > 0 && (
+        <Card className="p-3 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">
+              {selectedIds.size} service{selectedIds.size !== 1 ? 's' : ''} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Clear selection
+            </Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-6">
         <div className="relative z-10">
           <ServiceTable
@@ -272,6 +289,8 @@ export default function ServicesPage() {
             onDelete={handleDelete}
             onToggleActive={handleToggleActive}
             onSort={handleSort}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
           />
 
           {data && data.meta.total > 0 && (

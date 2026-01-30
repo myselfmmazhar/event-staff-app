@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { EditIcon, TrashIcon, MailIcon } from '@/components/ui/icons';
 import { UserRole } from '@prisma/client';
 import { format } from 'date-fns';
@@ -47,6 +48,9 @@ interface UserTableProps {
   onToggleStatus: (user: User) => void;
   onResendInvitation: (user: User) => void;
   onSort: (field: SortableField) => void;
+  // Optional selection props
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
 const ROLE_COLORS: Record<UserRole, 'purple' | 'primary' | 'info' | 'default'> = {
@@ -74,7 +78,9 @@ export function UserTable({
   onDelete,
   onToggleStatus,
   onResendInvitation,
-  onSort
+  onSort,
+  selectedIds,
+  onSelectionChange,
 }: UserTableProps) {
   const roleTerm = useRoleTerm();
 
@@ -89,7 +95,120 @@ export function UserTable({
     actions: 'Actions',
   });
 
+  // Selection handlers
+  const allSelected =
+    selectedIds && users.length > 0 && users.every((u) => selectedIds.has(u.id));
+  const someSelected = selectedIds && users.some((u) => selectedIds.has(u.id));
+
+  const toggleAll = () => {
+    if (!onSelectionChange || !selectedIds) return;
+    if (allSelected) {
+      const newSet = new Set(selectedIds);
+      users.forEach((u) => newSet.delete(u.id));
+      onSelectionChange(newSet);
+    } else {
+      const newSet = new Set(selectedIds);
+      users.forEach((u) => newSet.add(u.id));
+      onSelectionChange(newSet);
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    if (!onSelectionChange || !selectedIds) return;
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    onSelectionChange(newSet);
+  };
+
   const columns: ColumnDef<User>[] = [
+    ...(selectedIds && onSelectionChange
+      ? [
+        {
+          key: 'select' as const,
+          label: (
+            <Checkbox
+              checked={allSelected}
+              indeterminate={someSelected && !allSelected}
+              onChange={toggleAll}
+              aria-label="Select all"
+            />
+          ),
+          headerClassName: 'w-12 py-3 px-4',
+          className: 'w-12 py-4 px-4',
+          render: (user: User) => (
+            <Checkbox
+              checked={selectedIds.has(user.id)}
+              onChange={() => toggleOne(user.id)}
+              aria-label={`Select ${user.firstName} ${user.lastName}`}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            />
+          ),
+        },
+      ]
+      : []),
+    {
+      key: 'actions',
+      label: columnLabels.actions,
+      className: 'py-4 px-4',
+      headerClassName: 'text-left py-3 px-4',
+      render: (user) => {
+        const invitationStatus = getInvitationStatus(user);
+        const canResendInvitation = invitationStatus === 'pending' || invitationStatus === 'expired';
+
+        return (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="px-0"
+              onClick={() => onEdit(user)}
+              title="Edit user"
+            >
+              <EditIcon className="h-4 w-4" />
+            </Button>
+            {user.role !== 'SUPER_ADMIN' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => onDelete(user)}
+                title="Delete user"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </Button>
+            )}
+            {/* Resend Invitation - for pending/expired users */}
+            {canResendInvitation && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onResendInvitation(user)}
+                title="Resend invitation email"
+                className="text-primary hover:text-primary"
+              >
+                <MailIcon className="h-4 w-4 mr-1" />
+                Resend
+              </Button>
+            )}
+            {/* Toggle Status - only for accepted invitations and non-SUPER_ADMIN */}
+            {invitationStatus === 'accepted' && user.role !== 'SUPER_ADMIN' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onToggleStatus(user)}
+                title={user.isActive ? 'Deactivate user' : 'Activate user'}
+              >
+                {user.isActive ? 'Deactivate' : 'Activate'}
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
     {
       key: 'firstName',
       label: columnLabels.name,
@@ -160,65 +279,6 @@ export function UserTable({
       label: columnLabels.phone,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (user) => user.phone || '-',
-    },
-    {
-      key: 'actions',
-      label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-right py-3 px-4',
-      render: (user) => {
-        const invitationStatus = getInvitationStatus(user);
-        const canResendInvitation = invitationStatus === 'pending' || invitationStatus === 'expired';
-
-        return (
-          <div className="flex items-center justify-end gap-1">
-            {/* Resend Invitation - for pending/expired users */}
-            {canResendInvitation && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onResendInvitation(user)}
-                title="Resend invitation email"
-                className="text-primary hover:text-primary"
-              >
-                <MailIcon className="h-4 w-4 mr-1" />
-                Resend
-              </Button>
-            )}
-            {/* Toggle Status - only for accepted invitations and non-SUPER_ADMIN */}
-            {invitationStatus === 'accepted' && user.role !== 'SUPER_ADMIN' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onToggleStatus(user)}
-                title={user.isActive ? 'Deactivate user' : 'Activate user'}
-              >
-                {user.isActive ? 'Deactivate' : 'Activate'}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="px-0"
-              onClick={() => onEdit(user)}
-              title="Edit user"
-            >
-              <EditIcon className="h-4 w-4" />
-            </Button>
-            {user.role !== 'SUPER_ADMIN' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => onDelete(user)}
-                title="Delete user"
-              >
-                <TrashIcon className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        );
-      },
     },
   ];
 
