@@ -16,7 +16,7 @@ import { EventTable } from '@/components/events/event-table';
 import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useMemo, type ComponentProps } from 'react';
 import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument } from '@/lib/schemas/event.schema';
 import { useEventsFilters, type EventSortBy, type SortOrder } from '@/store/events-filters.store';
@@ -27,7 +27,8 @@ import { useEventsPageLabels } from '@/lib/hooks/use-labels';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
 import { EventsMapView } from '@/components/events/events-map-view';
-import { Map, TableIcon } from 'lucide-react';
+import { EventCalendar } from '@/components/events/calendar/event-calendar';
+import { Calendar, Map, TableIcon } from 'lucide-react';
 import type { EventExport } from '@/lib/utils/event-export';
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
@@ -101,6 +102,8 @@ function mapEventToFormEvent(event: EventListItem): EventFormData {
 
 export default function EventsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const { terminology } = useTerminology();
   const eventsLabels = useEventsPageLabels();
 
@@ -117,14 +120,36 @@ export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
   const [selectedViewEventId, setSelectedViewEventId] = useState<string | null>(null);
 
-  // View toggle state (table or map)
-  const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
+  // View toggle state (table / calendar / map)
+  type EventsViewMode = 'table' | 'calendar' | 'map';
+  const [viewMode, setViewMode] = useState<EventsViewMode>(() => {
+    const view = searchParams.get('view');
+    return view === 'calendar' || view === 'map' ? view : 'table';
+  });
+
+  const setView = (mode: EventsViewMode) => {
+    setViewMode(mode);
+    const params = new URLSearchParams(searchParams.toString());
+    if (mode === 'table') {
+      params.delete('view');
+    } else {
+      params.set('view', mode);
+    }
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  };
 
   // Import modal state
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Row selection for export
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const handleCreateEvent = () => {
+    setSelectedEvent(null);
+    setBackendErrors([]);
+    setIsFormOpen(true);
+  };
 
   // Initialize store from URL params on mount
   useEffect(() => {
@@ -153,16 +178,23 @@ export default function EventsPage() {
   useEffect(() => {
     const createParam = searchParams.get('create');
     if (createParam === 'true') {
-      handleCreateEvent();
-      // Clean up URL
-      const newUrl = window.location.pathname;
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.delete('create');
+      const newUrl = urlParams.toString()
+        ? `${window.location.pathname}?${urlParams.toString()}`
+        : window.location.pathname;
       window.history.replaceState({}, '', newUrl);
+
+      const frame = window.requestAnimationFrame(() => handleCreateEvent());
+      return () => window.cancelAnimationFrame(frame);
     }
+    return undefined;
   }, [searchParams]);
 
   // Sync store with URL
   useUrlSync(filters, {
     keys: ['page', 'limit', 'search', 'selectedStatuses', 'selectedClientIds', 'sortBy', 'sortOrder', 'startDateFrom', 'startDateTo'],
+    preserve: ['view'],
   });
 
   // tRPC queries
@@ -229,12 +261,6 @@ export default function EventsPage() {
   );
 
   // Handlers
-  const handleCreateEvent = () => {
-    setSelectedEvent(null);
-    setBackendErrors([]);
-    setIsFormOpen(true);
-  };
-
   const getEventDetails = (id: string): EventListItem | undefined =>
     events.find((evt) => evt.id === id);
 
@@ -520,16 +546,25 @@ export default function EventsPage() {
         <Button
           variant={viewMode === 'table' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setViewMode('table')}
+          onClick={() => setView('table')}
           className="gap-2"
         >
           <TableIcon size={16} />
           Table View
         </Button>
         <Button
+          variant={viewMode === 'calendar' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setView('calendar')}
+          className="gap-2"
+        >
+          <Calendar size={16} />
+          {eventsLabels.calendarView}
+        </Button>
+        <Button
           variant={viewMode === 'map' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setViewMode('map')}
+          onClick={() => setView('map')}
           className="gap-2"
         >
           <Map size={16} />
@@ -569,6 +604,21 @@ export default function EventsPage() {
             )}
           </div>
         </Card>
+      )}
+
+      {/* Events Calendar View */}
+      {viewMode === 'calendar' && (
+        <EventCalendar
+          onEventClick={(eventId) => {
+            setSelectedViewEventId(eventId);
+            setIsViewOpen(true);
+          }}
+          statuses={filters.selectedStatuses.length > 0 ? filters.selectedStatuses : undefined}
+          clientIds={filters.selectedClientIds.length > 0 ? filters.selectedClientIds : undefined}
+          search={filters.search || undefined}
+          startDateFrom={filters.startDateFrom ? new Date(filters.startDateFrom) : undefined}
+          startDateTo={filters.startDateTo ? new Date(filters.startDateTo) : undefined}
+        />
       )}
 
       {/* Events Map View */}

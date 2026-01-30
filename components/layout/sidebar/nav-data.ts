@@ -22,7 +22,6 @@ import {
 import {
   getStaffRoute,
   getEventRoute,
-  getEventCalendarRoute,
   getTimesheetRoute,
 } from '@/lib/utils/route-helpers';
 import type { TerminologyConfig } from '@/lib/config/terminology';
@@ -144,20 +143,8 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
       subItems: [
         {
           label: 'Time Manager',
-          icon: CalendarIcon,
-          subItems: [
-            {
-              label: `${terminology.event.singular} Calendar`,
-              href: getEventCalendarRoute(terminology),
-              icon: CalendarIcon,
-              featureFlag: 'events',
-            },
-            {
-              label: 'Time Sheet',
-              href: getTimesheetRoute(terminology),
-              icon: TableCellsIcon,
-            },
-          ],
+          href: getTimesheetRoute(terminology),
+          icon: TableCellsIcon,
         },
         {
           label: 'Finance Manager',

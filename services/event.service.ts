@@ -777,9 +777,42 @@ export class EventService {
       endDate: { gte: input.startDate },
     };
 
-    // Optional status filter
-    if (input.status) {
+    // Optional date filters (further restrict within the calendar window)
+    if (input.startDateFrom) {
+      where.startDate = { ...(where.startDate as Prisma.DateTimeFilter), gte: input.startDateFrom };
+    }
+    if (input.startDateTo) {
+      where.startDate = { ...(where.startDate as Prisma.DateTimeFilter), lte: input.startDateTo };
+    }
+    if (input.endDateFrom) {
+      where.endDate = { ...(where.endDate as Prisma.DateTimeFilter), gte: input.endDateFrom };
+    }
+    if (input.endDateTo) {
+      where.endDate = { ...(where.endDate as Prisma.DateTimeFilter), lte: input.endDateTo };
+    }
+
+    // Optional status filter - support both single and array
+    if (input.statuses && input.statuses.length > 0) {
+      where.status = { in: input.statuses };
+    } else if (input.status) {
       where.status = input.status;
+    }
+
+    // Optional client filter - support both single and array
+    if (input.clientIds && input.clientIds.length > 0) {
+      where.clientId = { in: input.clientIds };
+    } else if (input.clientId) {
+      where.clientId = input.clientId;
+    }
+
+    // Optional search filter
+    if (input.search) {
+      where.OR = [
+        { title: { contains: input.search, mode: "insensitive" } },
+        { venueName: { contains: input.search, mode: "insensitive" } },
+        { city: { contains: input.search, mode: "insensitive" } },
+        { eventId: { contains: input.search, mode: "insensitive" } },
+      ];
     }
 
     const events = await this.prisma.event.findMany({

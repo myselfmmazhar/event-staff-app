@@ -18,6 +18,8 @@ interface UseUrlSyncOptions<TKey extends string> {
   keys: TKey[];
   /** Transform function for values before setting in URL */
   transform?: (key: TKey, value: FilterValue) => string | null;
+  /** Preserve these existing URL params (not owned by the store) */
+  preserve?: string[];
 }
 
 /**
@@ -36,6 +38,17 @@ export function useUrlSync<TStore, TKey extends keyof TStore & string>(
 
   useEffect(() => {
     const params = new URLSearchParams();
+
+    // Preserve requested params from current URL (e.g. view mode toggles)
+    if (options.preserve && options.preserve.length > 0 && typeof window !== "undefined") {
+      const currentParams = new URLSearchParams(window.location.search);
+      options.preserve.forEach((key) => {
+        const value = currentParams.get(key);
+        if (value !== null && value !== "") {
+          params.set(key, value);
+        }
+      });
+    }
 
     // Build URL params from store state
     options.keys.forEach((key) => {
@@ -62,7 +75,7 @@ export function useUrlSync<TStore, TKey extends keyof TStore & string>(
       previousUrlRef.current = newUrl;
       router.replace(newUrl, { scroll: false });
     }
-  }, [router, pathname, store, options.keys, options.transform]);
+  }, [router, pathname, store, options.keys, options.transform, options.preserve]);
 }
 
 /**

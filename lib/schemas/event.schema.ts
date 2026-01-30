@@ -510,7 +510,17 @@ export class EventSchema {
   static dateRange = z.object({
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
+    // Single value filters (deprecated, kept for backwards compatibility)
     status: z.nativeEnum(EventStatus).optional(),
+    clientId: z.string().optional(),
+    // Multi-select filters (preferred)
+    statuses: z.array(z.nativeEnum(EventStatus)).optional(),
+    clientIds: z.array(z.string()).optional(),
+    search: z.string().optional(),
+    startDateFrom: z.coerce.date().optional(),
+    startDateTo: z.coerce.date().optional(),
+    endDateFrom: z.coerce.date().optional(),
+    endDateTo: z.coerce.date().optional(),
   });
 }
 
