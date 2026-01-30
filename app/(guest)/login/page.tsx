@@ -100,7 +100,7 @@ export default function LoginPage() {
             </div>
           )}
           <h1 className="text-3xl font-bold text-foreground">
-            {companyProfile?.companyName || 'Event Manager'}
+            Tripod
           </h1>
           <p className="text-muted-foreground mt-2">
             {companyProfile?.companyTagline || 'Staff Management Platform'}

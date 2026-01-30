@@ -319,7 +319,7 @@ export class PDFDocument {
     this.doc.setTextColor(...COLORS.textLight);
 
     // Branding on left
-    this.doc.text('Event Staff Management System', this.marginLeft, footerY);
+    this.doc.text('Tripod', this.marginLeft, footerY);
 
     // Simple page number on right
     const pageText = `Page ${pageNum} of ${totalPages}`;

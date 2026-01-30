@@ -8,8 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { EditLabelsSaveBar } from "@/components/common/edit-labels-button";
 
 export const metadata: Metadata = {
-  title: "Event Staff Management Platform",
-  description: "Comprehensive event staff management and scheduling platform",
+  title: "Tripod",
+  description: "Comprehensive staff management and scheduling platform",
 };
 
 export const dynamic = 'force-dynamic';
