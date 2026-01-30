@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type ServiceActiveFilter = 'all' | 'active' | 'inactive';
+export type ServiceStatus = 'active' | 'inactive';
 export type ServiceSortBy = 'title' | 'cost' | 'createdAt';
 export type SortOrder = 'asc' | 'desc';
 
@@ -11,7 +11,7 @@ interface ServicesFiltersState {
 
   // Search & Filters
   search: string;
-  active: ServiceActiveFilter;
+  statuses: ServiceStatus[];
 
   // Sorting
   sortBy: ServiceSortBy;
@@ -23,7 +23,7 @@ interface ServicesFiltersState {
 
   // Actions - Search & Filters
   setSearch: (search: string) => void;
-  setActive: (active: ServiceActiveFilter) => void;
+  setStatuses: (statuses: ServiceStatus[]) => void;
 
   // Actions - Sorting
   setSortBy: (sortBy: ServiceSortBy) => void;
@@ -36,7 +36,7 @@ interface ServicesFiltersState {
 
 const DEFAULT_FILTERS = {
   search: '',
-  active: 'all' as ServiceActiveFilter,
+  statuses: [] as ServiceStatus[],
 };
 
 const DEFAULT_STATE = {
@@ -54,7 +54,7 @@ export const useServicesFilters = create<ServicesFiltersState>((set) => ({
   setLimit: (limit) => set({ limit, page: 1 }),
 
   setSearch: (search) => set({ search, page: 1 }),
-  setActive: (active) => set({ active, page: 1 }),
+  setStatuses: (statuses) => set({ statuses, page: 1 }),
 
   setSortBy: (sortBy) => set({ sortBy }),
   setSortOrder: (sortOrder) => set({ sortOrder }),
