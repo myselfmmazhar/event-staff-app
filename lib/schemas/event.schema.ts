@@ -250,8 +250,8 @@ export class EventSchema {
       id: z.string().uuid("Invalid event ID"),
       eventId: z
         .string()
-        .regex(eventIdRegex, "Event ID must be in format EVT-YYYY-NNN")
-        .optional(), // Should not be updated normally
+        .min(1, "Event ID is required")
+        .optional(),
       title: z
         .string()
         .min(1, "Event title is required")
