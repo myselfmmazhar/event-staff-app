@@ -36,6 +36,7 @@ const createFormSchema = EventSchema.create;
 
 // Build edit form schema (all fields optional except those being updated)
 const editFormSchema = z.object({
+  eventId: z.string().min(1, "Event ID is required").optional(),
   title: z.string().min(1, "Title is required").max(200).transform(val => val.trim()),
   description: z.string().max(5000).optional().transform(val => val?.trim()),
   requirements: z.string().max(200).optional().transform(val => val?.trim()),
@@ -297,6 +298,7 @@ export function EventFormModal({
 
       const eventDocsData = event.eventDocuments as EventDocument[] | null;
       reset({
+        eventId: event.eventId,
         title: event.title,
         description: event.description || '',
         requirements: event.requirements || '',
@@ -589,11 +591,19 @@ export function EventFormModal({
         </DialogHeader>
 
         <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
-          {/* Event ID (Read-only in edit mode) */}
+          {/* Event ID (Editable in edit mode) */}
           {isEdit && (
-            <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
-              <p className="text-sm text-muted-foreground">{terminology.event.singular} ID</p>
-              <p className="text-base font-medium">{event?.eventId}</p>
+            <div className="mb-6">
+              <Label htmlFor="eventId">{terminology.event.singular} ID</Label>
+              <Input
+                id="eventId"
+                {...register('eventId' as FormFieldName)}
+                placeholder="EVT-YYYY-NNN"
+                className="font-mono"
+              />
+              {errors.eventId && (
+                <p className="text-destructive text-sm mt-1">{errors.eventId.message}</p>
+              )}
             </div>
           )}
 

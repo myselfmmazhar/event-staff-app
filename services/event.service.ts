@@ -480,24 +480,25 @@ export class EventService {
    * Update an event
    * Includes ownership check
    */
-	  async update(id: string, data: UpdateEventInput, userId: string) {
-	    try {
-	      const eventMeta = await this.getOwnedEventMeta(id, userId);
-	      if (eventMeta.isArchived) {
-	        const terminology = await this.settingsService.getTerminology();
-	        throw new TRPCError({
-	          code: "BAD_REQUEST",
-	          message: `${terminology.event.singular} is archived and cannot be modified`,
-	        });
-	      }
+  async update(id: string, data: UpdateEventInput, userId: string) {
+    try {
+      const eventMeta = await this.getOwnedEventMeta(id, userId);
+      if (eventMeta.isArchived) {
+        const terminology = await this.settingsService.getTerminology();
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${terminology.event.singular} is archived and cannot be modified`,
+        });
+      }
 
-	      // Sanitize input data
-	      const sanitizedData: Prisma.EventUncheckedUpdateInput = {};
-	      if (data.title !== undefined) sanitizedData.title = data.title.trim();
-	      if (data.description !== undefined) sanitizedData.description = data.description?.trim() || null;
-	      if (data.requirements !== undefined) sanitizedData.requirements = data.requirements?.trim() || null;
-	      if (data.privateComments !== undefined) sanitizedData.privateComments = data.privateComments?.trim() || null;
-	      if (data.clientId !== undefined) sanitizedData.clientId = data.clientId && data.clientId !== '' ? data.clientId : null;
+      // Sanitize input data
+      const sanitizedData: Prisma.EventUncheckedUpdateInput = {};
+      if (data.eventId !== undefined) sanitizedData.eventId = data.eventId.trim();
+      if (data.title !== undefined) sanitizedData.title = data.title.trim();
+      if (data.description !== undefined) sanitizedData.description = data.description?.trim() || null;
+      if (data.requirements !== undefined) sanitizedData.requirements = data.requirements?.trim() || null;
+      if (data.privateComments !== undefined) sanitizedData.privateComments = data.privateComments?.trim() || null;
+      if (data.clientId !== undefined) sanitizedData.clientId = data.clientId && data.clientId !== '' ? data.clientId : null;
       if (data.venueName !== undefined) sanitizedData.venueName = data.venueName.trim();
       if (data.address !== undefined) sanitizedData.address = data.address.trim();
       if (data.city !== undefined) sanitizedData.city = data.city.trim();
@@ -1227,15 +1228,15 @@ export class EventService {
     // Build a map of existing events by eventId
     const existingEvents = importEventIds.length > 0
       ? await this.prisma.event.findMany({
-          where: {
-            createdBy: userId,
-            eventId: { in: importEventIds },
-          },
-          select: {
-            id: true,
-            eventId: true,
-          },
-        })
+        where: {
+          createdBy: userId,
+          eventId: { in: importEventIds },
+        },
+        select: {
+          id: true,
+          eventId: true,
+        },
+      })
       : [];
 
     // Map eventId -> database id
