@@ -49,6 +49,7 @@ export function EventAttachmentsSection({
         serviceId: data.serviceId,
         title: data.title,
         cost: data.cost ? Number(data.cost) : null,
+        price: data.price ? Number(data.price) : null,
         costUnitType: data.costUnitType,
         description: data.description,
         isActive: data.isActive,
@@ -78,6 +79,7 @@ export function EventAttachmentsSection({
         productId: data.productId,
         title: data.title,
         cost: data.cost ? Number(data.cost) : null,
+        price: data.price ? Number(data.price) : null,
         priceUnitType: data.priceUnitType,
         description: data.description,
         category: data.category,
@@ -183,28 +185,28 @@ export function EventAttachmentsSection({
   // Render modals via portal to avoid nested form issues
   const serviceModal = mounted && showCreateService
     ? createPortal(
-        <ServiceFormModal
-          service={null}
-          open={showCreateService}
-          onClose={() => setShowCreateService(false)}
-          onSubmit={handleServiceSubmit}
-          isSubmitting={createServiceMutation.isPending}
-        />,
-        document.body
-      )
+      <ServiceFormModal
+        service={null}
+        open={showCreateService}
+        onClose={() => setShowCreateService(false)}
+        onSubmit={handleServiceSubmit}
+        isSubmitting={createServiceMutation.isPending}
+      />,
+      document.body
+    )
     : null;
 
   const productModal = mounted && showCreateProduct
     ? createPortal(
-        <ProductFormModal
-          product={null}
-          open={showCreateProduct}
-          onClose={() => setShowCreateProduct(false)}
-          onSubmit={handleProductSubmit}
-          isSubmitting={createProductMutation.isPending}
-        />,
-        document.body
-      )
+      <ProductFormModal
+        product={null}
+        open={showCreateProduct}
+        onClose={() => setShowCreateProduct(false)}
+        onSubmit={handleProductSubmit}
+        isSubmitting={createProductMutation.isPending}
+      />,
+      document.body
+    )
     : null;
 
   return (
