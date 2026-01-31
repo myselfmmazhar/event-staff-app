@@ -10,8 +10,6 @@ import {
 import type { Service } from '@/lib/types/service';
 import {
   COST_UNIT_TYPE_LABELS,
-  EXPERIENCE_REQUIREMENT_LABELS,
-  STAFF_RATING_LABELS,
 } from '@/lib/constants/enums';
 import { CloseIcon } from '@/components/ui/icons';
 import { formatDollarOrPlaceholder } from '@/lib/utils/currency-formatter';
@@ -61,20 +59,6 @@ export function ViewServiceModal({ service, open, onClose }: ViewServiceModalPro
               <div className="text-muted-foreground">Cost Unit</div>
               <div className="text-foreground font-medium">
                 {service.costUnitType ? COST_UNIT_TYPE_LABELS[service.costUnitType] : '-'}
-              </div>
-            </div>
-            <div>
-              <div className="text-muted-foreground">Experience Requirement</div>
-              <div className="text-foreground font-medium">
-                {service.experienceRequirement
-                  ? EXPERIENCE_REQUIREMENT_LABELS[service.experienceRequirement]
-                  : '-'}
-              </div>
-            </div>
-            <div>
-              <div className="text-muted-foreground">Rating Requirement</div>
-              <div className="text-foreground font-medium">
-                {service.ratingRequirement ? STAFF_RATING_LABELS[service.ratingRequirement] : '-'}
               </div>
             </div>
           </div>

@@ -306,8 +306,6 @@ model Service {
   title                 String                 @db.VarChar(200)
   costUnitType          CostUnitType?
   description           String?                @db.VarChar(1000)
-  experienceRequirement ExperienceRequirement?
-  ratingRequirement     StaffRating?
   cost                  Decimal?               @db.Decimal(10, 2)
   price                 Decimal?               @db.Decimal(10, 2)
   isActive              Boolean                @default(true)

@@ -190,8 +190,8 @@ export function ProductFormModal({
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-3">
               <Label htmlFor="title" required>
                 Product Title
               </Label>
@@ -317,6 +317,20 @@ export function ProductFormModal({
               )}
             </div>
 
+            <div>
+              <Label htmlFor="supplier">Supplier</Label>
+              <Input
+                id="supplier"
+                {...register('supplier')}
+                error={!!errors.supplier}
+                disabled={isSubmitting}
+                placeholder="Optional supplier"
+              />
+              {errors.supplier && (
+                <p className="text-sm text-destructive mt-1">{errors.supplier.message}</p>
+              )}
+            </div>
+
             <div className="sm:pt-7">
               <Controller
                 name="trackInventory"
@@ -337,49 +351,37 @@ export function ProductFormModal({
               />
             </div>
 
-            <div>
-              <Label htmlFor="supplier">Supplier</Label>
-              <Input
-                id="supplier"
-                {...register('supplier')}
-                error={!!errors.supplier}
-                disabled={isSubmitting}
-                placeholder="Optional supplier"
-              />
-              {errors.supplier && (
-                <p className="text-sm text-destructive mt-1">{errors.supplier.message}</p>
-              )}
+            <div className="sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="brand">Brand</Label>
+                <Input
+                  id="brand"
+                  {...register('brand')}
+                  error={!!errors.brand}
+                  disabled={isSubmitting}
+                  placeholder="Optional brand"
+                />
+                {errors.brand && (
+                  <p className="text-sm text-destructive mt-1">{errors.brand.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Input
+                  id="category"
+                  {...register('category')}
+                  error={!!errors.category}
+                  disabled={isSubmitting}
+                  placeholder="Optional category"
+                />
+                {errors.category && (
+                  <p className="text-sm text-destructive mt-1">{errors.category.message}</p>
+                )}
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="brand">Brand</Label>
-              <Input
-                id="brand"
-                {...register('brand')}
-                error={!!errors.brand}
-                disabled={isSubmitting}
-                placeholder="Optional brand"
-              />
-              {errors.brand && (
-                <p className="text-sm text-destructive mt-1">{errors.brand.message}</p>
-              )}
-            </div>
-
-            <div className="sm:col-span-2">
-              <Label htmlFor="category">Category</Label>
-              <Input
-                id="category"
-                {...register('category')}
-                error={!!errors.category}
-                disabled={isSubmitting}
-                placeholder="Optional category"
-              />
-              {errors.category && (
-                <p className="text-sm text-destructive mt-1">{errors.category.message}</p>
-              )}
-            </div>
-
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-3">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"

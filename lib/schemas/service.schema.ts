@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CostUnitType, ExperienceRequirement, StaffRating } from '@prisma/client';
+import { CostUnitType } from '@prisma/client';
 
 export const ServiceSchema = {
   create: z.object({
@@ -15,8 +15,6 @@ export const ServiceSchema = {
       .transform((value) => value.trim())
       .optional()
       .nullable(),
-    experienceRequirement: z.nativeEnum(ExperienceRequirement).optional().nullable(),
-    ratingRequirement: z.nativeEnum(StaffRating).optional().nullable(),
     cost: z
       .number()
       .positive('Cost must be a positive number')
@@ -46,8 +44,6 @@ export const ServiceSchema = {
       .transform((value) => value.trim())
       .optional()
       .nullable(),
-    experienceRequirement: z.nativeEnum(ExperienceRequirement).optional().nullable(),
-    ratingRequirement: z.nativeEnum(StaffRating).optional().nullable(),
     cost: z
       .number()
       .positive('Cost must be a positive number')

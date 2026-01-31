@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
-import { CostUnitType, ExperienceRequirement, StaffRating } from '@prisma/client';
+import { CostUnitType } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,8 +22,6 @@ import type { Service } from '@/lib/types/service';
 import type { CreateServiceInput } from '@/lib/schemas/service.schema';
 import {
   COST_UNIT_TYPE_OPTIONS,
-  EXPERIENCE_REQUIREMENT_OPTIONS,
-  STAFF_RATING_LABELS,
 } from '@/lib/constants/enums';
 
 // Form schema - uses null for optional enum fields, similar to staff form
@@ -40,8 +38,6 @@ const formSchema = z.object({
     .transform((v) => v.trim())
     .nullable()
     .default(null),
-  experienceRequirement: z.nativeEnum(ExperienceRequirement).nullable().default(null),
-  ratingRequirement: z.nativeEnum(StaffRating).nullable().default(null),
   cost: z.number().positive('Cost must be a positive number').nullable().default(null),
   price: z.number().positive('Price must be a positive number').nullable().default(null),
 });
@@ -82,8 +78,6 @@ export function ServiceFormModal({
       title: '',
       costUnitType: null,
       description: null,
-      experienceRequirement: null,
-      ratingRequirement: null,
       cost: null,
       price: null,
     },
@@ -103,8 +97,6 @@ export function ServiceFormModal({
         title: service.title,
         costUnitType: service.costUnitType ?? null,
         description: service.description ?? null,
-        experienceRequirement: service.experienceRequirement ?? null,
-        ratingRequirement: service.ratingRequirement ?? null,
         cost: costValue,
         price: service.price != null ? (typeof service.price === 'object' && 'toNumber' in service.price ? (service.price as { toNumber: () => number }).toNumber() : Number(service.price)) : null,
       });
@@ -113,8 +105,6 @@ export function ServiceFormModal({
         title: '',
         costUnitType: null,
         description: null,
-        experienceRequirement: null,
-        ratingRequirement: null,
         cost: null,
         price: null,
       });
@@ -137,8 +127,6 @@ export function ServiceFormModal({
       title: data.title,
       costUnitType: data.costUnitType,
       description: data.description || null,
-      experienceRequirement: data.experienceRequirement,
-      ratingRequirement: data.ratingRequirement,
       cost: data.cost,
       price: data.price,
     });
@@ -174,8 +162,8 @@ export function ServiceFormModal({
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-3">
               <Label htmlFor="title" required>
                 Service Title
               </Label>
@@ -274,67 +262,7 @@ export function ServiceFormModal({
               )}
             </div>
 
-            <div>
-              <Label htmlFor="experienceRequirement">Experience Requirement</Label>
-              <Controller
-                name="experienceRequirement"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    id="experienceRequirement"
-                    value={field.value ?? ''}
-                    onChange={(e) => field.onChange(e.target.value || null)}
-                    error={!!errors.experienceRequirement}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">—</option>
-                    {EXPERIENCE_REQUIREMENT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-              />
-              {errors.experienceRequirement && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.experienceRequirement.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="ratingRequirement">Rating Requirement</Label>
-              <Controller
-                name="ratingRequirement"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    id="ratingRequirement"
-                    value={field.value ?? ''}
-                    onChange={(e) => field.onChange(e.target.value || null)}
-                    error={!!errors.ratingRequirement}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">—</option>
-                    {(Object.keys(STAFF_RATING_LABELS) as Array<keyof typeof STAFF_RATING_LABELS>).map(
-                      (value) => (
-                        <option key={value} value={value}>
-                          {STAFF_RATING_LABELS[value]}
-                        </option>
-                      )
-                    )}
-                  </Select>
-                )}
-              />
-              {errors.ratingRequirement && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.ratingRequirement.message}
-                </p>
-              )}
-            </div>
-
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-3">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"

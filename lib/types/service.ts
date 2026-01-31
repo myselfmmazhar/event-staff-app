@@ -8,8 +8,6 @@ export type ServiceTableRow = Pick<
   | 'serviceId'
   | 'title'
   | 'costUnitType'
-  | 'experienceRequirement'
-  | 'ratingRequirement'
   | 'cost'
   | 'price'
   | 'isActive'
