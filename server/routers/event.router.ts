@@ -416,4 +416,17 @@ export const eventRouter = router({
         return await eventService.createMany(transformedEvents as Parameters<typeof eventService.createMany>[0], ctx.userId!);
       }
     }),
+
+  /**
+   * Bulk update events
+   * Updates only fields that have enabled: true
+   * Users can only update their own events
+   * Requires: Authentication
+   */
+  bulkUpdate: protectedProcedure
+    .input(EventSchema.bulkUpdate)
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+      return await eventService.bulkUpdate(input, ctx.userId!);
+    }),
 });

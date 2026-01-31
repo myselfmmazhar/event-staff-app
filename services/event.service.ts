@@ -5,6 +5,7 @@ import type {
   UpdateEventInput as UpdateEventInputType,
   QueryEventsInput,
   DateRangeInput,
+  BulkUpdateEventsInput,
 } from "@/lib/schemas/event.schema";
 import { SettingsService } from "./settings.service";
 import { generateEventId } from "@/lib/utils/id-generator";
@@ -1272,5 +1273,113 @@ export class EventService {
     }
 
     return results;
+  }
+
+  /**
+   * Bulk update events
+   * Only updates fields that have enabled: true
+   * @param input Bulk update input with field flags
+   * @param userId ID of user performing the operation
+   * @returns Result with success count and failed items
+   */
+  async bulkUpdate(
+    input: BulkUpdateEventsInput,
+    userId: string
+  ): Promise<{
+    success: number;
+    failed: Array<{ id: string; eventId: string; reason: string }>;
+  }> {
+    const { eventIds, ...fields } = input;
+    const terminology = await this.settingsService.getTerminology();
+
+    try {
+      // Fetch all events to validate ownership
+      const events = await this.prisma.event.findMany({
+        where: { id: { in: eventIds } },
+        select: {
+          id: true,
+          eventId: true,
+          title: true,
+          createdBy: true,
+          isArchived: true,
+        },
+      });
+
+      // Track failures and valid IDs
+      const failed: Array<{ id: string; eventId: string; reason: string }> = [];
+      const validIds: string[] = [];
+
+      // Check for non-existent or unauthorized IDs
+      const foundIds = events.map((e) => e.id);
+      for (const id of eventIds) {
+        if (!foundIds.includes(id)) {
+          failed.push({
+            id,
+            eventId: "Unknown",
+            reason: `${terminology.event.singular} not found`,
+          });
+        }
+      }
+
+      // Validate ownership and archived status
+      for (const event of events) {
+        if (event.createdBy !== userId) {
+          failed.push({
+            id: event.id,
+            eventId: event.eventId,
+            reason: `You don't have permission to update this ${terminology.event.lower}`,
+          });
+        } else if (event.isArchived) {
+          failed.push({
+            id: event.id,
+            eventId: event.eventId,
+            reason: `${terminology.event.singular} is archived and cannot be modified`,
+          });
+        } else {
+          validIds.push(event.id);
+        }
+      }
+
+      // Build the update data object from enabled fields
+      const updateData: Prisma.EventUncheckedUpdateManyInput = {};
+
+      if (fields.status?.enabled && fields.status.value !== undefined) {
+        updateData.status = fields.status.value;
+      }
+      if (fields.clientId?.enabled) {
+        // Allow setting to null (removing client) or to a specific client
+        updateData.clientId = fields.clientId.value ?? null;
+      }
+
+      const hasFieldUpdates = Object.keys(updateData).length > 0;
+      let successCount = 0;
+
+      if (validIds.length === 0) {
+        return { success: 0, failed };
+      }
+
+      if (hasFieldUpdates) {
+        // Bulk update all valid events
+        const result = await this.prisma.event.updateMany({
+          where: { id: { in: validIds } },
+          data: {
+            ...updateData,
+            updatedAt: new Date(),
+          },
+        });
+        successCount = result.count;
+      } else {
+        // No fields to update
+        successCount = validIds.length;
+      }
+
+      return { success: successCount, failed };
+    } catch (error) {
+      console.error("Error bulk updating events:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Failed to update ${terminology.event.lowerPlural}`,
+      });
+    }
   }
 }

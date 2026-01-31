@@ -541,6 +541,29 @@ export class EventSchema {
     endDateFrom: z.coerce.date().optional(),
     endDateTo: z.coerce.date().optional(),
   });
+
+  /**
+   * Bulk Update Events Schema
+   * Each field has an enabled flag - only enabled fields get updated
+   * Fields: Status, Client
+   */
+  static bulkUpdate = z.object({
+    eventIds: z
+      .array(z.string().uuid("Invalid event ID"))
+      .min(1, "At least one event must be selected"),
+    status: z
+      .object({
+        enabled: z.boolean(),
+        value: z.nativeEnum(EventStatus).optional(),
+      })
+      .optional(),
+    clientId: z
+      .object({
+        enabled: z.boolean(),
+        value: z.string().uuid("Invalid client ID").optional().nullable(),
+      })
+      .optional(),
+  });
 }
 
 /**
@@ -556,6 +579,7 @@ export type RestoreEventInput = z.infer<typeof EventSchema.restore>;
 export type RestoreManyEventsInput = z.infer<typeof EventSchema.restoreMany>;
 export type UpdateEventStatusInput = z.infer<typeof EventSchema.updateStatus>;
 export type DateRangeInput = z.infer<typeof EventSchema.dateRange>;
+export type BulkUpdateEventsInput = z.infer<typeof EventSchema.bulkUpdate>;
 
 /**
  * File link type

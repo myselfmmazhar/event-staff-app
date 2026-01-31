@@ -4,6 +4,8 @@ import { Button, LinkButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PlusIcon, UploadIcon, DocumentDuplicateIcon, ArchiveBoxIcon } from '@/components/ui/icons';
 import { ArchiveEventModal } from '@/components/events/archive-event-modal';
+import { EventBulkActionBar } from '@/components/events/event-bulk-action-bar';
+import { EventBulkEditModal, type EventBulkEditFormData } from '@/components/events/event-bulk-edit-modal';
 import { ViewEventModal } from '@/components/events/view-event-modal';
 import { EventExportDropdown } from '@/components/events/event-export-dropdown';
 import { EventImportModal } from '@/components/events/event-import-modal';
@@ -120,6 +122,9 @@ export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
   const [selectedViewEventId, setSelectedViewEventId] = useState<string | null>(null);
   const [archiveTargets, setArchiveTargets] = useState<Array<{ id: string; title: string; eventId: string }>>([]);
+
+  // Bulk edit modal state
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);;
 
   // View toggle state (table / calendar / map)
   type EventsViewMode = 'table' | 'calendar' | 'map';
@@ -268,6 +273,29 @@ export default function EventsPage() {
     onError: handleError,
   });
 
+  // Bulk update mutation for editing multiple events
+  const bulkUpdateMutation = trpc.event.bulkUpdate.useMutation({
+    onSuccess: (result) => {
+      const count = result.success;
+      const message =
+        count === 1
+          ? `${terminology.event.singular} updated successfully`
+          : `${count} ${terminology.event.lowerPlural} updated successfully`;
+      handleSuccess(message);
+
+      setIsBulkEditOpen(false);
+      clearSelection();
+      refetch();
+      refetchExport();
+
+      // Show warning if some updates failed
+      if (result.failed.length > 0) {
+        console.warn('Some events failed to update:', result.failed);
+      }
+    },
+    onError: handleError,
+  });
+
   // Handlers
   const getEventDetails = (id: string): EventListItem | undefined =>
     events.find((evt) => evt.id === id);
@@ -309,6 +337,19 @@ export default function EventsPage() {
     if (targets.length === 0) return;
     setArchiveTargets(targets);
     setIsArchiveOpen(true);
+  };
+
+  // Handle bulk edit
+  const handleBulkEditSelected = () => {
+    if (selectedIds.size === 0) return;
+    setIsBulkEditOpen(true);
+  };
+
+  const handleBulkEditSubmit = (formData: EventBulkEditFormData) => {
+    bulkUpdateMutation.mutate({
+      eventIds: Array.from(selectedIds),
+      ...formData,
+    });
   };
 
   const handleViewEventFromTable = (event: EventTableEvent) => {
@@ -552,25 +593,15 @@ export default function EventsPage() {
         </div>
       </Card>
 
-      {/* Selection Info */}
-      {selectedIds.size > 0 && (
-        <Card className="p-3 bg-primary/5 border-primary/20">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">
-              {selectedIds.size} {terminology.event.lower}{selectedIds.size !== 1 ? 's' : ''} selected
-            </span>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleArchiveSelected}>
-                <ArchiveBoxIcon className="h-4 w-4 mr-2" />
-                Archive selected
-              </Button>
-              <Button variant="ghost" size="sm" onClick={clearSelection}>
-                Clear selection
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
+      {/* Bulk Action Bar */}
+      <EventBulkActionBar
+        selectedCount={selectedIds.size}
+        onClearSelection={clearSelection}
+        onEditSelected={handleBulkEditSelected}
+        onArchiveSelected={handleArchiveSelected}
+        isEditing={bulkUpdateMutation.isPending}
+        isArchiving={archiveManyMutation.isPending}
+      />
 
       {/* View Mode Toggle */}
       <div className="flex justify-end gap-2 mb-4">
@@ -719,6 +750,17 @@ export default function EventsPage() {
           refetch();
           refetchExport();
         }}
+      />
+
+      {/* Bulk Edit Modal */}
+      <EventBulkEditModal
+        events={allEvents
+          .filter((e) => selectedIds.has(e.id))
+          .map((e) => ({ id: e.id, eventId: e.eventId, title: e.title }))}
+        open={isBulkEditOpen}
+        onClose={() => setIsBulkEditOpen(false)}
+        onSubmit={handleBulkEditSubmit}
+        isSubmitting={bulkUpdateMutation.isPending}
       />
     </div>
   );
