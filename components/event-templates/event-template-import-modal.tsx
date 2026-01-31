@@ -13,11 +13,13 @@ import {
 import {
   UploadIcon,
   FileTextIcon,
+  FileSpreadsheetIcon,
   CheckIcon,
   XIcon,
   AlertIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  DownloadIcon,
 } from '@/components/ui/icons';
 import { ColumnMappingStep } from './column-mapping-step';
 import {
@@ -32,6 +34,7 @@ import {
 } from '@/lib/utils/event-template-import';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from '@/components/ui/use-toast';
+import { downloadSampleTemplate } from '@/lib/utils/event-template-export';
 
 type ImportStep = 'upload' | 'mapping' | 'preview' | 'importing' | 'complete';
 type ImportMode = 'create' | 'upsert';
@@ -252,6 +255,44 @@ export function EventTemplateImportModal({
             <p className="text-sm text-muted-foreground">
               Supported formats: .csv, .xlsx
             </p>
+          </div>
+        )}
+
+        {/* Sample Template Downloads - shown in upload step */}
+        {step === 'upload' && (
+          <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <DownloadIcon className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Need a template?</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  downloadSampleTemplate('csv');
+                  toast({ title: 'Sample CSV template downloaded', type: 'success' });
+                }}
+                className="gap-2"
+              >
+                <FileTextIcon className="h-4 w-4" />
+                Download CSV
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  downloadSampleTemplate('xlsx');
+                  toast({ title: 'Sample Excel template downloaded', type: 'success' });
+                }}
+                className="gap-2"
+              >
+                <FileSpreadsheetIcon className="h-4 w-4" />
+                Download Excel
+              </Button>
+            </div>
           </div>
         )}
 

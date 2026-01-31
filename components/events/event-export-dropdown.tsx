@@ -11,7 +11,6 @@ import {
 import {
   exportEventsCSV,
   exportEventsExcel,
-  downloadSampleEventTemplate,
   type EventExport,
 } from '@/lib/utils/event-export';
 import { toast } from '@/components/ui/use-toast';
@@ -96,17 +95,6 @@ export function EventExportDropdown({
     }
   };
 
-  const handleDownloadSample = (format: 'csv' | 'xlsx') => {
-    try {
-      downloadSampleEventTemplate(format);
-      toast({ title: 'Sample template downloaded', type: 'success' });
-      setIsOpen(false);
-    } catch (error) {
-      console.error('Download failed:', error);
-      toast({ title: 'Failed to download sample template', type: 'error' });
-    }
-  };
-
   return (
     <div className="relative" ref={dropdownRef}>
       <Button
@@ -170,30 +158,6 @@ export function EventExportDropdown({
             >
               <FileSpreadsheetIcon className="h-4 w-4 text-muted-foreground" />
               <span>Export Selected as Excel</span>
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-border" />
-
-          {/* Sample Template */}
-          <div className="p-1">
-            <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Sample Template
-            </div>
-            <button
-              onClick={() => handleDownloadSample('csv')}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
-            >
-              <FileTextIcon className="h-4 w-4 text-muted-foreground" />
-              <span>Download Sample (CSV)</span>
-            </button>
-            <button
-              onClick={() => handleDownloadSample('xlsx')}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
-            >
-              <FileSpreadsheetIcon className="h-4 w-4 text-muted-foreground" />
-              <span>Download Sample (Excel)</span>
             </button>
           </div>
         </div>
