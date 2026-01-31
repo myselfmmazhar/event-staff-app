@@ -19,8 +19,6 @@ export class ServiceService {
     title: true,
     costUnitType: true,
     description: true,
-    experienceRequirement: true,
-    ratingRequirement: true,
     cost: true,
     price: true,
     isActive: true,
@@ -39,8 +37,6 @@ export class ServiceService {
           title: data.title.trim(),
           costUnitType: data.costUnitType ?? null,
           description: data.description?.trim() || null,
-          experienceRequirement: data.experienceRequirement ?? null,
-          ratingRequirement: data.ratingRequirement ?? null,
           cost: data.cost ?? null,
           price: data.price ?? null,
           createdBy: createdByUserId,
@@ -138,14 +134,6 @@ export class ServiceService {
             data.costUnitType === undefined ? undefined : data.costUnitType,
           description:
             data.description === null ? null : data.description?.trim(),
-          experienceRequirement:
-            data.experienceRequirement === undefined
-              ? undefined
-              : data.experienceRequirement,
-          ratingRequirement:
-            data.ratingRequirement === undefined
-              ? undefined
-              : data.ratingRequirement,
           cost: data.cost === undefined ? undefined : data.cost,
           price: data.price === undefined ? undefined : data.price,
         },

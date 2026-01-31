@@ -327,8 +327,6 @@ export type ServiceSelect = Prisma.ServiceGetPayload<{
     title: true;
     costUnitType: true;
     description: true;
-    experienceRequirement: true;
-    ratingRequirement: true;
     cost: true;
     price: true;
     isActive: true;

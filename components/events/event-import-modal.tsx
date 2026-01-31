@@ -79,7 +79,7 @@ export function EventImportModal({
   const [importResult, setImportResult] = useState<{ created: number; updated: number; errors: number } | null>(null);
 
   // Fetch clients for matching
-  const { data: clientsData } = trpc.clients.getAll.useQuery({ page: 1, limit: 1000 });
+  const { data: clientsData } = trpc.clients.getAll.useQuery({ page: 1, limit: 100 });
   const clients = clientsData?.data ?? [];
 
   // Create client map for validation
@@ -354,9 +354,8 @@ export function EventImportModal({
                   return (
                     <div
                       key={result.rowIndex}
-                      className={`grid grid-cols-[50px_1fr_100px] gap-2 p-3 border-b last:border-b-0 items-start ${
-                        !result.valid ? 'bg-destructive/5' : result.warnings.length > 0 ? 'bg-warning/5' : ''
-                      }`}
+                      className={`grid grid-cols-[50px_1fr_100px] gap-2 p-3 border-b last:border-b-0 items-start ${!result.valid ? 'bg-destructive/5' : result.warnings.length > 0 ? 'bg-warning/5' : ''
+                        }`}
                     >
                       <div className="text-sm text-muted-foreground">{result.rowIndex + 1}</div>
                       <div>

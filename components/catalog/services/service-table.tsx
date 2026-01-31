@@ -8,8 +8,6 @@ import { EditIcon, EyeIcon, TrashIcon } from '@/components/ui/icons';
 import type { ServiceTableRow } from '@/lib/types/service';
 import {
   COST_UNIT_TYPE_LABELS,
-  EXPERIENCE_REQUIREMENT_LABELS,
-  STAFF_RATING_LABELS,
 } from '@/lib/constants/enums';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { formatDollarOrPlaceholder } from '@/lib/utils/currency-formatter';
@@ -48,8 +46,6 @@ export function ServiceTable({
     cost: 'Cost',
     price: 'Price',
     costUnitType: 'Unit',
-    experienceRequirement: 'Experience',
-    ratingRequirement: 'Rating',
     status: 'Status',
     actions: 'Actions',
   });
@@ -199,22 +195,6 @@ export function ServiceTable({
       className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
       render: (service) =>
         service.costUnitType ? COST_UNIT_TYPE_LABELS[service.costUnitType] : '-',
-    },
-    {
-      key: 'experienceRequirement',
-      label: columnLabels.experienceRequirement,
-      className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
-      render: (service) =>
-        service.experienceRequirement
-          ? EXPERIENCE_REQUIREMENT_LABELS[service.experienceRequirement]
-          : '-',
-    },
-    {
-      key: 'ratingRequirement',
-      label: columnLabels.ratingRequirement,
-      className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
-      render: (service) =>
-        service.ratingRequirement ? STAFF_RATING_LABELS[service.ratingRequirement] : '-',
     },
   ];
 
