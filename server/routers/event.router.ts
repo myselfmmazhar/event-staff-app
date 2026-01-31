@@ -70,6 +70,18 @@ export const eventRouter = router({
     }),
 
   /**
+   * Delete multiple archived events
+   * Users can only delete their own archived events
+   * Requires: Authentication
+   */
+  deleteMany: protectedProcedure
+    .input(EventSchema.deleteMany)
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+      return await eventService.deleteMany(input.ids, ctx.userId!);
+    }),
+
+  /**
    * Archive an event
    * Users can only archive their own events
    * Requires: Authentication

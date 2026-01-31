@@ -448,6 +448,13 @@ export class EventTemplateSchema {
   static id = z.object({
     id: z.string().uuid("Invalid template ID"),
   });
+
+  /**
+   * Bulk Delete Schema
+   */
+  static deleteMany = z.object({
+    ids: z.array(z.string().uuid("Invalid template ID")).min(1, "At least one template ID is required"),
+  });
 }
 
 /**
@@ -457,6 +464,7 @@ export type CreateEventTemplateInput = z.infer<typeof EventTemplateSchema.create
 export type UpdateEventTemplateInput = z.infer<typeof EventTemplateSchema.update>;
 export type QueryEventTemplatesInput = z.infer<typeof EventTemplateSchema.query>;
 export type EventTemplateIdInput = z.infer<typeof EventTemplateSchema.id>;
+export type DeleteManyTemplatesInput = z.infer<typeof EventTemplateSchema.deleteMany>;
 
 /**
  * File link type

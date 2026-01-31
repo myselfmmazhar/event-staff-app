@@ -182,6 +182,14 @@ export class ProductService {
     }
   }
 
+  async deleteMany(ids: string[]): Promise<{ count: number }> {
+    const result = await this.prisma.product.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    return { count: result.count };
+  }
+
   async toggleActive(id: string, isActive: boolean): Promise<ProductSelect> {
     await this.findOne(id);
 

@@ -75,6 +75,10 @@ export const ServiceSchema = {
     id: z.string().uuid('Invalid service ID'),
     isActive: z.boolean(),
   }),
+
+  deleteMany: z.object({
+    ids: z.array(z.string().uuid('Invalid service ID')).min(1, 'At least one service ID is required'),
+  }),
 };
 
 export type CreateServiceInput = z.infer<typeof ServiceSchema.create>;
@@ -82,4 +86,5 @@ export type UpdateServiceInput = z.infer<typeof ServiceSchema.update>;
 export type QueryServicesInput = z.infer<typeof ServiceSchema.query>;
 export type ServiceIdInput = z.infer<typeof ServiceSchema.id>;
 export type ToggleServiceActiveInput = z.infer<typeof ServiceSchema.toggleActive>;
+export type DeleteManyServicesInput = z.infer<typeof ServiceSchema.deleteMany>;
 

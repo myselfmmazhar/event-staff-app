@@ -2,7 +2,9 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlusIcon, UploadIcon } from '@/components/ui/icons';
+import { Badge } from '@/components/ui/badge';
+import { PlusIcon, UploadIcon, TrashIcon } from '@/components/ui/icons';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import { ClientFormModal, type CreateClientInputWithLocations } from '@/components/clients/client-form-modal';
 import { ClientTable } from '@/components/clients/client-table';
 import { ClientSearch } from '@/components/clients/client-search';
@@ -62,7 +64,7 @@ export default function ClientsPage() {
   const filters = useClientsFilters();
 
   // Use CRUD mutations hook
-  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
+  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions, handleSuccess, handleError } = useCrudMutations();
 
   // Modal state
   const [modals, setModals] = useState({
@@ -74,6 +76,9 @@ export default function ClientsPage() {
 
   // Import modal state
   const [isImportOpen, setIsImportOpen] = useState(false);
+
+  // Bulk delete modal state
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   // Row selection for export
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -143,6 +148,9 @@ export default function ClientsPage() {
 
   const clearSelection = () => setSelectedIds(new Set());
 
+  // Get selected clients for bulk delete modal display
+  const selectedClientsList = clients.filter((c) => selectedIds.has(c.id));
+
   // tRPC mutations with standardized error handling
   const createMutation = trpc.clients.create.useMutation({
     ...createMutationOptions('Client created successfully', {}),
@@ -184,6 +192,21 @@ export default function ClientsPage() {
       },
     })
   );
+
+  // Delete many mutation
+  const deleteManyMutation = trpc.clients.deleteMany.useMutation({
+    onSuccess: (result) => {
+      const message = result.count === 1
+        ? 'Client deleted successfully'
+        : `${result.count} clients deleted successfully`;
+      handleSuccess(message);
+      setIsBulkDeleteOpen(false);
+      clearSelection();
+      refetch();
+      refetchExport();
+    },
+    onError: handleError,
+  });
 
   // Mutation for creating locations after client creation
   const createLocationMutation = trpc.clientLocation.create.useMutation();
@@ -268,6 +291,16 @@ export default function ClientsPage() {
     if (selectedClient) {
       deleteMutation.mutate({ id: selectedClient.id });
     }
+  };
+
+  const handleBulkDelete = () => {
+    setIsBulkDeleteOpen(true);
+  };
+
+  const handleBulkDeleteConfirm = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    deleteManyMutation.mutate({ ids });
   };
 
   const handleSort = (field: string) => {
@@ -391,18 +424,26 @@ export default function ClientsPage() {
         </div>
       </Card>
 
-      {/* Selection Info */}
+      {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <Card className="p-3 bg-primary/5 border-primary/20">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">
-              {selectedIds.size} client{selectedIds.size !== 1 ? 's' : ''} selected
-            </span>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>
-              Clear selection
-            </Button>
+        <div className="sticky top-0 z-20 bg-muted/95 backdrop-blur-sm border-b border-border p-4 mb-4 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Badge variant="primary" size="lg">
+                {selectedIds.size} client{selectedIds.size !== 1 ? 's' : ''} selected
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={clearSelection}>
+                Clear Selection
+              </Button>
+              <Button variant="danger" onClick={handleBulkDelete} disabled={deleteManyMutation.isPending}>
+                <TrashIcon className="h-4 w-4 mr-2" />
+                {deleteManyMutation.isPending ? 'Deleting...' : 'Delete Selected'}
+              </Button>
+            </div>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Table */}
@@ -497,6 +538,30 @@ export default function ClientsPage() {
           refetchExport();
         }}
       />
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmModal
+        open={isBulkDeleteOpen}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={handleBulkDeleteConfirm}
+        title="Delete Selected Clients"
+        description={`Are you sure you want to delete ${selectedIds.size} client${selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.`}
+        confirmText={deleteManyMutation.isPending ? 'Deleting...' : 'Delete'}
+        variant="danger"
+        isLoading={deleteManyMutation.isPending}
+      >
+        {selectedClientsList.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-3 bg-muted/50 rounded-md border border-border">
+              {selectedClientsList.map((client) => (
+                <Badge key={client.id} variant="secondary" size="sm">
+                  {`${client.firstName} ${client.lastName}`.trim() || client.email}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </ConfirmModal>
     </div>
   );
 }

@@ -39,6 +39,13 @@ export const productRouter = router({
       return await productService.remove(input.id);
     }),
 
+  deleteMany: adminProcedure
+    .input(ProductSchema.deleteMany)
+    .mutation(async ({ ctx, input }) => {
+      const productService = new ProductService(ctx.prisma);
+      return await productService.deleteMany(input.ids);
+    }),
+
   toggleActive: adminProcedure
     .input(ProductSchema.toggleActive)
     .mutation(async ({ ctx, input }) => {

@@ -116,6 +116,10 @@ export const ProductSchema = {
     id: z.string().uuid('Invalid product ID'),
     isActive: z.boolean(),
   }),
+
+  deleteMany: z.object({
+    ids: z.array(z.string().uuid('Invalid product ID')).min(1, 'At least one product ID is required'),
+  }),
 };
 
 export type CreateProductInput = z.infer<typeof ProductSchema.create>;
@@ -123,4 +127,5 @@ export type UpdateProductInput = z.infer<typeof ProductSchema.update>;
 export type QueryProductsInput = z.infer<typeof ProductSchema.query>;
 export type ProductIdInput = z.infer<typeof ProductSchema.id>;
 export type ToggleProductActiveInput = z.infer<typeof ProductSchema.toggleActive>;
+export type DeleteManyProductsInput = z.infer<typeof ProductSchema.deleteMany>;
 

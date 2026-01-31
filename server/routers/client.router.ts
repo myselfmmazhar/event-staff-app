@@ -87,6 +87,15 @@ export const clientRouter = router({
     }),
 
   /**
+   * Delete multiple clients
+   */
+  deleteMany: protectedProcedure
+    .input(ClientSchema.deleteMany)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.clientService.deleteMany(input.ids);
+    }),
+
+  /**
    * Grant login access to a client
    * Generates invitation token and sends email
    */

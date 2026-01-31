@@ -224,6 +224,13 @@ export class UserSchema {
   static id = z.object({
     id: z.string().min(1, "Invalid user ID"),
   });
+
+  /**
+   * Bulk Delete Schema
+   */
+  static deleteMany = z.object({
+    ids: z.array(z.string().min(1, "Invalid user ID")).min(1, "At least one user ID is required"),
+  });
 }
 
 /**
@@ -236,3 +243,4 @@ export type UpdateUserInput = z.infer<typeof UserSchema.update>;
 export type QueryUsersInput = z.infer<typeof UserSchema.query>;
 export type UserIdInput = z.infer<typeof UserSchema.id>;
 export type ResendUserInvitationInput = z.infer<typeof UserSchema.resendInvitation>;
+export type DeleteManyUsersInput = z.infer<typeof UserSchema.deleteMany>;

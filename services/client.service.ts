@@ -728,6 +728,17 @@ export class ClientService {
   }
 
   /**
+   * Delete multiple clients
+   */
+  async deleteMany(ids: string[]): Promise<{ count: number }> {
+    const result = await this.prisma.client.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    return { count: result.count };
+  }
+
+  /**
    * Get client statistics
    */
   async getStats(): Promise<ClientStats> {
@@ -822,15 +833,15 @@ export class ClientService {
     // Build a map of existing clients by email
     const existingClients = importEmails.length > 0
       ? await this.prisma.client.findMany({
-          where: {
-            createdBy: userId,
-            email: { in: importEmails, mode: 'insensitive' },
-          },
-          select: {
-            id: true,
-            email: true,
-          },
-        })
+        where: {
+          createdBy: userId,
+          email: { in: importEmails, mode: 'insensitive' },
+        },
+        select: {
+          id: true,
+          email: true,
+        },
+      })
       : [];
 
     // Map email -> database id

@@ -137,6 +137,17 @@ export const userRouter = router({
     }),
 
   /**
+   * Delete multiple users
+   * Requires: Admin or higher
+   */
+  deleteMany: adminProcedure
+    .input(UserSchema.deleteMany)
+    .mutation(async ({ ctx, input }) => {
+      const userService = new UserService(ctx.prisma);
+      return await userService.deleteMany(input.ids);
+    }),
+
+  /**
    * Deactivate a user
    * Requires: Admin or higher
    */

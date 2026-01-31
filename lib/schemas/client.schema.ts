@@ -226,6 +226,13 @@ export class ClientSchema {
   static getInvitationInfo = z.object({
     token: z.string().min(1, "Token is required"),
   });
+
+  /**
+   * Bulk Delete Schema
+   */
+  static deleteMany = z.object({
+    ids: z.array(z.string().uuid("Invalid client ID")).min(1, "At least one client ID is required"),
+  });
 }
 
 /**
@@ -240,4 +247,5 @@ export type ClientIdFormatInput = z.infer<typeof ClientSchema.clientId>;
 export type AcceptClientInvitationInput = z.infer<typeof ClientSchema.acceptInvitation>;
 export type ResendClientInvitationInput = z.infer<typeof ClientSchema.resendInvitation>;
 export type GetClientInvitationInfoInput = z.infer<typeof ClientSchema.getInvitationInfo>;
+export type DeleteManyClientsInput = z.infer<typeof ClientSchema.deleteMany>;
 

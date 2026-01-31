@@ -12,7 +12,9 @@ import { DeleteProductModal } from '@/components/catalog/products/delete-product
 import { ViewProductModal } from '@/components/catalog/products/view-product-modal';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlusIcon } from '@/components/ui/icons';
+import { Badge } from '@/components/ui/badge';
+import { PlusIcon, TrashIcon } from '@/components/ui/icons';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import { trpc } from '@/lib/client/trpc';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
@@ -55,7 +57,7 @@ function parseSortOrderParam(value: string | null): SortOrder {
 export default function ProductsPage() {
   const searchParams = useSearchParams();
   const filters = useProductsFilters();
-  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } =
+  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions, handleSuccess, handleError } =
     useCrudMutations();
 
   const [modals, setModals] = useState({
@@ -66,6 +68,7 @@ export default function ProductsPage() {
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   const handleCreate = () => {
     setSelectedProduct(null);
@@ -149,6 +152,9 @@ export default function ProductsPage() {
   });
 
   const products = (data?.data ?? []) as Product[];
+
+  // Get selected products for bulk delete modal display
+  const selectedProductsList = products.filter((p) => selectedIds.has(p.id));
   const totalPages = data?.meta.totalPages ?? 0;
 
   const createMutation = trpc.product.create.useMutation(
@@ -180,6 +186,20 @@ export default function ProductsPage() {
       },
     })
   );
+
+  // Delete many mutation
+  const deleteManyMutation = trpc.product.deleteMany.useMutation({
+    onSuccess: (result) => {
+      const message = result.count === 1
+        ? 'Product deleted successfully'
+        : `${result.count} products deleted successfully`;
+      handleSuccess(message);
+      setIsBulkDeleteOpen(false);
+      clearSelection();
+      refetch();
+    },
+    onError: handleError,
+  });
 
   const toggleActiveMutation = trpc.product.toggleActive.useMutation({
     ...updateMutationOptions('Product status updated', {
@@ -225,6 +245,16 @@ export default function ProductsPage() {
 
   const handleToggleActive = (id: string, isActive: boolean) => {
     toggleActiveMutation.mutate({ id, isActive });
+  };
+
+  const handleBulkDelete = () => {
+    setIsBulkDeleteOpen(true);
+  };
+
+  const handleBulkDeleteConfirm = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    deleteManyMutation.mutate({ ids });
   };
 
   const handleSort = (field: string) => {
@@ -281,18 +311,26 @@ export default function ProductsPage() {
         </div>
       </Card>
 
-      {/* Selection Info */}
+      {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <Card className="p-3 bg-primary/5 border-primary/20">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">
-              {selectedIds.size} product{selectedIds.size !== 1 ? 's' : ''} selected
-            </span>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>
-              Clear selection
-            </Button>
+        <div className="sticky top-0 z-20 bg-muted/95 backdrop-blur-sm border-b border-border p-4 mb-4 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Badge variant="primary" size="lg">
+                {selectedIds.size} product{selectedIds.size !== 1 ? 's' : ''} selected
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={clearSelection}>
+                Clear Selection
+              </Button>
+              <Button variant="danger" onClick={handleBulkDelete} disabled={deleteManyMutation.isPending}>
+                <TrashIcon className="h-4 w-4 mr-2" />
+                {deleteManyMutation.isPending ? 'Deleting...' : 'Delete Selected'}
+              </Button>
+            </div>
           </div>
-        </Card>
+        </div>
       )}
 
       <Card className="p-6">
@@ -364,6 +402,30 @@ export default function ProductsPage() {
         onConfirm={handleDeleteConfirm}
         isLoading={deleteMutation.isPending}
       />
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmModal
+        open={isBulkDeleteOpen}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={handleBulkDeleteConfirm}
+        title="Delete Selected Products"
+        description={`Are you sure you want to delete ${selectedIds.size} product${selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.`}
+        confirmText={deleteManyMutation.isPending ? 'Deleting...' : 'Delete'}
+        variant="danger"
+        isLoading={deleteManyMutation.isPending}
+      >
+        {selectedProductsList.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-3 bg-muted/50 rounded-md border border-border">
+              {selectedProductsList.map((product) => (
+                <Badge key={product.id} variant="secondary" size="sm">
+                  {product.title}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </ConfirmModal>
     </div>
   );
 }

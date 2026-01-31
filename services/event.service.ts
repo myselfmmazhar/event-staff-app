@@ -652,6 +652,34 @@ export class EventService {
   }
 
   /**
+   * Permanently delete multiple archived events
+   * Only archived events owned by the user can be deleted
+   */
+  async deleteMany(ids: string[], userId: string): Promise<{ count: number }> {
+    // Fetch all events to validate ownership and archived status
+    const events = await this.prisma.event.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, createdBy: true, isArchived: true },
+    });
+
+    // Filter to only owned and archived events
+    const validIds = events
+      .filter((e) => e.createdBy === userId && e.isArchived)
+      .map((e) => e.id);
+
+    if (validIds.length === 0) {
+      return { count: 0 };
+    }
+
+    // Delete the events
+    const result = await this.prisma.event.deleteMany({
+      where: { id: { in: validIds } },
+    });
+
+    return { count: result.count };
+  }
+
+  /**
    * Update event status
    * Includes ownership check
    */

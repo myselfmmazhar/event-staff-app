@@ -564,6 +564,14 @@ export class EventSchema {
       })
       .optional(),
   });
+
+  /**
+   * Bulk Delete Events Schema
+   * For permanently deleting multiple archived events
+   */
+  static deleteMany = z.object({
+    ids: z.array(z.string().uuid("Invalid event ID")).min(1, "At least one event ID is required"),
+  });
 }
 
 /**
@@ -580,6 +588,7 @@ export type RestoreManyEventsInput = z.infer<typeof EventSchema.restoreMany>;
 export type UpdateEventStatusInput = z.infer<typeof EventSchema.updateStatus>;
 export type DateRangeInput = z.infer<typeof EventSchema.dateRange>;
 export type BulkUpdateEventsInput = z.infer<typeof EventSchema.bulkUpdate>;
+export type DeleteManyEventsInput = z.infer<typeof EventSchema.deleteMany>;
 
 /**
  * File link type

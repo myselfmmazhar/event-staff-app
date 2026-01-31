@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { PlusIcon, SearchIcon, EditIcon, TrashIcon, UploadIcon } from '@/components/ui/icons';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { Pagination } from '@/components/common/pagination';
 import { EventTemplateFormModal } from '@/components/event-templates/event-template-form-modal';
@@ -67,7 +69,7 @@ interface EventTemplate {
 
 export default function EventTemplatesPage() {
   const { terminology } = useTerminology();
-  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
+  const { backendErrors, setBackendErrors, handleSuccess, handleError, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
 
   // State
   const [page, setPage] = useState(1);
@@ -81,6 +83,9 @@ export default function EventTemplatesPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<EventTemplate | null>(null);
+
+  // Bulk delete state
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   // Row selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -172,6 +177,22 @@ export default function EventTemplatesPage() {
     })
   );
 
+  const deleteManyMutation = trpc.eventTemplate.deleteMany.useMutation({
+    onSuccess: (result) => {
+      const count = result.count;
+      const message =
+        count === 1
+          ? 'Template deleted successfully'
+          : `${count} templates deleted successfully`;
+      handleSuccess(message);
+      setBulkDeleteOpen(false);
+      clearSelection();
+      refetch();
+      refetchExport();
+    },
+    onError: handleError,
+  });
+
   // Handlers
   const handleCreate = () => {
     setSelectedTemplate(null);
@@ -202,6 +223,15 @@ export default function EventTemplatesPage() {
     if (selectedTemplate) {
       deleteMutation.mutate({ id: selectedTemplate.id });
     }
+  };
+
+  const handleBulkDeleteSelected = () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleteOpen(true);
+  };
+
+  const handleBulkDeleteConfirm = () => {
+    deleteManyMutation.mutate({ ids: Array.from(selectedIds) });
   };
 
   const handleSort = (field: string) => {
@@ -405,18 +435,30 @@ export default function EventTemplatesPage() {
         </div>
       </div>
 
-      {/* Selection Info */}
+      {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <Card className="p-3 mb-4 bg-primary/5 border-primary/20">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">
-              {selectedIds.size} template{selectedIds.size !== 1 ? 's' : ''} selected
-            </span>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>
-              Clear selection
-            </Button>
+        <div className="sticky top-0 z-20 bg-muted/95 backdrop-blur-sm border-b border-border p-4 mb-4 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Badge variant="primary" size="lg">
+                {selectedIds.size} template{selectedIds.size !== 1 ? 's' : ''} selected
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={clearSelection}>
+                Clear Selection
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleBulkDeleteSelected}
+                disabled={deleteManyMutation.isPending}
+              >
+                <TrashIcon className="h-4 w-4 mr-2" />
+                {deleteManyMutation.isPending ? 'Deleting...' : 'Delete Selected'}
+              </Button>
+            </div>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Search */}
@@ -502,6 +544,31 @@ export default function EventTemplatesPage() {
           refetchExport();
         }}
       />
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmModal
+        open={bulkDeleteOpen}
+        onClose={() => setBulkDeleteOpen(false)}
+        onConfirm={handleBulkDeleteConfirm}
+        isLoading={deleteManyMutation.isPending}
+        title={`Delete ${selectedIds.size} template${selectedIds.size !== 1 ? 's' : ''}`}
+        description="This action cannot be undone."
+        confirmText={deleteManyMutation.isPending ? 'Deleting...' : 'Delete'}
+        variant="danger"
+      >
+        <p className="text-sm text-muted-foreground">
+          Are you sure you want to permanently delete {selectedIds.size} template{selectedIds.size !== 1 ? 's' : ''}?
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2 max-h-32 overflow-y-auto p-3 bg-muted/50 rounded-md border border-border">
+          {allTemplates
+            .filter((t) => selectedIds.has(t.id))
+            .map((t) => (
+              <Badge key={t.id} variant="secondary" size="sm">
+                {t.name}
+              </Badge>
+            ))}
+        </div>
+      </ConfirmModal>
     </div>
   );
 }

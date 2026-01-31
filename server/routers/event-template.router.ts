@@ -114,6 +114,17 @@ export const eventTemplateRouter = router({
     }),
 
   /**
+   * Delete multiple event templates
+   * Requires: Authentication
+   */
+  deleteMany: protectedProcedure
+    .input(EventTemplateSchema.deleteMany)
+    .mutation(async ({ ctx, input }) => {
+      const service = new EventTemplateService(ctx.prisma);
+      return await service.deleteMany(input.ids);
+    }),
+
+  /**
    * Get all templates for export (no pagination)
    * Requires: Authentication
    */

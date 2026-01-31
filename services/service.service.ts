@@ -163,6 +163,14 @@ export class ServiceService {
     }
   }
 
+  async deleteMany(ids: string[]): Promise<{ count: number }> {
+    const result = await this.prisma.service.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    return { count: result.count };
+  }
+
   async toggleActive(id: string, isActive: boolean): Promise<ServiceSelect> {
     await this.findOne(id);
 

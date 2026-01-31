@@ -2,7 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlusIcon } from '@/components/ui/icons';
+import { Badge } from '@/components/ui/badge';
+import { PlusIcon, TrashIcon } from '@/components/ui/icons';
 import { ActiveFilters } from '@/components/common/active-filters';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { DeleteUserModal } from '@/components/users/delete-user-modal';
@@ -98,12 +99,13 @@ export default function UsersPage() {
   const usersLabels = useUsersPageLabels();
 
   // Use CRUD mutations hook
-  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
+  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions, handleSuccess, handleError } = useCrudMutations();
 
   // Local modal state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserTableRow | null>(null);
   const [userToResend, setUserToResend] = useState<UserTableRow | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -227,6 +229,20 @@ export default function UsersPage() {
     })
   );
 
+  // Delete many mutation
+  const deleteManyMutation = trpc.user.deleteMany.useMutation({
+    onSuccess: (result) => {
+      const message = result.count === 1
+        ? 'User deleted successfully'
+        : `${result.count} users deleted successfully`;
+      handleSuccess(message);
+      setIsBulkDeleteOpen(false);
+      clearSelection();
+      refetch();
+    },
+    onError: handleError,
+  });
+
   // Handlers
   const handleCreate = () => {
     setSelectedUser(null);
@@ -235,6 +251,19 @@ export default function UsersPage() {
   };
 
   const clearSelection = () => setSelectedIds(new Set());
+
+  // Get selected users for bulk operations
+  const selectedUsersList = (data?.data ?? []).filter((u) => selectedIds.has(u.id));
+
+  const handleBulkDelete = () => {
+    setIsBulkDeleteOpen(true);
+  };
+
+  const handleBulkDeleteConfirm = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    deleteManyMutation.mutate({ ids });
+  };
 
   const handleEdit = (user: UserTableRow) => {
     setSelectedUser(user);
@@ -438,18 +467,26 @@ export default function UsersPage() {
         </div>
       </Card>
 
-      {/* Selection Info */}
+      {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <Card className="p-3 bg-primary/5 border-primary/20">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">
-              {selectedIds.size} user{selectedIds.size !== 1 ? 's' : ''} selected
-            </span>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>
-              Clear selection
-            </Button>
+        <div className="sticky top-0 z-20 bg-muted/95 backdrop-blur-sm border-b border-border p-4 mb-4 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Badge variant="primary" size="lg">
+                {selectedIds.size} user{selectedIds.size !== 1 ? 's' : ''} selected
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={clearSelection}>
+                Clear Selection
+              </Button>
+              <Button variant="danger" onClick={handleBulkDelete} disabled={deleteManyMutation.isPending}>
+                <TrashIcon className="h-4 w-4 mr-2" />
+                {deleteManyMutation.isPending ? 'Deleting...' : 'Delete Selected'}
+              </Button>
+            </div>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Table */}
@@ -527,6 +564,30 @@ export default function UsersPage() {
           A new invitation email will be sent to <strong>{userToResend?.email}</strong>.
           The previous invitation link will be invalidated.
         </p>
+      </ConfirmModal>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmModal
+        open={isBulkDeleteOpen}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={handleBulkDeleteConfirm}
+        title="Delete Selected Users"
+        description={`Are you sure you want to delete ${selectedIds.size} user${selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.`}
+        confirmText={deleteManyMutation.isPending ? 'Deleting...' : 'Delete'}
+        variant="danger"
+        isLoading={deleteManyMutation.isPending}
+      >
+        {selectedUsersList.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-3 bg-muted/50 rounded-md border border-border">
+              {selectedUsersList.map((user) => (
+                <Badge key={user.id} variant="secondary" size="sm">
+                  {user.firstName} {user.lastName}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
       </ConfirmModal>
     </div>
   );

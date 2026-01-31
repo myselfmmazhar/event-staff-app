@@ -659,6 +659,20 @@ export class UserService {
   }
 
   /**
+   * Delete multiple users (excludes SUPER_ADMIN users)
+   */
+  async deleteMany(ids: string[]): Promise<{ count: number }> {
+    const result = await this.prisma.user.deleteMany({
+      where: {
+        id: { in: ids },
+        role: { not: UserRole.SUPER_ADMIN },
+      },
+    });
+
+    return { count: result.count };
+  }
+
+  /**
    * Deactivate a user
    */
   async deactivate(id: string) {

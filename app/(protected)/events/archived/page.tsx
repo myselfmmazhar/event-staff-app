@@ -2,7 +2,8 @@
 
 import { Button, LinkButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowLeftIcon, RefreshCwIcon } from '@/components/ui/icons';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeftIcon, RefreshCwIcon, TrashIcon } from '@/components/ui/icons';
 import { DeleteEventModal } from '@/components/events/delete-event-modal';
 import { RestoreEventModal } from '@/components/events/restore-event-modal';
 import { ViewEventModal } from '@/components/events/view-event-modal';
@@ -85,7 +86,7 @@ export default function ArchivedEventsPage() {
   const [restoreTargets, setRestoreTargets] = useState<Array<{ id: string; title: string; eventId: string }>>([]);
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string; eventId: string } | null>(null);
+  const [deleteTargets, setDeleteTargets] = useState<Array<{ id: string; title: string; eventId: string }>>([]);
 
   useEffect(() => {
     const page = parseNumberParam(searchParams.get('page'), 1);
@@ -151,13 +152,30 @@ export default function ArchivedEventsPage() {
     deleteMutationOptions(`${terminology.event.singular} deleted successfully`, {
       onSuccess: () => {
         setIsDeleteOpen(false);
-        setDeleteTarget(null);
+        setDeleteTargets([]);
         clearSelection();
         refetch();
         refetchArchivedCount();
       },
     })
   );
+
+  const deleteManyMutation = trpc.event.deleteMany.useMutation({
+    onSuccess: (result) => {
+      const count = result.count ?? deleteTargets.length;
+      const message =
+        count === 1
+          ? `${terminology.event.singular} deleted successfully`
+          : `${count} ${terminology.event.lowerPlural} deleted successfully`;
+      handleSuccess(message);
+      setIsDeleteOpen(false);
+      setDeleteTargets([]);
+      clearSelection();
+      refetch();
+      refetchArchivedCount();
+    },
+    onError: handleError,
+  });
 
   const getEventDetails = (id: string): ArchivedEventListItem | undefined =>
     events.find((evt) => evt.id === id);
@@ -188,13 +206,23 @@ export default function ArchivedEventsPage() {
   };
 
   const handleDeleteEvent = (event: ArchivedEventListItem) => {
-    setDeleteTarget({ id: event.id, title: event.title, eventId: event.eventId });
+    setDeleteTargets([{ id: event.id, title: event.title, eventId: event.eventId }]);
+    setIsDeleteOpen(true);
+  };
+
+  const handleDeleteSelected = () => {
+    const targets = events
+      .filter((event) => selectedIds.has(event.id))
+      .map((event) => ({ id: event.id, title: event.title, eventId: event.eventId }));
+
+    if (targets.length === 0) return;
+    setDeleteTargets(targets);
     setIsDeleteOpen(true);
   };
 
   const handleDeleteConfirm = () => {
-    if (!deleteTarget) return;
-    deleteMutation.mutate({ id: deleteTarget.id });
+    if (deleteTargets.length === 0) return;
+    deleteManyMutation.mutate({ ids: deleteTargets.map((e) => e.id) });
   };
 
   const handleViewEventFromTable = (event: ArchivedTableEvent) => {
@@ -318,23 +346,30 @@ export default function ArchivedEventsPage() {
         </div>
       </Card>
 
+      {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <Card className="p-3 bg-primary/5 border-primary/20">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">
-              {selectedIds.size} archived {terminology.event.lower}{selectedIds.size !== 1 ? 's' : ''} selected
-            </span>
+        <div className="sticky top-0 z-20 bg-muted/95 backdrop-blur-sm border-b border-border p-4 mb-4 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Badge variant="primary" size="lg">
+                {selectedIds.size} archived {selectedIds.size === 1 ? terminology.event.lower : terminology.event.lowerPlural} selected
+              </Badge>
+            </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRestoreSelected}>
-                <RefreshCwIcon className="h-4 w-4 mr-2" />
-                Restore selected
+              <Button variant="ghost" onClick={clearSelection}>
+                Clear Selection
               </Button>
-              <Button variant="ghost" size="sm" onClick={clearSelection}>
-                Clear selection
+              <Button variant="outline" onClick={handleRestoreSelected} disabled={restoreManyMutation.isPending || deleteManyMutation.isPending}>
+                <RefreshCwIcon className="h-4 w-4 mr-2" />
+                {restoreManyMutation.isPending ? 'Restoring...' : 'Restore Selected'}
+              </Button>
+              <Button variant="danger" onClick={handleDeleteSelected} disabled={restoreManyMutation.isPending || deleteManyMutation.isPending}>
+                <TrashIcon className="h-4 w-4 mr-2" />
+                {deleteManyMutation.isPending ? 'Deleting...' : 'Delete Selected'}
               </Button>
             </div>
           </div>
-        </Card>
+        </div>
       )}
 
       <Card className="p-6">
@@ -389,14 +424,14 @@ export default function ArchivedEventsPage() {
       />
 
       <DeleteEventModal
-        event={deleteTarget}
+        events={deleteTargets}
         open={isDeleteOpen}
         onClose={() => {
           setIsDeleteOpen(false);
-          setDeleteTarget(null);
+          setDeleteTargets([]);
         }}
         onConfirm={handleDeleteConfirm}
-        isDeleting={deleteMutation.isPending}
+        isDeleting={deleteManyMutation.isPending}
       />
     </div>
   );

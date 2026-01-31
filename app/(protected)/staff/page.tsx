@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { PlusIcon } from 'lucide-react';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { StaffFormModal } from '@/components/staff/staff-form-modal';
@@ -688,6 +689,17 @@ export default function StaffPage() {
                 <p className="text-sm text-muted-foreground">
                     This action cannot be undone. All data associated with the selected {terminology.staff.lowerPlural} will be permanently removed.
                 </p>
+                {selectedStaffList.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-3 bg-muted/50 rounded-md border border-border">
+                            {selectedStaffList.map((staff) => (
+                                <Badge key={staff.id} variant="secondary" size="sm">
+                                    {staff.firstName} {staff.lastName}
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </ConfirmModal>
         </div>
     );

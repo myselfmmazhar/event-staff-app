@@ -120,7 +120,7 @@ export interface PaginatedEventTemplates {
  * Event Template Service - Business logic layer for event template operations
  */
 export class EventTemplateService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   /**
    * Create a new event template
@@ -412,6 +412,17 @@ export class EventTemplateService {
         message: "Failed to delete template. Please try again.",
       });
     }
+  }
+
+  /**
+   * Delete multiple event templates
+   */
+  async deleteMany(ids: string[]): Promise<{ count: number }> {
+    const result = await this.prisma.eventTemplate.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    return { count: result.count };
   }
 
   /**

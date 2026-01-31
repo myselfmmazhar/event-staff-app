@@ -389,7 +389,7 @@ export default function ArchivedEventsPage() {
       />
 
       <DeleteEventModal
-        event={deleteTarget}
+        events={deleteTarget ? [deleteTarget] : []}
         open={isDeleteOpen}
         onClose={() => {
           setIsDeleteOpen(false);
