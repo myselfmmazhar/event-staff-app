@@ -263,4 +263,27 @@ export const staffRouter = router({
             const staffService = new StaffService(ctx.prisma);
             return await staffService.bulkDisable(input.staffIds, ctx.userId!);
         }),
+
+    /**
+     * Bulk delete staff members
+     * Requires: Authentication
+     */
+    bulkDelete: protectedProcedure
+        .input(StaffSchema.bulkDelete)
+        .mutation(async ({ ctx, input }) => {
+            const staffService = new StaffService(ctx.prisma);
+            return await staffService.bulkDelete(input.staffIds);
+        }),
+
+    /**
+     * Bulk update staff members
+     * Only updates fields that have enabled: true
+     * Requires: Authentication
+     */
+    bulkUpdate: protectedProcedure
+        .input(StaffSchema.bulkUpdate)
+        .mutation(async ({ ctx, input }) => {
+            const staffService = new StaffService(ctx.prisma);
+            return await staffService.bulkUpdate(input, ctx.userId!);
+        }),
 });

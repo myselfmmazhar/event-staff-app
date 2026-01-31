@@ -193,7 +193,6 @@ export interface StaffPageLabels {
   pageTitle: string;
   pageSubtitle: string;
   addButton: string;
-  cleanupRoster: string;
   searchPlaceholder: string;
   columns: {
     staffId: string;
@@ -528,7 +527,6 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
     pageTitle: '{StaffPlural}',
     pageSubtitle: 'Manage {staffPlural} and positions',
     addButton: 'Add {Staff}',
-    cleanupRoster: 'Cleanup Roster',
     searchPlaceholder: 'Search by name, email, phone, or {staff} ID...',
     columns: {
       staffId: '{Staff} ID',

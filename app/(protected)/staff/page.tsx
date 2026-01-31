@@ -1,8 +1,8 @@
 'use client';
 
-import { Button, LinkButton } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlusIcon, UsersIcon } from 'lucide-react';
+import { PlusIcon } from 'lucide-react';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { StaffFormModal } from '@/components/staff/staff-form-modal';
 import { StaffTable, type StaffWithRelations } from '@/components/staff/staff-table';
@@ -11,6 +11,8 @@ import { StaffFilters } from '@/components/staff/staff-filters';
 import { ActiveFilters } from '@/components/common/active-filters';
 import { ViewStaffModal } from '@/components/staff/view-staff-modal';
 import { DeleteStaffModal } from '@/components/staff/delete-staff-modal';
+import { BulkEditModal, type BulkEditFormData } from '@/components/staff/bulk-edit-modal';
+import { BulkActionBar } from '@/components/staff/bulk-action-bar';
 import { Pagination } from '@/components/common/pagination';
 import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc as api } from '@/lib/client/trpc';
@@ -49,6 +51,8 @@ export default function StaffPage() {
         form: false,
         view: false,
         delete: false,
+        bulkEdit: false,
+        bulkDelete: false,
     });
     const [selectedStaff, setSelectedStaff] = useState<StaffWithRelations | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -199,6 +203,70 @@ export default function StaffPage() {
         },
     });
 
+    const bulkUpdateMutation = api.staff.bulkUpdate.useMutation({
+        onSuccess: (result) => {
+            const { success, failed } = result;
+            if (success > 0) {
+                toast({
+                    title: 'Success',
+                    description: failed.length > 0
+                        ? `Updated ${success} ${terminology.staff.lower} member(s). ${failed.length} failed.`
+                        : `Successfully updated ${success} ${terminology.staff.lower} member(s)`,
+                });
+            }
+            if (failed.length > 0) {
+                const failureDetails = failed.map(f => `${f.staffId}: ${f.reason}`).join(', ');
+                toast({
+                    title: `Some ${terminology.staff.lower} members could not be updated`,
+                    description: failureDetails,
+                    variant: 'error',
+                });
+            }
+            setSelectedIds(new Set());
+            setModals((prev) => ({ ...prev, bulkEdit: false }));
+            refetch();
+        },
+        onError: (error) => {
+            toast({
+                title: 'Error',
+                description: error.message || `Failed to update ${terminology.staff.lower} members`,
+                variant: 'error',
+            });
+        },
+    });
+
+    const bulkDeleteMutation = api.staff.bulkDelete.useMutation({
+        onSuccess: (result) => {
+            const { success, failed } = result;
+            if (success > 0) {
+                toast({
+                    title: 'Success',
+                    description: failed.length > 0
+                        ? `Deleted ${success} ${terminology.staff.lower} member(s). ${failed.length} failed.`
+                        : `Successfully deleted ${success} ${terminology.staff.lower} member(s)`,
+                });
+            }
+            if (failed.length > 0) {
+                const failureDetails = failed.map(f => `${f.staffId}: ${f.reason}`).join(', ');
+                toast({
+                    title: `Some ${terminology.staff.lower} members could not be deleted`,
+                    description: failureDetails,
+                    variant: 'error',
+                });
+            }
+            setSelectedIds(new Set());
+            setModals((prev) => ({ ...prev, bulkDelete: false }));
+            refetch();
+        },
+        onError: (error) => {
+            toast({
+                title: 'Error',
+                description: error.message || `Failed to delete ${terminology.staff.lower} members`,
+                variant: 'error',
+            });
+        },
+    });
+
     // Handlers
     const handleCreate = () => {
         setSelectedStaff(null);
@@ -216,6 +284,32 @@ export default function StaffPage() {
     };
 
     const clearSelection = () => setSelectedIds(new Set());
+
+    // Get selected staff for bulk operations
+    const selectedStaffList = (data?.data ?? []).filter((s) => selectedIds.has(s.id));
+
+    const handleBulkEditSelected = () => {
+        if (selectedIds.size === 0) return;
+        setModals((prev) => ({ ...prev, bulkEdit: true }));
+    };
+
+    const handleBulkDeleteSelected = () => {
+        if (selectedIds.size === 0) return;
+        setModals((prev) => ({ ...prev, bulkDelete: true }));
+    };
+
+    const handleBulkEditSubmit = (formData: BulkEditFormData) => {
+        bulkUpdateMutation.mutate({
+            staffIds: Array.from(selectedIds),
+            ...formData,
+        });
+    };
+
+    const handleBulkDeleteConfirm = () => {
+        bulkDeleteMutation.mutate({
+            staffIds: Array.from(selectedIds),
+        });
+    };
 
     const handleDelete = (staff: StaffWithRelations) => {
         setSelectedStaff(staff);
@@ -374,7 +468,6 @@ export default function StaffPage() {
                                 labels: [
                                     { key: 'pageTitle', label: 'Page Title', defaultLabel: `${terminology.staff.plural}` },
                                     { key: 'pageSubtitle', label: 'Page Subtitle', defaultLabel: `Manage ${terminology.staff.lowerPlural} and positions` },
-                                    { key: 'cleanupRoster', label: 'Cleanup Roster Button', defaultLabel: 'Cleanup Roster' },
                                     { key: 'addButton', label: 'Add Button', defaultLabel: `Add ${terminology.staff.singular}` },
                                     { key: 'searchPlaceholder', label: 'Search Placeholder', defaultLabel: `Search by name, email, phone, or ${terminology.staff.lower} ID...` },
                                 ],
@@ -412,11 +505,6 @@ export default function StaffPage() {
                         buttonVariant="outline"
                         buttonSize="md"
                     />
-                    {/* Cleanup Roster Button */}
-                    <LinkButton href="/staff/cleanup-roster" variant="outline">
-                        <UsersIcon className="h-4 w-4 mr-2" />
-                        {staffLabels.cleanupRoster}
-                    </LinkButton>
 
                     {/* Add Staff Button */}
                     <Button onClick={handleCreate}>
@@ -456,19 +544,15 @@ export default function StaffPage() {
                 </div>
             </Card>
 
-            {/* Selection Info */}
-            {selectedIds.size > 0 && (
-                <Card className="p-3 bg-primary/5 border-primary/20">
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm text-foreground">
-                            {selectedIds.size} {terminology.staff.lower}{selectedIds.size !== 1 ? 's' : ''} selected
-                        </span>
-                        <Button variant="ghost" size="sm" onClick={clearSelection}>
-                            Clear selection
-                        </Button>
-                    </div>
-                </Card>
-            )}
+            {/* Bulk Action Bar - appears when items are selected */}
+            <BulkActionBar
+                selectedCount={selectedIds.size}
+                onClearSelection={clearSelection}
+                onEditSelected={handleBulkEditSelected}
+                onDeleteSelected={handleBulkDeleteSelected}
+                isEditing={bulkUpdateMutation.isPending}
+                isDeleting={bulkDeleteMutation.isPending}
+            />
 
             {/* Table */}
             <Card className="p-6">
@@ -578,6 +662,31 @@ export default function StaffPage() {
                 <p className="text-sm text-muted-foreground">
                     This will prevent the {terminology.staff.lower} from logging in or being assigned to events.
                     You can re-enable the account later if needed.
+                </p>
+            </ConfirmModal>
+
+            {/* Bulk Edit Modal */}
+            <BulkEditModal
+                staff={selectedStaffList}
+                open={modals.bulkEdit}
+                onClose={() => setModals((prev) => ({ ...prev, bulkEdit: false }))}
+                onSubmit={handleBulkEditSubmit}
+                isSubmitting={bulkUpdateMutation.isPending}
+            />
+
+            {/* Bulk Delete Confirmation Modal */}
+            <ConfirmModal
+                open={modals.bulkDelete}
+                onClose={() => setModals((prev) => ({ ...prev, bulkDelete: false }))}
+                onConfirm={handleBulkDeleteConfirm}
+                isLoading={bulkDeleteMutation.isPending}
+                title={`Delete ${selectedIds.size} ${selectedIds.size === 1 ? terminology.staff.singular : terminology.staff.plural}`}
+                description={`Are you sure you want to permanently delete ${selectedIds.size} ${selectedIds.size === 1 ? terminology.staff.lower : terminology.staff.lowerPlural}?`}
+                confirmText="Delete"
+                variant="danger"
+            >
+                <p className="text-sm text-muted-foreground">
+                    This action cannot be undone. All data associated with the selected {terminology.staff.lowerPlural} will be permanently removed.
                 </p>
             </ConfirmModal>
         </div>

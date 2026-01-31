@@ -202,6 +202,15 @@ export class StaffSchema {
     });
 
     /**
+     * Bulk Delete Staff Schema
+     */
+    static bulkDelete = z.object({
+        staffIds: z
+            .array(z.string().uuid("Invalid staff ID"))
+            .min(1, "At least one staff member must be selected"),
+    });
+
+    /**
      * Invite Staff Schema (minimal data for invitation)
      * Staff will complete their profile after accepting invitation
      */
@@ -395,6 +404,47 @@ export class StaffSchema {
     static grantLoginAccess = z.object({
         id: z.string().uuid("Invalid staff ID"),
     });
+
+    /**
+     * Bulk Update Staff Schema
+     * Each field has an enabled flag - only enabled fields get updated
+     * Fields: Account Status, Talent Type, Experience, Availability Status, Rating
+     */
+    static bulkUpdate = z.object({
+        staffIds: z
+            .array(z.string().uuid("Invalid staff ID"))
+            .min(1, "At least one staff member must be selected"),
+        accountStatus: z
+            .object({
+                enabled: z.boolean(),
+                value: z.nativeEnum(AccountStatus).optional(),
+            })
+            .optional(),
+        staffType: z
+            .object({
+                enabled: z.boolean(),
+                value: z.nativeEnum(StaffType).optional(),
+            })
+            .optional(),
+        skillLevel: z
+            .object({
+                enabled: z.boolean(),
+                value: z.nativeEnum(SkillLevel).optional(),
+            })
+            .optional(),
+        availabilityStatus: z
+            .object({
+                enabled: z.boolean(),
+                value: z.nativeEnum(AvailabilityStatus).optional(),
+            })
+            .optional(),
+        staffRating: z
+            .object({
+                enabled: z.boolean(),
+                value: z.nativeEnum(StaffRating).optional(),
+            })
+            .optional(),
+    });
 }
 
 /**
@@ -405,9 +455,11 @@ export type UpdateStaffInput = z.infer<typeof StaffSchema.update>;
 export type QueryStaffInput = z.infer<typeof StaffSchema.query>;
 export type StaffIdInput = z.infer<typeof StaffSchema.id>;
 export type BulkDisableStaffInput = z.infer<typeof StaffSchema.bulkDisable>;
+export type BulkDeleteStaffInput = z.infer<typeof StaffSchema.bulkDelete>;
 export type InviteStaffInput = z.infer<typeof StaffSchema.invite>;
 export type AcceptStaffInvitationInput = z.infer<typeof StaffSchema.acceptInvitation>;
 export type StaffSelfUpdateInput = z.infer<typeof StaffSchema.selfUpdate>;
 export type StaffDeactivateSelfInput = z.infer<typeof StaffSchema.deactivateSelf>;
 export type ResendStaffInvitationInput = z.infer<typeof StaffSchema.resendInvitation>;
 export type GrantStaffLoginAccessInput = z.infer<typeof StaffSchema.grantLoginAccess>;
+export type BulkUpdateStaffInput = z.infer<typeof StaffSchema.bulkUpdate>;

@@ -9,6 +9,7 @@ import type {
     InviteStaffInput,
     AcceptStaffInvitationInput,
     StaffSelfUpdateInput,
+    BulkUpdateStaffInput,
 } from "@/lib/schemas/staff.schema";
 import { SettingsService } from "./settings.service";
 import { auth } from "@/lib/server/auth";
@@ -1057,6 +1058,197 @@ export class StaffService {
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
                 message: `Failed to disable ${terminology.staff.lower} members`,
+            });
+        }
+    }
+
+    /**
+     * Bulk delete staff members
+     * @param staffIds Array of staff IDs to delete
+     * @returns Result with success count and failed items
+     */
+    async bulkDelete(
+        staffIds: string[]
+    ): Promise<{
+        success: number;
+        failed: Array<{ id: string; staffId: string; reason: string }>;
+    }> {
+        const terminology = await this.settingsService.getTerminology();
+
+        try {
+            // Fetch all staff to validate
+            const staffMembers = await this.prisma.staff.findMany({
+                where: {
+                    id: { in: staffIds },
+                },
+                select: {
+                    id: true,
+                    staffId: true,
+                    firstName: true,
+                    lastName: true,
+                    staffType: true,
+                    _count: {
+                        select: {
+                            employees: true, // Count of employees assigned to this contractor
+                        },
+                    },
+                },
+            });
+
+            // Track failures
+            const failed: Array<{ id: string; staffId: string; reason: string }> = [];
+            const validIds: string[] = [];
+
+            // Validate each staff member
+            for (const staff of staffMembers) {
+                // Check if contractor with assigned employees
+                if (staff.staffType === "CONTRACTOR" && staff._count.employees > 0) {
+                    failed.push({
+                        id: staff.id,
+                        staffId: staff.staffId,
+                        reason: `Contractor has ${staff._count.employees} assigned employee(s). Reassign or remove them first.`,
+                    });
+                    continue;
+                }
+
+                // Valid for deletion
+                validIds.push(staff.id);
+            }
+
+            // Check for non-existent IDs
+            const foundIds = staffMembers.map((s) => s.id);
+            const missingIds = staffIds.filter((id) => !foundIds.includes(id));
+            for (const id of missingIds) {
+                failed.push({
+                    id,
+                    staffId: "Unknown",
+                    reason: `${terminology.staff.singular} member not found`,
+                });
+            }
+
+            // Perform bulk delete for valid IDs
+            let successCount = 0;
+            if (validIds.length > 0) {
+                const result = await this.prisma.staff.deleteMany({
+                    where: {
+                        id: { in: validIds },
+                    },
+                });
+                successCount = result.count;
+            }
+
+            return {
+                success: successCount,
+                failed,
+            };
+        } catch (error) {
+            console.error("Error bulk deleting staff:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: `Failed to delete ${terminology.staff.lower} members`,
+            });
+        }
+    }
+
+    /**
+     * Bulk update staff members
+     * Only updates fields that have enabled: true
+     * @param input Bulk update input with field flags
+     * @param updatedByUserId ID of user performing the operation
+     * @returns Result with success count and failed items
+     */
+    async bulkUpdate(
+        input: BulkUpdateStaffInput,
+        updatedByUserId: string
+    ): Promise<{
+        success: number;
+        failed: Array<{ id: string; staffId: string; reason: string }>;
+    }> {
+        const { staffIds, ...fields } = input;
+        const terminology = await this.settingsService.getTerminology();
+
+        try {
+            // Fetch all staff to validate
+            const staffMembers = await this.prisma.staff.findMany({
+                where: { id: { in: staffIds } },
+                select: {
+                    id: true,
+                    staffId: true,
+                    firstName: true,
+                    lastName: true,
+                    staffType: true,
+                    accountStatus: true,
+                },
+            });
+
+            // Track failures and valid IDs
+            const failed: Array<{ id: string; staffId: string; reason: string }> = [];
+            const validIds: string[] = [];
+
+            // Check for non-existent IDs
+            const foundIds = staffMembers.map((s) => s.id);
+            for (const id of staffIds) {
+                if (!foundIds.includes(id)) {
+                    failed.push({
+                        id,
+                        staffId: "Unknown",
+                        reason: `${terminology.staff.singular} member not found`,
+                    });
+                }
+            }
+
+            // All found staff are valid for update (no complex validation needed now)
+            for (const staff of staffMembers) {
+                validIds.push(staff.id);
+            }
+
+            // Build the update data object from enabled fields
+            const updateData: Prisma.StaffUncheckedUpdateManyInput = {};
+
+            if (fields.accountStatus?.enabled && fields.accountStatus.value !== undefined) {
+                updateData.accountStatus = fields.accountStatus.value;
+            }
+            if (fields.staffType?.enabled && fields.staffType.value !== undefined) {
+                updateData.staffType = fields.staffType.value;
+            }
+            if (fields.skillLevel?.enabled && fields.skillLevel.value !== undefined) {
+                updateData.skillLevel = fields.skillLevel.value;
+            }
+            if (fields.availabilityStatus?.enabled && fields.availabilityStatus.value !== undefined) {
+                updateData.availabilityStatus = fields.availabilityStatus.value;
+            }
+            if (fields.staffRating?.enabled && fields.staffRating.value !== undefined) {
+                updateData.staffRating = fields.staffRating.value;
+            }
+
+            const hasFieldUpdates = Object.keys(updateData).length > 0;
+            let successCount = 0;
+
+            if (validIds.length === 0) {
+                return { success: 0, failed };
+            }
+
+            if (hasFieldUpdates) {
+                // Bulk update all valid staff
+                const result = await this.prisma.staff.updateMany({
+                    where: { id: { in: validIds } },
+                    data: {
+                        ...updateData,
+                        updatedAt: new Date(),
+                    },
+                });
+                successCount = result.count;
+            } else {
+                // No fields to update
+                successCount = validIds.length;
+            }
+
+            return { success: successCount, failed };
+        } catch (error) {
+            console.error("Error bulk updating staff:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: `Failed to update ${terminology.staff.lower} members`,
             });
         }
     }
