@@ -11,7 +11,7 @@ import { generateServiceId } from '@/lib/utils/id-generator';
 export type PaginatedServices = PaginatedResponse<ServiceSelect>;
 
 export class ServiceService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   private readonly serviceSelect = {
     id: true,
@@ -22,6 +22,7 @@ export class ServiceService {
     experienceRequirement: true,
     ratingRequirement: true,
     cost: true,
+    price: true,
     isActive: true,
     createdBy: true,
     createdAt: true,
@@ -41,6 +42,7 @@ export class ServiceService {
           experienceRequirement: data.experienceRequirement ?? null,
           ratingRequirement: data.ratingRequirement ?? null,
           cost: data.cost ?? null,
+          price: data.price ?? null,
           createdBy: createdByUserId,
         },
         select: this.serviceSelect,
@@ -79,7 +81,9 @@ export class ServiceService {
         ? { title: sortOrder }
         : sortBy === 'cost'
           ? { cost: sortOrder }
-          : { createdAt: sortOrder };
+          : sortBy === 'price'
+            ? { price: sortOrder }
+            : { createdAt: sortOrder };
 
     const [data, total] = await Promise.all([
       this.prisma.service.findMany({
@@ -143,6 +147,7 @@ export class ServiceService {
               ? undefined
               : data.ratingRequirement,
           cost: data.cost === undefined ? undefined : data.cost,
+          price: data.price === undefined ? undefined : data.price,
         },
         select: this.serviceSelect,
       });

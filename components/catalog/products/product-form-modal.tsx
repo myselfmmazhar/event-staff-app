@@ -55,6 +55,7 @@ const formSchema = z.object({
     .nullable()
     .default(null),
   cost: z.number().positive('Cost must be a positive number').nullable().default(null),
+  price: z.number().positive('Price must be a positive number').nullable().default(null),
 });
 
 type FormInput = z.input<typeof formSchema>;
@@ -99,6 +100,7 @@ export function ProductFormModal({
       brand: null,
       category: null,
       cost: null,
+      price: null,
     },
   });
 
@@ -114,6 +116,7 @@ export function ProductFormModal({
         brand: product.brand ?? null,
         category: product.category ?? null,
         cost: decimalToNumber(product.cost),
+        price: decimalToNumber(product.price),
       });
     } else if (!product && open) {
       reset({
@@ -126,6 +129,7 @@ export function ProductFormModal({
         brand: null,
         category: null,
         cost: null,
+        price: null,
       });
     }
   }, [product, open, reset]);
@@ -152,6 +156,7 @@ export function ProductFormModal({
       brand: data.brand || null,
       category: data.category || null,
       cost: data.cost,
+      price: data.price,
     });
   };
 
@@ -281,6 +286,34 @@ export function ProductFormModal({
               />
               {errors.cost && (
                 <p className="text-sm text-destructive mt-1">{errors.cost.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="price">Price</Label>
+              <Controller
+                name="price"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={field.value ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      field.onChange(val === '' ? null : parseFloat(val));
+                    }}
+                    error={!!errors.price}
+                    disabled={isSubmitting}
+                    placeholder="e.g., 50.00"
+                  />
+                )}
+              />
+              {errors.price && (
+                <p className="text-sm text-destructive mt-1">{errors.price.message}</p>
               )}
             </div>
 

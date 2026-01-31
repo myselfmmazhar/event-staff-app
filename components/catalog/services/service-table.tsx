@@ -46,6 +46,7 @@ export function ServiceTable({
     serviceId: 'Service ID',
     title: 'Title',
     cost: 'Cost',
+    price: 'Price',
     costUnitType: 'Unit',
     experienceRequirement: 'Experience',
     ratingRequirement: 'Rating',
@@ -186,6 +187,13 @@ export function ServiceTable({
       render: (service) => formatDollarOrPlaceholder(service.cost),
     },
     {
+      key: 'price',
+      label: columnLabels.price,
+      sortable: true,
+      className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
+      render: (service) => formatDollarOrPlaceholder(service.price),
+    },
+    {
       key: 'costUnitType',
       label: columnLabels.costUnitType,
       className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
@@ -220,7 +228,9 @@ export function ServiceTable({
           <div className="flex-1">
             <div className="font-mono text-xs text-muted-foreground mb-1">{service.serviceId}</div>
             <h3 className="font-semibold text-card-foreground">{service.title}</h3>
-            <div className="text-sm text-muted-foreground mt-1">{formatDollarOrPlaceholder(service.cost)}</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Cost: {formatDollarOrPlaceholder(service.cost)} | Price: {formatDollarOrPlaceholder(service.price)}
+            </div>
           </div>
           <Badge variant={service.isActive ? 'success' : 'secondary'} asSpan>
             {service.isActive ? 'Active' : 'Inactive'}

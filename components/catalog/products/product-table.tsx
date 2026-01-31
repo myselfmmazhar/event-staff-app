@@ -42,6 +42,7 @@ export function ProductTable({
     productId: 'Product ID',
     title: 'Title',
     cost: 'Cost',
+    price: 'Price',
     priceUnitType: 'Unit',
     minimumPurchase: 'Minimum',
     trackInventory: 'Inventory',
@@ -183,6 +184,13 @@ export function ProductTable({
       render: (product) => formatDollarOrPlaceholder(product.cost),
     },
     {
+      key: 'price',
+      label: columnLabels.price,
+      sortable: true,
+      className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
+      render: (product) => formatDollarOrPlaceholder(product.price),
+    },
+    {
       key: 'priceUnitType',
       label: columnLabels.priceUnitType,
       className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
@@ -219,7 +227,7 @@ export function ProductTable({
             <div className="font-mono text-xs text-muted-foreground mb-1">{product.productId}</div>
             <h3 className="font-semibold text-card-foreground">{product.title}</h3>
             <div className="text-sm text-muted-foreground mt-1">
-              {formatDollarOrPlaceholder(product.cost)}
+              Cost: {formatDollarOrPlaceholder(product.cost)} | Price: {formatDollarOrPlaceholder(product.price)}
             </div>
           </div>
           <Badge variant={product.isActive ? 'success' : 'secondary'} asSpan>

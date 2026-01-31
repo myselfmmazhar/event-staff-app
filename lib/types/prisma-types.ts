@@ -330,6 +330,7 @@ export type ServiceSelect = Prisma.ServiceGetPayload<{
     experienceRequirement: true;
     ratingRequirement: true;
     cost: true;
+    price: true;
     isActive: true;
     createdBy: true;
     createdAt: true;
@@ -354,6 +355,7 @@ export type ProductSelect = Prisma.ProductGetPayload<{
     brand: true;
     category: true;
     cost: true;
+    price: true;
     isActive: true;
     createdBy: true;
     createdAt: true;

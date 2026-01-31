@@ -12,6 +12,7 @@ export type ProductTableRow = Pick<
   | 'trackInventory'
   | 'category'
   | 'cost'
+  | 'price'
   | 'isActive'
   | 'createdAt'
 >;

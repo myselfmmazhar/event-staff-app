@@ -11,7 +11,7 @@ import { generateProductId } from '@/lib/utils/id-generator';
 export type PaginatedProducts = PaginatedResponse<ProductSelect>;
 
 export class ProductService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   private readonly productSelect = {
     id: true,
@@ -25,6 +25,7 @@ export class ProductService {
     brand: true,
     category: true,
     cost: true,
+    price: true,
     isActive: true,
     createdBy: true,
     createdAt: true,
@@ -47,6 +48,7 @@ export class ProductService {
           brand: data.brand?.trim() || null,
           category: data.category?.trim() || null,
           cost: data.cost ?? null,
+          price: data.price ?? null,
           createdBy: createdByUserId,
         },
         select: this.productSelect,
@@ -89,9 +91,11 @@ export class ProductService {
         ? { title: sortOrder }
         : sortBy === 'cost'
           ? { cost: sortOrder }
-          : sortBy === 'category'
-            ? { category: sortOrder }
-            : { createdAt: sortOrder };
+          : sortBy === 'price'
+            ? { price: sortOrder }
+            : sortBy === 'category'
+              ? { category: sortOrder }
+              : { createdAt: sortOrder };
 
     const [data, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -150,6 +154,7 @@ export class ProductService {
           brand: data.brand === null ? null : data.brand?.trim(),
           category: data.category === null ? null : data.category?.trim(),
           cost: data.cost === undefined ? undefined : data.cost,
+          price: data.price === undefined ? undefined : data.price,
         },
         select: this.productSelect,
       });

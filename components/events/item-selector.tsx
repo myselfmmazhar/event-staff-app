@@ -13,6 +13,7 @@ export interface ServiceItem {
   serviceId: string;
   title: string;
   cost: number | null;
+  price: number | null;
   costUnitType: string | null;
   description: string | null;
   isActive: boolean;
@@ -23,6 +24,7 @@ export interface ProductItem {
   productId: string;
   title: string;
   cost: number | null;
+  price: number | null;
   priceUnitType: string | null;
   description: string | null;
   category: string | null;
