@@ -601,8 +601,8 @@ export function EventFormModal({
                 placeholder="EVT-YYYY-NNN"
                 className="font-mono"
               />
-              {errors.eventId && (
-                <p className="text-destructive text-sm mt-1">{errors.eventId.message}</p>
+              {(errors as any).eventId && (
+                <p className="text-destructive text-sm mt-1">{(errors as any).eventId.message}</p>
               )}
             </div>
           )}
