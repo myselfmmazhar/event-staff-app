@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type ServiceStatus = 'active' | 'inactive';
-export type ServiceSortBy = 'title' | 'cost' | 'createdAt';
+export type ServiceSortBy = 'title' | 'cost' | 'price' | 'createdAt';
 export type SortOrder = 'asc' | 'desc';
 
 interface ServicesFiltersState {

@@ -11,6 +11,7 @@ export type ServiceTableRow = Pick<
   | 'experienceRequirement'
   | 'ratingRequirement'
   | 'cost'
+  | 'price'
   | 'isActive'
   | 'createdAt'
 >;

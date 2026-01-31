@@ -309,6 +309,7 @@ model Service {
   experienceRequirement ExperienceRequirement?
   ratingRequirement     StaffRating?
   cost                  Decimal?               @db.Decimal(10, 2)
+  price                 Decimal?               @db.Decimal(10, 2)
   isActive              Boolean                @default(true)
   createdBy             String
   createdAt             DateTime               @default(now()) @db.Timestamp(6)
@@ -334,6 +335,7 @@ model Product {
   brand           String?          @db.VarChar(200)
   category        String?          @db.VarChar(200)
   cost            Decimal?         @db.Decimal(10, 2)
+  price           Decimal?         @db.Decimal(10, 2)
   isActive        Boolean          @default(true)
   createdBy       String
   createdAt       DateTime         @default(now()) @db.Timestamp(6)

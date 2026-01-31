@@ -11,7 +11,7 @@ import type {
  * Event Attachment Service - Business logic for managing services and products attached to events
  */
 export class EventAttachmentService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   /**
    * Select object for event services with service details
@@ -31,6 +31,7 @@ export class EventAttachmentService {
         serviceId: true,
         title: true,
         cost: true,
+        price: true,
         costUnitType: true,
         description: true,
         isActive: true,
@@ -56,6 +57,7 @@ export class EventAttachmentService {
         productId: true,
         title: true,
         cost: true,
+        price: true,
         priceUnitType: true,
         description: true,
         category: true,

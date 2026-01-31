@@ -41,6 +41,12 @@ export const ProductSchema = {
       .transform((value) => Number.parseFloat(value.toFixed(2)))
       .optional()
       .nullable(),
+    price: z
+      .number()
+      .positive('Price must be a positive number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
   }),
 
   update: z.object({
@@ -84,13 +90,19 @@ export const ProductSchema = {
       .transform((value) => Number.parseFloat(value.toFixed(2)))
       .optional()
       .nullable(),
+    price: z
+      .number()
+      .positive('Price must be a positive number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
   }),
 
   query: z.object({
     page: z.number().int().min(1).default(1).optional(),
     limit: z.number().int().min(1).max(100).default(10).optional(),
     search: z.string().optional(),
-    sortBy: z.enum(['title', 'cost', 'category', 'createdAt']).default('title').optional(),
+    sortBy: z.enum(['title', 'cost', 'price', 'category', 'createdAt']).default('title').optional(),
     sortOrder: z.enum(['asc', 'desc']).default('asc').optional(),
     isActive: z.boolean().optional(),
     category: z.string().optional(),
