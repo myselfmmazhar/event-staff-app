@@ -13,11 +13,13 @@ import {
 import {
   UploadIcon,
   FileTextIcon,
+  FileSpreadsheetIcon,
   CheckIcon,
   XIcon,
   AlertIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  DownloadIcon,
 } from '@/components/ui/icons';
 import { ClientColumnMappingStep } from './client-column-mapping-step';
 import {
@@ -32,6 +34,7 @@ import {
 } from '@/lib/utils/client-import';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from '@/components/ui/use-toast';
+import { downloadSampleClientTemplate } from '@/lib/utils/client-export';
 
 type ImportStep = 'upload' | 'mapping' | 'preview' | 'importing' | 'complete';
 type ImportMode = 'create' | 'upsert';
@@ -245,6 +248,44 @@ export function ClientImportModal({ open, onClose, onSuccess }: ClientImportModa
           </div>
         )}
 
+        {/* Sample Template Downloads - shown in upload step */}
+        {step === 'upload' && (
+          <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <DownloadIcon className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Need a template?</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  downloadSampleClientTemplate('csv');
+                  toast({ title: 'Sample CSV template downloaded', type: 'success' });
+                }}
+                className="gap-2"
+              >
+                <FileTextIcon className="h-4 w-4" />
+                Download CSV
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  downloadSampleClientTemplate('xlsx');
+                  toast({ title: 'Sample Excel template downloaded', type: 'success' });
+                }}
+                className="gap-2"
+              >
+                <FileSpreadsheetIcon className="h-4 w-4" />
+                Download Excel
+              </Button>
+            </div>
+          </div>
+        )}
+
         {step === 'mapping' && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
@@ -322,9 +363,8 @@ export function ClientImportModal({ open, onClose, onSuccess }: ClientImportModa
                   return (
                     <div
                       key={result.rowIndex}
-                      className={`grid grid-cols-[50px_1fr_1fr_100px] gap-2 p-3 border-b last:border-b-0 items-start ${
-                        !result.valid ? 'bg-destructive/5' : result.warnings.length > 0 ? 'bg-warning/5' : ''
-                      }`}
+                      className={`grid grid-cols-[50px_1fr_1fr_100px] gap-2 p-3 border-b last:border-b-0 items-start ${!result.valid ? 'bg-destructive/5' : result.warnings.length > 0 ? 'bg-warning/5' : ''
+                        }`}
                     >
                       <div className="text-sm text-muted-foreground">{result.rowIndex + 1}</div>
                       <div>
