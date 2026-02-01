@@ -29,12 +29,16 @@ type StaffFilterState = {
     accountStatuses: AccountStatus[];
     staffTypes: StaffType[];
     skillLevels: SkillLevel[];
+    createdFrom: string;
+    createdTo: string;
 };
 
 const DEFAULT_FILTERS: StaffFilterState = {
     accountStatuses: [],
     staffTypes: [],
     skillLevels: [],
+    createdFrom: '',
+    createdTo: '',
 };
 
 export default function StaffPage() {
@@ -83,6 +87,8 @@ export default function StaffPage() {
         accountStatuses: filters.accountStatuses.length > 0 ? filters.accountStatuses : undefined,
         staffTypes: filters.staffTypes.length > 0 ? filters.staffTypes : undefined,
         skillLevels: filters.skillLevels.length > 0 ? filters.skillLevels : undefined,
+        createdFrom: filters.createdFrom ? new Date(filters.createdFrom) : undefined,
+        createdTo: filters.createdTo ? new Date(filters.createdTo) : undefined,
         sortBy: 'createdAt',
         sortOrder: 'desc',
     });
@@ -527,6 +533,8 @@ export default function StaffPage() {
                         selectedStatuses={filters.accountStatuses}
                         selectedTypes={filters.staffTypes}
                         selectedSkillLevels={filters.skillLevels}
+                        createdFrom={filters.createdFrom}
+                        createdTo={filters.createdTo}
                         onStatusChange={(statuses) => {
                             setFilters((prev) => ({ ...prev, accountStatuses: statuses }));
                             setPage(1);
@@ -537,6 +545,14 @@ export default function StaffPage() {
                         }}
                         onSkillLevelChange={(levels) => {
                             setFilters((prev) => ({ ...prev, skillLevels: levels }));
+                            setPage(1);
+                        }}
+                        onCreatedFromChange={(date) => {
+                            setFilters((prev) => ({ ...prev, createdFrom: date }));
+                            setPage(1);
+                        }}
+                        onCreatedToChange={(date) => {
+                            setFilters((prev) => ({ ...prev, createdTo: date }));
                             setPage(1);
                         }}
                         onClearFilters={handleClearFilters}

@@ -127,6 +127,8 @@ export default function ServicesPage() {
     limit: filters.limit,
     search: filters.search || undefined,
     isActive: getIsActiveFilter(),
+    createdFrom: filters.createdFrom ? new Date(filters.createdFrom) : undefined,
+    createdTo: filters.createdTo ? new Date(filters.createdTo) : undefined,
     sortBy: filters.sortBy,
     sortOrder: filters.sortOrder,
   });

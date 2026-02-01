@@ -106,6 +106,8 @@ export const ProductSchema = {
     sortOrder: z.enum(['asc', 'desc']).default('asc').optional(),
     isActive: z.boolean().optional(),
     category: z.string().optional(),
+    createdFrom: z.coerce.date().optional(),
+    createdTo: z.coerce.date().optional(),
   }),
 
   id: z.object({

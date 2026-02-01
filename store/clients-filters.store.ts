@@ -12,6 +12,8 @@ interface ClientsFiltersState {
   // Search & Filters
   search: string;
   loginAccess: ClientLoginAccess;
+  createdFrom: string;
+  createdTo: string;
 
   // Sorting
   sortBy: ClientSortBy;
@@ -24,6 +26,8 @@ interface ClientsFiltersState {
   // Actions - Search & Filters
   setSearch: (search: string) => void;
   setLoginAccess: (loginAccess: ClientLoginAccess) => void;
+  setCreatedFrom: (createdFrom: string) => void;
+  setCreatedTo: (createdTo: string) => void;
 
   // Actions - Sorting
   setSortBy: (sortBy: ClientSortBy) => void;
@@ -37,6 +41,8 @@ interface ClientsFiltersState {
 const DEFAULT_FILTERS = {
   search: "",
   loginAccess: "all" as ClientLoginAccess,
+  createdFrom: "",
+  createdTo: "",
 };
 
 const DEFAULT_STATE = {
@@ -57,6 +63,8 @@ export const useClientsFilters = create<ClientsFiltersState>((set) => ({
   // Search & Filter actions
   setSearch: (search) => set({ search, page: 1 }),
   setLoginAccess: (loginAccess) => set({ loginAccess, page: 1 }),
+  setCreatedFrom: (createdFrom) => set({ createdFrom, page: 1 }),
+  setCreatedTo: (createdTo) => set({ createdTo, page: 1 }),
 
   // Sorting actions
   setSortBy: (sortBy) => set({ sortBy }),
