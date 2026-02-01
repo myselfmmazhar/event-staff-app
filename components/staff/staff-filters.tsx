@@ -1,10 +1,11 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
-import { FilterIcon, XIcon } from '@/components/ui/icons';
+import { FilterIcon, CalendarIcon } from '@/components/ui/icons';
 import { useFilterLabels, useStaffPageLabels } from '@/lib/hooks/use-labels';
 
 const STATUS_OPTIONS: Array<{ value: AccountStatus; label: string }> = [
@@ -28,9 +29,13 @@ interface StaffFiltersProps {
     selectedStatuses: AccountStatus[];
     selectedTypes: StaffType[];
     selectedSkillLevels: SkillLevel[];
+    createdFrom: string;
+    createdTo: string;
     onStatusChange: (statuses: AccountStatus[]) => void;
     onTypeChange: (types: StaffType[]) => void;
     onSkillLevelChange: (levels: SkillLevel[]) => void;
+    onCreatedFromChange: (date: string) => void;
+    onCreatedToChange: (date: string) => void;
     onClearFilters: () => void;
 }
 
@@ -38,9 +43,13 @@ export function StaffFilters({
     selectedStatuses,
     selectedTypes,
     selectedSkillLevels,
+    createdFrom,
+    createdTo,
     onStatusChange,
     onTypeChange,
     onSkillLevelChange,
+    onCreatedFromChange,
+    onCreatedToChange,
     onClearFilters,
 }: StaffFiltersProps) {
     const filterLabels = useFilterLabels();
@@ -48,7 +57,9 @@ export function StaffFilters({
     const hasActiveFilters =
         selectedStatuses.length > 0 ||
         selectedTypes.length > 0 ||
-        selectedSkillLevels.length > 0;
+        selectedSkillLevels.length > 0 ||
+        createdFrom !== '' ||
+        createdTo !== '';
 
     return (
         <div className="space-y-4">
@@ -67,7 +78,7 @@ export function StaffFilters({
                 )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Account Status Filter */}
                 <div className="flex flex-col gap-2">
                     <Label className="text-sm font-medium text-foreground flex items-center gap-2">
@@ -107,6 +118,32 @@ export function StaffFilters({
                         value={selectedSkillLevels}
                         onChange={onSkillLevelChange}
                         placeholder="All"
+                    />
+                </div>
+
+                {/* Date From Filter */}
+                <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4" />
+                        Created Date (From)
+                    </Label>
+                    <Input
+                        type="date"
+                        value={createdFrom || ''}
+                        onChange={(e) => onCreatedFromChange(e.target.value || '')}
+                    />
+                </div>
+
+                {/* Date To Filter */}
+                <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4" />
+                        Created Date (To)
+                    </Label>
+                    <Input
+                        type="date"
+                        value={createdTo || ''}
+                        onChange={(e) => onCreatedToChange(e.target.value || '')}
                     />
                 </div>
             </div>

@@ -2,7 +2,9 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FilterIcon } from '@/components/ui/icons';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { FilterIcon, CalendarIcon } from '@/components/ui/icons';
 import { useClientsFilters } from '@/store/clients-filters.store';
 import { useFilterLabels, useClientsPageLabels } from '@/lib/hooks/use-labels';
 
@@ -16,12 +18,16 @@ export function ClientFilters() {
   const {
     loginAccess,
     setLoginAccess,
+    createdFrom,
+    createdTo,
+    setCreatedFrom,
+    setCreatedTo,
     resetFilters,
   } = useClientsFilters();
 
   const filterLabels = useFilterLabels();
   const clientsLabels = useClientsPageLabels();
-  const hasActiveFilters = loginAccess !== 'all';
+  const hasActiveFilters = loginAccess !== 'all' || createdFrom !== '' || createdTo !== '';
 
   return (
     <div className="space-y-4">
@@ -59,8 +65,33 @@ export function ClientFilters() {
             ))}
           </div>
         </div>
+
+        {/* Date From Filter */}
+        <div className="flex flex-col gap-2">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4" />
+            Created Date (From)
+          </Label>
+          <Input
+            type="date"
+            value={createdFrom || ''}
+            onChange={(e) => setCreatedFrom(e.target.value || '')}
+          />
+        </div>
+
+        {/* Date To Filter */}
+        <div className="flex flex-col gap-2">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4" />
+            Created Date (To)
+          </Label>
+          <Input
+            type="date"
+            value={createdTo || ''}
+            onChange={(e) => setCreatedTo(e.target.value || '')}
+          />
+        </div>
       </div>
     </div>
   );
 }
-

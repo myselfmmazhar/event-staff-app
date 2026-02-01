@@ -12,6 +12,8 @@ interface ProductsFiltersState {
   // Search & Filters
   search: string;
   statuses: ProductStatus[];
+  createdFrom: string;
+  createdTo: string;
 
   // Sorting
   sortBy: ProductSortBy;
@@ -24,6 +26,8 @@ interface ProductsFiltersState {
   // Actions - Search & Filters
   setSearch: (search: string) => void;
   setStatuses: (statuses: ProductStatus[]) => void;
+  setCreatedFrom: (createdFrom: string) => void;
+  setCreatedTo: (createdTo: string) => void;
 
   // Actions - Sorting
   setSortBy: (sortBy: ProductSortBy) => void;
@@ -37,6 +41,8 @@ interface ProductsFiltersState {
 const DEFAULT_FILTERS = {
   search: '',
   statuses: [] as ProductStatus[],
+  createdFrom: '',
+  createdTo: '',
 };
 
 const DEFAULT_STATE = {
@@ -55,6 +61,8 @@ export const useProductsFilters = create<ProductsFiltersState>((set) => ({
 
   setSearch: (search) => set({ search, page: 1 }),
   setStatuses: (statuses) => set({ statuses, page: 1 }),
+  setCreatedFrom: (createdFrom) => set({ createdFrom, page: 1 }),
+  setCreatedTo: (createdTo) => set({ createdTo, page: 1 }),
 
   setSortBy: (sortBy) => set({ sortBy }),
   setSortOrder: (sortOrder) => set({ sortOrder }),

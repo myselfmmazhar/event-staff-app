@@ -65,6 +65,8 @@ export const ServiceSchema = {
     sortBy: z.enum(['title', 'cost', 'price', 'createdAt']).default('title').optional(),
     sortOrder: z.enum(['asc', 'desc']).default('asc').optional(),
     isActive: z.boolean().optional(),
+    createdFrom: z.coerce.date().optional(),
+    createdTo: z.coerce.date().optional(),
   }),
 
   id: z.object({

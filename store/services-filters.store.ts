@@ -12,6 +12,8 @@ interface ServicesFiltersState {
   // Search & Filters
   search: string;
   statuses: ServiceStatus[];
+  createdFrom: string;
+  createdTo: string;
 
   // Sorting
   sortBy: ServiceSortBy;
@@ -24,6 +26,8 @@ interface ServicesFiltersState {
   // Actions - Search & Filters
   setSearch: (search: string) => void;
   setStatuses: (statuses: ServiceStatus[]) => void;
+  setCreatedFrom: (createdFrom: string) => void;
+  setCreatedTo: (createdTo: string) => void;
 
   // Actions - Sorting
   setSortBy: (sortBy: ServiceSortBy) => void;
@@ -37,6 +41,8 @@ interface ServicesFiltersState {
 const DEFAULT_FILTERS = {
   search: '',
   statuses: [] as ServiceStatus[],
+  createdFrom: '',
+  createdTo: '',
 };
 
 const DEFAULT_STATE = {
@@ -55,6 +61,8 @@ export const useServicesFilters = create<ServicesFiltersState>((set) => ({
 
   setSearch: (search) => set({ search, page: 1 }),
   setStatuses: (statuses) => set({ statuses, page: 1 }),
+  setCreatedFrom: (createdFrom) => set({ createdFrom, page: 1 }),
+  setCreatedTo: (createdTo) => set({ createdTo, page: 1 }),
 
   setSortBy: (sortBy) => set({ sortBy }),
   setSortOrder: (sortOrder) => set({ sortOrder }),
@@ -62,4 +70,3 @@ export const useServicesFilters = create<ServicesFiltersState>((set) => ({
   resetFilters: () => set({ ...DEFAULT_FILTERS, page: 1 }),
   resetAll: () => set(DEFAULT_STATE),
 }));
-

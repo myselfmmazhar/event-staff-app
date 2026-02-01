@@ -86,6 +86,20 @@ export class ProductService {
       ];
     }
 
+    // Date range filters
+    if (query.createdFrom || query.createdTo) {
+      where.createdAt = {};
+      if (query.createdFrom) {
+        where.createdAt.gte = query.createdFrom;
+      }
+      if (query.createdTo) {
+        // Add one day to include the entire end date
+        const endDate = new Date(query.createdTo);
+        endDate.setDate(endDate.getDate() + 1);
+        where.createdAt.lte = endDate;
+      }
+    }
+
     const orderBy: Prisma.ProductOrderByWithRelationInput =
       sortBy === 'title'
         ? { title: sortOrder }
