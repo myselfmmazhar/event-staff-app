@@ -115,10 +115,10 @@ const baseFields = {
     // Contractor ID (nullable for employees who may not belong to a contractor)
     contractorId: z.string().uuid("Invalid contractor ID").optional().nullable(),
 
-    // Position IDs (multi-select)
-    positionIds: z
-        .array(z.string().uuid("Invalid position ID"))
-        .min(1, "At least one position must be selected")
+    // Service IDs (multi-select)
+    serviceIds: z
+        .array(z.string().uuid("Invalid service ID"))
+        .min(1, "At least one service must be selected")
         .default([]),
 };
 
@@ -180,7 +180,7 @@ export class StaffSchema {
         skillLevels: z.array(z.nativeEnum(SkillLevel)).optional(),
         availabilityStatus: z.nativeEnum(AvailabilityStatus).optional(),
         contractorId: z.string().uuid("Invalid contractor ID").optional(),
-        positionId: z.string().uuid("Invalid position ID").optional(),
+        serviceId: z.string().uuid("Invalid service ID").optional(),
         createdFrom: z.coerce.date().optional(),
         createdTo: z.coerce.date().optional(),
     });
@@ -235,9 +235,9 @@ export class StaffSchema {
             .max(50, "Last name must be 50 characters or less")
             .transform((val) => val.trim()),
         staffType: z.nativeEnum(StaffType).default(StaffType.EMPLOYEE),
-        positionIds: z
-            .array(z.string().uuid("Invalid position ID"))
-            .min(1, "At least one position must be selected"),
+        serviceIds: z
+            .array(z.string().uuid("Invalid service ID"))
+            .min(1, "At least one service must be selected"),
     });
 
     /**

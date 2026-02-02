@@ -173,18 +173,18 @@ export function ViewStaffModal({
                     </div>
                 </div>
 
-                {/* Positions */}
+                {/* Services */}
                 <div className="space-y-4 border-b pb-4">
-                    <h3 className="font-semibold">Positions</h3>
+                    <h3 className="font-semibold">Services</h3>
                     <div className="flex flex-wrap gap-1">
-                        {staff.positions?.length > 0 ? (
-                            staff.positions.map((p) => (
-                                <Badge key={p.position.id} variant="secondary">
-                                    {p.position.name}
+                        {staff.services && staff.services.length > 0 ? (
+                            staff.services.map((s) => (
+                                <Badge key={s.service.id} variant="secondary">
+                                    {s.service.title}
                                 </Badge>
                             ))
                         ) : (
-                            <p className="text-sm text-muted-foreground">No positions assigned</p>
+                            <p className="text-sm text-muted-foreground">No services assigned</p>
                         )}
                     </div>
                 </div>

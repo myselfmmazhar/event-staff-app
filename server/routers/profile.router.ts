@@ -171,10 +171,10 @@ export const profileRouter = router({
               startDate: true,
               endDate: true,
               notes: true,
-              position: {
+              service: {
                 select: {
                   id: true,
-                  name: true,
+                  title: true,
                 },
               },
               invitations: {

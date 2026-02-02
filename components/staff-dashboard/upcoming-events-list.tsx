@@ -20,7 +20,7 @@ interface Invitation {
   callTime: {
     id: string;
     callTimeId: string;
-    position: { name: string };
+    service: { title: string };
     startDate: Date;
     startTime: string | null;
     endDate: Date;
@@ -107,7 +107,7 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
                     <div className="flex items-center gap-2 mb-1">
                       <CheckCircleIcon className="h-5 w-5 text-green-500" />
                       <h3 className="text-lg font-semibold">
-                        {invitation.callTime.position.name}
+                        {invitation.callTime.service.title}
                       </h3>
                     </div>
                     <p className="text-muted-foreground">

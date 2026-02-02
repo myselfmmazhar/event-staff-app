@@ -6,8 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 
-type StaffPosition = { id: string; name: string };
-type StaffPositionAssignment = { position: StaffPosition };
+type StaffService = { id: string; title: string };
+type StaffServiceAssignment = { service: StaffService };
 
 export type StaffWithRelations = {
     id: string;
@@ -17,7 +17,7 @@ export type StaffWithRelations = {
     email: string;
     staffType: string;
     accountStatus: string;
-    positions?: StaffPositionAssignment[];
+    services?: StaffServiceAssignment[];
 };
 
 interface SelectableStaffTableProps {
@@ -42,7 +42,7 @@ export function SelectableStaffTable({
         email: 'Email',
         type: 'Type',
         status: 'Status',
-        positions: 'Positions',
+        services: 'Services',
     });
 
     const handleSelectAll = () => {
@@ -142,7 +142,7 @@ export function SelectableStaffTable({
                             <span className="font-semibold text-sm text-foreground">{columnLabels.status}</span>
                         </th>
                         <th className="text-left py-3 px-4">
-                            <span className="font-semibold text-sm text-foreground">{columnLabels.positions}</span>
+                            <span className="font-semibold text-sm text-foreground">{columnLabels.services}</span>
                         </th>
                     </tr>
                 </thead>
@@ -177,14 +177,14 @@ export function SelectableStaffTable({
                             <td className="py-4 px-4">{getStatusBadge(member.accountStatus)}</td>
                             <td className="py-4 px-4">
                                 <div className="flex flex-wrap gap-1">
-                                    {member.positions?.slice(0, 2).map((p) => (
-                                        <Badge key={p.position.id} variant="info" size="sm" asSpan>
-                                            {p.position.name}
+                                    {member.services?.slice(0, 2).map((s) => (
+                                        <Badge key={s.service.id} variant="info" size="sm" asSpan>
+                                            {s.service.title}
                                         </Badge>
                                     ))}
-                                    {member.positions && member.positions.length > 2 && (
+                                    {member.services && member.services.length > 2 && (
                                         <Badge variant="info" size="sm" asSpan>
-                                            +{member.positions.length - 2}
+                                            +{member.services.length - 2}
                                         </Badge>
                                     )}
                                 </div>

@@ -206,7 +206,7 @@ export function CallTimeDetailModal({
         <div className="flex items-center justify-between">
           <div>
             <DialogTitle className="flex items-center gap-2">
-              {callTime.position.name}
+              {callTime.service.title}
               <Badge variant={isFilled ? 'default' : 'secondary'}>
                 {callTime.confirmedCount}/{callTime.numberOfStaffRequired} filled
               </Badge>

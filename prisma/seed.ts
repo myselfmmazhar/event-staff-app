@@ -1,5 +1,4 @@
 import { PrismaClient, UserRole } from '@prisma/client';
-import { seedStaffData } from './seed-staff-data';
 
 // Simple Prisma client without adapter (uses DATABASE_URL from .env)
 const prisma = new PrismaClient();
@@ -69,9 +68,6 @@ async function main() {
       throw error;
     }
   }
-
-  // Seed Staff Data (Positions and Work Types)
-  await seedStaffData();
 
   // Seed Organization Settings (Terminology)
   console.log('\n📝 Seeding organization settings...');

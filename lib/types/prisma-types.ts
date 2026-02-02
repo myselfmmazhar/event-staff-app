@@ -75,7 +75,7 @@ export type ClientSelect = Prisma.ClientGetPayload<{
 /**
  * Staff Select Type
  * Used by StaffService for all query return types
- * Includes nested positions and contractor relationships
+ * Includes nested services and contractor relationships
  */
 export type StaffSelect = Prisma.StaffGetPayload<{
   select: {
@@ -109,16 +109,16 @@ export type StaffSelect = Prisma.StaffGetPayload<{
     createdBy: true;
     createdAt: true;
     updatedAt: true;
-    positions: {
+    services: {
       select: {
         id: true;
         staffId: true;
-        positionId: true;
+        serviceId: true;
         assignedAt: true;
-        position: {
+        service: {
           select: {
             id: true;
-            name: true;
+            title: true;
             description: true;
             isActive: true;
             createdAt: true;
@@ -206,10 +206,10 @@ export type EventSelect = Prisma.EventGetPayload<{
       select: {
         id: true;
         numberOfStaffRequired: true;
-        position: {
+        service: {
           select: {
             id: true;
-            name: true;
+            title: true;
           };
         };
         invitations: {
@@ -227,13 +227,13 @@ export type EventSelect = Prisma.EventGetPayload<{
 /**
  * Call Time Select Type
  * Used by CallTimeService for all query return types
- * Includes position and event relationships
+ * Includes service and event relationships
  */
 export type CallTimeSelect = Prisma.CallTimeGetPayload<{
   select: {
     id: true;
     callTimeId: true;
-    positionId: true;
+    serviceId: true;
     numberOfStaffRequired: true;
     skillLevel: true;
     startDate: true;
@@ -248,10 +248,10 @@ export type CallTimeSelect = Prisma.CallTimeGetPayload<{
     eventId: true;
     createdAt: true;
     updatedAt: true;
-    position: {
+    service: {
       select: {
         id: true;
-        name: true;
+        title: true;
         description: true;
         isActive: true;
       };
@@ -296,21 +296,6 @@ export type UserSelect = Prisma.UserGetPayload<{
     lastLoginAt: true;
     invitationToken: true;
     invitationExpiresAt: true;
-    createdAt: true;
-    updatedAt: true;
-  };
-}>;
-
-/**
- * Staff Position Select Type
- * Used by SettingsService for position queries
- */
-export type StaffPositionSelect = Prisma.StaffPositionGetPayload<{
-  select: {
-    id: true;
-    name: true;
-    description: true;
-    isActive: true;
     createdAt: true;
     updatedAt: true;
   };

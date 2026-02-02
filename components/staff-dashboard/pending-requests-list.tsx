@@ -16,7 +16,7 @@ interface Invitation {
   callTime: {
     id: string;
     callTimeId: string;
-    position: { name: string };
+    service: { title: string };
     startDate: Date;
     startTime: string | null;
     endDate: Date;
@@ -98,7 +98,7 @@ export function PendingRequestsList({
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="text-lg font-semibold">
-                      {invitation.callTime.position.name}
+                      {invitation.callTime.service.title}
                     </h3>
                     <p className="text-muted-foreground">
                       {invitation.callTime.event.title}

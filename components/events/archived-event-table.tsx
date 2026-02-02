@@ -34,7 +34,7 @@ interface ArchivedEvent {
   callTimes?: Array<{
     id: string;
     numberOfStaffRequired: number;
-    position: { id: string; name: string };
+    service: { id: string; title: string };
     invitations: Array<{
       id: string;
       status: CallTimeInvitationStatus;
@@ -86,7 +86,7 @@ export function ArchivedEventTable({
   const getAssignmentSummary = (event: ArchivedEvent) => {
     const callTimes = event.callTimes ?? [];
 
-    const groups = new Map<string, { positionName: string; required: number; accepted: number }>();
+    const groups = new Map<string, { serviceName: string; required: number; accepted: number }>();
 
     let totalRequired = 0;
     let totalAccepted = 0;
@@ -103,14 +103,14 @@ export function ArchivedEventTable({
       totalAccepted += accepted;
       totalConfirmed += confirmed;
 
-      const key = callTime.position?.id ?? callTime.position?.name ?? callTime.id;
+      const key = callTime.service?.id ?? callTime.service?.title ?? callTime.id;
       const existing = groups.get(key);
       if (existing) {
         existing.required += required;
         existing.accepted += accepted;
       } else {
         groups.set(key, {
-          positionName: callTime.position?.name ?? 'Unknown',
+          serviceName: callTime.service?.title ?? 'Unknown',
           required,
           accepted,
         });
@@ -118,8 +118,8 @@ export function ArchivedEventTable({
     }
 
     const lines = Array.from(groups.values())
-      .sort((a, b) => b.required - a.required || a.positionName.localeCompare(b.positionName))
-      .map((g) => `${g.required} ${g.positionName}: ${g.accepted}/${g.required} Accepted`);
+      .sort((a, b) => b.required - a.required || a.serviceName.localeCompare(b.serviceName))
+      .map((g) => `${g.required} ${g.serviceName}: ${g.accepted}/${g.required} Accepted`);
 
     return { lines, totalRequired, totalAccepted, totalConfirmed };
   };
@@ -179,7 +179,7 @@ export function ArchivedEventTable({
       className: 'py-4 px-4',
       headerClassName: 'text-left py-3 px-4',
       render: (event) => (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"

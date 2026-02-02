@@ -112,7 +112,7 @@ export function ProductTable({
       className: 'py-4 px-4',
       headerClassName: 'text-left py-3 px-4',
       render: (product) => (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"

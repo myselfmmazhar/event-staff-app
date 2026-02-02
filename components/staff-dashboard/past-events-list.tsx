@@ -14,7 +14,7 @@ interface Invitation {
   callTime: {
     id: string;
     callTimeId: string;
-    position: { name: string };
+    service: { title: string };
     startDate: Date;
     startTime: string | null;
     endDate: Date;
@@ -75,7 +75,7 @@ export function PastEventsList({ invitations }: PastEventsListProps) {
                 </div>
                 <div>
                   <h3 className="font-medium">
-                    {invitation.callTime.position.name}
+                    {invitation.callTime.service.title}
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {invitation.callTime.event.title}

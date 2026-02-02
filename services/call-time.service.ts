@@ -45,15 +45,15 @@ export class CallTimeService {
       });
     }
 
-    // Verify position exists
-    const position = await this.prisma.staffPosition.findUnique({
-      where: { id: data.positionId },
+    // Verify service exists
+    const service = await this.prisma.service.findUnique({
+      where: { id: data.serviceId },
     });
 
-    if (!position) {
+    if (!service) {
       throw new TRPCError({
         code: 'NOT_FOUND',
-        message: 'Position not found',
+        message: 'Service not found',
       });
     }
 
@@ -62,7 +62,7 @@ export class CallTimeService {
     return await this.prisma.callTime.create({
       data: {
         callTimeId,
-        positionId: data.positionId,
+        serviceId: data.serviceId,
         numberOfStaffRequired: data.numberOfStaffRequired,
         skillLevel: data.skillLevel,
         startDate: data.startDate,
@@ -77,7 +77,7 @@ export class CallTimeService {
         eventId: data.eventId,
       },
       include: {
-        position: true,
+        service: true,
         event: { select: { id: true, eventId: true, title: true } },
         _count: { select: { invitations: true } },
       },
@@ -108,7 +108,7 @@ export class CallTimeService {
       this.prisma.callTime.findMany({
         where: { eventId: input.eventId },
         include: {
-          position: true,
+          service: true,
           invitations: {
             include: {
               staff: {
@@ -155,7 +155,7 @@ export class CallTimeService {
     const callTime = await this.prisma.callTime.findUnique({
       where: { id },
       include: {
-        position: true,
+        service: true,
         event: {
           select: {
             id: true,
@@ -216,7 +216,7 @@ export class CallTimeService {
       where: { id },
       data,
       include: {
-        position: true,
+        service: true,
         event: { select: { id: true, eventId: true, title: true } },
         _count: { select: { invitations: true } },
       },
@@ -259,9 +259,9 @@ export class CallTimeService {
 
     // Build staff query
     const where: Prisma.StaffWhereInput = {
-      // Has the required position
-      positions: {
-        some: { positionId: callTime.positionId },
+      // Has the required service
+      services: {
+        some: { serviceId: callTime.serviceId },
       },
       // Meets skill level requirement
       skillLevel: { in: eligibleSkillLevels },
@@ -319,8 +319,8 @@ export class CallTimeService {
           country: true,
           userId: true, // Include to show warning for unregistered staff
           hasLoginAccess: true,
-          positions: {
-            include: { position: { select: { id: true, name: true } } },
+          services: {
+            include: { service: { select: { id: true, title: true } } },
           },
         },
         orderBy: [
@@ -427,7 +427,7 @@ export class CallTimeService {
             },
             callTime: {
               include: {
-                position: true,
+                service: true,
                 event: {
                   select: {
                     id: true,
@@ -451,7 +451,7 @@ export class CallTimeService {
         await triggerService.onCallTimeInvitationSent(
           invitation.staff.userId,
           {
-            positionName: invitation.callTime.position.name,
+            positionName: invitation.callTime.service.title,
             eventTitle: invitation.callTime.event.title,
             eventId: invitation.callTime.event.id,
             callTimeId: invitation.callTime.id,
@@ -477,7 +477,7 @@ export class CallTimeService {
       include: {
         callTime: {
           include: {
-            position: true,
+            service: true,
             event: {
               select: { id: true, title: true, createdBy: true },
             },
@@ -536,7 +536,7 @@ export class CallTimeService {
           confirmedAt: hasAvailableSlot ? new Date() : null,
         },
         include: {
-          callTime: { include: { position: true, event: true } },
+          callTime: { include: { service: true, event: true } },
         },
       });
 
@@ -545,7 +545,7 @@ export class CallTimeService {
         invitation.callTime.event.createdBy,
         {
           staffName,
-          positionName: invitation.callTime.position.name,
+          positionName: invitation.callTime.service.title,
           eventTitle: invitation.callTime.event.title,
           eventId: invitation.callTime.event.id,
           status: 'ACCEPTED',
@@ -557,7 +557,7 @@ export class CallTimeService {
         await triggerService.onInvitationConfirmed(
           invitation.staff.userId,
           {
-            positionName: invitation.callTime.position.name,
+            positionName: invitation.callTime.service.title,
             eventTitle: invitation.callTime.event.title,
             eventId: invitation.callTime.event.id,
             callTimeId: invitation.callTime.id,
@@ -576,7 +576,7 @@ export class CallTimeService {
           declineReason: input.declineReason,
         },
         include: {
-          callTime: { include: { position: true, event: true } },
+          callTime: { include: { service: true, event: true } },
         },
       });
 
@@ -585,7 +585,7 @@ export class CallTimeService {
         invitation.callTime.event.createdBy,
         {
           staffName,
-          positionName: invitation.callTime.position.name,
+          positionName: invitation.callTime.service.title,
           eventTitle: invitation.callTime.event.title,
           eventId: invitation.callTime.event.id,
           status: 'DECLINED',
@@ -605,7 +605,7 @@ export class CallTimeService {
       include: {
         callTime: {
           include: {
-            position: true,
+            service: true,
             event: { select: { id: true, title: true, createdBy: true } },
           },
         },
@@ -634,7 +634,7 @@ export class CallTimeService {
         staff: { select: { id: true, firstName: true, lastName: true, email: true, userId: true } },
         callTime: {
           include: {
-            position: true,
+            service: true,
             event: {
               select: { id: true, title: true, venueName: true, city: true, state: true },
             },
@@ -649,7 +649,7 @@ export class CallTimeService {
       await triggerService.onCallTimeInvitationSent(
         updated.staff.userId,
         {
-          positionName: updated.callTime.position.name,
+          positionName: updated.callTime.service.title,
           eventTitle: updated.callTime.event.title,
           eventId: updated.callTime.event.id,
           callTimeId: updated.callTime.id,
@@ -715,7 +715,7 @@ export class CallTimeService {
       include: {
         callTime: {
           include: {
-            position: true,
+            service: true,
             event: {
               select: {
                 id: true,
@@ -771,7 +771,7 @@ export class CallTimeService {
         staff: { select: { userId: true } },
         callTime: {
           include: {
-            position: true,
+            service: true,
             event: {
               select: {
                 id: true,
@@ -828,10 +828,10 @@ export class CallTimeService {
         },
       },
       include: {
-        position: {
+        service: {
           select: {
             id: true,
-            name: true,
+            title: true,
           },
         },
         event: {
@@ -884,7 +884,7 @@ export class CallTimeService {
       sortBy?: 'startDate' | 'position' | 'event';
       sortOrder?: 'asc' | 'desc';
       eventId?: string;
-      positionId?: string;
+      serviceId?: string;
       search?: string;
       dateFrom?: Date;
       dateTo?: Date;
@@ -907,8 +907,8 @@ export class CallTimeService {
       where.eventId = input.eventId;
     }
 
-    if (input.positionId) {
-      where.positionId = input.positionId;
+    if (input.serviceId) {
+      where.serviceId = input.serviceId;
     }
 
     if (input.dateFrom || input.dateTo) {
@@ -920,14 +920,14 @@ export class CallTimeService {
     if (input.search) {
       where.OR = [
         { event: { title: { contains: input.search, mode: 'insensitive' } } },
-        { position: { name: { contains: input.search, mode: 'insensitive' } } },
+        { service: { title: { contains: input.search, mode: 'insensitive' } } },
       ];
     }
 
     // Build orderBy
     let orderBy: any = { startDate: sortOrder };
     if (input.sortBy === 'position') {
-      orderBy = { position: { name: sortOrder } };
+      orderBy = { service: { title: sortOrder } };
     } else if (input.sortBy === 'event') {
       orderBy = { event: { title: sortOrder } };
     }
@@ -936,8 +936,8 @@ export class CallTimeService {
       this.prisma.callTime.findMany({
         where,
         include: {
-          position: {
-            select: { id: true, name: true },
+          service: {
+            select: { id: true, title: true },
           },
           event: {
             select: {

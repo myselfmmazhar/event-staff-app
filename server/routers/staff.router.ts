@@ -238,18 +238,18 @@ export const staffRouter = router({
     }),
 
     /**
-     * Get all staff positions
+     * Get all services (for staff assignment dropdown)
      * Requires: Authentication
      */
-    getPositions: protectedProcedure.query(async ({ ctx }) => {
-        return await ctx.prisma.staffPosition.findMany({
+    getServices: protectedProcedure.query(async ({ ctx }) => {
+        return await ctx.prisma.service.findMany({
             where: { isActive: true },
             select: {
                 id: true,
-                name: true,
+                title: true,
                 description: true,
             },
-            orderBy: { name: "asc" },
+            orderBy: { title: "asc" },
         });
     }),
 
