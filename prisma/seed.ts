@@ -1,7 +1,17 @@
+import 'dotenv/config';
 import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 
-// Simple Prisma client without adapter (uses DATABASE_URL from .env)
-const prisma = new PrismaClient();
+// Create pg pool for the adapter
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error('Missing DATABASE_URL for Prisma seed');
+}
+
+const pool = new pg.Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🌱 Seeding database with Better Auth (scrypt)...\n');
@@ -21,35 +31,39 @@ async function main() {
     console.log('✅ Admin user already exists. Skipping admin seed.');
     console.log('   To recreate, run: docker compose down -v && docker compose up -d\n');
   } else {
-    // Import Better Auth at runtime to use its sign-up functionality
-    const { auth } = await import('../lib/server/auth');
+    // Use Better Auth's password hashing utility
+    const { hashPassword } = await import('better-auth/crypto');
+    const hashedPassword = await hashPassword(adminPassword);
 
     try {
-      // Use Better Auth's sign-up method which handles scrypt hashing automatically
-      const result = await auth.api.signUpEmail({
-        body: {
-          email: adminEmail,
-          password: adminPassword,
-          name: `${adminFirstName} ${adminLastName}`,
-          firstName: adminFirstName,
-          lastName: adminLastName,
-        },
-      });
+      // Generate unique IDs
+      const { randomUUID } = await import('crypto');
+      const userId = randomUUID();
+      const accountId = randomUUID();
 
-      if (!result || !result.user) {
-        throw new Error('Failed to create user via Better Auth');
-      }
-
-      // Update user with additional fields after creation
-      const admin = await prisma.user.update({
-        where: { id: result.user.id },
+      // Create user directly in database
+      const admin = await prisma.user.create({
         data: {
+          id: userId,
+          email: adminEmail,
+          name: `${adminFirstName} ${adminLastName}`,
           firstName: adminFirstName,
           lastName: adminLastName,
           role: UserRole.SUPER_ADMIN,
           isActive: true,
-          phone: '+1234567890',
           emailVerified: true,
+          phone: '+1234567890',
+        },
+      });
+
+      // Create account with hashed password
+      await prisma.account.create({
+        data: {
+          id: accountId,
+          userId: admin.id,
+          accountId: admin.id,
+          providerId: 'credential',
+          password: hashedPassword,
         },
       });
 
@@ -62,9 +76,9 @@ async function main() {
       console.log('\n📋 Login credentials:');
       console.log(`   Email: ${adminEmail}`);
       console.log(`   Password: ${adminPassword}`);
-      console.log('\n🔒 Password Security: scrypt (Better Auth default)');
+      console.log('\n🔒 Password Security: scrypt');
     } catch (error) {
-      console.error('❌ Error during sign-up:', error);
+      console.error('❌ Error during user creation:', error);
       throw error;
     }
   }

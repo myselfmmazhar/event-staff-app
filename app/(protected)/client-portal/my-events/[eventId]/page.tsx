@@ -336,7 +336,7 @@ export default function ClientEventDetailPage() {
                                                             </p>
                                                             {callTime.service && (
                                                                 <p className="text-xs text-muted-foreground">
-                                                                    {callTime.service.title}
+                                                                    {callTime.service?.title || 'Service'}
                                                                 </p>
                                                             )}
                                                         </div>

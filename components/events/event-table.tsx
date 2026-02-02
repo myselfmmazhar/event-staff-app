@@ -32,7 +32,7 @@ interface Event {
   callTimes?: Array<{
     id: string;
     numberOfStaffRequired: number;
-    service: { id: string; title: string };
+    service: { id: string; title: string } | null;
     invitations: Array<{
       id: string;
       status: CallTimeInvitationStatus;

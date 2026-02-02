@@ -259,10 +259,12 @@ export class CallTimeService {
 
     // Build staff query
     const where: Prisma.StaffWhereInput = {
-      // Has the required service
-      services: {
-        some: { serviceId: callTime.serviceId },
-      },
+      // Has the required service (if serviceId is set)
+      ...(callTime.serviceId && {
+        services: {
+          some: { serviceId: callTime.serviceId },
+        },
+      }),
       // Meets skill level requirement
       skillLevel: { in: eligibleSkillLevels },
       // Active account
@@ -451,7 +453,7 @@ export class CallTimeService {
         await triggerService.onCallTimeInvitationSent(
           invitation.staff.userId,
           {
-            positionName: invitation.callTime.service.title,
+            positionName: invitation.callTime.service?.title || 'Service',
             eventTitle: invitation.callTime.event.title,
             eventId: invitation.callTime.event.id,
             callTimeId: invitation.callTime.id,
@@ -545,7 +547,7 @@ export class CallTimeService {
         invitation.callTime.event.createdBy,
         {
           staffName,
-          positionName: invitation.callTime.service.title,
+          positionName: invitation.callTime.service?.title || 'Service',
           eventTitle: invitation.callTime.event.title,
           eventId: invitation.callTime.event.id,
           status: 'ACCEPTED',
@@ -557,7 +559,7 @@ export class CallTimeService {
         await triggerService.onInvitationConfirmed(
           invitation.staff.userId,
           {
-            positionName: invitation.callTime.service.title,
+            positionName: invitation.callTime.service?.title || 'Service',
             eventTitle: invitation.callTime.event.title,
             eventId: invitation.callTime.event.id,
             callTimeId: invitation.callTime.id,
@@ -585,7 +587,7 @@ export class CallTimeService {
         invitation.callTime.event.createdBy,
         {
           staffName,
-          positionName: invitation.callTime.service.title,
+          positionName: invitation.callTime.service?.title || 'Service',
           eventTitle: invitation.callTime.event.title,
           eventId: invitation.callTime.event.id,
           status: 'DECLINED',
@@ -649,7 +651,7 @@ export class CallTimeService {
       await triggerService.onCallTimeInvitationSent(
         updated.staff.userId,
         {
-          positionName: updated.callTime.service.title,
+          positionName: updated.callTime.service?.title || 'Service',
           eventTitle: updated.callTime.event.title,
           eventId: updated.callTime.event.id,
           callTimeId: updated.callTime.id,

@@ -113,18 +113,22 @@ export const AMOUNT_TYPE_OPTIONS: Array<{ value: AmountType; label: string }> = 
  * Cost Unit Type Labels for display
  */
 export const COST_UNIT_TYPE_LABELS: Record<CostUnitType, string> = {
-  EVENT: 'Per Event',
+  HOURLY: 'Per Hour',
   ASSIGNMENT: 'Per Assignment',
-  HOURLY: 'Hourly',
+  SHIFT: 'Per Shift',
+  DAY: 'Per Day',
+  JOB: 'Per Job',
 };
 
 /**
  * Cost Unit Type Options for forms
  */
 export const COST_UNIT_TYPE_OPTIONS: Array<{ value: CostUnitType; label: string }> = [
-  { value: 'EVENT', label: 'Per Event' },
+  { value: 'HOURLY', label: 'Per Hour' },
   { value: 'ASSIGNMENT', label: 'Per Assignment' },
-  { value: 'HOURLY', label: 'Hourly' },
+  { value: 'SHIFT', label: 'Per Shift' },
+  { value: 'DAY', label: 'Per Day' },
+  { value: 'JOB', label: 'Per Job' },
 ];
 
 /**
@@ -162,11 +166,11 @@ export const EXPERIENCE_REQUIREMENT_OPTIONS: Array<{
   value: ExperienceRequirement;
   label: string;
 }> = [
-  { value: 'ANY', label: 'Any' },
-  { value: 'BEGINNER', label: 'Beginner' },
-  { value: 'INTERMEDIATE', label: 'Intermediate' },
-  { value: 'ADVANCED', label: 'Advanced' },
-];
+    { value: 'ANY', label: 'Any' },
+    { value: 'BEGINNER', label: 'Beginner' },
+    { value: 'INTERMEDIATE', label: 'Intermediate' },
+    { value: 'ADVANCED', label: 'Advanced' },
+  ];
 
 /**
  * Minimum Purchase Labels for display

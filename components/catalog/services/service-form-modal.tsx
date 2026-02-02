@@ -31,7 +31,7 @@ const formSchema = z.object({
     .min(1, 'Service title is required')
     .max(200, 'Title must be 200 characters or less')
     .transform((v) => v.trim()),
-  costUnitType: z.nativeEnum(CostUnitType).nullable().default(null),
+  costUnitType: z.nativeEnum(CostUnitType).default('ASSIGNMENT'),
   description: z
     .string()
     .max(1000, 'Description must be 1000 characters or less')
@@ -76,7 +76,7 @@ export function ServiceFormModal({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
-      costUnitType: null,
+      costUnitType: 'ASSIGNMENT',
       description: null,
       cost: null,
       price: null,
@@ -95,7 +95,7 @@ export function ServiceFormModal({
       }
       reset({
         title: service.title,
-        costUnitType: service.costUnitType ?? null,
+        costUnitType: service.costUnitType ?? 'ASSIGNMENT',
         description: service.description ?? null,
         cost: costValue,
         price: service.price != null ? (typeof service.price === 'object' && 'toNumber' in service.price ? (service.price as { toNumber: () => number }).toNumber() : Number(service.price)) : null,
@@ -103,7 +103,7 @@ export function ServiceFormModal({
     } else if (!service && open) {
       reset({
         title: '',
-        costUnitType: null,
+        costUnitType: 'ASSIGNMENT',
         description: null,
         cost: null,
         price: null,
@@ -192,7 +192,7 @@ export function ServiceFormModal({
                     error={!!errors.costUnitType}
                     disabled={isSubmitting}
                   >
-                    <option value="">—</option>
+
                     {COST_UNIT_TYPE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}

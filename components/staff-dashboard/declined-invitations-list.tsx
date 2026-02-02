@@ -14,7 +14,7 @@ interface Invitation {
   callTime: {
     id: string;
     callTimeId: string;
-    service: { title: string };
+    service: { title: string } | null;
     startDate: Date;
     startTime: string | null;
     endDate: Date;
@@ -93,7 +93,7 @@ export function DeclinedInvitationsList({
                 <div>
                   <p className="text-sm text-muted-foreground">Position</p>
                   <h3 className="text-lg font-semibold">
-                    {invitation.callTime.service.title}
+                    {invitation.callTime.service?.title || 'Service'}
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {invitation.callTime.event.title}

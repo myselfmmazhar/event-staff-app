@@ -225,7 +225,7 @@ function TimelineCard({ callTime, isToday, onClick }: TimelineCardProps) {
                     {callTime.event.title}
                 </h4>
                 <Badge variant="secondary" className="mt-1">
-                    {callTime.service.title}
+                    {callTime.service?.title || 'Service'}
                 </Badge>
             </div>
 

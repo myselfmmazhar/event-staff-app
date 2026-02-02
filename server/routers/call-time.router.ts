@@ -112,7 +112,7 @@ export const callTimeRouter = router({
             invitation.staff.email,
             invitation.staff.firstName,
             {
-              positionName: invitation.callTime.service.title,
+              positionName: invitation.callTime.service?.title || 'Service',
               eventTitle: invitation.callTime.event.title,
               eventVenue: invitation.callTime.event.venueName,
               eventLocation: `${invitation.callTime.event.city}, ${invitation.callTime.event.state}`,
@@ -174,7 +174,7 @@ export const callTimeRouter = router({
           invitation.staff.email,
           invitation.staff.firstName,
           {
-            positionName: invitation.callTime.service.title,
+            positionName: invitation.callTime.service?.title || 'Service',
             eventTitle: invitation.callTime.event.title,
             eventVenue: invitation.callTime.event.venueName,
             eventLocation: `${invitation.callTime.event.city}, ${invitation.callTime.event.state}`,

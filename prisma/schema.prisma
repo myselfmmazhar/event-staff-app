@@ -653,9 +653,11 @@ enum AmountType {
 }
 
 enum CostUnitType {
-  EVENT
-  ASSIGNMENT
-  HOURLY
+  HOURLY      // per hour
+  ASSIGNMENT  // per assignment (default for service assignments)
+  SHIFT       // per shift
+  DAY         // per day
+  JOB         // per job
 }
 
 enum PriceUnitType {
