@@ -41,7 +41,7 @@ export class ProductService {
           productId,
           title: data.title.trim(),
           description: data.description?.trim() || null,
-          priceUnitType: data.priceUnitType ?? null,
+          priceUnitType: data.priceUnitType ?? undefined,
           minimumPurchase: data.minimumPurchase ?? null,
           trackInventory: data.trackInventory ?? false,
           supplier: data.supplier?.trim() || null,
@@ -159,7 +159,7 @@ export class ProductService {
           title: data.title?.trim(),
           description: data.description === null ? null : data.description?.trim(),
           priceUnitType:
-            data.priceUnitType === undefined ? undefined : data.priceUnitType,
+            data.priceUnitType === undefined ? undefined : (data.priceUnitType ?? undefined),
           minimumPurchase:
             data.minimumPurchase === undefined ? undefined : data.minimumPurchase,
           trackInventory:

@@ -341,7 +341,7 @@ export default function UsersPage() {
     activeFilters.push({
       key: 'roles',
       label: roleTerm.singular,
-      value: filters.roles.length === 1 ? (ROLE_LABELS[filters.roles[0]!] ?? filters.roles[0]) : `${filters.roles.length} selected`,
+      value: filters.roles.length === 1 ? (ROLE_LABELS[filters.roles[0]!] ?? filters.roles[0]!) : `${filters.roles.length} selected`,
       onRemove: () => filters.setRoles([]),
     });
   }
