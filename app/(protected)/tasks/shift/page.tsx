@@ -31,9 +31,9 @@ type ShiftData = {
         title: string;
         venueName: string;
     };
-    position: {
+    service: {
         id: string;
-        name: string;
+        title: string;
     };
 };
 
@@ -85,10 +85,10 @@ export default function ShiftPage() {
             ),
         },
         {
-            key: 'position',
-            label: 'Position',
+            key: 'service',
+            label: 'Service',
             render: (shift) => (
-                <Badge variant="secondary">{shift.position.name}</Badge>
+                <Badge variant="secondary">{shift.service.title}</Badge>
             ),
         },
         {

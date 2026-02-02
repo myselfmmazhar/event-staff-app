@@ -29,7 +29,7 @@ import { useStaffTerm } from '@/lib/hooks/use-terminology';
 // Form schema for UI (handles TBD checkboxes)
 const formSchema = z
   .object({
-    positionId: z.string().min(1, 'Position is required'),
+    serviceId: z.string().min(1, 'Service is required'),
     numberOfStaffRequired: z.coerce.number().int().min(1, 'At least 1 staff required'),
     skillLevel: z.nativeEnum(SkillLevel),
     startDate: z.string().min(1, 'Start date is required'),
@@ -59,7 +59,7 @@ type FormOutput = z.infer<typeof formSchema>;
 interface CallTime {
   id: string;
   callTimeId: string;
-  positionId: string;
+  serviceId: string;
   numberOfStaffRequired: number;
   skillLevel: SkillLevel;
   startDate: Date;
@@ -93,7 +93,7 @@ const RATE_TYPES: Array<{ value: RateType; label: string }> = Object.entries(
   RATE_TYPE_LABELS
 ).map(([value, label]) => ({ value: value as RateType, label }));
 
-type PositionOption = { id: string; name: string };
+type ServiceOption = { id: string; title: string };
 
 const formatDateInputValue = (value: Date | string): string => {
   const [datePart = ''] = new Date(value).toISOString().split('T');
@@ -114,11 +114,11 @@ export function CallTimeFormModal({
   const [startTimeTBD, setStartTimeTBD] = useState(false);
   const [endTimeTBD, setEndTimeTBD] = useState(false);
 
-  // Fetch positions for dropdown
-  const { data: positionsData } = trpc.staff.getPositions.useQuery(undefined, {
+  // Fetch services for dropdown
+  const { data: servicesData } = trpc.staff.getServices.useQuery(undefined, {
     enabled: open,
   });
-  const positions = (positionsData ?? []) as PositionOption[];
+  const services = (servicesData ?? []) as ServiceOption[];
 
   const {
     register,
@@ -131,7 +131,7 @@ export function CallTimeFormModal({
   } = useForm<FormInput, undefined, FormOutput>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      positionId: '',
+      serviceId: '',
       numberOfStaffRequired: 1,
       skillLevel: SkillLevel.BEGINNER,
       startDate: '',
@@ -167,7 +167,7 @@ export function CallTimeFormModal({
           : callTime.billRate;
 
       reset({
-        positionId: callTime.positionId,
+        serviceId: callTime.serviceId,
         numberOfStaffRequired: callTime.numberOfStaffRequired,
         skillLevel: callTime.skillLevel,
         startDate: formatDateInputValue(callTime.startDate),
@@ -187,7 +187,7 @@ export function CallTimeFormModal({
     } else {
       const today = formatDateInputValue(new Date());
       reset({
-        positionId: '',
+        serviceId: '',
         numberOfStaffRequired: 1,
         skillLevel: SkillLevel.BEGINNER,
         startDate: today,
@@ -222,7 +222,7 @@ export function CallTimeFormModal({
   const handleFormSubmit: SubmitHandler<FormOutput> = (data) => {
     const submitData = {
       ...(isEdit ? {} : { eventId }),
-      positionId: data.positionId,
+      serviceId: data.serviceId,
       numberOfStaffRequired: data.numberOfStaffRequired,
       skillLevel: data.skillLevel,
       startDate: new Date(data.startDate),
@@ -266,31 +266,31 @@ export function CallTimeFormModal({
             </div>
           )}
 
-          {/* Position & Staff Requirements */}
+          {/* Service & Staff Requirements */}
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-              Position & Requirements
+              Service & Requirements
             </h3>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="positionId" required>
-                  Position
+                <Label htmlFor="serviceId" required>
+                  Service
                 </Label>
                 <Select
-                  id="positionId"
-                  {...register('positionId')}
+                  id="serviceId"
+                  {...register('serviceId')}
                   disabled={isSubmitting}
-	                >
-	                  <option value="">Select a position</option>
-	                  {positions.map((position) => (
-	                    <option key={position.id} value={position.id}>
-	                      {position.name}
-	                    </option>
-	                  ))}
-	                </Select>
-                {errors.positionId && (
+                >
+                  <option value="">Select a service</option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.title}
+                    </option>
+                  ))}
+                </Select>
+                {errors.serviceId && (
                   <p className="text-sm text-destructive mt-1">
-                    {errors.positionId.message}
+                    {errors.serviceId.message}
                   </p>
                 )}
               </div>

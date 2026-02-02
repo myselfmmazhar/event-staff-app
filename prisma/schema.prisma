@@ -48,7 +48,7 @@ model CallTimeInvitation {
 model CallTime {
   id                    String                  @id @default(uuid()) @db.Uuid
   callTimeId            String                  @unique
-  positionId            String                  @db.Uuid
+  serviceId             String?                 @db.Uuid
   numberOfStaffRequired Int                     @default(1)
   skillLevel            SkillLevel              @default(BEGINNER)
   startDate             DateTime                @db.Date
@@ -65,11 +65,11 @@ model CallTime {
   updatedAt             DateTime                @updatedAt @db.Timestamp(6)
   invitations           CallTimeInvitation[]
   event                 Event                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  position              StaffPosition           @relation(fields: [positionId], references: [id])
+  service               Service?                @relation(fields: [serviceId], references: [id])
 
   @@index([callTimeId])
   @@index([eventId])
-  @@index([positionId])
+  @@index([serviceId])
   @@index([startDate])
   @@map("call_times")
 }
@@ -314,6 +314,8 @@ model Service {
   updatedAt             DateTime               @updatedAt @db.Timestamp(6)
   createdByUser         User                   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   eventServices         EventService[]
+  callTimes             CallTime[]
+  staff                 StaffServiceAssignment[]
 
   @@index([serviceId])
   @@index([title])
@@ -506,7 +508,7 @@ model Staff {
   employees                    Staff[]                      @relation("staffTostaff")
   users_staff_createdByTousers User                         @relation("staff_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
   users_staff_userIdTousers    User?                        @relation("staff_userIdTousers", fields: [userId], references: [id])
-  positions                    StaffPositionAssignment[]
+  services                     StaffServiceAssignment[]
 
   @@index([accountStatus])
   @@index([availabilityStatus])
@@ -517,30 +519,18 @@ model Staff {
   @@map("staff")
 }
 
-model StaffPositionAssignment {
-  id              String          @id @default(uuid()) @db.Uuid
-  staffId         String          @db.Uuid
-  positionId      String          @db.Uuid
-  assignedAt      DateTime        @default(now()) @db.Timestamp(6)
-  position        StaffPosition   @relation(fields: [positionId], references: [id], onDelete: Cascade)
-  staff           Staff           @relation(fields: [staffId], references: [id], onDelete: Cascade)
+model StaffServiceAssignment {
+  id         String   @id @default(uuid()) @db.Uuid
+  staffId    String   @db.Uuid
+  serviceId  String   @db.Uuid
+  assignedAt DateTime @default(now()) @db.Timestamp(6)
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  staff      Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
-  @@unique([staffId, positionId])
-  @@index([positionId])
+  @@unique([staffId, serviceId])
+  @@index([serviceId])
   @@index([staffId])
-  @@map("staff_position_assignments")
-}
-
-model StaffPosition {
-  id                         String                       @id @default(uuid()) @db.Uuid
-  name                       String                       @unique
-  description                String?
-  isActive                   Boolean                      @default(true)
-  createdAt                  DateTime                     @default(now()) @db.Timestamp(6)
-  updatedAt                  DateTime                     @updatedAt @db.Timestamp(6)
-  callTimes                  CallTime[]
-  staff                      StaffPositionAssignment[]
-  @@map("staff_positions")
+  @@map("staff_service_assignments")
 }
 
 model User {

@@ -7,7 +7,7 @@ const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
 // Field error messages
 const FieldErrors = {
   eventId: 'Invalid event ID',
-  positionId: 'Invalid position ID',
+  serviceId: 'Invalid service ID',
   callTimeId: 'Invalid call time ID',
   invitationId: 'Invalid invitation ID',
   staffId: 'Invalid staff ID',
@@ -32,7 +32,7 @@ export class CallTimeSchema {
   static create = z
     .object({
       eventId: z.string().uuid(FieldErrors.eventId),
-      positionId: z.string().uuid(FieldErrors.positionId),
+      serviceId: z.string().uuid(FieldErrors.serviceId),
       numberOfStaffRequired: z
         .number()
         .int()
@@ -91,7 +91,7 @@ export class CallTimeSchema {
   static update = z
     .object({
       id: z.string().uuid(FieldErrors.callTimeId),
-      positionId: z.string().uuid(FieldErrors.positionId).optional(),
+      serviceId: z.string().uuid(FieldErrors.serviceId).optional(),
       numberOfStaffRequired: z.number().int().min(1).optional(),
       skillLevel: z.nativeEnum(SkillLevel).optional(),
       startDate: z.coerce.date().optional(),
@@ -254,7 +254,7 @@ export class CallTimeSchema {
     sortBy: z.enum(['startDate', 'position', 'event']).default('startDate').optional(),
     sortOrder: z.enum(['asc', 'desc']).default('asc').optional(),
     eventId: z.string().uuid().optional(),
-    positionId: z.string().uuid().optional(),
+    serviceId: z.string().uuid().optional(),
     search: z.string().optional(),
     dateFrom: z.coerce.date().optional(),
     dateTo: z.coerce.date().optional(),

@@ -13,7 +13,7 @@ interface CallTimeCardProps {
   callTime: {
     id: string;
     callTimeId: string;
-    position: { name: string };
+    service: { title: string };
     numberOfStaffRequired: number;
     skillLevel: SkillLevel;
     startDate: Date;
@@ -56,7 +56,7 @@ export function CallTimeCard({
           {/* Header */}
           <div className="flex items-center gap-2 mb-2">
             <h3 className="font-semibold text-lg truncate">
-              {callTime.position.name}
+              {callTime.service.title}
             </h3>
             <Badge variant={isFilled ? 'default' : 'secondary'}>
               {callTime.confirmedCount}/{callTime.numberOfStaffRequired} filled

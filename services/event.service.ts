@@ -297,10 +297,10 @@ export class EventService {
             select: {
               id: true,
               numberOfStaffRequired: true,
-              position: {
+              service: {
                 select: {
                   id: true,
-                  name: true,
+                  title: true,
                 },
               },
               invitations: {
@@ -1133,10 +1133,10 @@ export class EventService {
             select: {
               id: true,
               numberOfStaffRequired: true,
-              position: {
+              service: {
                 select: {
                   id: true,
-                  name: true,
+                  title: true,
                 },
               },
               invitations: {

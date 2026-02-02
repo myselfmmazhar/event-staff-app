@@ -32,7 +32,7 @@ interface Event {
   callTimes?: Array<{
     id: string;
     numberOfStaffRequired: number;
-    position: { id: string; name: string };
+    service: { id: string; title: string };
     invitations: Array<{
       id: string;
       status: CallTimeInvitationStatus;
@@ -89,7 +89,7 @@ export function EventTable({
 
     const groups = new Map<
       string,
-      { positionName: string; required: number; accepted: number }
+      { serviceName: string; required: number; accepted: number }
     >();
 
     let totalRequired = 0;
@@ -107,14 +107,14 @@ export function EventTable({
       totalAccepted += accepted;
       totalConfirmed += confirmed;
 
-      const key = callTime.position?.id ?? callTime.position?.name ?? callTime.id;
+      const key = callTime.service?.id ?? callTime.service?.title ?? callTime.id;
       const existing = groups.get(key);
       if (existing) {
         existing.required += required;
         existing.accepted += accepted;
       } else {
         groups.set(key, {
-          positionName: callTime.position?.name ?? 'Unknown',
+          serviceName: callTime.service?.title ?? 'Unknown',
           required,
           accepted,
         });
@@ -122,8 +122,8 @@ export function EventTable({
     }
 
     const lines = Array.from(groups.values())
-      .sort((a, b) => b.required - a.required || a.positionName.localeCompare(b.positionName))
-      .map((g) => `${g.required} ${g.positionName}: ${g.accepted}/${g.required} Accepted`);
+      .sort((a, b) => b.required - a.required || a.serviceName.localeCompare(b.serviceName))
+      .map((g) => `${g.required} ${g.serviceName}: ${g.accepted}/${g.required} Accepted`);
 
     return { lines, totalRequired, totalAccepted, totalConfirmed };
   };
@@ -187,16 +187,7 @@ export function EventTable({
       className: 'py-4 px-4',
       headerClassName: 'text-left py-3 px-4',
       render: (event) => (
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => router.push(`/events/${event.id}/call-times`)}
-            title="Manage call times"
-          >
-            <UsersIcon className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -205,6 +196,15 @@ export function EventTable({
             title={`View ${terminology.event.lower} details`}
           >
             <EyeIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0"
+            onClick={() => router.push(`/events/${event.id}/call-times`)}
+            title="Manage call times"
+          >
+            <UsersIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"

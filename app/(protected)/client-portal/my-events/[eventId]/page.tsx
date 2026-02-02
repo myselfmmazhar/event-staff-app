@@ -304,7 +304,7 @@ export default function ClientEventDetailPage() {
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="font-medium text-lg">
-                                                {callTime.position?.name || 'Position'}
+                                                {callTime.service?.title || 'Service'}
                                             </p>
                                             <p className="text-sm text-muted-foreground">
                                                 {callTime.startTime || 'TBD'} – {callTime.endTime || 'TBD'}
@@ -334,9 +334,9 @@ export default function ClientEventDetailPage() {
                                                             <p className="text-sm font-medium">
                                                                 {invitation.staff.firstName} {invitation.staff.lastName}
                                                             </p>
-                                                            {callTime.position && (
+                                                            {callTime.service && (
                                                                 <p className="text-xs text-muted-foreground">
-                                                                    {callTime.position.name}
+                                                                    {callTime.service.title}
                                                                 </p>
                                                             )}
                                                         </div>

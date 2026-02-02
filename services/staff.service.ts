@@ -73,16 +73,16 @@ export class StaffService {
         createdBy: true,
         createdAt: true,
         updatedAt: true,
-        positions: {
+        services: {
             select: {
                 id: true,
                 staffId: true,
-                positionId: true,
+                serviceId: true,
                 assignedAt: true,
-                position: {
+                service: {
                     select: {
                         id: true,
-                        name: true,
+                        title: true,
                         description: true,
                         isActive: true,
                         createdAt: true,
@@ -133,7 +133,7 @@ export class StaffService {
         data: CreateStaffInput,
         createdByUserId: string
     ): Promise<{ staff: StaffSelect; invitationToken: string }> {
-        const { positionIds, ...staffData } = data;
+        const { serviceIds, ...staffData } = data;
 
         // Generate unique Staff ID using shared utility
         const terminology = await this.settingsService.getTerminology();
@@ -152,9 +152,9 @@ export class StaffService {
                     invitationToken,
                     invitationExpiresAt,
                     createdBy: createdByUserId,
-                    positions: {
-                        create: positionIds.map((positionId) => ({
-                            positionId,
+                    services: {
+                        create: serviceIds.map((serviceId) => ({
+                            serviceId,
                         })),
                     },
                 },
@@ -194,7 +194,7 @@ export class StaffService {
         data: InviteStaffInput,
         createdByUserId: string
     ): Promise<{ staff: StaffSelect; invitationToken: string }> {
-        const { positionIds, ...inviteData } = data;
+        const { serviceIds, ...inviteData } = data;
         const terminology = await this.settingsService.getTerminology();
 
         // Check if email already exists
@@ -230,9 +230,9 @@ export class StaffService {
                     invitationToken,
                     invitationExpiresAt,
                     createdBy: createdByUserId,
-                    positions: {
-                        create: positionIds.map((positionId) => ({
-                            positionId,
+                    services: {
+                        create: serviceIds.map((serviceId) => ({
+                            serviceId,
                         })),
                     },
                 },
@@ -739,8 +739,8 @@ export class StaffService {
         id: string,
         data: Omit<UpdateStaffInput, "id">
     ): Promise<StaffSelect> {
-        const { positionIds, ...updateData } = data as Omit<UpdateStaffInput, "id"> & {
-            positionIds?: string[];
+        const { serviceIds, ...updateData } = data as Omit<UpdateStaffInput, "id"> & {
+            serviceIds?: string[];
         };
 
         // Check if staff exists
@@ -761,12 +761,12 @@ export class StaffService {
                 where: { id },
                 data: {
                     ...updateData,
-                    // Update positions if provided
-                    ...(positionIds !== undefined && {
-                        positions: {
+                    // Update services if provided
+                    ...(serviceIds !== undefined && {
+                        services: {
                             deleteMany: {},
-                            create: positionIds.map((positionId: string) => ({
-                                positionId,
+                            create: serviceIds.map((serviceId: string) => ({
+                                serviceId,
                             })),
                         },
                     }),
@@ -818,7 +818,7 @@ export class StaffService {
             skillLevels,
             availabilityStatus,
             contractorId,
-            positionId,
+            serviceId,
             createdFrom,
             createdTo,
         } = query;
@@ -840,10 +840,10 @@ export class StaffService {
             ...(skillLevels && skillLevels.length > 0 && { skillLevel: { in: skillLevels } }),
             ...(availabilityStatus && { availabilityStatus }),
             ...(contractorId && { contractorId }),
-            ...(positionId && {
-                positions: {
+            ...(serviceId && {
+                services: {
                     some: {
-                        positionId,
+                        serviceId: serviceId,
                     },
                 },
             }),

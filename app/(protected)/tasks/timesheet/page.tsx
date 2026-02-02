@@ -22,8 +22,8 @@ type CallTimeData = {
         title: string;
         venueName: string;
     };
-    position: {
-        name: string;
+    service: {
+        title: string;
     };
     invitations: Array<{
         id: string;
@@ -225,7 +225,7 @@ function TimelineCard({ callTime, isToday, onClick }: TimelineCardProps) {
                     {callTime.event.title}
                 </h4>
                 <Badge variant="secondary" className="mt-1">
-                    {callTime.position.name}
+                    {callTime.service.title}
                 </Badge>
             </div>
 

@@ -215,8 +215,8 @@ export function StaffProfileSection() {
                                         staffProfile.accountStatus === AccountStatus.ACTIVE
                                             ? 'default'
                                             : staffProfile.accountStatus === AccountStatus.PENDING
-                                            ? 'warning'
-                                            : 'secondary'
+                                                ? 'warning'
+                                                : 'secondary'
                                     }
                                 >
                                     {ACCOUNT_STATUS_LABELS[staffProfile.accountStatus as AccountStatus]}
@@ -239,16 +239,16 @@ export function StaffProfileSection() {
                             <p className="font-medium">{SKILL_LEVEL_LABELS[staffProfile.skillLevel as SkillLevel]}</p>
                         </div>
                         <div>
-                            <Label className="text-muted-foreground text-sm">Positions</Label>
+                            <Label className="text-muted-foreground text-sm">Services</Label>
                             <div className="flex flex-wrap gap-1 mt-1">
-                                {staffProfile.positions && staffProfile.positions.length > 0 ? (
-                                    staffProfile.positions.map((pa: { position: { id: string; name: string } }) => (
-                                        <Badge key={pa.position.id} variant="secondary">
-                                            {pa.position.name}
+                                {(staffProfile as any).services && (staffProfile as any).services.length > 0 ? (
+                                    (staffProfile as any).services.map((sa: { service: { id: string; title: string } }) => (
+                                        <Badge key={sa.service.id} variant="secondary">
+                                            {sa.service.title}
                                         </Badge>
                                     ))
                                 ) : (
-                                    <span className="text-muted-foreground text-sm">No positions assigned</span>
+                                    <span className="text-muted-foreground text-sm">No services assigned</span>
                                 )}
                             </div>
                         </div>

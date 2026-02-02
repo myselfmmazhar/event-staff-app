@@ -9,7 +9,7 @@ import { useEventTerm } from '@/lib/hooks/use-terminology';
 interface CallTime {
   id: string;
   callTimeId: string;
-  position: { name: string };
+  service: { title: string };
   numberOfStaffRequired: number;
   skillLevel: SkillLevel;
   startDate: Date;

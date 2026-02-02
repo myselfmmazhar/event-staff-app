@@ -40,7 +40,7 @@ export type StaffWithRelations = {
     createdBy: string;
     createdAt: Date | string;
     updatedAt: Date | string;
-    positions: Array<{ position: { id: string; name: string } }>;
+    services?: Array<{ service: { id: string; title: string } }>;
     contractor: { id: string; staffId: string; firstName: string; lastName: string } | null;
 };
 
@@ -182,7 +182,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete, selectedIds, onSel
             className: 'py-4 px-4',
             headerClassName: 'text-left py-3 px-4',
             render: (member) => (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                     <Button
                         variant="ghost"
                         size="sm"
@@ -300,7 +300,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete, selectedIds, onSel
                     {getAvailabilityBadge(member.availabilityStatus)}
                 </div>
                 <div className="text-xs">
-                    {member.positions?.map((p) => p.position.name).join(', ') || 'No positions'}
+                    {member.services?.map((s) => s.service.title).join(', ') || 'No services'}
                 </div>
             </div>
 

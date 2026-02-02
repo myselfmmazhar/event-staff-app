@@ -25,7 +25,7 @@ const formSchema = StaffSchema.invite;
 type InviteFormInput = z.input<typeof formSchema>;
 type InviteFormOutput = z.infer<typeof formSchema>;
 
-type PositionOption = { id: string; name: string };
+type ServiceOption = { id: string; title: string };
 
 interface StaffInviteModalProps {
     open: boolean;
@@ -42,9 +42,9 @@ export function StaffInviteModal({
 }: StaffInviteModalProps) {
     const { terminology } = useTerminology();
 
-    // Fetch positions
-    const { data: positionsData } = trpc.staff.getPositions.useQuery(undefined, { enabled: open });
-    const positions = (positionsData ?? []) as PositionOption[];
+    // Fetch services
+    const { data: servicesData } = trpc.staff.getServices.useQuery(undefined, { enabled: open });
+    const services = (servicesData ?? []) as ServiceOption[];
 
     const {
         register,
@@ -59,7 +59,7 @@ export function StaffInviteModal({
             firstName: '',
             lastName: '',
             staffType: StaffType.EMPLOYEE,
-            positionIds: [],
+            serviceIds: [],
         },
     });
 
@@ -160,45 +160,45 @@ export function StaffInviteModal({
                             )}
                         </div>
 
-                        {/* Positions */}
+                        {/* Services */}
                         <div>
-                            <Label required>Assigned Positions</Label>
+                            <Label required>Assigned Services</Label>
                             <Controller
-                                name="positionIds"
+                                name="serviceIds"
                                 control={control}
                                 render={({ field }) => (
                                     <div className="grid grid-cols-2 gap-2 mt-2 max-h-40 overflow-y-auto p-3 border rounded-md">
-                                        {positions.map((position) => (
-                                            <div key={position.id} className="flex items-center space-x-2">
+                                        {services.map((service) => (
+                                            <div key={service.id} className="flex items-center space-x-2">
                                                 <input
                                                     type="checkbox"
-                                                    id={`invite-position-${position.id}`}
-                                                    checked={field.value?.includes(position.id)}
+                                                    id={`invite-service-${service.id}`}
+                                                    checked={field.value?.includes(service.id)}
                                                     onChange={(e) => {
                                                         if (e.target.checked) {
-                                                            field.onChange([...(field.value || []), position.id]);
+                                                            field.onChange([...(field.value || []), service.id]);
                                                         } else {
-                                                            field.onChange(field.value?.filter((id) => id !== position.id));
+                                                            field.onChange(field.value?.filter((id) => id !== service.id));
                                                         }
                                                     }}
                                                     disabled={isSubmitting}
                                                     className="rounded border-gray-300"
                                                 />
-                                                <label htmlFor={`invite-position-${position.id}`} className="text-sm cursor-pointer">
-                                                    {position.name}
+                                                <label htmlFor={`invite-service-${service.id}`} className="text-sm cursor-pointer">
+                                                    {service.title}
                                                 </label>
                                             </div>
                                         ))}
-                                        {positions.length === 0 && (
+                                        {services.length === 0 && (
                                             <p className="text-sm text-muted-foreground col-span-2">
-                                                No positions available. Create positions in Settings first.
+                                                No services available. Create services first.
                                             </p>
                                         )}
                                     </div>
                                 )}
                             />
-                            {errors.positionIds && (
-                                <p className="text-sm text-destructive mt-1">{errors.positionIds.message}</p>
+                            {errors.serviceIds && (
+                                <p className="text-sm text-destructive mt-1">{errors.serviceIds.message}</p>
                             )}
                         </div>
                     </div>
