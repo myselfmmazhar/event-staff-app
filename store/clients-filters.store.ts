@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type ClientLoginAccess = "all" | "with" | "without";
 export type ClientSortBy = "clientId" | "businessName" | "createdAt";
@@ -53,24 +54,36 @@ const DEFAULT_STATE = {
   sortOrder: "desc" as SortOrder,
 };
 
-export const useClientsFilters = create<ClientsFiltersState>((set) => ({
-  ...DEFAULT_STATE,
+export const useClientsFilters = create<ClientsFiltersState>()(
+  persist(
+    (set) => ({
+      ...DEFAULT_STATE,
 
-  // Pagination actions
-  setPage: (page) => set({ page }),
-  setLimit: (limit) => set({ limit, page: 1 }),
+      // Pagination actions
+      setPage: (page) => set({ page }),
+      setLimit: (limit) => set({ limit, page: 1 }),
 
-  // Search & Filter actions
-  setSearch: (search) => set({ search, page: 1 }),
-  setLoginAccess: (loginAccess) => set({ loginAccess, page: 1 }),
-  setCreatedFrom: (createdFrom) => set({ createdFrom, page: 1 }),
-  setCreatedTo: (createdTo) => set({ createdTo, page: 1 }),
+      // Search & Filter actions
+      setSearch: (search) => set({ search, page: 1 }),
+      setLoginAccess: (loginAccess) => set({ loginAccess, page: 1 }),
+      setCreatedFrom: (createdFrom) => set({ createdFrom, page: 1 }),
+      setCreatedTo: (createdTo) => set({ createdTo, page: 1 }),
 
-  // Sorting actions
-  setSortBy: (sortBy) => set({ sortBy }),
-  setSortOrder: (sortOrder) => set({ sortOrder }),
+      // Sorting actions
+      setSortBy: (sortBy) => set({ sortBy }),
+      setSortOrder: (sortOrder) => set({ sortOrder }),
 
-  // Bulk actions
-  resetFilters: () => set({ ...DEFAULT_FILTERS, page: 1 }),
-  resetAll: () => set(DEFAULT_STATE),
-}));
+      // Bulk actions
+      resetFilters: () => set({ ...DEFAULT_FILTERS, page: 1 }),
+      resetAll: () => set(DEFAULT_STATE),
+    }),
+    {
+      name: "clients-daterange-filters",
+      partialize: (state) => ({
+        createdFrom: state.createdFrom,
+        createdTo: state.createdTo,
+      }),
+      skipHydration: true,
+    }
+  )
+);

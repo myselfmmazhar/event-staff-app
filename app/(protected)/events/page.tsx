@@ -157,8 +157,11 @@ export default function EventsPage() {
     setIsFormOpen(true);
   };
 
-  // Initialize store from URL params on mount
+  // Rehydrate date filters from localStorage, then initialize from URL params
   useEffect(() => {
+    // First, rehydrate date filters from localStorage
+    useEventsFilters.persist.rehydrate();
+
     const page = parseNumberParam(searchParams.get('page'), 1);
     const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
@@ -166,8 +169,6 @@ export default function EventsPage() {
     const clientIds = parseClientIdsParam(searchParams.get('selectedClientIds') ?? searchParams.get('clientIds'));
     const sortBy = parseSortByParam(searchParams.get('sortBy'));
     const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
-    const startDateFrom = searchParams.get('startDateFrom') || null;
-    const startDateTo = searchParams.get('startDateTo') || null;
 
     filters.setLimit(limit);
     filters.setSearch(search);
@@ -175,8 +176,17 @@ export default function EventsPage() {
     filters.setSelectedClientIds(clientIds);
     filters.setSortBy(sortBy);
     filters.setSortOrder(sortOrder);
-    filters.setStartDateFrom(startDateFrom);
-    filters.setStartDateTo(startDateTo);
+
+    // Only set date filters from URL if they exist, otherwise keep localStorage values
+    const startDateFromParam = searchParams.get('startDateFrom');
+    const startDateToParam = searchParams.get('startDateTo');
+    if (startDateFromParam !== null) {
+      filters.setStartDateFrom(startDateFromParam || null);
+    }
+    if (startDateToParam !== null) {
+      filters.setStartDateTo(startDateToParam || null);
+    }
+
     filters.setPage(page);
   }, []); // Only run on mount
 

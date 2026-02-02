@@ -87,8 +87,11 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
-  // Initialize store from URL params on mount
+  // Rehydrate date filters from localStorage, then initialize from URL params
   useEffect(() => {
+    // First, rehydrate date filters from localStorage
+    useClientsFilters.persist.rehydrate();
+
     const page = parseNumberParam(searchParams.get('page'), 1);
     const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
@@ -335,6 +338,24 @@ export default function ClientsPage() {
       label: 'Login Access',
       value: filters.loginAccess === 'with' ? 'Portal Access' : 'No Access',
       onRemove: () => filters.setLoginAccess('all'),
+    });
+  }
+
+  if (filters.createdFrom) {
+    activeFilters.push({
+      key: 'createdFrom',
+      label: 'From',
+      value: filters.createdFrom,
+      onRemove: () => filters.setCreatedFrom(''),
+    });
+  }
+
+  if (filters.createdTo) {
+    activeFilters.push({
+      key: 'createdTo',
+      label: 'To',
+      value: filters.createdTo,
+      onRemove: () => filters.setCreatedTo(''),
     });
   }
 

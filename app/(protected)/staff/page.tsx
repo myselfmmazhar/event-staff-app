@@ -41,6 +41,8 @@ const DEFAULT_FILTERS: StaffFilterState = {
     createdTo: '',
 };
 
+const STAFF_DATERANGE_STORAGE_KEY = 'staff-daterange-filters';
+
 export default function StaffPage() {
     const { terminology } = useTerminology();
     const staffLabels = useStaffPageLabels();
@@ -67,6 +69,41 @@ export default function StaffPage() {
     const [isDisableConfirmOpen, setIsDisableConfirmOpen] = useState(false);
     const [staffToResend, setStaffToResend] = useState<StaffWithRelations | null>(null);
     const [staffToDisable, setStaffToDisable] = useState<StaffWithRelations | null>(null);
+    const [isDateFiltersInitialized, setIsDateFiltersInitialized] = useState(false);
+
+    // Load date filters from localStorage on mount
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem(STAFF_DATERANGE_STORAGE_KEY);
+            if (stored) {
+                const { createdFrom, createdTo } = JSON.parse(stored);
+                setFilters((prev) => ({
+                    ...prev,
+                    createdFrom: createdFrom || '',
+                    createdTo: createdTo || '',
+                }));
+            }
+        } catch {
+            // Ignore localStorage errors
+        }
+        setIsDateFiltersInitialized(true);
+    }, []);
+
+    // Persist date filters to localStorage when they change
+    useEffect(() => {
+        if (!isDateFiltersInitialized) return;
+        try {
+            localStorage.setItem(
+                STAFF_DATERANGE_STORAGE_KEY,
+                JSON.stringify({
+                    createdFrom: filters.createdFrom,
+                    createdTo: filters.createdTo,
+                })
+            );
+        } catch {
+            // Ignore localStorage errors
+        }
+    }, [filters.createdFrom, filters.createdTo, isDateFiltersInitialized]);
 
     // Handle create query parameter
     useEffect(() => {
@@ -379,6 +416,12 @@ export default function StaffPage() {
         setFilters(DEFAULT_FILTERS);
         setSearch('');
         setPage(1);
+        // Clear date filters from localStorage
+        try {
+            localStorage.removeItem(STAFF_DATERANGE_STORAGE_KEY);
+        } catch {
+            // Ignore localStorage errors
+        }
     };
 
     const totalPages = data ? Math.ceil(data.meta.total / limit) : 0;
@@ -446,6 +489,30 @@ export default function StaffPage() {
             value: filters.skillLevels.length === 1 ? skillLabels : `${filters.skillLevels.length} selected`,
             onRemove: () => {
                 setFilters((prev) => ({ ...prev, skillLevels: [] }));
+                setPage(1);
+            },
+        });
+    }
+
+    if (filters.createdFrom) {
+        activeFilters.push({
+            key: 'createdFrom',
+            label: 'From',
+            value: filters.createdFrom,
+            onRemove: () => {
+                setFilters((prev) => ({ ...prev, createdFrom: '' }));
+                setPage(1);
+            },
+        });
+    }
+
+    if (filters.createdTo) {
+        activeFilters.push({
+            key: 'createdTo',
+            label: 'To',
+            value: filters.createdTo,
+            onRemove: () => {
+                setFilters((prev) => ({ ...prev, createdTo: '' }));
                 setPage(1);
             },
         });

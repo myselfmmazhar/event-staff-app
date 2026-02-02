@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { EventStatus } from "@prisma/client";
 
 export type EventSortBy = "createdAt" | "updatedAt" | "startDate" | "endDate" | "title" | "eventId" | "venueName" | "status";
@@ -60,27 +61,39 @@ const DEFAULT_STATE = {
   sortOrder: "desc" as SortOrder,
 };
 
-export const useEventsFilters = create<EventsFiltersState>((set) => ({
-  ...DEFAULT_STATE,
+export const useEventsFilters = create<EventsFiltersState>()(
+  persist(
+    (set) => ({
+      ...DEFAULT_STATE,
 
-  // Pagination actions
-  setPage: (page) => set({ page }),
-  setLimit: (limit) => set({ limit, page: 1 }),
+      // Pagination actions
+      setPage: (page) => set({ page }),
+      setLimit: (limit) => set({ limit, page: 1 }),
 
-  // Search & Filter actions
-  setSearch: (search) => set({ search, page: 1 }),
-  setSelectedStatuses: (selectedStatuses) => set({ selectedStatuses, page: 1 }),
-  setSelectedClientIds: (selectedClientIds) => set({ selectedClientIds, page: 1 }),
+      // Search & Filter actions
+      setSearch: (search) => set({ search, page: 1 }),
+      setSelectedStatuses: (selectedStatuses) => set({ selectedStatuses, page: 1 }),
+      setSelectedClientIds: (selectedClientIds) => set({ selectedClientIds, page: 1 }),
 
-  // Date Filter actions
-  setStartDateFrom: (startDateFrom) => set({ startDateFrom, page: 1 }),
-  setStartDateTo: (startDateTo) => set({ startDateTo, page: 1 }),
+      // Date Filter actions
+      setStartDateFrom: (startDateFrom) => set({ startDateFrom, page: 1 }),
+      setStartDateTo: (startDateTo) => set({ startDateTo, page: 1 }),
 
-  // Sorting actions
-  setSortBy: (sortBy) => set({ sortBy }),
-  setSortOrder: (sortOrder) => set({ sortOrder }),
+      // Sorting actions
+      setSortBy: (sortBy) => set({ sortBy }),
+      setSortOrder: (sortOrder) => set({ sortOrder }),
 
-  // Bulk actions
-  resetFilters: () => set({ ...DEFAULT_FILTERS, page: 1 }),
-  resetAll: () => set(DEFAULT_STATE),
-}));
+      // Bulk actions
+      resetFilters: () => set({ ...DEFAULT_FILTERS, page: 1 }),
+      resetAll: () => set(DEFAULT_STATE),
+    }),
+    {
+      name: "events-daterange-filters",
+      partialize: (state) => ({
+        startDateFrom: state.startDateFrom,
+        startDateTo: state.startDateTo,
+      }),
+      skipHydration: true,
+    }
+  )
+);

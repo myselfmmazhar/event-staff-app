@@ -289,6 +289,24 @@ export default function ProductsPage() {
     });
   }
 
+  if (filters.createdFrom) {
+    activeFilters.push({
+      key: 'createdFrom',
+      label: 'From',
+      value: filters.createdFrom,
+      onRemove: () => filters.setCreatedFrom(''),
+    });
+  }
+
+  if (filters.createdTo) {
+    activeFilters.push({
+      key: 'createdTo',
+      label: 'To',
+      value: filters.createdTo,
+      onRemove: () => filters.setCreatedTo(''),
+    });
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
