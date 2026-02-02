@@ -179,6 +179,21 @@ export function ServiceFormModal({
               )}
             </div>
 
+            <div className="sm:col-span-3">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                rows={4}
+                {...register('description')}
+                error={!!errors.description}
+                disabled={isSubmitting}
+                placeholder="Optional description (max 1000 characters)"
+              />
+              {errors.description && (
+                <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
+              )}
+            </div>
+
             <div>
               <Label htmlFor="costUnitType">Cost Unit Type</Label>
               <Controller
@@ -259,21 +274,6 @@ export function ServiceFormModal({
               />
               {errors.price && (
                 <p className="text-sm text-destructive mt-1">{errors.price.message}</p>
-              )}
-            </div>
-
-            <div className="sm:col-span-3">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                rows={4}
-                {...register('description')}
-                error={!!errors.description}
-                disabled={isSubmitting}
-                placeholder="Optional description (max 1000 characters)"
-              />
-              {errors.description && (
-                <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
               )}
             </div>
           </div>

@@ -319,12 +319,11 @@ export default function UsersPage() {
   const totalPages = data ? Math.ceil(data.meta.total / filters.limit) : 0;
 
   // Build active filters array
-  const ROLE_LABELS: Record<UserRole, string> = {
+  // Note: STAFF and CLIENT roles are managed in their own pages
+  const ROLE_LABELS: Partial<Record<UserRole, string>> = {
     SUPER_ADMIN: 'Super Admin',
     ADMIN: 'Admin',
     MANAGER: 'Manager',
-    STAFF: 'Staff',
-    CLIENT: 'Client',
   };
 
   const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];
@@ -342,7 +341,7 @@ export default function UsersPage() {
     activeFilters.push({
       key: 'roles',
       label: roleTerm.singular,
-      value: filters.roles.length === 1 ? ROLE_LABELS[filters.roles[0]!] : `${filters.roles.length} selected`,
+      value: filters.roles.length === 1 ? (ROLE_LABELS[filters.roles[0]!] ?? filters.roles[0]) : `${filters.roles.length} selected`,
       onRemove: () => filters.setRoles([]),
     });
   }

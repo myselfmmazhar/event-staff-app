@@ -135,11 +135,9 @@ export const COST_UNIT_TYPE_OPTIONS: Array<{ value: CostUnitType; label: string 
  * Price Unit Type Labels for display
  */
 export const PRICE_UNIT_TYPE_LABELS: Record<PriceUnitType, string> = {
-  ITEM: 'Per Item',
   UNIT: 'Per Unit',
-  EACH: 'Each',
-  LBS: 'Per Pound',
-  BUNDLE: 'Per Bundle',
+  PACK: 'Per Pack',
+  WEIGHT: 'Per Weight',
 };
 
 /**

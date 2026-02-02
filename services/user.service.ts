@@ -422,9 +422,11 @@ export class UserService {
     // Build where clause
     const where: Prisma.UserWhereInput = {};
 
-    // Role filter
+    // Role filter - exclude CLIENT and STAFF by default (they have their own pages)
     if (query.role) {
       where.role = Array.isArray(query.role) ? { in: query.role } : query.role;
+    } else {
+      where.role = { notIn: ['CLIENT', 'STAFF'] };
     }
 
     // Active/Inactive filter

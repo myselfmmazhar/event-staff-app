@@ -328,7 +328,7 @@ model Product {
   productId       String           @unique
   title           String           @db.VarChar(200)
   description     String?          @db.VarChar(1000)
-  priceUnitType   PriceUnitType?
+  priceUnitType   PriceUnitType    @default(UNIT)
   minimumPurchase MinimumPurchase?
   trackInventory  Boolean          @default(false)
   supplier        String?          @db.VarChar(200)
@@ -661,11 +661,9 @@ enum CostUnitType {
 }
 
 enum PriceUnitType {
-  ITEM
   UNIT
-  EACH
-  LBS
-  BUNDLE
+  PACK
+  WEIGHT
 }
 
 enum ExperienceRequirement {

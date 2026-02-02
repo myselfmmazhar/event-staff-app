@@ -33,7 +33,7 @@ const formSchema = z.object({
     .transform((v) => v.trim())
     .nullable()
     .default(null),
-  priceUnitType: z.nativeEnum(PriceUnitType).nullable().default(null),
+  priceUnitType: z.nativeEnum(PriceUnitType).default(PriceUnitType.UNIT),
   minimumPurchase: z.nativeEnum(MinimumPurchase).nullable().default(null),
   trackInventory: z.boolean().default(false),
   supplier: z
@@ -93,7 +93,7 @@ export function ProductFormModal({
     defaultValues: {
       title: '',
       description: null,
-      priceUnitType: null,
+      priceUnitType: PriceUnitType.UNIT,
       minimumPurchase: null,
       trackInventory: false,
       supplier: null,
@@ -109,7 +109,7 @@ export function ProductFormModal({
       reset({
         title: product.title,
         description: product.description ?? null,
-        priceUnitType: product.priceUnitType ?? null,
+        priceUnitType: product.priceUnitType ?? PriceUnitType.UNIT,
         minimumPurchase: product.minimumPurchase ?? null,
         trackInventory: product.trackInventory ?? false,
         supplier: product.supplier ?? null,
@@ -122,7 +122,7 @@ export function ProductFormModal({
       reset({
         title: '',
         description: null,
-        priceUnitType: null,
+        priceUnitType: PriceUnitType.UNIT,
         minimumPurchase: null,
         trackInventory: false,
         supplier: null,
@@ -215,12 +215,11 @@ export function ProductFormModal({
                 render={({ field }) => (
                   <Select
                     id="priceUnitType"
-                    value={field.value ?? ''}
-                    onChange={(e) => field.onChange(e.target.value || null)}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value as PriceUnitType)}
                     error={!!errors.priceUnitType}
                     disabled={isSubmitting}
                   >
-                    <option value="">—</option>
                     {PRICE_UNIT_TYPE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
