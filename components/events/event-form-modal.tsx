@@ -415,6 +415,19 @@ export function EventFormModal({
     }
   }, [backendErrors, setError]);
 
+  // Auto-fill requirements when a client is selected
+  const selectedClientId = watch('clientId');
+  useEffect(() => {
+    if (!selectedClientId || !clientsData?.data) return;
+    const selectedClient = clientsData.data.find(c => c.id === selectedClientId);
+    if (selectedClient?.requirements) {
+      const currentRequirements = watch('requirements');
+      if (!currentRequirements) {
+        setValue('requirements', selectedClient.requirements);
+      }
+    }
+  }, [selectedClientId, clientsData, setValue, watch]);
+
   // Apply template data when a template is selected
   useEffect(() => {
     if (selectedTemplateData && !isEdit) {

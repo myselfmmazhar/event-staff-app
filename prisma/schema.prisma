@@ -84,6 +84,7 @@ model Client {
   cellPhone                      String
   businessPhone                  String?
   details                        String?
+  requirements                   String?
 
   // Business address (renamed from streetAddress, now optional)
   businessAddress                String?

@@ -54,6 +54,7 @@ const formSchema = z.object({
     .transform(val => val?.trim())
     .optional(),
   details: z.string().max(5000).transform(val => val?.trim()).optional(),
+  requirements: z.string().max(200).transform(val => val?.trim()).optional(),
 
   // Business Address
   businessAddress: z.string().max(300).transform(val => val?.trim()).optional(),
@@ -137,6 +138,7 @@ export function ClientFormModal({
       cellPhone: '',
       businessPhone: '',
       details: '',
+      requirements: '',
       businessAddress: '',
       city: '',
       state: '',
@@ -162,6 +164,7 @@ export function ClientFormModal({
         cellPhone: client.cellPhone,
         businessPhone: client.businessPhone || '',
         details: client.details || '',
+        requirements: client.requirements || '',
         businessAddress: client.businessAddress || '',
         city: client.city,
         state: client.state,
@@ -182,6 +185,7 @@ export function ClientFormModal({
         cellPhone: '',
         businessPhone: '',
         details: '',
+        requirements: '',
         businessAddress: '',
         city: '',
         state: '',
@@ -364,6 +368,20 @@ export function ClientFormModal({
                 />
                 {errors.details && (
                   <p className="text-sm text-destructive mt-1">{errors.details.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="requirements">Requirements</Label>
+                <Textarea
+                  id="requirements"
+                  {...register('requirements')}
+                  disabled={isSubmitting}
+                  rows={3}
+                  placeholder="e.g., Business casual attire, Steel-toed boots required, Must have valid driver's license"
+                />
+                {errors.requirements && (
+                  <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
                 )}
               </div>
             </div>
