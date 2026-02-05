@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EyeIcon, EditIcon, ArchiveBoxIcon, UsersIcon } from '@/components/ui/icons';
+import { EditIcon, ArchiveBoxIcon, UsersIcon } from '@/components/ui/icons';
 import { CallTimeInvitationStatus, EventStatus } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
@@ -48,7 +48,6 @@ interface EventTableProps {
   isLoading: boolean;
   sortBy?: SortableField;
   sortOrder?: 'asc' | 'desc';
-  onView: (event: Event) => void;
   onEdit: (event: Event) => void;
   onArchive: (event: Event) => void;
   onSort: (field: SortableField) => void;
@@ -62,7 +61,6 @@ export function EventTable({
   isLoading,
   sortBy = 'createdAt',
   sortOrder = 'desc',
-  onView,
   onEdit,
   onArchive,
   onSort,
@@ -192,10 +190,10 @@ export function EventTable({
             variant="ghost"
             size="sm"
             className="px-0"
-            onClick={() => onView(event)}
-            title={`View ${terminology.event.lower} details`}
+            onClick={() => onEdit(event)}
+            title={`Edit ${terminology.event.lower}`}
           >
-            <EyeIcon className="h-4 w-4" />
+            <EditIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -205,15 +203,6 @@ export function EventTable({
             title="Manage call times"
           >
             <UsersIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onEdit(event)}
-            title={`Edit ${terminology.event.lower}`}
-          >
-            <EditIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -395,15 +384,6 @@ export function EventTable({
         >
           <UsersIcon className="h-4 w-4 mr-1" />
           Staff
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onView(event)}
-          className="flex-1"
-        >
-          <EyeIcon className="h-4 w-4 mr-1" />
-          View
         </Button>
         <Button
           variant="outline"

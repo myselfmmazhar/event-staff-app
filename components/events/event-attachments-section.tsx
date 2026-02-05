@@ -9,6 +9,7 @@ import { ProductFormModal } from '@/components/catalog/products/product-form-mod
 import { WrenchScrewdriverIcon, CubeIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 import type { CreateServiceInput } from '@/lib/schemas/service.schema';
 import type { CreateProductInput } from '@/lib/schemas/product.schema';
 
@@ -18,6 +19,7 @@ interface EventAttachmentsSectionProps {
   onServicesChange: (services: AttachedServiceItem[]) => void;
   onProductsChange: (products: AttachedProductItem[]) => void;
   disabled?: boolean;
+  className?: string;
 }
 
 export function EventAttachmentsSection({
@@ -26,6 +28,7 @@ export function EventAttachmentsSection({
   onServicesChange,
   onProductsChange,
   disabled = false,
+  className,
 }: EventAttachmentsSectionProps) {
   const [showCreateService, setShowCreateService] = useState(false);
   const [showCreateProduct, setShowCreateProduct] = useState(false);
@@ -210,7 +213,7 @@ export function EventAttachmentsSection({
     : null;
 
   return (
-    <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+    <div className={cn("bg-accent/5 border border-border/30 p-5 rounded-lg", className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
         Services & Products
       </h3>

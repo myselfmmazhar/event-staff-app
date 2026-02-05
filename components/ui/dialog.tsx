@@ -8,9 +8,10 @@ interface DialogProps {
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
+  fullScreen?: boolean;
 }
 
-export function Dialog({ open, onClose, children, className }: DialogProps) {
+export function Dialog({ open, onClose, children, className, fullScreen }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,10 +44,11 @@ export function Dialog({ open, onClose, children, className }: DialogProps) {
       <div
         ref={dialogRef}
         className={cn(
-          'relative bg-card rounded-lg shadow-xl',
-          'max-h-[90vh] overflow-y-auto',
-          'w-full max-w-md mx-4',
+          'relative bg-card shadow-xl',
           'animate-in fade-in-0 zoom-in-95',
+          fullScreen
+            ? 'w-screen h-screen max-w-none max-h-none rounded-none overflow-y-auto'
+            : 'w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto rounded-lg',
           className
         )}
       >

@@ -330,6 +330,14 @@ export default function EventsPage() {
     setIsFormOpen(true);
   };
 
+  const handleViewFromEdit = () => {
+    if (selectedEvent) {
+      setIsFormOpen(false);
+      setSelectedViewEventId(selectedEvent.id);
+      setIsViewOpen(true);
+    }
+  };
+
   const handleArchiveEvent = (event: EventListItem) => {
     setArchiveTargets([{ id: event.id, title: event.title, eventId: event.eventId }]);
     setIsArchiveOpen(true);
@@ -360,13 +368,6 @@ export default function EventsPage() {
       eventIds: Array.from(selectedIds),
       ...formData,
     });
-  };
-
-  const handleViewEventFromTable = (event: EventTableEvent) => {
-    const eventDetails = getEventDetails(event.id);
-    if (eventDetails) {
-      handleViewEvent(eventDetails);
-    }
   };
 
   const handleEditEventFromTable = (event: EventTableEvent) => {
@@ -653,7 +654,6 @@ export default function EventsPage() {
               isLoading={isLoading}
               sortBy={filters.sortBy}
               sortOrder={filters.sortOrder}
-              onView={handleViewEventFromTable}
               onEdit={handleEditEventFromTable}
               onArchive={handleArchiveEventFromTable}
               onSort={handleSort}
@@ -726,6 +726,7 @@ export default function EventsPage() {
         onSubmit={handleFormSubmit}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
         backendErrors={backendErrors}
+        onViewDetails={handleViewFromEdit}
       />
 
       {/* View Modal */}

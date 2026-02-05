@@ -21,7 +21,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
-import { CloseIcon, PlusIcon, XIcon } from '@/components/ui/icons';
+import { CloseIcon, EyeIcon, PlusIcon, XIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
@@ -171,6 +171,7 @@ interface EventFormModalProps {
   ) => void;
   isSubmitting: boolean;
   backendErrors?: Array<{ field: string; message: string }>;
+  onViewDetails?: () => void;
 }
 
 const STATUSES: Array<{ value: EventStatus; label: string }> = [
@@ -189,6 +190,7 @@ export function EventFormModal({
   onSubmit,
   isSubmitting,
   backendErrors = [],
+  onViewDetails,
 }: EventFormModalProps) {
   const { terminology } = useTerminology();
   const isEdit = !!event;
@@ -208,6 +210,12 @@ export function EventFormModal({
   const { data: templatesData } = trpc.eventTemplate.getForSelection.useQuery(undefined, {
     enabled: !isEdit,
   });
+
+  // Fetch full event data when editing (ensures eventDocuments and all fields are present)
+  const { data: fullEventData } = trpc.event.getById.useQuery(
+    { id: event?.id || '' },
+    { enabled: isEdit && !!event?.id && open }
+  );
 
   // Fetch full template data when selected
   const { data: selectedTemplateData } = trpc.eventTemplate.getById.useQuery(
@@ -296,7 +304,9 @@ export function EventFormModal({
         return `${year}-${month}-${day}`;
       };
 
-      const eventDocsData = event.eventDocuments as EventDocument[] | null;
+      // Use full event data from getById if available, otherwise fall back to list data
+      const eventDocsSource = fullEventData?.eventDocuments ?? event.eventDocuments;
+      const eventDocsData = Array.isArray(eventDocsSource) ? (eventDocsSource as EventDocument[]) : null;
       reset({
         eventId: event.eventId,
         title: event.title,
@@ -401,7 +411,7 @@ export function EventFormModal({
       setStartTimeTBD(false);
       setEndTimeTBD(false);
     }
-  }, [event, reset, open]);
+  }, [event, reset, open, fullEventData]);
 
   // Map backend errors to form fields
   useEffect(() => {
@@ -588,8 +598,8 @@ export function EventFormModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} className="max-w-4xl">
-      <form onSubmit={handleSubmit(handleFormSubmit)}>
+    <Dialog open={open} onClose={onClose} fullScreen>
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>{isEdit ? `Edit ${terminology.event.singular}` : `Create New ${terminology.event.singular}`}</DialogTitle>
@@ -603,7 +613,7 @@ export function EventFormModal({
           </div>
         </DialogHeader>
 
-        <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
+        <DialogContent className="flex-1 overflow-y-auto">
           {/* Event ID (Editable in edit mode) */}
           {isEdit && (
             <div className="mb-6">
@@ -704,199 +714,99 @@ export function EventFormModal({
             </div>
           )}
 
-          {/* Basic Information */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Basic Information</h3>
-            <div className="space-y-4">
-
-              <div>
-                <Label htmlFor="title" required>Title</Label>
-                <Input
-                  id="title"
-                  {...register('title')}
-                  error={!!errors.title}
-                  disabled={isSubmitting}
-                  placeholder={`${terminology.event.singular} title`}
-                />
-                {errors.title && (
-                  <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* === ROW 1: Basic Information + Date & Time === */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+            {/* Basic Information */}
+            <div className="lg:col-span-3 bg-accent/5 border border-border/30 p-5 rounded-lg">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Basic Information</h3>
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="clientId">Client</Label>
-                  <Select
-                    id="clientId"
-                    {...register('clientId')}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">Not applicable</option>
-                    {clientsData?.data.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.businessName}
-                      </option>
-                    ))}
-                  </Select>
-                  {errors.clientId && (
-                    <p className="text-sm text-destructive mt-1">{errors.clientId.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="status" required>Status</Label>
-                  <Select
-                    id="status"
-                    {...register('status')}
-                    disabled={isSubmitting}
-                  >
-                    {STATUSES.map((status) => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </Select>
-                  {errors.status && (
-                    <p className="text-sm text-destructive mt-1">{errors.status.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  {...register('description')}
-                  disabled={isSubmitting}
-                  rows={3}
-                  placeholder={`${terminology.event.singular} description`}
-                />
-                {errors.description && (
-                  <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="requirements">Requirements</Label>
-                <Textarea
-                  id="requirements"
-                  {...register('requirements')}
-                  disabled={isSubmitting}
-                  rows={3}
-                  placeholder="e.g., Business casual attire, Steel-toed boots required, Must have valid driver's license"
-                />
-                {errors.requirements && (
-                  <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Venue Information */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Venue Information</h3>
-            <div className="space-y-4">
-
-              {/* Address Autocomplete */}
-              <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
-                <AddressAutocomplete
-                  label="Search Address (Optional)"
-                  placeholder="Type to search for an address..."
-                  onSelect={(addressData) => {
-                    // Auto-fill the address fields
-                    setValue('address', addressData.address);
-                    setValue('city', addressData.city);
-                    setValue('state', addressData.state);
-                    setValue('zipCode', addressData.zipCode);
-                    setValue('latitude', addressData.latitude);
-                    setValue('longitude', addressData.longitude);
-                  }}
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Start typing to search for an address, or fill in the fields below manually
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="venueName" required>Venue Name</Label>
-                <Input
-                  id="venueName"
-                  {...register('venueName')}
-                  error={!!errors.venueName}
-                  disabled={isSubmitting}
-                  placeholder="Convention Center"
-                />
-                {errors.venueName && (
-                  <p className="text-sm text-destructive mt-1">{errors.venueName.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="address" required>Address</Label>
-                <Input
-                  id="address"
-                  {...register('address')}
-                  error={!!errors.address}
-                  disabled={isSubmitting}
-                  placeholder="123 Main Street"
-                />
-                {errors.address && (
-                  <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="city" required>City</Label>
+                  <Label htmlFor="title" required>Title</Label>
                   <Input
-                    id="city"
-                    {...register('city')}
-                    error={!!errors.city}
+                    id="title"
+                    {...register('title')}
+                    error={!!errors.title}
                     disabled={isSubmitting}
-                    placeholder="New York"
+                    placeholder={`${terminology.event.singular} title`}
                   />
-                  {errors.city && (
-                    <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
+                  {errors.title && (
+                    <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="clientId">Client</Label>
+                    <Select
+                      id="clientId"
+                      {...register('clientId')}
+                      disabled={isSubmitting}
+                    >
+                      <option value="">Not applicable</option>
+                      {clientsData?.data.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.businessName}
+                        </option>
+                      ))}
+                    </Select>
+                    {errors.clientId && (
+                      <p className="text-sm text-destructive mt-1">{errors.clientId.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="status" required>Status</Label>
+                    <Select
+                      id="status"
+                      {...register('status')}
+                      disabled={isSubmitting}
+                    >
+                      {STATUSES.map((status) => (
+                        <option key={status.value} value={status.value}>
+                          {status.label}
+                        </option>
+                      ))}
+                    </Select>
+                    {errors.status && (
+                      <p className="text-sm text-destructive mt-1">{errors.status.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    {...register('description')}
+                    disabled={isSubmitting}
+                    rows={3}
+                    placeholder={`${terminology.event.singular} description`}
+                  />
+                  {errors.description && (
+                    <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="state" required>State</Label>
-                  <Input
-                    id="state"
-                    {...register('state')}
-                    error={!!errors.state}
+                  <Label htmlFor="requirements">Requirements</Label>
+                  <Textarea
+                    id="requirements"
+                    {...register('requirements')}
                     disabled={isSubmitting}
-                    placeholder="NY"
+                    rows={3}
+                    placeholder="e.g., Business casual attire, Steel-toed boots required, Must have valid driver's license"
                   />
-                  {errors.state && (
-                    <p className="text-sm text-destructive mt-1">{errors.state.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="zipCode" required>ZIP Code</Label>
-                  <Input
-                    id="zipCode"
-                    {...register('zipCode')}
-                    error={!!errors.zipCode}
-                    disabled={isSubmitting}
-                    placeholder="10001"
-                  />
-                  {errors.zipCode && (
-                    <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
+                  {errors.requirements && (
+                    <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
                   )}
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Date & Time */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Date & Time</h3>
-            <div className="space-y-4">
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Date & Time */}
+            <div className="lg:col-span-2 bg-accent/5 border border-border/30 p-5 rounded-lg">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Date & Time</h3>
+              <div className="space-y-4">
                 <div>
                   <Label htmlFor="startDate" required>Start Date</Label>
                   <Input
@@ -988,59 +898,157 @@ export function EventFormModal({
                     <p className="text-sm text-destructive mt-1">{errors.endTime.message}</p>
                   )}
                 </div>
-              </div>
 
-              <div>
-                <Label htmlFor="timezone" required>Timezone</Label>
-                <Select
-                  id="timezone"
-                  {...register('timezone')}
-                  disabled={isSubmitting}
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz}
-                    </option>
-                  ))}
-                </Select>
-                {errors.timezone && (
-                  <p className="text-sm text-destructive mt-1">{errors.timezone.message}</p>
-                )}
+                <div>
+                  <Label htmlFor="timezone" required>Timezone</Label>
+                  <Select
+                    id="timezone"
+                    {...register('timezone')}
+                    disabled={isSubmitting}
+                  >
+                    {TIMEZONES.map((tz) => (
+                      <option key={tz} value={tz}>
+                        {tz}
+                      </option>
+                    ))}
+                  </Select>
+                  {errors.timezone && (
+                    <p className="text-sm text-destructive mt-1">{errors.timezone.message}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Request Information */}
+          {/* === ROW 2: Venue Information (full width) === */}
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Request Information</h3>
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Venue Information</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="requestMethod">Request Method</Label>
-                  <Select
-                    id="requestMethod"
-                    {...register('requestMethod')}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">Select method...</option>
-                    <option value="EMAIL">Email</option>
-                    <option value="TEXT_SMS">Text/SMS</option>
-                    <option value="PHONE_CALL">Phone Call</option>
-                  </Select>
-                </div>
+              {/* Address Autocomplete */}
+              <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
+                <AddressAutocomplete
+                  label="Search Address (Optional)"
+                  placeholder="Type to search for an address..."
+                  onSelect={(addressData) => {
+                    setValue('address', addressData.address);
+                    setValue('city', addressData.city);
+                    setValue('state', addressData.state);
+                    setValue('zipCode', addressData.zipCode);
+                    setValue('latitude', addressData.latitude);
+                    setValue('longitude', addressData.longitude);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Start typing to search for an address, or fill in the fields below manually
+                </p>
+              </div>
 
-                <div>
-                  <Label htmlFor="poNumber">PO Number</Label>
-                  <Input
-                    id="poNumber"
-                    {...register('poNumber')}
-                    disabled={isSubmitting}
-                    placeholder="Purchase Order Number"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="venueName" required>Venue Name</Label>
+                <Input
+                  id="venueName"
+                  {...register('venueName')}
+                  error={!!errors.venueName}
+                  disabled={isSubmitting}
+                  placeholder="Convention Center"
+                />
+                {errors.venueName && (
+                  <p className="text-sm text-destructive mt-1">{errors.venueName.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="address" required>Address</Label>
+                <Input
+                  id="address"
+                  {...register('address')}
+                  error={!!errors.address}
+                  disabled={isSubmitting}
+                  placeholder="123 Main Street"
+                />
+                {errors.address && (
+                  <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="city" required>City</Label>
+                  <Input
+                    id="city"
+                    {...register('city')}
+                    error={!!errors.city}
+                    disabled={isSubmitting}
+                    placeholder="New York"
+                  />
+                  {errors.city && (
+                    <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="state" required>State</Label>
+                  <Input
+                    id="state"
+                    {...register('state')}
+                    error={!!errors.state}
+                    disabled={isSubmitting}
+                    placeholder="NY"
+                  />
+                  {errors.state && (
+                    <p className="text-sm text-destructive mt-1">{errors.state.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="zipCode" required>ZIP Code</Label>
+                  <Input
+                    id="zipCode"
+                    {...register('zipCode')}
+                    error={!!errors.zipCode}
+                    disabled={isSubmitting}
+                    placeholder="10001"
+                  />
+                  {errors.zipCode && (
+                    <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* === ROW 3: Request Information + Onsite Contact === */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Request Information */}
+            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Request Information</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="requestMethod">Request Method</Label>
+                    <Select
+                      id="requestMethod"
+                      {...register('requestMethod')}
+                      disabled={isSubmitting}
+                    >
+                      <option value="">Select method...</option>
+                      <option value="EMAIL">Email</option>
+                      <option value="TEXT_SMS">Text/SMS</option>
+                      <option value="PHONE_CALL">Phone Call</option>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="poNumber">PO Number</Label>
+                    <Input
+                      id="poNumber"
+                      {...register('poNumber')}
+                      disabled={isSubmitting}
+                      placeholder="Purchase Order Number"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <Label htmlFor="requestorName">Requestor Name</Label>
                   <Input
@@ -1051,46 +1059,46 @@ export function EventFormModal({
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="requestorPhone">Requestor Phone</Label>
-                  <Input
-                    id="requestorPhone"
-                    type="tel"
-                    {...register('requestorPhone')}
-                    disabled={isSubmitting}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="requestorPhone">Requestor Phone</Label>
+                    <Input
+                      id="requestorPhone"
+                      type="tel"
+                      {...register('requestorPhone')}
+                      disabled={isSubmitting}
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
 
-                <div>
-                  <Label htmlFor="requestorEmail">Requestor Email</Label>
-                  <Input
-                    id="requestorEmail"
-                    type="email"
-                    {...register('requestorEmail')}
-                    disabled={isSubmitting}
-                    placeholder="john@example.com"
-                  />
+                  <div>
+                    <Label htmlFor="requestorEmail">Requestor Email</Label>
+                    <Input
+                      id="requestorEmail"
+                      type="email"
+                      {...register('requestorEmail')}
+                      disabled={isSubmitting}
+                      placeholder="john@example.com"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Onsite Contact */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Onsite Contact</h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="meetingPoint">Meeting Point</Label>
-                <Input
-                  id="meetingPoint"
-                  {...register('meetingPoint')}
-                  disabled={isSubmitting}
-                  placeholder="Where to meet on arrival (e.g., Main lobby, Loading dock)"
-                />
-              </div>
+            {/* Onsite Contact */}
+            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Onsite Contact</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="meetingPoint">Meeting Point</Label>
+                  <Input
+                    id="meetingPoint"
+                    {...register('meetingPoint')}
+                    disabled={isSubmitting}
+                    placeholder="Where to meet on arrival (e.g., Main lobby, Loading dock)"
+                  />
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="onsitePocName">POC Name</Label>
                   <Input
@@ -1101,35 +1109,38 @@ export function EventFormModal({
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="onsitePocPhone">POC Phone</Label>
-                  <Input
-                    id="onsitePocPhone"
-                    type="tel"
-                    {...register('onsitePocPhone')}
-                    disabled={isSubmitting}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="onsitePocPhone">POC Phone</Label>
+                    <Input
+                      id="onsitePocPhone"
+                      type="tel"
+                      {...register('onsitePocPhone')}
+                      disabled={isSubmitting}
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
 
-                <div>
-                  <Label htmlFor="onsitePocEmail">POC Email</Label>
-                  <Input
-                    id="onsitePocEmail"
-                    type="email"
-                    {...register('onsitePocEmail')}
-                    disabled={isSubmitting}
-                    placeholder="poc@example.com"
-                  />
+                  <div>
+                    <Label htmlFor="onsitePocEmail">POC Email</Label>
+                    <Input
+                      id="onsitePocEmail"
+                      type="email"
+                      {...register('onsitePocEmail')}
+                      disabled={isSubmitting}
+                      placeholder="poc@example.com"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Pre-Event Instructions */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Pre-Event Instructions</h3>
-            <div>
+          {/* === ROW 4: Pre-Event Instructions + Documents & Files === */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Pre-Event Instructions */}
+            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Pre-Event Instructions</h3>
               <Textarea
                 id="preEventInstructions"
                 {...register('preEventInstructions')}
@@ -1138,252 +1149,257 @@ export function EventFormModal({
                 placeholder="Instructions for staff before the event..."
               />
             </div>
+
+            {/* Documents & File Links Column */}
+            <div className="space-y-6">
+              {/* Event Documents */}
+              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Event Documents</h3>
+                <EventDocumentUpload
+                  documents={watch('eventDocuments') || []}
+                  onChange={(docs) => setValue('eventDocuments', docs)}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* File Links */}
+              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold border-b border-border pb-2 flex-1">File Links</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ name: '', link: '' })}
+                    disabled={isSubmitting}
+                  >
+                    <PlusIcon className="h-4 w-4 mr-1" />
+                    Add File
+                  </Button>
+                </div>
+
+                {fields.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No files added yet</p>
+                )}
+
+                <div className="space-y-3">
+                  {fields.map((field, index) => (
+                    <div key={field.id}>
+                      <div className="flex gap-2">
+                        <div className="flex-1 space-y-1">
+                          <Input
+                            {...register(`fileLinks.${index}.name` as const)}
+                            placeholder="File name"
+                            disabled={isSubmitting}
+                            error={!!(errors.fileLinks?.[index]?.name)}
+                          />
+                          {errors.fileLinks?.[index]?.name && (
+                            <p className="text-sm text-destructive">
+                              {errors.fileLinks[index]?.name?.message}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex-[2] space-y-1">
+                          <Input
+                            {...register(`fileLinks.${index}.link` as const)}
+                            placeholder="https://example.com/file.pdf"
+                            disabled={isSubmitting}
+                            error={!!(errors.fileLinks?.[index]?.link)}
+                          />
+                          {errors.fileLinks?.[index]?.link && (
+                            <p className="text-sm text-destructive">
+                              {errors.fileLinks[index]?.link?.message}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => remove(index)}
+                          disabled={isSubmitting}
+                          className="self-start"
+                        >
+                          <XIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Event Documents */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Event Documents</h3>
-            <EventDocumentUpload
-              documents={watch('eventDocuments') || []}
-              onChange={(docs) => setValue('eventDocuments', docs)}
+          {/* === ROW 5: Billing & Rate Settings + Services & Products === */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Billing & Rate Settings */}
+            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Billing & Rate Settings</h3>
+              <div className="space-y-4">
+                {/* Estimate Flag */}
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      {...register('estimate')}
+                      disabled={isSubmitting}
+                      className="rounded border-input"
+                    />
+                    <span className="text-sm font-medium">This is an estimate</span>
+                  </label>
+                </div>
+
+                {/* Task Rate Type */}
+                <div>
+                  <Label htmlFor="taskRateType">Task Rate Type</Label>
+                  <Select
+                    id="taskRateType"
+                    {...register('taskRateType')}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select type...</option>
+                    {AMOUNT_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                {/* Commission Section */}
+                <div className="border-t border-border/30 pt-4">
+                  <h4 className="text-sm font-medium mb-3">Commission</h4>
+                  <div className="mb-3">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        {...register('commission')}
+                        disabled={isSubmitting}
+                        className="rounded border-input"
+                      />
+                      <span className="text-sm">Has commission</span>
+                    </label>
+                  </div>
+
+                  {watch('commission') && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                      <div>
+                        <Label htmlFor="commissionAmount">Commission Amount</Label>
+                        <Input
+                          id="commissionAmount"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          {...register('commissionAmount', { valueAsNumber: true })}
+                          disabled={isSubmitting}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="commissionAmountType">Commission Type</Label>
+                        <Select
+                          id="commissionAmountType"
+                          {...register('commissionAmountType')}
+                          disabled={isSubmitting}
+                        >
+                          <option value="">Select type...</option>
+                          {AMOUNT_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Overtime Section */}
+                <div className="border-t border-border/30 pt-4">
+                  <h4 className="text-sm font-medium mb-3">Overtime</h4>
+                  <div className="mb-3">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        {...register('approveForOvertime')}
+                        disabled={isSubmitting}
+                        className="rounded border-input"
+                      />
+                      <span className="text-sm">Approved for overtime</span>
+                    </label>
+                  </div>
+
+                  {watch('approveForOvertime') && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                      <div>
+                        <Label htmlFor="overtimeRate">Overtime Rate</Label>
+                        <Input
+                          id="overtimeRate"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          {...register('overtimeRate', { valueAsNumber: true })}
+                          disabled={isSubmitting}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="overtimeRateType">Overtime Rate Type</Label>
+                        <Select
+                          id="overtimeRateType"
+                          {...register('overtimeRateType')}
+                          disabled={isSubmitting}
+                        >
+                          <option value="">Select type...</option>
+                          {AMOUNT_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Services & Products */}
+            <EventAttachmentsSection
+              attachedServices={attachedServices}
+              attachedProducts={attachedProducts}
+              onServicesChange={setAttachedServices}
+              onProductsChange={setAttachedProducts}
               disabled={isSubmitting}
             />
           </div>
 
-          {/* File Links */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 flex-1">File Links</h3>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ name: '', link: '' })}
-                disabled={isSubmitting}
-              >
-                <PlusIcon className="h-4 w-4 mr-1" />
-                Add File
-              </Button>
-            </div>
-
-            {fields.length === 0 && (
-              <p className="text-sm text-muted-foreground">No files added yet</p>
-            )}
-
-            <div className="space-y-3">
-              {fields.map((field, index) => (
-                <div key={field.id}>
-                  <div className="flex gap-2">
-                    <div className="flex-1 space-y-1">
-                      <Input
-                        {...register(`fileLinks.${index}.name` as const)}
-                        placeholder="File name"
-                        disabled={isSubmitting}
-                        error={!!(errors.fileLinks?.[index]?.name)}
-                      />
-                      {errors.fileLinks?.[index]?.name && (
-                        <p className="text-sm text-destructive">
-                          {errors.fileLinks[index]?.name?.message}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex-[2] space-y-1">
-                      <Input
-                        {...register(`fileLinks.${index}.link` as const)}
-                        placeholder="https://example.com/file.pdf"
-                        disabled={isSubmitting}
-                        error={!!(errors.fileLinks?.[index]?.link)}
-                      />
-                      {errors.fileLinks?.[index]?.link && (
-                        <p className="text-sm text-destructive">
-                          {errors.fileLinks[index]?.link?.message}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => remove(index)}
-                      disabled={isSubmitting}
-                      className="self-start"
-                    >
-                      <XIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Billing & Rate Settings */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Billing & Rate Settings</h3>
-            <div className="space-y-4">
-
-              {/* Estimate Flag */}
-              <div>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    {...register('estimate')}
-                    disabled={isSubmitting}
-                    className="rounded border-input"
-                  />
-                  <span className="text-sm font-medium">This is an estimate</span>
-                </label>
-              </div>
-
-              {/* Task Rate Type */}
-              <div>
-                <Label htmlFor="taskRateType">Task Rate Type</Label>
-                <Select
-                  id="taskRateType"
-                  {...register('taskRateType')}
-                  disabled={isSubmitting}
-                >
-                  <option value="">Select type...</option>
-                  {AMOUNT_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              {/* Commission Section */}
-              <div className="border-t border-border/30 pt-4">
-                <h4 className="text-sm font-medium mb-3">Commission</h4>
-
-                <div className="mb-3">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      {...register('commission')}
-                      disabled={isSubmitting}
-                      className="rounded border-input"
-                    />
-                    <span className="text-sm">Has commission</span>
-                  </label>
-                </div>
-
-                {watch('commission') && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                    <div>
-                      <Label htmlFor="commissionAmount">Commission Amount</Label>
-                      <Input
-                        id="commissionAmount"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        {...register('commissionAmount', { valueAsNumber: true })}
-                        disabled={isSubmitting}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="commissionAmountType">Commission Type</Label>
-                      <Select
-                        id="commissionAmountType"
-                        {...register('commissionAmountType')}
-                        disabled={isSubmitting}
-                      >
-                        <option value="">Select type...</option>
-                        {AMOUNT_TYPE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Overtime Section */}
-              <div className="border-t border-border/30 pt-4">
-                <h4 className="text-sm font-medium mb-3">Overtime</h4>
-
-                <div className="mb-3">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      {...register('approveForOvertime')}
-                      disabled={isSubmitting}
-                      className="rounded border-input"
-                    />
-                    <span className="text-sm">Approved for overtime</span>
-                  </label>
-                </div>
-
-                {watch('approveForOvertime') && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                    <div>
-                      <Label htmlFor="overtimeRate">Overtime Rate</Label>
-                      <Input
-                        id="overtimeRate"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        {...register('overtimeRate', { valueAsNumber: true })}
-                        disabled={isSubmitting}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="overtimeRateType">Overtime Rate Type</Label>
-                      <Select
-                        id="overtimeRateType"
-                        {...register('overtimeRateType')}
-                        disabled={isSubmitting}
-                      >
-                        <option value="">Select type...</option>
-                        {AMOUNT_TYPE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-            </div>
-          </div>
-
-          {/* Services & Products */}
-          <EventAttachmentsSection
-            attachedServices={attachedServices}
-            attachedProducts={attachedProducts}
-            onServicesChange={setAttachedServices}
-            onProductsChange={setAttachedProducts}
-            disabled={isSubmitting}
-          />
-
-          {/* Private Notes */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+          {/* === ROW 6: Private Notes (full width) === */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6 lg:max-w-2xl">
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Private Notes</h3>
-            <div className="space-y-4">
-
-              <div>
-                <Label htmlFor="privateComments">Private Comments</Label>
-                <Textarea
-                  id="privateComments"
-                  {...register('privateComments')}
-                  disabled={isSubmitting}
-                  rows={3}
-                  placeholder="Internal notes (not visible to clients)"
-                />
-                {errors.privateComments && (
-                  <p className="text-sm text-destructive mt-1">{errors.privateComments.message}</p>
-                )}
-              </div>
+            <div>
+              <Label htmlFor="privateComments">Private Comments</Label>
+              <Textarea
+                id="privateComments"
+                {...register('privateComments')}
+                disabled={isSubmitting}
+                rows={3}
+                placeholder="Internal notes (not visible to clients)"
+              />
+              {errors.privateComments && (
+                <p className="text-sm text-destructive mt-1">{errors.privateComments.message}</p>
+              )}
             </div>
           </div>
         </DialogContent>
 
         <DialogFooter>
+          {isEdit && onViewDetails && (
+            <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto">
+              <EyeIcon className="h-4 w-4 mr-1" />
+              View Details
+            </Button>
+          )}
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
