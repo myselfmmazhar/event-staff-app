@@ -17,7 +17,6 @@ import { ServiceFilters } from '@/components/catalog/services/service-filters';
 import { ServiceTable } from '@/components/catalog/services/service-table';
 import { ServiceFormModal } from '@/components/catalog/services/service-form-modal';
 import { DeleteServiceModal } from '@/components/catalog/services/delete-service-modal';
-import { ViewServiceModal } from '@/components/catalog/services/view-service-modal';
 import { useServicesFilters, type ServiceStatus, type ServiceSortBy, type SortOrder } from '@/store/services-filters.store';
 import type { Service } from '@/lib/types/service';
 import type { CreateServiceInput } from '@/lib/schemas/service.schema';
@@ -62,7 +61,6 @@ export default function ServicesPage() {
 
   const [modals, setModals] = useState({
     form: false,
-    view: false,
     delete: false,
   });
 
@@ -152,7 +150,7 @@ export default function ServicesPage() {
   const updateMutation = trpc.service.update.useMutation(
     updateMutationOptions('Service updated successfully', {
       onSuccess: () => {
-        setModals((prev) => ({ ...prev, form: false, view: false }));
+        setModals((prev) => ({ ...prev, form: false }));
         setSelectedService(null);
         refetch();
       },
@@ -193,14 +191,6 @@ export default function ServicesPage() {
     services.find((service) => service.id === id);
 
   const clearSelection = () => setSelectedIds(new Set());
-
-  const handleView = (id: string) => {
-    const service = getServiceById(id);
-    if (service) {
-      setSelectedService(service);
-      setModals((prev) => ({ ...prev, view: true }));
-    }
-  };
 
   const handleEdit = (id: string) => {
     const service = getServiceById(id);
@@ -341,7 +331,6 @@ export default function ServicesPage() {
             isLoading={isLoading}
             sortBy={filters.sortBy}
             sortOrder={filters.sortOrder}
-            onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onToggleActive={handleToggleActive}
@@ -382,15 +371,6 @@ export default function ServicesPage() {
         }}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
         backendErrors={backendErrors}
-      />
-
-      <ViewServiceModal
-        service={selectedService}
-        open={modals.view}
-        onClose={() => {
-          setModals((prev) => ({ ...prev, view: false }));
-          setSelectedService(null);
-        }}
       />
 
       <DeleteServiceModal

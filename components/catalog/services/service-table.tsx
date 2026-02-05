@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
-import { EditIcon, EyeIcon, TrashIcon } from '@/components/ui/icons';
+import { EditIcon, TrashIcon } from '@/components/ui/icons';
 import type { ServiceTableRow } from '@/lib/types/service';
 import {
   COST_UNIT_TYPE_LABELS,
@@ -15,7 +15,6 @@ import { formatDollarOrPlaceholder } from '@/lib/utils/currency-formatter';
 interface ServiceTableProps {
   services: ServiceTableRow[];
   isLoading?: boolean;
-  onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string, isActive: boolean) => void;
@@ -30,7 +29,6 @@ interface ServiceTableProps {
 export function ServiceTable({
   services,
   isLoading,
-  onView,
   onEdit,
   onDelete,
   onToggleActive,
@@ -112,15 +110,6 @@ export function ServiceTable({
       headerClassName: 'text-left py-3 px-4',
       render: (service) => (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onView(service.id)}
-            title="View service details"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -218,15 +207,6 @@ export function ServiceTable({
         </div>
 
         <div className="flex items-center gap-2 pt-2 border-t border-border">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onView(service.id)}
-            className="flex-1"
-          >
-            <EyeIcon className="h-4 w-4 mr-1" />
-            View
-          </Button>
           <Button
             variant="outline"
             size="sm"

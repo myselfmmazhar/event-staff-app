@@ -18,7 +18,7 @@ import { createPortal } from 'react-dom';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { SearchIcon, PlusIcon } from 'lucide-react';
 import { z } from 'zod';
-import { CloseIcon } from '@/components/ui/icons';
+import { CloseIcon, EyeIcon } from '@/components/ui/icons';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
 import { AccountStatus, StaffType, SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
@@ -42,6 +42,7 @@ interface StaffFormModalProps {
     onClose: () => void;
     onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>) => void;
     isSubmitting: boolean;
+    onViewDetails?: () => void;
 }
 
 export function StaffFormModal({
@@ -50,6 +51,7 @@ export function StaffFormModal({
     onClose,
     onSubmit,
     isSubmitting,
+    onViewDetails,
 }: StaffFormModalProps) {
 
     const { terminology } = useTerminology();
@@ -179,9 +181,9 @@ export function StaffFormModal({
 
     return (
         <>
-            <Dialog open={open} onClose={onClose} className="max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
-                <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col h-full overflow-hidden">
-                    <DialogHeader className="shrink-0">
+            <Dialog open={open} onClose={onClose} fullScreen>
+                <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
+                    <DialogHeader>
                         <div className="flex items-center justify-between">
                             <DialogTitle>{isEdit ? `Edit ${terminology.staff.singular}` : `Add New ${terminology.staff.singular}`}</DialogTitle>
                             <button
@@ -208,179 +210,196 @@ export function StaffFormModal({
                             </div>
                         )}
 
-                        {/* Account Details */}
-                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Account Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <Label htmlFor="accountStatus" required>Account Status</Label>
-                                    <Controller
-                                        name="accountStatus"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select {...field} disabled={isSubmitting}>
-                                                <option value={AccountStatus.ACTIVE}>Active</option>
-                                                <option value={AccountStatus.DISABLED}>Disabled</option>
-                                                <option value={AccountStatus.PENDING}>Pending</option>
-                                            </Select>
-                                        )}
-                                    />
-                                    {errors.accountStatus && (
-                                        <p className="text-sm text-destructive mt-1">{errors.accountStatus.message}</p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="staffType" required>{terminology.staff.singular} Type</Label>
-                                    <Controller
-                                        name="staffType"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select {...field} disabled={isSubmitting}>
-                                                <option value={StaffType.EMPLOYEE}>Employee</option>
-                                                <option value={StaffType.CONTRACTOR}>Contractor</option>
-                                            </Select>
-                                        )}
-                                    />
-                                    {errors.staffType && (
-                                        <p className="text-sm text-destructive mt-1">{errors.staffType.message}</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Staff Information */}
-                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">{terminology.staff.singular} Information</h3>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="firstName" required>First Name</Label>
-                                        <Input
-                                            id="firstName"
-                                            {...register('firstName')}
-                                            error={!!errors.firstName}
-                                            disabled={isSubmitting}
-                                        />
-                                        {errors.firstName && (
-                                            <p className="text-sm text-destructive mt-1">{errors.firstName.message}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="lastName" required>Last Name</Label>
-                                        <Input
-                                            id="lastName"
-                                            {...register('lastName')}
-                                            error={!!errors.lastName}
-                                            disabled={isSubmitting}
-                                        />
-                                        {errors.lastName && (
-                                            <p className="text-sm text-destructive mt-1">{errors.lastName.message}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="email" required>Email</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        {...register('email')}
-                                        error={!!errors.email}
-                                        disabled={isSubmitting}
-                                    />
-                                    {errors.email && (
-                                        <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="skillLevel" required>Experience</Label>
-                                        <Controller
-                                            name="skillLevel"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Select {...field} disabled={isSubmitting}>
-                                                    <option value={SkillLevel.BEGINNER}>Beginner</option>
-                                                    <option value={SkillLevel.INTERMEDIATE}>Intermediate</option>
-                                                    <option value={SkillLevel.ADVANCED}>Advanced</option>
-                                                </Select>
-                                            )}
-                                        />
-                                        {errors.skillLevel && (
-                                            <p className="text-sm text-destructive mt-1">{errors.skillLevel.message}</p>
-                                        )}
-                                    </div>
-
-                                    {staffType === StaffType.EMPLOYEE && (
+                        {/* Row 1: Staff Information + Account Details & Availability (side-by-side on lg+) */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            {/* Staff Information */}
+                            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">{terminology.staff.singular} Information</h3>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <Label htmlFor="contractorId">Contractor</Label>
+                                            <Label htmlFor="firstName" required>First Name</Label>
+                                            <Input
+                                                id="firstName"
+                                                {...register('firstName')}
+                                                error={!!errors.firstName}
+                                                disabled={isSubmitting}
+                                            />
+                                            {errors.firstName && (
+                                                <p className="text-sm text-destructive mt-1">{errors.firstName.message}</p>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="lastName" required>Last Name</Label>
+                                            <Input
+                                                id="lastName"
+                                                {...register('lastName')}
+                                                error={!!errors.lastName}
+                                                disabled={isSubmitting}
+                                            />
+                                            {errors.lastName && (
+                                                <p className="text-sm text-destructive mt-1">{errors.lastName.message}</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="email" required>Email</Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            {...register('email')}
+                                            error={!!errors.email}
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.email && (
+                                            <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label htmlFor="skillLevel" required>Experience</Label>
                                             <Controller
-                                                name="contractorId"
+                                                name="skillLevel"
                                                 control={control}
                                                 render={({ field }) => (
-                                                    <Select
-                                                        value={field.value || ''}
-                                                        onChange={(e) => field.onChange(e.target.value || null)}
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        <option value="">None</option>
-                                                        {contractors.map((c) => (
-                                                            <option key={c.id} value={c.id}>
-                                                                {c.firstName} {c.lastName} ({c.staffId})
-                                                            </option>
-                                                        ))}
+                                                    <Select {...field} disabled={isSubmitting}>
+                                                        <option value={SkillLevel.BEGINNER}>Beginner</option>
+                                                        <option value={SkillLevel.INTERMEDIATE}>Intermediate</option>
+                                                        <option value={SkillLevel.ADVANCED}>Advanced</option>
+                                                    </Select>
+                                                )}
+                                            />
+                                            {errors.skillLevel && (
+                                                <p className="text-sm text-destructive mt-1">{errors.skillLevel.message}</p>
+                                            )}
+                                        </div>
+
+                                        {staffType === StaffType.EMPLOYEE && (
+                                            <div>
+                                                <Label htmlFor="contractorId">Contractor</Label>
+                                                <Controller
+                                                    name="contractorId"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select
+                                                            value={field.value || ''}
+                                                            onChange={(e) => field.onChange(e.target.value || null)}
+                                                            disabled={isSubmitting}
+                                                        >
+                                                            <option value="">None</option>
+                                                            {contractors.map((c) => (
+                                                                <option key={c.id} value={c.id}>
+                                                                    {c.firstName} {c.lastName} ({c.staffId})
+                                                                </option>
+                                                            ))}
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Account Details + Availability (stacked in right column) */}
+                            <div className="space-y-6">
+                                {/* Account Details */}
+                                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Account Details</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label htmlFor="accountStatus" required>Account Status</Label>
+                                            <Controller
+                                                name="accountStatus"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select {...field} disabled={isSubmitting}>
+                                                        <option value={AccountStatus.ACTIVE}>Active</option>
+                                                        <option value={AccountStatus.DISABLED}>Disabled</option>
+                                                        <option value={AccountStatus.PENDING}>Pending</option>
+                                                    </Select>
+                                                )}
+                                            />
+                                            {errors.accountStatus && (
+                                                <p className="text-sm text-destructive mt-1">{errors.accountStatus.message}</p>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="staffType" required>{terminology.staff.singular} Type</Label>
+                                            <Controller
+                                                name="staffType"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select {...field} disabled={isSubmitting}>
+                                                        <option value={StaffType.EMPLOYEE}>Employee</option>
+                                                        <option value={StaffType.CONTRACTOR}>Contractor</option>
+                                                    </Select>
+                                                )}
+                                            />
+                                            {errors.staffType && (
+                                                <p className="text-sm text-destructive mt-1">{errors.staffType.message}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Availability Status */}
+                                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Availability</h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <Label htmlFor="availabilityStatus">Availability Status</Label>
+                                            <Controller
+                                                name="availabilityStatus"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select {...field} disabled={isSubmitting}>
+                                                        <option value={AvailabilityStatus.OPEN_TO_OFFERS}>Open to Offers</option>
+                                                        <option value={AvailabilityStatus.BUSY}>Busy</option>
+                                                        <option value={AvailabilityStatus.TIME_OFF}>Time Off</option>
                                                     </Select>
                                                 )}
                                             />
                                         </div>
-                                    )}
-                                </div>
 
-                                {/* Availability Status */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <Label htmlFor="availabilityStatus">Availability Status</Label>
-                                        <Controller
-                                            name="availabilityStatus"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Select {...field} disabled={isSubmitting}>
-                                                    <option value={AvailabilityStatus.OPEN_TO_OFFERS}>Open to Offers</option>
-                                                    <option value={AvailabilityStatus.BUSY}>Busy</option>
-                                                    <option value={AvailabilityStatus.TIME_OFF}>Time Off</option>
-                                                </Select>
-                                            )}
-                                        />
-                                    </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <Label htmlFor="timeOffStart">Time Off Start</Label>
+                                                <Input
+                                                    id="timeOffStart"
+                                                    type="date"
+                                                    {...register('timeOffStart', { valueAsDate: true })}
+                                                    disabled={isSubmitting}
+                                                />
+                                            </div>
 
-                                    <div>
-                                        <Label htmlFor="timeOffStart">Time Off Start</Label>
-                                        <Input
-                                            id="timeOffStart"
-                                            type="date"
-                                            {...register('timeOffStart', { valueAsDate: true })}
-                                            disabled={isSubmitting}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="timeOffEnd">Time Off End</Label>
-                                        <Input
-                                            id="timeOffEnd"
-                                            type="date"
-                                            {...register('timeOffEnd', { valueAsDate: true })}
-                                            disabled={isSubmitting}
-                                        />
+                                            <div>
+                                                <Label htmlFor="timeOffEnd">Time Off End</Label>
+                                                <Input
+                                                    id="timeOffEnd"
+                                                    type="date"
+                                                    {...register('timeOffEnd', { valueAsDate: true })}
+                                                    disabled={isSubmitting}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                {/* Services */}
-                                <div>
+                        {/* Row 2: Assigned Services + Admin Only Fields (side-by-side on lg+) */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Assigned Services */}
+                            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Assigned Services</h3>
+                                <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <Label required>Assigned Services</Label>
+                                        <Label required>Services</Label>
                                         <Button
                                             type="button"
                                             variant="ghost"
@@ -393,8 +412,7 @@ export function StaffFormModal({
                                             Add New
                                         </Button>
                                     </div>
-                                    {/* Service Search */}
-                                    <div className="relative mt-2">
+                                    <div className="relative">
                                         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Search services..."
@@ -407,7 +425,7 @@ export function StaffFormModal({
                                         name="serviceIds"
                                         control={control}
                                         render={({ field }) => (
-                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto p-3 border rounded-md">
+                                            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-3 border rounded-md">
                                                 {filteredServices.length > 0 ? (
                                                     filteredServices.map((service) => (
                                                         <div key={service.id} className="flex items-center space-x-2">
@@ -442,58 +460,63 @@ export function StaffFormModal({
                                         <p className="text-sm text-destructive mt-1">{errors.serviceIds.message}</p>
                                     )}
                                 </div>
-
                             </div>
-                        </div>
 
-                        {/* Admin Only Fields */}
-                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-                                Admin Only Fields
-                            </h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <Label htmlFor="experience">Experience</Label>
-                                    <Textarea
-                                        id="experience"
-                                        {...register('experience')}
-                                        disabled={isSubmitting}
-                                        rows={3}
-                                        placeholder={`${terminology.staff.singular} experience and background`}
-                                    />
-                                </div>
+                            {/* Admin Only Fields */}
+                            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
+                                    Admin Only Fields
+                                </h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label htmlFor="experience">Experience</Label>
+                                        <Textarea
+                                            id="experience"
+                                            {...register('experience')}
+                                            disabled={isSubmitting}
+                                            rows={3}
+                                            placeholder={`${terminology.staff.singular} experience and background`}
+                                        />
+                                    </div>
 
-                                <div>
-                                    <Label htmlFor="staffRating">{terminology.staff.singular} Rating</Label>
-                                    <Controller
-                                        name="staffRating"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select {...field} disabled={isSubmitting}>
-                                                <option value={StaffRating.NA}>N/A</option>
-                                                <option value={StaffRating.A}>A</option>
-                                                <option value={StaffRating.B}>B</option>
-                                                <option value={StaffRating.C}>C</option>
-                                            </Select>
-                                        )}
-                                    />
-                                </div>
+                                    <div>
+                                        <Label htmlFor="staffRating">{terminology.staff.singular} Rating</Label>
+                                        <Controller
+                                            name="staffRating"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select {...field} disabled={isSubmitting}>
+                                                    <option value={StaffRating.NA}>N/A</option>
+                                                    <option value={StaffRating.A}>A</option>
+                                                    <option value={StaffRating.B}>B</option>
+                                                    <option value={StaffRating.C}>C</option>
+                                                </Select>
+                                            )}
+                                        />
+                                    </div>
 
-                                <div>
-                                    <Label htmlFor="internalNotes">Internal Admin Notes</Label>
-                                    <Textarea
-                                        id="internalNotes"
-                                        {...register('internalNotes')}
-                                        disabled={isSubmitting}
-                                        rows={3}
-                                        placeholder={`Internal notes (not visible to ${terminology.staff.lower})`}
-                                    />
+                                    <div>
+                                        <Label htmlFor="internalNotes">Internal Admin Notes</Label>
+                                        <Textarea
+                                            id="internalNotes"
+                                            {...register('internalNotes')}
+                                            disabled={isSubmitting}
+                                            rows={3}
+                                            placeholder={`Internal notes (not visible to ${terminology.staff.lower})`}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </DialogContent>
 
-                    <DialogFooter className="shrink-0">
+                    <DialogFooter>
+                        {isEdit && onViewDetails && (
+                            <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto">
+                                <EyeIcon className="h-4 w-4 mr-2" />
+                                View Details
+                            </Button>
+                        )}
                         <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
                             Cancel
                         </Button>

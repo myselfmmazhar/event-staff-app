@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit2Icon, Trash2Icon, EyeIcon } from 'lucide-react';
+import { Edit2Icon, Trash2Icon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { AvailabilityStatus, AccountStatus, StaffType, SkillLevel, StaffRating } from '@prisma/client';
 import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
@@ -46,7 +46,6 @@ export type StaffWithRelations = {
 
 interface StaffTableProps {
     staff: StaffWithRelations[];
-    onView: (staff: StaffWithRelations) => void;
     onEdit: (staff: StaffWithRelations) => void;
     onDelete: (staff: StaffWithRelations) => void;
     // Optional selection props
@@ -54,7 +53,7 @@ interface StaffTableProps {
     onSelectionChange?: (ids: Set<string>) => void;
 }
 
-export function StaffTable({ staff, onView, onEdit, onDelete, selectedIds, onSelectionChange }: StaffTableProps) {
+export function StaffTable({ staff, onEdit, onDelete, selectedIds, onSelectionChange }: StaffTableProps) {
     const staffTerm = useStaffTerm();
     const { terminology } = useTerminology();
 
@@ -187,15 +186,6 @@ export function StaffTable({ staff, onView, onEdit, onDelete, selectedIds, onSel
                         variant="ghost"
                         size="sm"
                         className="px-0"
-                        onClick={() => onView(member)}
-                        title="View details"
-                    >
-                        <EyeIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
                         onClick={() => onEdit(member)}
                         title={`Edit ${staffTerm.lower}`}
                     >
@@ -305,15 +295,6 @@ export function StaffTable({ staff, onView, onEdit, onDelete, selectedIds, onSel
             </div>
 
             <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onView(member)}
-                    className="flex-1"
-                >
-                    <EyeIcon className="h-4 w-4 mr-1" />
-                    View
-                </Button>
                 <Button
                     variant="outline"
                     size="sm"

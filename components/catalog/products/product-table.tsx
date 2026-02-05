@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
-import { EditIcon, EyeIcon, TrashIcon } from '@/components/ui/icons';
+import { EditIcon, TrashIcon } from '@/components/ui/icons';
 import type { ProductTableRow } from '@/lib/types/product';
 import { MINIMUM_PURCHASE_LABELS, PRICE_UNIT_TYPE_LABELS } from '@/lib/constants/enums';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
@@ -13,7 +13,6 @@ import { formatDollarOrPlaceholder } from '@/lib/utils/currency-formatter';
 interface ProductTableProps {
   products: ProductTableRow[];
   isLoading?: boolean;
-  onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string, isActive: boolean) => void;
@@ -28,7 +27,6 @@ interface ProductTableProps {
 export function ProductTable({
   products,
   isLoading,
-  onView,
   onEdit,
   onDelete,
   onToggleActive,
@@ -113,15 +111,6 @@ export function ProductTable({
       headerClassName: 'text-left py-3 px-4',
       render: (product) => (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onView(product.id)}
-            title="View product details"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -236,15 +225,6 @@ export function ProductTable({
         </div>
 
         <div className="flex items-center gap-2 pt-2 border-t border-border">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onView(product.id)}
-            className="flex-1"
-          >
-            <EyeIcon className="h-4 w-4 mr-1" />
-            View
-          </Button>
           <Button
             variant="outline"
             size="sm"

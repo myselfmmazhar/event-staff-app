@@ -317,11 +317,6 @@ export default function StaffPage() {
         setModals((prev) => ({ ...prev, form: true }));
     };
 
-    const handleView = (staff: StaffWithRelations) => {
-        setSelectedStaff(staff);
-        setModals((prev) => ({ ...prev, view: true }));
-    };
-
     const handleEdit = (staff: StaffWithRelations) => {
         setSelectedStaff(staff);
         setModals((prev) => ({ ...prev, form: true }));
@@ -358,6 +353,10 @@ export default function StaffPage() {
     const handleDelete = (staff: StaffWithRelations) => {
         setSelectedStaff(staff);
         setModals((prev) => ({ ...prev, delete: true }));
+    };
+
+    const handleViewFromEdit = () => {
+        setModals((prev) => ({ ...prev, form: false, view: true }));
     };
 
     const handleFormSubmit = (formData: CreateStaffInput | Omit<UpdateStaffInput, 'id'>) => {
@@ -649,7 +648,6 @@ export default function StaffPage() {
                         <>
                             <StaffTable
                                 staff={data?.data ?? []}
-                                onView={handleView}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
                                 selectedIds={selectedIds}
@@ -684,6 +682,7 @@ export default function StaffPage() {
                 }}
                 onSubmit={handleFormSubmit}
                 isSubmitting={createMutation.isPending || updateMutation.isPending}
+                onViewDetails={handleViewFromEdit}
             />
 
             <ViewStaffModal

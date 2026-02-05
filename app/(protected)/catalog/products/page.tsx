@@ -9,7 +9,6 @@ import { ProductSearch } from '@/components/catalog/products/product-search';
 import { ProductFilters } from '@/components/catalog/products/product-filters';
 import { ProductTable } from '@/components/catalog/products/product-table';
 import { DeleteProductModal } from '@/components/catalog/products/delete-product-modal';
-import { ViewProductModal } from '@/components/catalog/products/view-product-modal';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +61,6 @@ export default function ProductsPage() {
 
   const [modals, setModals] = useState({
     form: false,
-    view: false,
     delete: false,
   });
 
@@ -172,7 +170,7 @@ export default function ProductsPage() {
   const updateMutation = trpc.product.update.useMutation(
     updateMutationOptions('Product updated successfully', {
       onSuccess: () => {
-        setModals((prev) => ({ ...prev, form: false, view: false }));
+        setModals((prev) => ({ ...prev, form: false }));
         setSelectedProduct(null);
         refetch();
       },
@@ -213,14 +211,6 @@ export default function ProductsPage() {
     products.find((product) => product.id === id);
 
   const clearSelection = () => setSelectedIds(new Set());
-
-  const handleView = (id: string) => {
-    const product = getProductById(id);
-    if (product) {
-      setSelectedProduct(product);
-      setModals((prev) => ({ ...prev, view: true }));
-    }
-  };
 
   const handleEdit = (id: string) => {
     const product = getProductById(id);
@@ -360,7 +350,6 @@ export default function ProductsPage() {
             isLoading={isLoading}
             sortBy={filters.sortBy}
             sortOrder={filters.sortOrder}
-            onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onToggleActive={handleToggleActive}
@@ -401,15 +390,6 @@ export default function ProductsPage() {
         }}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
         backendErrors={backendErrors}
-      />
-
-      <ViewProductModal
-        product={selectedProduct}
-        open={modals.view}
-        onClose={() => {
-          setModals((prev) => ({ ...prev, view: false }));
-          setSelectedProduct(null);
-        }}
       />
 
       <DeleteProductModal
