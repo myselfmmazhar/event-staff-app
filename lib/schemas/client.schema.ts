@@ -56,6 +56,11 @@ const baseFields = {
     .max(5000, "Details must be 5000 characters or less")
     .transform((val) => val?.trim())
     .optional(),
+  requirements: z
+    .string()
+    .max(200, "Requirements must be 200 characters or less")
+    .transform((val) => val?.trim())
+    .optional(),
 
   // Business Address (optional)
   businessAddress: z

@@ -87,6 +87,12 @@ export function ViewClientModal({
                 <p className="text-base whitespace-pre-wrap">{client.details}</p>
               </div>
             )}
+            {client.requirements && (
+              <div>
+                <p className="text-sm text-muted-foreground">Requirements</p>
+                <p className="text-base whitespace-pre-wrap">{client.requirements}</p>
+              </div>
+            )}
           </div>
         </div>
 

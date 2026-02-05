@@ -40,6 +40,7 @@ export type ClientSelect = Prisma.ClientGetPayload<{
     cellPhone: true;
     businessPhone: true;
     details: true;
+    requirements: true;
     businessAddress: true;
     city: true;
     state: true;
