@@ -74,29 +74,29 @@ export default function ProductsPage() {
     setModals((prev) => ({ ...prev, form: true }));
   };
 
+  // Rehydrate filters from localStorage on mount, then apply URL params if present
   useEffect(() => {
-    const page = parseNumberParam(searchParams.get('page'), 1);
-    const limit = parseNumberParam(searchParams.get('limit'), 10);
-    const search = searchParams.get('search') || '';
-    const statusesFromParam = parseStatusesParam(searchParams.get('statuses'));
-    const activeParam = searchParams.get('active');
-    const statuses =
-      statusesFromParam.length > 0
-        ? statusesFromParam
-        : activeParam === 'active'
-          ? (['active'] as ProductStatus[])
-          : activeParam === 'inactive'
-            ? (['inactive'] as ProductStatus[])
-            : [];
-    const sortBy = parseSortByParam(searchParams.get('sortBy'));
-    const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
+    useProductsFilters.persist.rehydrate();
 
-    filters.setPage(page);
-    filters.setLimit(limit);
-    filters.setSearch(search);
-    filters.setStatuses(statuses);
-    filters.setSortBy(sortBy);
-    filters.setSortOrder(sortOrder);
+    // Only override with URL params if they are explicitly set
+    if (searchParams.has('page')) filters.setPage(parseNumberParam(searchParams.get('page'), 1));
+    if (searchParams.has('limit')) filters.setLimit(parseNumberParam(searchParams.get('limit'), 10));
+    if (searchParams.has('search')) filters.setSearch(searchParams.get('search') || '');
+    if (searchParams.has('statuses') || searchParams.has('active')) {
+      const statusesFromParam = parseStatusesParam(searchParams.get('statuses'));
+      const activeParam = searchParams.get('active');
+      const statuses =
+        statusesFromParam.length > 0
+          ? statusesFromParam
+          : activeParam === 'active'
+            ? (['active'] as ProductStatus[])
+            : activeParam === 'inactive'
+              ? (['inactive'] as ProductStatus[])
+              : [];
+      filters.setStatuses(statuses);
+    }
+    if (searchParams.has('sortBy')) filters.setSortBy(parseSortByParam(searchParams.get('sortBy')));
+    if (searchParams.has('sortOrder')) filters.setSortOrder(parseSortOrderParam(searchParams.get('sortOrder')));
 
     // Category filtering was removed; strip any stale URL param.
     // Active filter was replaced by statuses multi-select; strip old param.

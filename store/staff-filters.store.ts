@@ -1,29 +1,25 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { UserRole } from "@prisma/client";
+import { AccountStatus, StaffType, SkillLevel } from "@prisma/client";
 
-export type UserSortBy = "createdAt" | "updatedAt" | "firstName" | "lastName" | "email" | "role";
+export type StaffSortBy = "staffId" | "name" | "createdAt";
 export type SortOrder = "asc" | "desc";
-export type UserStatusFilter = "active" | "inactive";
-export type UserEmailVerifiedFilter = "verified" | "unverified";
-export type UserPhoneFilter = "hasPhone" | "noPhone";
 
-interface UsersFiltersState {
+interface StaffFiltersState {
   // Pagination
   page: number;
   limit: number;
 
   // Search & Filters
   search: string;
-  roles: UserRole[];
-  statuses: UserStatusFilter[];
-  emailVerified: UserEmailVerifiedFilter[];
-  hasPhone: UserPhoneFilter[];
+  accountStatuses: AccountStatus[];
+  staffTypes: StaffType[];
+  skillLevels: SkillLevel[];
   createdFrom: string;
   createdTo: string;
 
   // Sorting
-  sortBy: UserSortBy;
+  sortBy: StaffSortBy;
   sortOrder: SortOrder;
 
   // Actions - Pagination
@@ -32,15 +28,14 @@ interface UsersFiltersState {
 
   // Actions - Search & Filters
   setSearch: (search: string) => void;
-  setRoles: (roles: UserRole[]) => void;
-  setStatuses: (statuses: UserStatusFilter[]) => void;
-  setEmailVerified: (emailVerified: UserEmailVerifiedFilter[]) => void;
-  setHasPhone: (hasPhone: UserPhoneFilter[]) => void;
-  setCreatedFrom: (date: string) => void;
-  setCreatedTo: (date: string) => void;
+  setAccountStatuses: (accountStatuses: AccountStatus[]) => void;
+  setStaffTypes: (staffTypes: StaffType[]) => void;
+  setSkillLevels: (skillLevels: SkillLevel[]) => void;
+  setCreatedFrom: (createdFrom: string) => void;
+  setCreatedTo: (createdTo: string) => void;
 
   // Actions - Sorting
-  setSortBy: (sortBy: UserSortBy) => void;
+  setSortBy: (sortBy: StaffSortBy) => void;
   setSortOrder: (sortOrder: SortOrder) => void;
 
   // Actions - Bulk
@@ -50,10 +45,9 @@ interface UsersFiltersState {
 
 const DEFAULT_FILTERS = {
   search: "",
-  roles: [] as UserRole[],
-  statuses: [] as UserStatusFilter[],
-  emailVerified: [] as UserEmailVerifiedFilter[],
-  hasPhone: [] as UserPhoneFilter[],
+  accountStatuses: [] as AccountStatus[],
+  staffTypes: [] as StaffType[],
+  skillLevels: [] as SkillLevel[],
   createdFrom: "",
   createdTo: "",
 };
@@ -62,11 +56,11 @@ const DEFAULT_STATE = {
   page: 1,
   limit: 10,
   ...DEFAULT_FILTERS,
-  sortBy: "createdAt" as UserSortBy,
+  sortBy: "createdAt" as StaffSortBy,
   sortOrder: "desc" as SortOrder,
 };
 
-export const useUsersFilters = create<UsersFiltersState>()(
+export const useStaffFilters = create<StaffFiltersState>()(
   persist(
     (set) => ({
       ...DEFAULT_STATE,
@@ -77,10 +71,9 @@ export const useUsersFilters = create<UsersFiltersState>()(
 
       // Search & Filter actions
       setSearch: (search) => set({ search, page: 1 }),
-      setRoles: (roles) => set({ roles, page: 1 }),
-      setStatuses: (statuses) => set({ statuses, page: 1 }),
-      setEmailVerified: (emailVerified) => set({ emailVerified, page: 1 }),
-      setHasPhone: (hasPhone) => set({ hasPhone, page: 1 }),
+      setAccountStatuses: (accountStatuses) => set({ accountStatuses, page: 1 }),
+      setStaffTypes: (staffTypes) => set({ staffTypes, page: 1 }),
+      setSkillLevels: (skillLevels) => set({ skillLevels, page: 1 }),
       setCreatedFrom: (createdFrom) => set({ createdFrom, page: 1 }),
       setCreatedTo: (createdTo) => set({ createdTo, page: 1 }),
 
@@ -93,13 +86,12 @@ export const useUsersFilters = create<UsersFiltersState>()(
       resetAll: () => set(DEFAULT_STATE),
     }),
     {
-      name: "users-filters",
+      name: "staff-filters",
       partialize: (state) => ({
         search: state.search,
-        roles: state.roles,
-        statuses: state.statuses,
-        emailVerified: state.emailVerified,
-        hasPhone: state.hasPhone,
+        accountStatuses: state.accountStatuses,
+        staffTypes: state.staffTypes,
+        skillLevels: state.skillLevels,
         createdFrom: state.createdFrom,
         createdTo: state.createdTo,
         sortBy: state.sortBy,

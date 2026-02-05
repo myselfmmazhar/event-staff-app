@@ -110,31 +110,30 @@ export default function UsersPage() {
   const [userToResend, setUserToResend] = useState<UserTableRow | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Initialize store from URL params on mount
+  // Rehydrate filters from localStorage on mount, then apply URL params if present
   useEffect(() => {
-    const page = parseNumberParam(searchParams.get('page'), 1);
-    const limit = parseNumberParam(searchParams.get('limit'), 10);
-    const search = searchParams.get('search') || '';
-    const roles = parseRolesParam(searchParams.get('roles') ?? searchParams.get('selectedRole') ?? searchParams.get('role'));
-    const statuses = parseStatusesParam(searchParams.get('statuses') ?? searchParams.get('selectedStatus') ?? searchParams.get('status'));
-    const emailVerified = parseEmailVerifiedParam(searchParams.get('emailVerified') ?? searchParams.get('selectedEmailVerified'));
-    const hasPhone = parseHasPhoneParam(searchParams.get('hasPhone') ?? searchParams.get('selectedHasPhone'));
-    const createdFrom = parseDateParam(searchParams.get('createdFrom'));
-    const createdTo = parseDateParam(searchParams.get('createdTo'));
-    const sortBy = parseSortByParam(searchParams.get('sortBy'));
-    const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
+    useUsersFilters.persist.rehydrate();
 
-    filters.setPage(page);
-    filters.setLimit(limit);
-    filters.setSearch(search);
-    filters.setRoles(roles);
-    filters.setStatuses(statuses);
-    filters.setEmailVerified(emailVerified);
-    filters.setHasPhone(hasPhone);
-    filters.setCreatedFrom(createdFrom);
-    filters.setCreatedTo(createdTo);
-    filters.setSortBy(sortBy);
-    filters.setSortOrder(sortOrder);
+    // Only override with URL params if they are explicitly set
+    if (searchParams.has('page')) filters.setPage(parseNumberParam(searchParams.get('page'), 1));
+    if (searchParams.has('limit')) filters.setLimit(parseNumberParam(searchParams.get('limit'), 10));
+    if (searchParams.has('search')) filters.setSearch(searchParams.get('search') || '');
+    if (searchParams.has('roles') || searchParams.has('selectedRole') || searchParams.has('role')) {
+      filters.setRoles(parseRolesParam(searchParams.get('roles') ?? searchParams.get('selectedRole') ?? searchParams.get('role')));
+    }
+    if (searchParams.has('statuses') || searchParams.has('selectedStatus') || searchParams.has('status')) {
+      filters.setStatuses(parseStatusesParam(searchParams.get('statuses') ?? searchParams.get('selectedStatus') ?? searchParams.get('status')));
+    }
+    if (searchParams.has('emailVerified') || searchParams.has('selectedEmailVerified')) {
+      filters.setEmailVerified(parseEmailVerifiedParam(searchParams.get('emailVerified') ?? searchParams.get('selectedEmailVerified')));
+    }
+    if (searchParams.has('hasPhone') || searchParams.has('selectedHasPhone')) {
+      filters.setHasPhone(parseHasPhoneParam(searchParams.get('hasPhone') ?? searchParams.get('selectedHasPhone')));
+    }
+    if (searchParams.has('createdFrom')) filters.setCreatedFrom(parseDateParam(searchParams.get('createdFrom')));
+    if (searchParams.has('createdTo')) filters.setCreatedTo(parseDateParam(searchParams.get('createdTo')));
+    if (searchParams.has('sortBy')) filters.setSortBy(parseSortByParam(searchParams.get('sortBy')));
+    if (searchParams.has('sortOrder')) filters.setSortOrder(parseSortOrderParam(searchParams.get('sortOrder')));
   }, []); // Only run on mount
 
   // Sync store with URL

@@ -23,25 +23,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useStaffPageLabels } from '@/lib/hooks/use-labels';
+import { useStaffFilters } from '@/store/staff-filters.store';
 import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
-
-type StaffFilterState = {
-    accountStatuses: AccountStatus[];
-    staffTypes: StaffType[];
-    skillLevels: SkillLevel[];
-    createdFrom: string;
-    createdTo: string;
-};
-
-const DEFAULT_FILTERS: StaffFilterState = {
-    accountStatuses: [],
-    staffTypes: [],
-    skillLevels: [],
-    createdFrom: '',
-    createdTo: '',
-};
-
-const STAFF_DATERANGE_STORAGE_KEY = 'staff-daterange-filters';
 
 export default function StaffPage() {
     const { terminology } = useTerminology();
@@ -49,11 +32,28 @@ export default function StaffPage() {
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
+    // Zustand store for filters (with localStorage persistence for date filters)
+    const {
+        page,
+        setPage,
+        limit,
+        setLimit,
+        search,
+        setSearch,
+        accountStatuses,
+        setAccountStatuses,
+        staffTypes,
+        setStaffTypes,
+        skillLevels,
+        setSkillLevels,
+        createdFrom,
+        setCreatedFrom,
+        createdTo,
+        setCreatedTo,
+        resetFilters,
+    } = useStaffFilters();
+
     // State
-    const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(10);
-    const [search, setSearch] = useState('');
-    const [filters, setFilters] = useState<StaffFilterState>(DEFAULT_FILTERS);
     const [modals, setModals] = useState({
         form: false,
         view: false,
@@ -69,41 +69,11 @@ export default function StaffPage() {
     const [isDisableConfirmOpen, setIsDisableConfirmOpen] = useState(false);
     const [staffToResend, setStaffToResend] = useState<StaffWithRelations | null>(null);
     const [staffToDisable, setStaffToDisable] = useState<StaffWithRelations | null>(null);
-    const [isDateFiltersInitialized, setIsDateFiltersInitialized] = useState(false);
 
-    // Load date filters from localStorage on mount
+    // Rehydrate date filters from localStorage on mount
     useEffect(() => {
-        try {
-            const stored = localStorage.getItem(STAFF_DATERANGE_STORAGE_KEY);
-            if (stored) {
-                const { createdFrom, createdTo } = JSON.parse(stored);
-                setFilters((prev) => ({
-                    ...prev,
-                    createdFrom: createdFrom || '',
-                    createdTo: createdTo || '',
-                }));
-            }
-        } catch {
-            // Ignore localStorage errors
-        }
-        setIsDateFiltersInitialized(true);
+        useStaffFilters.persist.rehydrate();
     }, []);
-
-    // Persist date filters to localStorage when they change
-    useEffect(() => {
-        if (!isDateFiltersInitialized) return;
-        try {
-            localStorage.setItem(
-                STAFF_DATERANGE_STORAGE_KEY,
-                JSON.stringify({
-                    createdFrom: filters.createdFrom,
-                    createdTo: filters.createdTo,
-                })
-            );
-        } catch {
-            // Ignore localStorage errors
-        }
-    }, [filters.createdFrom, filters.createdTo, isDateFiltersInitialized]);
 
     // Handle create query parameter
     useEffect(() => {
@@ -121,11 +91,11 @@ export default function StaffPage() {
         page,
         limit,
         search: search || undefined,
-        accountStatuses: filters.accountStatuses.length > 0 ? filters.accountStatuses : undefined,
-        staffTypes: filters.staffTypes.length > 0 ? filters.staffTypes : undefined,
-        skillLevels: filters.skillLevels.length > 0 ? filters.skillLevels : undefined,
-        createdFrom: filters.createdFrom ? new Date(filters.createdFrom) : undefined,
-        createdTo: filters.createdTo ? new Date(filters.createdTo) : undefined,
+        accountStatuses: accountStatuses.length > 0 ? accountStatuses : undefined,
+        staffTypes: staffTypes.length > 0 ? staffTypes : undefined,
+        skillLevels: skillLevels.length > 0 ? skillLevels : undefined,
+        createdFrom: createdFrom ? new Date(createdFrom) : undefined,
+        createdTo: createdTo ? new Date(createdTo) : undefined,
         sortBy: 'createdAt',
         sortOrder: 'desc',
     });
@@ -412,15 +382,7 @@ export default function StaffPage() {
     };
 
     const handleClearFilters = () => {
-        setFilters(DEFAULT_FILTERS);
-        setSearch('');
-        setPage(1);
-        // Clear date filters from localStorage
-        try {
-            localStorage.removeItem(STAFF_DATERANGE_STORAGE_KEY);
-        } catch {
-            // Ignore localStorage errors
-        }
+        resetFilters();
     };
 
     const totalPages = data ? Math.ceil(data.meta.total / limit) : 0;
@@ -454,66 +416,51 @@ export default function StaffPage() {
         });
     }
 
-    if (filters.accountStatuses.length > 0) {
-        const statusLabels = filters.accountStatuses.map((s) => STATUS_LABELS[s]).join(', ');
+    if (accountStatuses.length > 0) {
+        const statusLabels = accountStatuses.map((s) => STATUS_LABELS[s]).join(', ');
         activeFilters.push({
             key: 'statuses',
             label: 'Status',
-            value: filters.accountStatuses.length === 1 ? statusLabels : `${filters.accountStatuses.length} selected`,
-            onRemove: () => {
-                setFilters((prev) => ({ ...prev, accountStatuses: [] }));
-                setPage(1);
-            },
+            value: accountStatuses.length === 1 ? statusLabels : `${accountStatuses.length} selected`,
+            onRemove: () => setAccountStatuses([]),
         });
     }
 
-    if (filters.staffTypes.length > 0) {
-        const typeLabels = filters.staffTypes.map((t) => TYPE_LABELS[t]).join(', ');
+    if (staffTypes.length > 0) {
+        const typeLabels = staffTypes.map((t) => TYPE_LABELS[t]).join(', ');
         activeFilters.push({
             key: 'types',
             label: 'Type',
-            value: filters.staffTypes.length === 1 ? typeLabels : `${filters.staffTypes.length} selected`,
-            onRemove: () => {
-                setFilters((prev) => ({ ...prev, staffTypes: [] }));
-                setPage(1);
-            },
+            value: staffTypes.length === 1 ? typeLabels : `${staffTypes.length} selected`,
+            onRemove: () => setStaffTypes([]),
         });
     }
 
-    if (filters.skillLevels.length > 0) {
-        const skillLabels = filters.skillLevels.map((l) => SKILL_LABELS[l]).join(', ');
+    if (skillLevels.length > 0) {
+        const skillLabels = skillLevels.map((l) => SKILL_LABELS[l]).join(', ');
         activeFilters.push({
             key: 'skillLevels',
             label: 'Skill Level',
-            value: filters.skillLevels.length === 1 ? skillLabels : `${filters.skillLevels.length} selected`,
-            onRemove: () => {
-                setFilters((prev) => ({ ...prev, skillLevels: [] }));
-                setPage(1);
-            },
+            value: skillLevels.length === 1 ? skillLabels : `${skillLevels.length} selected`,
+            onRemove: () => setSkillLevels([]),
         });
     }
 
-    if (filters.createdFrom) {
+    if (createdFrom) {
         activeFilters.push({
             key: 'createdFrom',
             label: 'From',
-            value: filters.createdFrom,
-            onRemove: () => {
-                setFilters((prev) => ({ ...prev, createdFrom: '' }));
-                setPage(1);
-            },
+            value: createdFrom,
+            onRemove: () => setCreatedFrom(''),
         });
     }
 
-    if (filters.createdTo) {
+    if (createdTo) {
         activeFilters.push({
             key: 'createdTo',
             label: 'To',
-            value: filters.createdTo,
-            onRemove: () => {
-                setFilters((prev) => ({ ...prev, createdTo: '' }));
-                setPage(1);
-            },
+            value: createdTo,
+            onRemove: () => setCreatedTo(''),
         });
     }
 
@@ -596,31 +543,16 @@ export default function StaffPage() {
                         placeholder={staffLabels.searchPlaceholder}
                     />
                     <StaffFilters
-                        selectedStatuses={filters.accountStatuses}
-                        selectedTypes={filters.staffTypes}
-                        selectedSkillLevels={filters.skillLevels}
-                        createdFrom={filters.createdFrom}
-                        createdTo={filters.createdTo}
-                        onStatusChange={(statuses) => {
-                            setFilters((prev) => ({ ...prev, accountStatuses: statuses }));
-                            setPage(1);
-                        }}
-                        onTypeChange={(types) => {
-                            setFilters((prev) => ({ ...prev, staffTypes: types }));
-                            setPage(1);
-                        }}
-                        onSkillLevelChange={(levels) => {
-                            setFilters((prev) => ({ ...prev, skillLevels: levels }));
-                            setPage(1);
-                        }}
-                        onCreatedFromChange={(date) => {
-                            setFilters((prev) => ({ ...prev, createdFrom: date }));
-                            setPage(1);
-                        }}
-                        onCreatedToChange={(date) => {
-                            setFilters((prev) => ({ ...prev, createdTo: date }));
-                            setPage(1);
-                        }}
+                        selectedStatuses={accountStatuses}
+                        selectedTypes={staffTypes}
+                        selectedSkillLevels={skillLevels}
+                        createdFrom={createdFrom}
+                        createdTo={createdTo}
+                        onStatusChange={setAccountStatuses}
+                        onTypeChange={setStaffTypes}
+                        onSkillLevelChange={setSkillLevels}
+                        onCreatedFromChange={setCreatedFrom}
+                        onCreatedToChange={setCreatedTo}
                         onClearFilters={handleClearFilters}
                     />
                     <ActiveFilters filters={activeFilters} />

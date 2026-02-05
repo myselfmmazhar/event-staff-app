@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type ProductStatus = 'active' | 'inactive';
 export type ProductSortBy = 'title' | 'cost' | 'price' | 'category' | 'createdAt';
@@ -53,20 +54,36 @@ const DEFAULT_STATE = {
   sortOrder: 'asc' as SortOrder,
 };
 
-export const useProductsFilters = create<ProductsFiltersState>((set) => ({
-  ...DEFAULT_STATE,
+export const useProductsFilters = create<ProductsFiltersState>()(
+  persist(
+    (set) => ({
+      ...DEFAULT_STATE,
 
-  setPage: (page) => set({ page }),
-  setLimit: (limit) => set({ limit, page: 1 }),
+      setPage: (page) => set({ page }),
+      setLimit: (limit) => set({ limit, page: 1 }),
 
-  setSearch: (search) => set({ search, page: 1 }),
-  setStatuses: (statuses) => set({ statuses, page: 1 }),
-  setCreatedFrom: (createdFrom) => set({ createdFrom, page: 1 }),
-  setCreatedTo: (createdTo) => set({ createdTo, page: 1 }),
+      setSearch: (search) => set({ search, page: 1 }),
+      setStatuses: (statuses) => set({ statuses, page: 1 }),
+      setCreatedFrom: (createdFrom) => set({ createdFrom, page: 1 }),
+      setCreatedTo: (createdTo) => set({ createdTo, page: 1 }),
 
-  setSortBy: (sortBy) => set({ sortBy }),
-  setSortOrder: (sortOrder) => set({ sortOrder }),
+      setSortBy: (sortBy) => set({ sortBy }),
+      setSortOrder: (sortOrder) => set({ sortOrder }),
 
-  resetFilters: () => set({ ...DEFAULT_FILTERS, page: 1 }),
-  resetAll: () => set(DEFAULT_STATE),
-}));
+      resetFilters: () => set({ ...DEFAULT_FILTERS, page: 1 }),
+      resetAll: () => set(DEFAULT_STATE),
+    }),
+    {
+      name: 'products-filters',
+      partialize: (state) => ({
+        search: state.search,
+        statuses: state.statuses,
+        createdFrom: state.createdFrom,
+        createdTo: state.createdTo,
+        sortBy: state.sortBy,
+        sortOrder: state.sortOrder,
+      }),
+      skipHydration: true,
+    }
+  )
+);

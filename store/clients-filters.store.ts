@@ -78,10 +78,14 @@ export const useClientsFilters = create<ClientsFiltersState>()(
       resetAll: () => set(DEFAULT_STATE),
     }),
     {
-      name: "clients-daterange-filters",
+      name: "clients-filters",
       partialize: (state) => ({
+        search: state.search,
+        loginAccess: state.loginAccess,
         createdFrom: state.createdFrom,
         createdTo: state.createdTo,
+        sortBy: state.sortBy,
+        sortOrder: state.sortOrder,
       }),
       skipHydration: true,
     }

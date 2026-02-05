@@ -157,37 +157,24 @@ export default function EventsPage() {
     setIsFormOpen(true);
   };
 
-  // Rehydrate date filters from localStorage, then initialize from URL params
+  // Rehydrate filters from localStorage on mount, then apply URL params if present
   useEffect(() => {
-    // First, rehydrate date filters from localStorage
     useEventsFilters.persist.rehydrate();
 
-    const page = parseNumberParam(searchParams.get('page'), 1);
-    const limit = parseNumberParam(searchParams.get('limit'), 10);
-    const search = searchParams.get('search') || '';
-    const statuses = parseStatusesParam(searchParams.get('selectedStatuses') ?? searchParams.get('statuses'));
-    const clientIds = parseClientIdsParam(searchParams.get('selectedClientIds') ?? searchParams.get('clientIds'));
-    const sortBy = parseSortByParam(searchParams.get('sortBy'));
-    const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
-
-    filters.setLimit(limit);
-    filters.setSearch(search);
-    filters.setSelectedStatuses(statuses);
-    filters.setSelectedClientIds(clientIds);
-    filters.setSortBy(sortBy);
-    filters.setSortOrder(sortOrder);
-
-    // Only set date filters from URL if they exist, otherwise keep localStorage values
-    const startDateFromParam = searchParams.get('startDateFrom');
-    const startDateToParam = searchParams.get('startDateTo');
-    if (startDateFromParam !== null) {
-      filters.setStartDateFrom(startDateFromParam || null);
+    // Only override with URL params if they are explicitly set
+    if (searchParams.has('page')) filters.setPage(parseNumberParam(searchParams.get('page'), 1));
+    if (searchParams.has('limit')) filters.setLimit(parseNumberParam(searchParams.get('limit'), 10));
+    if (searchParams.has('search')) filters.setSearch(searchParams.get('search') || '');
+    if (searchParams.has('selectedStatuses') || searchParams.has('statuses')) {
+      filters.setSelectedStatuses(parseStatusesParam(searchParams.get('selectedStatuses') ?? searchParams.get('statuses')));
     }
-    if (startDateToParam !== null) {
-      filters.setStartDateTo(startDateToParam || null);
+    if (searchParams.has('selectedClientIds') || searchParams.has('clientIds')) {
+      filters.setSelectedClientIds(parseClientIdsParam(searchParams.get('selectedClientIds') ?? searchParams.get('clientIds')));
     }
-
-    filters.setPage(page);
+    if (searchParams.has('startDateFrom')) filters.setStartDateFrom(searchParams.get('startDateFrom') || null);
+    if (searchParams.has('startDateTo')) filters.setStartDateTo(searchParams.get('startDateTo') || null);
+    if (searchParams.has('sortBy')) filters.setSortBy(parseSortByParam(searchParams.get('sortBy')));
+    if (searchParams.has('sortOrder')) filters.setSortOrder(parseSortOrderParam(searchParams.get('sortOrder')));
   }, []); // Only run on mount
 
   // Handle create query parameter

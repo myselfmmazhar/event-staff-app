@@ -74,20 +74,17 @@ export default function ServicesPage() {
     setModals((prev) => ({ ...prev, form: true }));
   };
 
+  // Rehydrate filters from localStorage on mount, then apply URL params if present
   useEffect(() => {
-    const page = parseNumberParam(searchParams.get('page'), 1);
-    const limit = parseNumberParam(searchParams.get('limit'), 10);
-    const search = searchParams.get('search') || '';
-    const statuses = parseStatusesParam(searchParams.get('statuses'));
-    const sortBy = parseSortByParam(searchParams.get('sortBy'));
-    const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
+    useServicesFilters.persist.rehydrate();
 
-    filters.setPage(page);
-    filters.setLimit(limit);
-    filters.setSearch(search);
-    filters.setStatuses(statuses);
-    filters.setSortBy(sortBy);
-    filters.setSortOrder(sortOrder);
+    // Only override with URL params if they are explicitly set
+    if (searchParams.has('page')) filters.setPage(parseNumberParam(searchParams.get('page'), 1));
+    if (searchParams.has('limit')) filters.setLimit(parseNumberParam(searchParams.get('limit'), 10));
+    if (searchParams.has('search')) filters.setSearch(searchParams.get('search') || '');
+    if (searchParams.has('statuses')) filters.setStatuses(parseStatusesParam(searchParams.get('statuses')));
+    if (searchParams.has('sortBy')) filters.setSortBy(parseSortByParam(searchParams.get('sortBy')));
+    if (searchParams.has('sortOrder')) filters.setSortOrder(parseSortOrderParam(searchParams.get('sortOrder')));
   }, []); // only on mount
 
   useEffect(() => {

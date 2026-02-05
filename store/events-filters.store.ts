@@ -88,10 +88,15 @@ export const useEventsFilters = create<EventsFiltersState>()(
       resetAll: () => set(DEFAULT_STATE),
     }),
     {
-      name: "events-daterange-filters",
+      name: "events-filters",
       partialize: (state) => ({
+        search: state.search,
+        selectedStatuses: state.selectedStatuses,
+        selectedClientIds: state.selectedClientIds,
         startDateFrom: state.startDateFrom,
         startDateTo: state.startDateTo,
+        sortBy: state.sortBy,
+        sortOrder: state.sortOrder,
       }),
       skipHydration: true,
     }

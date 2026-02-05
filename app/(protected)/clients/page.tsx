@@ -87,24 +87,19 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
-  // Rehydrate date filters from localStorage, then initialize from URL params
+  // Rehydrate filters from localStorage on mount, then apply URL params if present
   useEffect(() => {
-    // First, rehydrate date filters from localStorage
     useClientsFilters.persist.rehydrate();
 
-    const page = parseNumberParam(searchParams.get('page'), 1);
-    const limit = parseNumberParam(searchParams.get('limit'), 10);
-    const search = searchParams.get('search') || '';
-    const loginAccess = parseLoginAccessParam(searchParams.get('loginAccess'));
-    const sortBy = parseSortByParam(searchParams.get('sortBy'));
-    const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
-
-    filters.setPage(page);
-    filters.setLimit(limit);
-    filters.setSearch(search);
-    filters.setLoginAccess(loginAccess);
-    filters.setSortBy(sortBy);
-    filters.setSortOrder(sortOrder);
+    // Only override with URL params if they are explicitly set
+    if (searchParams.has('page')) filters.setPage(parseNumberParam(searchParams.get('page'), 1));
+    if (searchParams.has('limit')) filters.setLimit(parseNumberParam(searchParams.get('limit'), 10));
+    if (searchParams.has('search')) filters.setSearch(searchParams.get('search') || '');
+    if (searchParams.has('loginAccess')) filters.setLoginAccess(parseLoginAccessParam(searchParams.get('loginAccess')));
+    if (searchParams.has('createdFrom')) filters.setCreatedFrom(searchParams.get('createdFrom') || '');
+    if (searchParams.has('createdTo')) filters.setCreatedTo(searchParams.get('createdTo') || '');
+    if (searchParams.has('sortBy')) filters.setSortBy(parseSortByParam(searchParams.get('sortBy')));
+    if (searchParams.has('sortOrder')) filters.setSortOrder(parseSortOrderParam(searchParams.get('sortOrder')));
   }, []); // Only run on mount
 
   // Handle create query parameter
