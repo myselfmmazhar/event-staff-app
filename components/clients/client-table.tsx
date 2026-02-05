@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EditIcon, TrashIcon, EyeIcon } from '@/components/ui/icons';
+import { EditIcon, TrashIcon } from '@/components/ui/icons';
 import type { ClientTableRow } from '@/lib/types/client';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
@@ -11,7 +11,6 @@ import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 interface ClientTableProps {
   clients: ClientTableRow[];
   isLoading?: boolean;
-  onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onSort: (column: string) => void;
@@ -25,7 +24,6 @@ interface ClientTableProps {
 export function ClientTable({
   clients,
   isLoading,
-  onView,
   onEdit,
   onDelete,
   onSort,
@@ -108,15 +106,6 @@ export function ClientTable({
       headerClassName: 'text-left py-3 px-4',
       render: (client) => (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onView(client.id)}
-            title="View client details"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -225,15 +214,6 @@ export function ClientTable({
       </div>
 
       <div className="flex items-center gap-2 pt-2 border-t border-border">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onView(client.id)}
-          className="flex-1"
-        >
-          <EyeIcon className="h-4 w-4 mr-1" />
-          View
-        </Button>
         <Button
           variant="outline"
           size="sm"
