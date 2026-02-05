@@ -902,7 +902,11 @@ export function EventFormModal({
                   <Input
                     id="startDate"
                     type="date"
-                    {...register('startDate')}
+                    {...register('startDate', {
+                      onChange: (e) => {
+                        setValue('endDate', e.target.value);
+                      },
+                    })}
                     error={!!errors.startDate}
                     disabled={isSubmitting}
                   />
