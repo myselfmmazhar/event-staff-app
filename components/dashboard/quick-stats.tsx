@@ -24,6 +24,7 @@ interface StaffStats {
   pending: number;
   employees: number;
   contractors: number;
+  companies: number;
 }
 
 interface QuickStatsProps {

@@ -31,6 +31,7 @@ export type StaffStats = {
     pending: number;
     employees: number;
     contractors: number;
+    companies: number;
 };
 
 /**
@@ -65,7 +66,7 @@ export class StaffService {
         experience: true,
         staffRating: true,
         internalNotes: true,
-        contractorId: true,
+        companyId: true,
         hasLoginAccess: true,
         userId: true,
         invitationToken: true,
@@ -91,12 +92,24 @@ export class StaffService {
                 },
             },
         },
-        contractor: {
+        company: {
             select: {
                 id: true,
                 staffId: true,
                 firstName: true,
                 lastName: true,
+            },
+        },
+        // Team members for COMPANY type staff
+        teamMembers: {
+            select: {
+                id: true,
+                staffId: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                staffType: true,
+                accountStatus: true,
             },
         },
     } as const;
@@ -133,7 +146,10 @@ export class StaffService {
         data: CreateStaffInput,
         createdByUserId: string
     ): Promise<{ staff: StaffSelect; invitationToken: string }> {
-        const { serviceIds, ...staffData } = data;
+        // Extract serviceIds and teamMembers from data - these should not be passed to Prisma directly
+        // teamMembers is for COMPANY type staff and would be processed separately if needed
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { serviceIds, teamMembers, ...staffData } = data;
 
         // Generate unique Staff ID using shared utility
         const terminology = await this.settingsService.getTerminology();
@@ -161,6 +177,58 @@ export class StaffService {
                 select: this.staffSelect,
             });
 
+            // If staff type is COMPANY and team members were provided, create them
+            if (staffData.staffType === StaffType.COMPANY && teamMembers && teamMembers.length > 0) {
+                const terminology = await this.settingsService.getTerminology();
+
+                for (const member of teamMembers) {
+                    // Check if email already exists
+                    const existingMember = await this.prisma.staff.findUnique({
+                        where: { email: member.email },
+                    });
+
+                    if (existingMember) {
+                        console.warn(`Team member with email ${member.email} already exists, skipping`);
+                        continue;
+                    }
+
+                    const memberStaffId = await generateStaffId(this.prisma, terminology.staffIdPrefix);
+                    const memberInvitationToken = this.generateInvitationToken();
+                    const memberInvitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+                    await this.prisma.staff.create({
+                        data: {
+                            staffId: memberStaffId,
+                            firstName: member.firstName,
+                            lastName: member.lastName,
+                            email: member.email,
+                            staffType: member.staffType === 'CONTRACTOR' ? StaffType.CONTRACTOR : StaffType.EMPLOYEE,
+                            accountStatus: AccountStatus.PENDING,
+                            companyId: staff.id, // Link to the parent company
+                            invitationToken: memberInvitationToken,
+                            invitationExpiresAt: memberInvitationExpiresAt,
+                            createdBy: createdByUserId,
+                            // Copy services from parent company
+                            services: {
+                                create: serviceIds.map((serviceId) => ({
+                                    serviceId,
+                                })),
+                            },
+                        },
+                    });
+                }
+
+                // Refetch the company staff to include the newly created team members
+                const updatedStaff = await this.prisma.staff.findUnique({
+                    where: { id: staff.id },
+                    select: this.staffSelect,
+                });
+
+                if (updatedStaff) {
+                    return { staff: updatedStaff, invitationToken };
+                }
+            }
+
             return { staff, invitationToken };
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -174,7 +242,7 @@ export class StaffService {
                 if (error.code === "P2003") {
                     throw new TRPCError({
                         code: "BAD_REQUEST",
-                        message: "Invalid contractor or position ID provided",
+                        message: "Invalid company or position ID provided",
                     });
                 }
             }
@@ -739,13 +807,24 @@ export class StaffService {
         id: string,
         data: Omit<UpdateStaffInput, "id">
     ): Promise<StaffSelect> {
-        const { serviceIds, ...updateData } = data as Omit<UpdateStaffInput, "id"> & {
+        // Type the teamMembers properly
+        type TeamMemberInput = { email: string; firstName: string; lastName: string; staffType: 'CONTRACTOR' | 'EMPLOYEE' };
+        const { serviceIds, teamMembers, ...updateData } = data as Omit<UpdateStaffInput, "id"> & {
             serviceIds?: string[];
+            teamMembers?: TeamMemberInput[];
         };
 
-        // Check if staff exists
+        // Check if staff exists and get current team members
         const existing = await this.prisma.staff.findUnique({
             where: { id },
+            include: {
+                teamMembers: {
+                    select: {
+                        id: true,
+                        email: true,
+                    },
+                },
+            },
         });
 
         if (!existing) {
@@ -774,6 +853,85 @@ export class StaffService {
                 select: this.staffSelect,
             });
 
+            // Handle team members for COMPANY type staff
+            if (existing.staffType === StaffType.COMPANY && teamMembers !== undefined) {
+                const terminology = await this.settingsService.getTerminology();
+                const existingEmails = new Set(existing.teamMembers.map(tm => tm.email));
+                const incomingEmails = new Set(teamMembers.map(tm => tm.email));
+
+                // Find team members to remove (no longer in the list)
+                const membersToRemove = existing.teamMembers.filter(tm => !incomingEmails.has(tm.email));
+
+                // Find new team members to add
+                const membersToAdd = teamMembers.filter(tm => !existingEmails.has(tm.email));
+
+                // Remove team members by unlinking them from this company
+                if (membersToRemove.length > 0) {
+                    await this.prisma.staff.updateMany({
+                        where: {
+                            id: { in: membersToRemove.map(tm => tm.id) },
+                        },
+                        data: {
+                            companyId: null,
+                        },
+                    });
+                }
+
+                // Add new team members
+                for (const member of membersToAdd) {
+                    // Check if email already exists as a staff member
+                    const existingStaff = await this.prisma.staff.findUnique({
+                        where: { email: member.email },
+                    });
+
+                    if (existingStaff) {
+                        // If they already exist, just link them to this company
+                        await this.prisma.staff.update({
+                            where: { id: existingStaff.id },
+                            data: { companyId: id },
+                        });
+                    } else {
+                        // Create new staff member
+                        const memberStaffId = await generateStaffId(this.prisma, terminology.staffIdPrefix);
+                        const memberInvitationToken = this.generateInvitationToken();
+                        const memberInvitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+                        await this.prisma.staff.create({
+                            data: {
+                                staffId: memberStaffId,
+                                firstName: member.firstName,
+                                lastName: member.lastName,
+                                email: member.email,
+                                staffType: member.staffType === 'CONTRACTOR' ? StaffType.CONTRACTOR : StaffType.EMPLOYEE,
+                                accountStatus: AccountStatus.PENDING,
+                                companyId: id,
+                                invitationToken: memberInvitationToken,
+                                invitationExpiresAt: memberInvitationExpiresAt,
+                                createdBy: existing.createdBy,
+                                // Copy services from parent company if available
+                                ...(serviceIds && serviceIds.length > 0 && {
+                                    services: {
+                                        create: serviceIds.map((serviceId) => ({
+                                            serviceId,
+                                        })),
+                                    },
+                                }),
+                            },
+                        });
+                    }
+                }
+
+                // Refetch to get updated team members
+                const updatedStaff = await this.prisma.staff.findUnique({
+                    where: { id },
+                    select: this.staffSelect,
+                });
+
+                if (updatedStaff) {
+                    return updatedStaff;
+                }
+            }
+
             return staff;
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -787,7 +945,7 @@ export class StaffService {
                 if (error.code === "P2003") {
                     throw new TRPCError({
                         code: "BAD_REQUEST",
-                        message: "Invalid contractor or position ID provided",
+                        message: "Invalid company or position ID provided",
                     });
                 }
             }
@@ -817,7 +975,7 @@ export class StaffService {
             staffTypes,
             skillLevels,
             availabilityStatus,
-            contractorId,
+            companyId,
             serviceId,
             createdFrom,
             createdTo,
@@ -839,7 +997,7 @@ export class StaffService {
             ...(staffTypes && staffTypes.length > 0 && { staffType: { in: staffTypes } }),
             ...(skillLevels && skillLevels.length > 0 && { skillLevel: { in: skillLevels } }),
             ...(availabilityStatus && { availabilityStatus }),
-            ...(contractorId && { contractorId }),
+            ...(companyId && { companyId }),
             ...(serviceId && {
                 services: {
                     some: {
@@ -919,7 +1077,7 @@ export class StaffService {
         // Check if staff exists
         const staff = await this.prisma.staff.findUnique({
             where: { id },
-            select: { id: true, firstName: true, lastName: true, employees: true },
+            select: { id: true, firstName: true, lastName: true, staffType: true, teamMembers: true },
         });
 
         if (!staff) {
@@ -929,12 +1087,12 @@ export class StaffService {
             });
         }
 
-        // Check if this is a contractor with employees
-        if (staff.employees && staff.employees.length > 0) {
+        // Check if this is a company with team members
+        if (staff.staffType === "COMPANY" && staff.teamMembers && staff.teamMembers.length > 0) {
             throw new TRPCError({
                 code: "BAD_REQUEST",
                 message:
-                    "Cannot delete contractor with assigned employees. Please reassign or remove employees first.",
+                    "Cannot delete company with assigned team members. Please reassign or remove team members first.",
             });
         }
 
@@ -984,7 +1142,7 @@ export class StaffService {
                     accountStatus: true,
                     _count: {
                         select: {
-                            employees: true, // Count of employees assigned to this contractor
+                            teamMembers: true, // Count of team members assigned to this company
                         },
                     },
                 },
@@ -1007,12 +1165,12 @@ export class StaffService {
                     continue;
                 }
 
-                // Check if contractor with assigned employees
-                if (staff.staffType === "CONTRACTOR" && staff._count.employees > 0) {
+                // Check if company with assigned team members
+                if (staff.staffType === "COMPANY" && staff._count.teamMembers > 0) {
                     failed.push({
                         id: staff.id,
                         staffId: staff.staffId,
-                        reason: `Contractor has ${staff._count.employees} assigned employee(s)`,
+                        reason: `Company has ${staff._count.teamMembers} assigned team member(s)`,
                     });
                     continue;
                 }
@@ -1089,7 +1247,7 @@ export class StaffService {
                     staffType: true,
                     _count: {
                         select: {
-                            employees: true, // Count of employees assigned to this contractor
+                            teamMembers: true, // Count of team members assigned to this company
                         },
                     },
                 },
@@ -1101,12 +1259,12 @@ export class StaffService {
 
             // Validate each staff member
             for (const staff of staffMembers) {
-                // Check if contractor with assigned employees
-                if (staff.staffType === "CONTRACTOR" && staff._count.employees > 0) {
+                // Check if company with assigned team members
+                if (staff.staffType === "COMPANY" && staff._count.teamMembers > 0) {
                     failed.push({
                         id: staff.id,
                         staffId: staff.staffId,
-                        reason: `Contractor has ${staff._count.employees} assigned employee(s). Reassign or remove them first.`,
+                        reason: `Company has ${staff._count.teamMembers} assigned team member(s). Reassign or remove them first.`,
                     });
                     continue;
                 }
@@ -1257,7 +1415,7 @@ export class StaffService {
      * Get staff statistics for dashboard
      */
     async getStats(): Promise<StaffStats> {
-        const [total, active, disabled, pending, employees, contractors] =
+        const [total, active, disabled, pending, employees, contractors, companies] =
             await Promise.all([
                 this.prisma.staff.count(),
                 this.prisma.staff.count({
@@ -1275,6 +1433,9 @@ export class StaffService {
                 this.prisma.staff.count({
                     where: { staffType: "CONTRACTOR" },
                 }),
+                this.prisma.staff.count({
+                    where: { staffType: "COMPANY" },
+                }),
             ]);
 
         return {
@@ -1284,13 +1445,14 @@ export class StaffService {
             pending,
             employees,
             contractors,
+            companies,
         };
     }
 
     /**
-     * Get all contractors (for dropdown selection)
+     * Get all companies (for dropdown selection when assigning contractors/employees)
      */
-    async getContractors(): Promise<Array<{
+    async getCompanies(): Promise<Array<{
         id: string;
         staffId: string;
         firstName: string;
@@ -1298,8 +1460,9 @@ export class StaffService {
     }>> {
         return await this.prisma.staff.findMany({
             where: {
-                staffType: "CONTRACTOR",
-                accountStatus: "ACTIVE",
+                staffType: "COMPANY",
+                // Include both ACTIVE and PENDING companies
+                accountStatus: { in: ["ACTIVE", "PENDING"] },
             },
             select: {
                 id: true,

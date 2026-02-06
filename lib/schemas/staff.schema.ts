@@ -112,8 +112,16 @@ const baseFields = {
         .transform((val) => val?.trim())
         .optional(),
 
-    // Contractor ID (nullable for employees who may not belong to a contractor)
-    contractorId: z.string().uuid("Invalid contractor ID").optional().nullable(),
+    // Company ID (nullable for contractors/employees who may not belong to a company)
+    companyId: z.string().uuid("Invalid company ID").optional().nullable(),
+
+    // Team members (only for COMPANY type - used when creating a company with team members)
+    teamMembers: z.array(z.object({
+        email: z.string().email("Invalid email"),
+        firstName: z.string().min(1, "First name is required"),
+        lastName: z.string().min(1, "Last name is required"),
+        staffType: z.enum(["CONTRACTOR", "EMPLOYEE"]),
+    })).optional(),
 
     // Service IDs (multi-select)
     serviceIds: z
@@ -179,7 +187,7 @@ export class StaffSchema {
         staffTypes: z.array(z.nativeEnum(StaffType)).optional(),
         skillLevels: z.array(z.nativeEnum(SkillLevel)).optional(),
         availabilityStatus: z.nativeEnum(AvailabilityStatus).optional(),
-        contractorId: z.string().uuid("Invalid contractor ID").optional(),
+        companyId: z.string().uuid("Invalid company ID").optional(),
         serviceId: z.string().uuid("Invalid service ID").optional(),
         createdFrom: z.coerce.date().optional(),
         createdTo: z.coerce.date().optional(),

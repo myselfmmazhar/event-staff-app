@@ -76,7 +76,7 @@ export type ClientSelect = Prisma.ClientGetPayload<{
 /**
  * Staff Select Type
  * Used by StaffService for all query return types
- * Includes nested services and contractor relationships
+ * Includes nested services and company relationships
  */
 export type StaffSelect = Prisma.StaffGetPayload<{
   select: {
@@ -102,7 +102,7 @@ export type StaffSelect = Prisma.StaffGetPayload<{
     experience: true;
     staffRating: true;
     internalNotes: true;
-    contractorId: true;
+    companyId: true;
     hasLoginAccess: true;
     userId: true;
     invitationToken: true;
@@ -128,7 +128,7 @@ export type StaffSelect = Prisma.StaffGetPayload<{
         };
       };
     };
-    contractor: {
+    company: {
       select: {
         id: true;
         staffId: true;

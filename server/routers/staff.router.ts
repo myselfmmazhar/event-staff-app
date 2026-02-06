@@ -229,12 +229,12 @@ export const staffRouter = router({
     }),
 
     /**
-     * Get all contractors (for dropdown selection)
+     * Get all companies (for dropdown selection when assigning contractors/employees)
      * Requires: Authentication
      */
-    getContractors: protectedProcedure.query(async ({ ctx }) => {
+    getCompanies: protectedProcedure.query(async ({ ctx }) => {
         const staffService = new StaffService(ctx.prisma);
-        return await staffService.getContractors();
+        return await staffService.getCompanies();
     }),
 
     /**

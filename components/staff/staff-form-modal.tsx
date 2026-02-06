@@ -16,7 +16,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
-import { SearchIcon, PlusIcon } from 'lucide-react';
+import { SearchIcon, PlusIcon, XIcon } from 'lucide-react';
 import { z } from 'zod';
 import { CloseIcon, EyeIcon } from '@/components/ui/icons';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
@@ -34,7 +34,8 @@ type StaffFormInput = z.input<typeof formSchema>;
 type StaffFormOutput = z.infer<typeof formSchema>;
 
 type ServiceOption = { id: string; title: string };
-type ContractorOption = { id: string; firstName: string; lastName: string; staffId: string };
+type CompanyOption = { id: string; firstName: string; lastName: string; staffId: string };
+type TeamMemberInput = { email: string; firstName: string; lastName: string; staffType: 'CONTRACTOR' | 'EMPLOYEE' };
 
 interface StaffFormModalProps {
     staff: StaffWithRelations | null;
@@ -61,6 +62,15 @@ export function StaffFormModal({
     const [mounted, setMounted] = useState(false);
     const utils = trpc.useUtils();
 
+    // Team members state for COMPANY type
+    const [teamMembers, setTeamMembers] = useState<TeamMemberInput[]>([]);
+    const [newTeamMember, setNewTeamMember] = useState<TeamMemberInput>({
+        email: '',
+        firstName: '',
+        lastName: '',
+        staffType: 'EMPLOYEE',
+    });
+
     useEffect(() => {
         setMounted(true);
         return () => setMounted(false);
@@ -68,9 +78,9 @@ export function StaffFormModal({
 
     // Fetch lookup data
     const { data: servicesData } = trpc.staff.getServices.useQuery(undefined, { enabled: open });
-    const { data: contractorsData } = trpc.staff.getContractors.useQuery(undefined, { enabled: open });
+    const { data: companiesData } = trpc.staff.getCompanies.useQuery(undefined, { enabled: open });
     const services = (servicesData ?? []) as ServiceOption[];
-    const contractors = (contractorsData ?? []) as ContractorOption[];
+    const companies = (companiesData ?? []) as CompanyOption[];
 
     // Filter services by search term
     const filteredServices = useMemo<ServiceOption[]>(() => {
@@ -127,12 +137,24 @@ export function StaffFormModal({
             experience: '',
             staffRating: StaffRating.NA,
             internalNotes: '',
-            contractorId: null,
+            companyId: null,
             serviceIds: [],
         },
     });
 
     const staffType = watch('staffType');
+
+    // Helper functions for team members
+    const addTeamMember = () => {
+        if (newTeamMember.email && newTeamMember.firstName && newTeamMember.lastName) {
+            setTeamMembers([...teamMembers, { ...newTeamMember }]);
+            setNewTeamMember({ email: '', firstName: '', lastName: '', staffType: 'EMPLOYEE' });
+        }
+    };
+
+    const removeTeamMember = (index: number) => {
+        setTeamMembers(teamMembers.filter((_, i) => i !== index));
+    };
 
     useEffect(() => {
         if (staff && open) {
@@ -150,9 +172,22 @@ export function StaffFormModal({
                 experience: staff.experience || '',
                 staffRating: staff.staffRating ?? StaffRating.NA,
                 internalNotes: staff.internalNotes || '',
-                contractorId: staff.contractorId || null,
+                companyId: staff.companyId || null,
                 serviceIds: staff.services?.map((s) => s.service.id) || [],
             });
+            // Populate team members from fetched data for COMPANY type
+            if (staff.staffType === StaffType.COMPANY && staff.teamMembers) {
+                setTeamMembers(
+                    staff.teamMembers.map((tm) => ({
+                        email: tm.email,
+                        firstName: tm.firstName,
+                        lastName: tm.lastName,
+                        staffType: tm.staffType === 'CONTRACTOR' ? 'CONTRACTOR' : 'EMPLOYEE',
+                    }))
+                );
+            } else {
+                setTeamMembers([]);
+            }
         } else if (!staff && open) {
             setServiceSearch('');
             reset({
@@ -168,15 +203,21 @@ export function StaffFormModal({
                 experience: '',
                 staffRating: StaffRating.NA,
                 internalNotes: '',
-                contractorId: null,
+                companyId: null,
                 serviceIds: [],
             });
+            setTeamMembers([]);
         }
     }, [staff, open, reset]);
 
     // Properly typed submit handler to match react-hook-form expectations
     const handleFormSubmit: SubmitHandler<StaffFormOutput> = (data) => {
-        onSubmit(data);
+        // Include team members if staff type is COMPANY
+        const submitData = {
+            ...data,
+            teamMembers: data.staffType === StaffType.COMPANY ? teamMembers : undefined,
+        };
+        onSubmit(submitData);
     };
 
     return (
@@ -277,11 +318,11 @@ export function StaffFormModal({
                                             )}
                                         </div>
 
-                                        {staffType === StaffType.EMPLOYEE && (
+                                        {(staffType === StaffType.CONTRACTOR || staffType === StaffType.EMPLOYEE) && (
                                             <div>
-                                                <Label htmlFor="contractorId">Contractor</Label>
+                                                <Label htmlFor="companyId">Company</Label>
                                                 <Controller
-                                                    name="contractorId"
+                                                    name="companyId"
                                                     control={control}
                                                     render={({ field }) => (
                                                         <Select
@@ -290,7 +331,7 @@ export function StaffFormModal({
                                                             disabled={isSubmitting}
                                                         >
                                                             <option value="">None</option>
-                                                            {contractors.map((c) => (
+                                                            {companies.map((c) => (
                                                                 <option key={c.id} value={c.id}>
                                                                     {c.firstName} {c.lastName} ({c.staffId})
                                                                 </option>
@@ -335,8 +376,9 @@ export function StaffFormModal({
                                                 control={control}
                                                 render={({ field }) => (
                                                     <Select {...field} disabled={isSubmitting}>
-                                                        <option value={StaffType.EMPLOYEE}>Employee</option>
+                                                        <option value={StaffType.COMPANY}>Company</option>
                                                         <option value={StaffType.CONTRACTOR}>Contractor</option>
+                                                        <option value={StaffType.EMPLOYEE}>Employee</option>
                                                     </Select>
                                                 )}
                                             />
@@ -391,6 +433,106 @@ export function StaffFormModal({
                                 </div>
                             </div>
                         </div>
+
+                        {/* Team Members Section - Only for COMPANY type */}
+                        {staffType === StaffType.COMPANY && (
+                            <div className="mb-6 bg-accent/5 border border-border/30 p-5 rounded-lg">
+                                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Team Members</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Add team members who will be invited when this company is created.
+                                </p>
+
+                                {/* Add new team member form */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                                    <div>
+                                        <Label htmlFor="tm-email">Email</Label>
+                                        <Input
+                                            id="tm-email"
+                                            type="email"
+                                            placeholder="email@example.com"
+                                            value={newTeamMember.email}
+                                            onChange={(e) => setNewTeamMember({ ...newTeamMember, email: e.target.value })}
+                                            disabled={isSubmitting}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="tm-firstName">First Name</Label>
+                                        <Input
+                                            id="tm-firstName"
+                                            placeholder="First name"
+                                            value={newTeamMember.firstName}
+                                            onChange={(e) => setNewTeamMember({ ...newTeamMember, firstName: e.target.value })}
+                                            disabled={isSubmitting}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="tm-lastName">Last Name</Label>
+                                        <Input
+                                            id="tm-lastName"
+                                            placeholder="Last name"
+                                            value={newTeamMember.lastName}
+                                            onChange={(e) => setNewTeamMember({ ...newTeamMember, lastName: e.target.value })}
+                                            disabled={isSubmitting}
+                                        />
+                                    </div>
+                                    <div className="flex items-end gap-2">
+                                        <div className="flex-1">
+                                            <Label htmlFor="tm-type">Type</Label>
+                                            <Select
+                                                id="tm-type"
+                                                value={newTeamMember.staffType}
+                                                onChange={(e) => setNewTeamMember({ ...newTeamMember, staffType: e.target.value as 'CONTRACTOR' | 'EMPLOYEE' })}
+                                                disabled={isSubmitting}
+                                            >
+                                                <option value="CONTRACTOR">Contractor</option>
+                                                <option value="EMPLOYEE">Employee</option>
+                                            </Select>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={addTeamMember}
+                                            disabled={isSubmitting || !newTeamMember.email || !newTeamMember.firstName || !newTeamMember.lastName}
+                                        >
+                                            <PlusIcon className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Team members list */}
+                                {teamMembers.length > 0 && (
+                                    <div className="border rounded-md divide-y">
+                                        {teamMembers.map((member, index) => (
+                                            <div key={index} className="flex items-center justify-between p-3">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-sm font-medium">{member.firstName} {member.lastName}</span>
+                                                    <span className="text-sm text-muted-foreground">{member.email}</span>
+                                                    <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                                                        {member.staffType === 'CONTRACTOR' ? 'Contractor' : 'Employee'}
+                                                    </span>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeTeamMember(index)}
+                                                    disabled={isSubmitting}
+                                                >
+                                                    <XIcon className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {teamMembers.length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4 border rounded-md">
+                                        No team members added yet. Use the form above to add team members.
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Row 2: Assigned Services + Admin Only Fields (side-by-side on lg+) */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

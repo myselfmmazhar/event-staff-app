@@ -150,8 +150,9 @@ export function StaffInviteModal({
                                 control={control}
                                 render={({ field }) => (
                                     <Select {...field} disabled={isSubmitting}>
-                                        <option value={StaffType.EMPLOYEE}>Employee</option>
+                                        <option value={StaffType.COMPANY}>Company</option>
                                         <option value={StaffType.CONTRACTOR}>Contractor</option>
+                                        <option value={StaffType.EMPLOYEE}>Employee</option>
                                     </Select>
                                 )}
                             />

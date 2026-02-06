@@ -44,10 +44,10 @@ export function DeleteStaffModal({
                     ? This action cannot be undone.
                 </p>
 
-                {staff.staffType === 'CONTRACTOR' && (
+                {staff.staffType === 'COMPANY' && (
                     <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
                         <p className="text-sm text-amber-900">
-                            ⚠️ This is a contractor. Make sure they have no employees assigned before deleting.
+                            Warning: This is a company. Make sure they have no team members assigned before deleting.
                         </p>
                     </div>
                 )}

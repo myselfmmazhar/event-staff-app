@@ -32,7 +32,7 @@ export type StaffWithRelations = {
     experience: string | null;
     staffRating: StaffRating;
     internalNotes: string | null;
-    contractorId: string | null;
+    companyId: string | null;
     hasLoginAccess: boolean;
     userId: string | null;
     invitationToken: string | null;
@@ -41,7 +41,16 @@ export type StaffWithRelations = {
     createdAt: Date | string;
     updatedAt: Date | string;
     services?: Array<{ service: { id: string; title: string } }>;
-    contractor: { id: string; staffId: string; firstName: string; lastName: string } | null;
+    company: { id: string; staffId: string; firstName: string; lastName: string } | null;
+    teamMembers?: Array<{
+        id: string;
+        staffId: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        staffType: StaffType;
+        accountStatus: AccountStatus;
+    }>;
 };
 
 interface StaffTableProps {
@@ -122,10 +131,20 @@ export function StaffTable({ staff, onEdit, onDelete, selectedIds, onSelectionCh
         );
     };
 
-    const getTypeBadge = (type: string) => {
+    const getTypeBadge = (type: StaffType) => {
+        const labels: Record<StaffType, string> = {
+            COMPANY: 'Company',
+            CONTRACTOR: 'Contractor',
+            EMPLOYEE: 'Employee',
+        };
+        const variants: Record<StaffType, 'default' | 'secondary'> = {
+            COMPANY: 'default',
+            CONTRACTOR: 'default',
+            EMPLOYEE: 'secondary',
+        };
         return (
-            <Badge variant={type === 'CONTRACTOR' ? 'default' : 'secondary'} asSpan>
-                {type === 'CONTRACTOR' ? 'Contractor' : 'Employee'}
+            <Badge variant={variants[type]} asSpan>
+                {labels[type]}
             </Badge>
         );
     };

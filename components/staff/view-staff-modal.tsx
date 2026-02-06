@@ -11,7 +11,7 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CloseIcon } from '@/components/ui/icons';
 import { format } from 'date-fns';
-import { AccountStatus, AvailabilityStatus } from '@prisma/client';
+import { AccountStatus, AvailabilityStatus, StaffType } from '@prisma/client';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import type { StaffWithRelations } from '@/components/staff/staff-table';
 
@@ -129,10 +129,10 @@ export function ViewStaffModal({
                                         <p className="text-base capitalize">{staff.skillLevel.toLowerCase()}</p>
                                     </div>
                                 </div>
-                                {staff.contractor && (
+                                {staff.company && (
                                     <div>
-                                        <p className="text-sm text-muted-foreground">Contractor</p>
-                                        <p className="text-base">{staff.contractor.firstName} {staff.contractor.lastName} ({staff.contractor.staffId})</p>
+                                        <p className="text-sm text-muted-foreground">Company</p>
+                                        <p className="text-base">{staff.company.firstName} {staff.company.lastName} ({staff.company.staffId})</p>
                                     </div>
                                 )}
                             </div>
@@ -227,6 +227,47 @@ export function ViewStaffModal({
                             </div>
                         </div>
                     </div>
+
+                    {/* Team Members (only for COMPANY type staff) */}
+                    {staff.staffType === StaffType.COMPANY && staff.teamMembers && staff.teamMembers.length > 0 && (
+                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Team Members</h3>
+                            <div className="space-y-3">
+                                {staff.teamMembers.map((member) => (
+                                    <div key={member.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-md">
+                                        <div>
+                                            <p className="font-medium">{member.firstName} {member.lastName}</p>
+                                            <p className="text-sm text-muted-foreground">{member.email}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Badge variant="secondary">
+                                                {member.staffType === 'CONTRACTOR' ? 'Contractor' : 'Employee'}
+                                            </Badge>
+                                            <Badge variant={member.accountStatus === 'ACTIVE' ? 'success' : 'warning'}>
+                                                {member.accountStatus}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Company Details (only for EMPLOYEE and CONTRACTOR when linked to a company) */}
+                    {(staff.staffType === StaffType.EMPLOYEE || staff.staffType === StaffType.CONTRACTOR) && staff.company && (
+                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Company Details</h3>
+                            <div className="p-3 bg-muted/30 rounded-md">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium">{staff.company.firstName} {staff.company.lastName}</p>
+                                        <p className="text-sm text-muted-foreground">Company ID: {staff.company.staffId}</p>
+                                    </div>
+                                    <Badge variant="default">Company</Badge>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Row 3: Admin Information (full width, conditional) */}
                     {hasAdminInfo && (

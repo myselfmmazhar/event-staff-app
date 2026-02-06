@@ -499,21 +499,21 @@ model Staff {
   invitationToken              String?                      @unique
   invitationExpiresAt          DateTime?                    @db.Timestamp(6)
   hasLoginAccess               Boolean                      @default(false)
-  contractorId                 String?                      @db.Uuid
+  companyId                    String?                      @db.Uuid
   userId                       String?                      @unique
   createdBy                    String
   createdAt                    DateTime                     @default(now()) @db.Timestamp(6)
   updatedAt                    DateTime                     @updatedAt @db.Timestamp(6)
   callTimeInvitations          CallTimeInvitation[]
-  contractor                   Staff?                       @relation("staffTostaff", fields: [contractorId], references: [id])
-  employees                    Staff[]                      @relation("staffTostaff")
+  company                      Staff?                       @relation("staffTostaff", fields: [companyId], references: [id])
+  teamMembers                  Staff[]                      @relation("staffTostaff")
   users_staff_createdByTousers User                         @relation("staff_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
   users_staff_userIdTousers    User?                        @relation("staff_userIdTousers", fields: [userId], references: [id])
   services                     StaffServiceAssignment[]
 
   @@index([accountStatus])
   @@index([availabilityStatus])
-  @@index([contractorId])
+  @@index([companyId])
   @@index([createdBy])
   @@index([email])
   @@index([staffId])
@@ -707,6 +707,7 @@ enum StaffRating {
 enum StaffType {
   EMPLOYEE
   CONTRACTOR
+  COMPANY
 }
 
 enum UserRole {

@@ -198,8 +198,9 @@ export function BulkEditModal({
                                             }
                                         >
                                             <option value="">Select type...</option>
-                                            <option value={StaffType.EMPLOYEE}>Employee</option>
+                                            <option value={StaffType.COMPANY}>Company</option>
                                             <option value={StaffType.CONTRACTOR}>Contractor</option>
+                                            <option value={StaffType.EMPLOYEE}>Employee</option>
                                         </Select>
                                     ) : (
                                         <p className="text-sm text-muted-foreground py-2">
