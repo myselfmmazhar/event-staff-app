@@ -1,0 +1,9 @@
+export { AnimatedCounter } from "./animated-counter";
+export { StatsCard } from "./stats-card";
+export { WelcomeSection } from "./welcome-section";
+export { QuickStats } from "./quick-stats";
+export { UpcomingEventCard } from "./upcoming-event-card";
+export { UpcomingEventsSection } from "./upcoming-events-section";
+export { DashboardTabs } from "./dashboard-tabs";
+export { EnhancedEventCard } from "./enhanced-event-card";
+export { UpcomingEventsTable } from "./upcoming-events-table";
