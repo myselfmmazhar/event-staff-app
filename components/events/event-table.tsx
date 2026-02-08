@@ -290,7 +290,14 @@ export function EventTable({
         const remaining = lines.length - visible.length;
 
         return (
-          <div className="space-y-0.5">
+          <div
+            className="space-y-0.5 cursor-pointer hover:text-primary transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push('/assignments');
+            }}
+            title="View in Assignment Manager"
+          >
             {visible.map((line, idx) => (
               <div key={idx} className="truncate" title={line}>
                 {line}
@@ -321,7 +328,14 @@ export function EventTable({
           totalAccepted === 0 ? 'warning' : totalConfirmed >= totalRequired ? 'success' : 'info';
 
         return (
-          <div className="space-y-1">
+          <div
+            className="space-y-1 cursor-pointer hover:text-primary transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push('/assignments');
+            }}
+            title="View in Assignment Manager"
+          >
             <div className="text-sm text-muted-foreground">{summary}</div>
             <Badge variant={statusVariant} size="sm" asSpan>
               {statusLabel}

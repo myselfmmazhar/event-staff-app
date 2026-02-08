@@ -1,34 +1,246 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import { ClipboardListIcon } from '@/components/ui/icons';
+import { Button } from '@/components/ui/button';
+import { ClipboardListIcon, PlusIcon, TrashIcon, XIcon } from '@/components/ui/icons';
+import { useAssignmentsFilters } from '@/store/assignments-filters.store';
+import {
+  AssignmentManagerTabs,
+  AssignmentFilters,
+  CreateAssignmentModal,
+  DuplicateAssignmentModal,
+  AssignmentExportDropdown,
+  BulkDeleteModal,
+  SendReminderModal,
+} from '@/components/assignments';
+import { CallTimeDetailModal } from '@/components/call-times/call-time-detail-modal';
+import { DeleteCallTimeModal } from '@/components/call-times/delete-call-time-modal';
+import type { AssignmentData } from '@/components/assignments/assignment-table';
+import { trpc } from '@/lib/client/trpc';
 
 export default function AssignmentManagerPage() {
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <ClipboardListIcon className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">Assignment Manager</h1>
-                    <p className="text-sm text-muted-foreground">Manage staff assignments and scheduling</p>
-                </div>
-            </div>
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [viewingAssignmentId, setViewingAssignmentId] = useState<string | null>(null);
+  const [deletingAssignment, setDeletingAssignment] = useState<AssignmentData | null>(null);
+  const [duplicatingAssignment, setDuplicatingAssignment] = useState<AssignmentData | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [reminderAssignment, setReminderAssignment] = useState<AssignmentData | null>(null);
 
-            <Card className="p-12 text-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                        <ClipboardListIcon className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-semibold text-foreground">Coming Soon</h2>
-                        <p className="text-sm text-muted-foreground mt-2">
-                            Assignment Manager functionality will be available in a future update.
-                        </p>
-                    </div>
-                </div>
-            </Card>
+  const utils = trpc.useUtils();
+  const deleteCallTimeMutation = trpc.callTime.delete.useMutation({
+    onSuccess: () => {
+      utils.callTime.getAll.invalidate();
+      setDeletingAssignment(null);
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = trpc.callTime.delete.useMutation({
+    onSuccess: () => {
+      utils.callTime.getAll.invalidate();
+    },
+  });
+
+  const handleBulkDelete = async () => {
+    const idsToDelete = Array.from(selectedIds);
+    for (const id of idsToDelete) {
+      await bulkDeleteMutation.mutateAsync({ id });
+    }
+    setSelectedIds(new Set());
+    setIsBulkDeleteModalOpen(false);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Fetch all assignments for export (without pagination)
+  const { data: allAssignmentsData } = trpc.callTime.getAllForExport.useQuery();
+
+  const allAssignments = (allAssignmentsData || []).map((item) => ({
+    id: item.id,
+    callTimeId: item.callTimeId,
+    startDate: item.startDate,
+    startTime: item.startTime,
+    endDate: item.endDate,
+    endTime: item.endTime,
+    numberOfStaffRequired: item.numberOfStaffRequired,
+    payRate: item.payRate,
+    payRateType: item.payRateType,
+    service: item.service,
+    event: item.event,
+    confirmedCount: item.confirmedCount,
+    needsStaff: item.needsStaff,
+    invitations: item.invitations,
+  }));
+
+  const selectedAssignments = allAssignments.filter(a => selectedIds.has(a.id));
+
+  // Hydrate the store on mount
+  useEffect(() => {
+    useAssignmentsFilters.persist.rehydrate();
+  }, []);
+
+  const handleViewAssignment = (assignment: AssignmentData) => {
+    setViewingAssignmentId(assignment.id);
+  };
+
+  const handleDeleteAssignment = (assignment: AssignmentData) => {
+    setDeletingAssignment(assignment);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deletingAssignment) {
+      deleteCallTimeMutation.mutate({ id: deletingAssignment.id });
+    }
+  };
+
+  const handleDuplicateAssignment = (assignment: AssignmentData) => {
+    setDuplicatingAssignment(assignment);
+  };
+
+  const handleDuplicateSuccess = () => {
+    setDuplicatingAssignment(null);
+  };
+
+  const handleCreateSuccess = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleSendReminder = (assignment: AssignmentData) => {
+    setReminderAssignment(assignment);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <ClipboardListIcon className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Assignment Manager</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage staff assignments and scheduling across all events
+            </p>
+          </div>
         </div>
-    );
+
+        <div className="flex items-center gap-2">
+          <AssignmentExportDropdown
+            assignments={allAssignments}
+            selectedAssignments={selectedAssignments}
+            selectedCount={selectedIds.size}
+            disabled={false}
+          />
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Create Assignment
+          </Button>
+        </div>
+      </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <Card className="p-3 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-foreground">
+                {selectedIds.size} assignment{selectedIds.size > 1 ? 's' : ''} selected
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearSelection}
+                className="text-muted-foreground"
+              >
+                <XIcon className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setIsBulkDeleteModalOpen(true)}
+              >
+                <TrashIcon className="h-4 w-4 mr-1" />
+                Delete Selected
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Filters */}
+      <Card className="p-4">
+        <AssignmentFilters />
+      </Card>
+
+      {/* Tabs with Views */}
+      <AssignmentManagerTabs
+        onViewAssignment={handleViewAssignment}
+        onDeleteAssignment={handleDeleteAssignment}
+        onDuplicateAssignment={handleDuplicateAssignment}
+        onSendReminder={handleSendReminder}
+        selectable={true}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+      />
+
+      {/* Create Assignment Modal */}
+      <CreateAssignmentModal
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handleCreateSuccess}
+      />
+
+      {/* View/Edit Assignment Modal */}
+      <CallTimeDetailModal
+        callTimeId={viewingAssignmentId}
+        open={viewingAssignmentId !== null}
+        onClose={() => setViewingAssignmentId(null)}
+      />
+
+      {/* Delete Assignment Modal */}
+      <DeleteCallTimeModal
+        callTime={deletingAssignment ? {
+          id: deletingAssignment.id,
+          callTimeId: deletingAssignment.callTimeId,
+          service: deletingAssignment.service,
+        } : null}
+        open={deletingAssignment !== null}
+        onClose={() => setDeletingAssignment(null)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={deleteCallTimeMutation.isPending}
+      />
+
+      {/* Duplicate Assignment Modal */}
+      <DuplicateAssignmentModal
+        open={duplicatingAssignment !== null}
+        onClose={() => setDuplicatingAssignment(null)}
+        onSuccess={handleDuplicateSuccess}
+        sourceAssignment={duplicatingAssignment}
+      />
+
+      {/* Bulk Delete Modal */}
+      <BulkDeleteModal
+        assignments={selectedAssignments}
+        open={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        onConfirm={handleBulkDelete}
+        isDeleting={bulkDeleteMutation.isPending}
+      />
+
+      {/* Send Reminder Modal */}
+      <SendReminderModal
+        assignment={reminderAssignment}
+        open={reminderAssignment !== null}
+        onClose={() => setReminderAssignment(null)}
+      />
+    </div>
+  );
 }

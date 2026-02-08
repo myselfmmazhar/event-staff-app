@@ -10,7 +10,8 @@ const variants: Record<Variant, string> = {
   success:
     'bg-success/10 text-success border-success/20',
   warning:
-    'bg-warning/15 text-warning border-warning/30',
+    // 'bg-warning/15 text-warning border-warning/30',
+    '[background-color:rgb(254,243,199)] [color:rgb(146,64,14)] [border-color:rgb(253,224,71)] dark:[background-color:rgb(69,26,3)] dark:[color:rgb(251,191,36)] dark:[border-color:rgb(120,53,15)]',
   danger:
     'bg-destructive/10 text-destructive border-destructive/20',
   info:
