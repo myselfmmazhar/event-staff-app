@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { ArrowLeft, Pencil, Printer, Send, Paperclip, FileText, Image } from "lucide-react";
+import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function ViewInvoicePage() {
@@ -68,20 +68,30 @@ export default function ViewInvoicePage() {
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 print:hidden">
                     <Badge variant={getStatusVariant(invoice.status) as any} className="text-sm px-3 py-1">
                         {invoice.status}
                     </Badge>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" onClick={() => window.print()} title="Print Invoice">
                         <Printer className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="icon">
-                        <Send className="h-4 w-4" />
+                    <Button variant="outline" size="icon" onClick={() => window.print()} title="Download as PDF">
+                        <Download className="h-4 w-4" />
                     </Button>
-                    <Button onClick={() => router.push(`/invoices/${invoice.id}/edit`)}>
-                        <Pencil className="h-4 w-4 mr-2" />
+                    <Button onClick={() => router.push(`/invoices/${invoice.id}/edit`)} className="gap-2">
+                        <Pencil className="h-4 w-4" />
                         Edit
                     </Button>
+                </div>
+            </div>
+
+            {/* Print-only Header (only visible when printing) */}
+            <div className="hidden print:block mb-8">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-4xl font-bold text-foreground">INVOICE</h1>
+                        <p className="text-muted-foreground mt-2">#{invoice.invoiceNo}</p>
+                    </div>
                 </div>
             </div>
 

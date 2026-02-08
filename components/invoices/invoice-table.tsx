@@ -8,7 +8,7 @@ import { InvoiceStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/common/data-table";
 import { format } from "date-fns";
-import { Pencil, Eye, Archive, RotateCcw } from "lucide-react";
+import { Pencil, Eye, Archive, RotateCcw, Trash2 } from "lucide-react";
 
 interface Invoice {
     id: string;
@@ -35,6 +35,7 @@ interface InvoiceTableProps {
     sortOrder?: "asc" | "desc";
     onEdit?: (invoice: Invoice) => void;
     onArchive?: (invoice: Invoice) => void;
+    onDelete?: (invoice: Invoice) => void;
     onView?: (invoice: Invoice) => void;
     onSort?: (field: SortableField) => void;
     selectedIds?: Set<string>;
@@ -49,6 +50,7 @@ export function InvoiceTable({
     sortOrder = "desc",
     onEdit,
     onArchive,
+    onDelete,
     onView,
     onSort,
     selectedIds,
@@ -152,6 +154,16 @@ export function InvoiceTable({
                             <Archive className="h-4 w-4 text-blue-500" />
                         )}
                     </Button>
+                    {showArchived && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="px-0"
+                            onClick={() => onDelete?.(invoice)}
+                        >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                    )}
                 </div>
             ),
         },
@@ -250,6 +262,16 @@ export function InvoiceTable({
                     )}
                     {showArchived ? "Restore" : "Archive"}
                 </Button>
+                {showArchived && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDelete?.(invoice)}
+                        className="flex-1 text-destructive hover:bg-destructive/10"
+                    >
+                        <Trash2 className="h-4 w-4 mr-1" /> Delete
+                    </Button>
+                )}
             </div>
         </div>
     );

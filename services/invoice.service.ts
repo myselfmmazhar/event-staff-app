@@ -181,4 +181,10 @@ export class InvoiceService {
             },
         });
     }
+
+    async hardDelete(id: string) {
+        return this.prisma.invoice.delete({
+            where: { id },
+        });
+    }
 }

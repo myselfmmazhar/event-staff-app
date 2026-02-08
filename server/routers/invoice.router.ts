@@ -52,4 +52,11 @@ export const invoiceRouter = router({
             const invoiceService = new InvoiceService(ctx.prisma);
             return await invoiceService.restore(input.id);
         }),
+
+    hardDelete: protectedProcedure
+        .input(InvoiceSchema.id)
+        .mutation(async ({ ctx, input }) => {
+            const invoiceService = new InvoiceService(ctx.prisma);
+            return await invoiceService.hardDelete(input.id);
+        }),
 });

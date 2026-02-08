@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { InvoiceTable } from "@/components/invoices/invoice-table";
 import { InvoiceSearch } from "@/components/invoices/invoice-search";
 import { Pagination } from "@/components/common/pagination";
+import { InvoiceActionModal } from "@/components/invoices/invoice-action-modal";
 
 export default function InvoicesPage() {
     const router = useRouter();
@@ -18,6 +19,11 @@ export default function InvoicesPage() {
     const [search, setSearch] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showArchived, setShowArchived] = useState(false);
+
+    // Action modal state
+    const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+    const [selectedInvoiceForAction, setSelectedInvoiceForAction] = useState<{ id: string, invoiceNo: string, clientName: string } | null>(null);
+    const [actionType, setActionType] = useState<'archive' | 'restore' | 'delete'>('archive');
 
     const { data, isLoading } = trpc.invoices.getAll.useQuery({
         page,
@@ -33,12 +39,21 @@ export default function InvoicesPage() {
     const archiveMutation = trpc.invoices.delete.useMutation({
         onSuccess: () => {
             utils.invoices.getAll.invalidate();
+            setIsActionModalOpen(false);
         },
     });
 
     const restoreMutation = trpc.invoices.restore.useMutation({
         onSuccess: () => {
             utils.invoices.getAll.invalidate();
+            setIsActionModalOpen(false);
+        },
+    });
+
+    const hardDeleteMutation = trpc.invoices.hardDelete.useMutation({
+        onSuccess: () => {
+            utils.invoices.getAll.invalidate();
+            setIsActionModalOpen(false);
         },
     });
 
@@ -87,15 +102,24 @@ export default function InvoicesPage() {
                     onEdit={(invoice) => router.push(`/invoices/${invoice.id}/edit`)}
                     onView={(invoice) => router.push(`/invoices/${invoice.id}`)}
                     onArchive={(invoice) => {
-                        if (showArchived) {
-                            if (confirm("Are you sure you want to restore this invoice?")) {
-                                restoreMutation.mutate({ id: invoice.id });
-                            }
-                        } else {
-                            if (confirm("Are you sure you want to archive this invoice? It will be moved to the archive.")) {
-                                archiveMutation.mutate({ id: invoice.id });
-                            }
-                        }
+                        const clientName = invoice.client.businessName || `${invoice.client.firstName} ${invoice.client.lastName}`;
+                        setSelectedInvoiceForAction({
+                            id: invoice.id,
+                            invoiceNo: invoice.invoiceNo,
+                            clientName: clientName
+                        });
+                        setActionType(showArchived ? 'restore' : 'archive');
+                        setIsActionModalOpen(true);
+                    }}
+                    onDelete={(invoice) => {
+                        const clientName = invoice.client.businessName || `${invoice.client.firstName} ${invoice.client.lastName}`;
+                        setSelectedInvoiceForAction({
+                            id: invoice.id,
+                            invoiceNo: invoice.invoiceNo,
+                            clientName: clientName
+                        });
+                        setActionType('delete');
+                        setIsActionModalOpen(true);
                     }}
                 />
                 {total > 0 && (
@@ -111,6 +135,24 @@ export default function InvoicesPage() {
                     </div>
                 )}
             </Card>
+
+            <InvoiceActionModal
+                invoice={selectedInvoiceForAction}
+                open={isActionModalOpen}
+                onClose={() => setIsActionModalOpen(false)}
+                onConfirm={() => {
+                    if (!selectedInvoiceForAction) return;
+                    if (actionType === 'archive') {
+                        archiveMutation.mutate({ id: selectedInvoiceForAction.id });
+                    } else if (actionType === 'restore') {
+                        restoreMutation.mutate({ id: selectedInvoiceForAction.id });
+                    } else if (actionType === 'delete') {
+                        hardDeleteMutation.mutate({ id: selectedInvoiceForAction.id });
+                    }
+                }}
+                isLoading={archiveMutation.isPending || restoreMutation.isPending || hardDeleteMutation.isPending}
+                actionType={actionType}
+            />
         </div>
     );
 }
