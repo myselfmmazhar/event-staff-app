@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -220,9 +220,8 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                             control={control}
                             render={({ field }) => (
                                 <Select
-                                    {...field}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
+                                    value={field.value}
+                                    onValueChange={(value) => {
                                         if (value === 'custom') {
                                             setShowStaffCustom(true);
                                             field.onChange('');
@@ -232,11 +231,16 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                                         }
                                     }}
                                 >
-                                    {STAFF_PRESETS.map((preset) => (
-                                        <option key={preset.value} value={preset.value}>
-                                            {preset.label}
-                                        </option>
-                                    ))}
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {STAFF_PRESETS.map((preset) => (
+                                            <SelectItem key={preset.value} value={preset.value}>
+                                                {preset.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
                             )}
                         />
@@ -274,9 +278,8 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                             control={control}
                             render={({ field }) => (
                                 <Select
-                                    {...field}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
+                                    value={field.value}
+                                    onValueChange={(value) => {
                                         if (value === 'custom') {
                                             setShowEventCustom(true);
                                             field.onChange('');
@@ -286,11 +289,16 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                                         }
                                     }}
                                 >
-                                    {EVENT_PRESETS.map((preset) => (
-                                        <option key={preset.value} value={preset.value}>
-                                            {preset.label}
-                                        </option>
-                                    ))}
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {EVENT_PRESETS.map((preset) => (
+                                            <SelectItem key={preset.value} value={preset.value}>
+                                                {preset.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
                             )}
                         />
@@ -328,9 +336,8 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                             control={control}
                             render={({ field }) => (
                                 <Select
-                                    {...field}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
+                                    value={field.value}
+                                    onValueChange={(value) => {
                                         if (value === 'custom') {
                                             setShowRoleCustom(true);
                                             field.onChange('');
@@ -340,11 +347,16 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                                         }
                                     }}
                                 >
-                                    {ROLE_PRESETS.map((preset) => (
-                                        <option key={preset.value} value={preset.value}>
-                                            {preset.label}
-                                        </option>
-                                    ))}
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {ROLE_PRESETS.map((preset) => (
+                                            <SelectItem key={preset.value} value={preset.value}>
+                                                {preset.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
                             )}
                         />

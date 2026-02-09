@@ -11,11 +11,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { CreateEventTemplateInput, UpdateEventTemplateInput, FileLink } from '@/lib/schemas/event-template.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon, PlusIcon, XIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
@@ -460,18 +460,25 @@ export function EventTemplateFormModal({
 
               <div>
                 <Label htmlFor="clientId">Default Client</Label>
-                <Select
-                  id="clientId"
-                  {...register('clientId')}
-                  disabled={isSubmitting}
-                >
-                  <option value="">No default client</option>
-                  {clientsData?.data.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.businessName}
-                    </option>
-                  ))}
-                </Select>
+                <Controller
+                  name="clientId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                      <SelectTrigger id="clientId">
+                        <SelectValue placeholder="No default client" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No default client</SelectItem>
+                        {clientsData?.data.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.businessName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.clientId && (
                   <p className="text-sm text-destructive mt-1">{errors.clientId.message}</p>
                 )}
@@ -514,18 +521,25 @@ export function EventTemplateFormModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="requestMethod">Request Method</Label>
-                  <Select
-                    id="requestMethod"
-                    {...register('requestMethod')}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">Select method...</option>
-                    {REQUEST_METHODS.map((method) => (
-                      <option key={method.value} value={method.value}>
-                        {method.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <Controller
+                    name="requestMethod"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                        <SelectTrigger id="requestMethod">
+                          <SelectValue placeholder="Select method..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Select method...</SelectItem>
+                          {REQUEST_METHODS.map((method) => (
+                            <SelectItem key={method.value} value={method.value}>
+                              {method.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                   {errors.requestMethod && (
                     <p className="text-sm text-destructive mt-1">{errors.requestMethod.message}</p>
                   )}
@@ -851,18 +865,25 @@ export function EventTemplateFormModal({
 
               <div>
                 <Label htmlFor="timezone">Timezone</Label>
-                <Select
-                  id="timezone"
-                  {...register('timezone')}
-                  disabled={isSubmitting}
-                >
-                  <option value="">No default timezone</option>
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz}
-                    </option>
-                  ))}
-                </Select>
+                <Controller
+                  name="timezone"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                      <SelectTrigger id="timezone">
+                        <SelectValue placeholder="No default timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No default timezone</SelectItem>
+                        {TIMEZONES.map((tz) => (
+                          <SelectItem key={tz} value={tz}>
+                            {tz}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.timezone && (
                   <p className="text-sm text-destructive mt-1">{errors.timezone.message}</p>
                 )}

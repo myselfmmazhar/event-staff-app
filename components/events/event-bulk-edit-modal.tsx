@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InfoIcon } from 'lucide-react';
 import { EventStatus } from '@prisma/client';
@@ -156,18 +156,22 @@ export function EventBulkEditModal({
                                     {formData.status?.enabled ? (
                                         <Select
                                             value={formData.status.value || ''}
-                                            onChange={(e) =>
+                                            onValueChange={(value) =>
                                                 updateField('status', {
-                                                    value: e.target.value as EventStatus,
+                                                    value: value as EventStatus,
                                                 })
                                             }
                                         >
-                                            <option value="">Select status...</option>
-                                            {Object.entries(EVENT_STATUS_LABELS).map(([value, label]) => (
-                                                <option key={value} value={value}>
-                                                    {label}
-                                                </option>
-                                            ))}
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select status..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {Object.entries(EVENT_STATUS_LABELS).map(([value, label]) => (
+                                                    <SelectItem key={value} value={value}>
+                                                        {label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
                                         </Select>
                                     ) : (
                                         <p className="text-sm text-muted-foreground py-2">
@@ -192,18 +196,23 @@ export function EventBulkEditModal({
                                     {formData.clientId?.enabled ? (
                                         <Select
                                             value={formData.clientId.value ?? ''}
-                                            onChange={(e) =>
+                                            onValueChange={(value) =>
                                                 updateField('clientId', {
-                                                    value: e.target.value || null,
+                                                    value: value || null,
                                                 })
                                             }
                                         >
-                                            <option value="">None (Remove client)</option>
-                                            {clients.map((client) => (
-                                                <option key={client.id} value={client.id}>
-                                                    {client.businessName || `${client.firstName} ${client.lastName}`}
-                                                </option>
-                                            ))}
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="None (Remove client)" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="">None (Remove client)</SelectItem>
+                                                {clients.map((client) => (
+                                                    <SelectItem key={client.id} value={client.id}>
+                                                        {client.businessName || `${client.firstName} ${client.lastName}`}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
                                         </Select>
                                     ) : (
                                         <p className="text-sm text-muted-foreground py-2">

@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EventSchema, TIMEZONES, REQUEST_METHODS } from '@/lib/schemas/event.schema';
 import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument } from '@/lib/schemas/event.schema';
 import { EventStatus, RequestMethod, AmountType } from '@prisma/client';
@@ -19,7 +19,7 @@ import { AMOUNT_TYPE_OPTIONS } from '@/lib/constants/enums';
 import { EventDocumentUpload } from './event-document-upload';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon, EyeIcon, PlusIcon, XIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
@@ -636,18 +636,21 @@ export function EventFormModal({
               <Label htmlFor="templateSelect">Start from Template (Optional)</Label>
               <div className="flex gap-2 mt-1">
                 <Select
-                  id="templateSelect"
                   value={selectedTemplateId}
-                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  onValueChange={(value) => setSelectedTemplateId(value)}
                   disabled={isSubmitting}
-                  className="flex-1"
                 >
-                  <option value="">Select a template...</option>
-                  {templatesData.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
+                  <SelectTrigger id="templateSelect" className="flex-1">
+                    <SelectValue placeholder="Select a template..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Select a template...</SelectItem>
+                    {templatesData.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
                 {selectedTemplateId && (
                   <Button
@@ -737,18 +740,25 @@ export function EventFormModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="clientId">Client</Label>
-                    <Select
-                      id="clientId"
-                      {...register('clientId')}
-                      disabled={isSubmitting}
-                    >
-                      <option value="">Not applicable</option>
-                      {clientsData?.data.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.businessName}
-                        </option>
-                      ))}
-                    </Select>
+                    <Controller
+                      name="clientId"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                          <SelectTrigger id="clientId">
+                            <SelectValue placeholder="Not applicable" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Not applicable</SelectItem>
+                            {clientsData?.data.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.businessName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                     {errors.clientId && (
                       <p className="text-sm text-destructive mt-1">{errors.clientId.message}</p>
                     )}
@@ -756,17 +766,24 @@ export function EventFormModal({
 
                   <div>
                     <Label htmlFor="status" required>Status</Label>
-                    <Select
-                      id="status"
-                      {...register('status')}
-                      disabled={isSubmitting}
-                    >
-                      {STATUSES.map((status) => (
-                        <option key={status.value} value={status.value}>
-                          {status.label}
-                        </option>
-                      ))}
-                    </Select>
+                    <Controller
+                      name="status"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                          <SelectTrigger id="status">
+                            <SelectValue placeholder="Select status..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUSES.map((status) => (
+                              <SelectItem key={status.value} value={status.value}>
+                                {status.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                     {errors.status && (
                       <p className="text-sm text-destructive mt-1">{errors.status.message}</p>
                     )}
@@ -901,17 +918,24 @@ export function EventFormModal({
 
                 <div>
                   <Label htmlFor="timezone" required>Timezone</Label>
-                  <Select
-                    id="timezone"
-                    {...register('timezone')}
-                    disabled={isSubmitting}
-                  >
-                    {TIMEZONES.map((tz) => (
-                      <option key={tz} value={tz}>
-                        {tz}
-                      </option>
-                    ))}
-                  </Select>
+                  <Controller
+                    name="timezone"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                        <SelectTrigger id="timezone">
+                          <SelectValue placeholder="Select timezone..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIMEZONES.map((tz) => (
+                            <SelectItem key={tz} value={tz}>
+                              {tz}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                   {errors.timezone && (
                     <p className="text-sm text-destructive mt-1">{errors.timezone.message}</p>
                   )}
@@ -1026,16 +1050,23 @@ export function EventFormModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="requestMethod">Request Method</Label>
-                    <Select
-                      id="requestMethod"
-                      {...register('requestMethod')}
-                      disabled={isSubmitting}
-                    >
-                      <option value="">Select method...</option>
-                      <option value="EMAIL">Email</option>
-                      <option value="TEXT_SMS">Text/SMS</option>
-                      <option value="PHONE_CALL">Phone Call</option>
-                    </Select>
+                    <Controller
+                      name="requestMethod"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                          <SelectTrigger id="requestMethod">
+                            <SelectValue placeholder="Select method..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Select method...</SelectItem>
+                            <SelectItem value="EMAIL">Email</SelectItem>
+                            <SelectItem value="TEXT_SMS">Text/SMS</SelectItem>
+                            <SelectItem value="PHONE_CALL">Phone Call</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                   </div>
 
                   <div>
@@ -1252,18 +1283,25 @@ export function EventFormModal({
                 {/* Task Rate Type */}
                 <div>
                   <Label htmlFor="taskRateType">Task Rate Type</Label>
-                  <Select
-                    id="taskRateType"
-                    {...register('taskRateType')}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">Select type...</option>
-                    {AMOUNT_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <Controller
+                    name="taskRateType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                        <SelectTrigger id="taskRateType">
+                          <SelectValue placeholder="Select type..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Select type...</SelectItem>
+                          {AMOUNT_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
 
                 {/* Commission Section */}
@@ -1297,18 +1335,25 @@ export function EventFormModal({
                       </div>
                       <div>
                         <Label htmlFor="commissionAmountType">Commission Type</Label>
-                        <Select
-                          id="commissionAmountType"
-                          {...register('commissionAmountType')}
-                          disabled={isSubmitting}
-                        >
-                          <option value="">Select type...</option>
-                          {AMOUNT_TYPE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </Select>
+                        <Controller
+                          name="commissionAmountType"
+                          control={control}
+                          render={({ field }) => (
+                            <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                              <SelectTrigger id="commissionAmountType">
+                                <SelectValue placeholder="Select type..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Select type...</SelectItem>
+                                {AMOUNT_TYPE_OPTIONS.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
                       </div>
                     </div>
                   )}
@@ -1345,18 +1390,25 @@ export function EventFormModal({
                       </div>
                       <div>
                         <Label htmlFor="overtimeRateType">Overtime Rate Type</Label>
-                        <Select
-                          id="overtimeRateType"
-                          {...register('overtimeRateType')}
-                          disabled={isSubmitting}
-                        >
-                          <option value="">Select type...</option>
-                          {AMOUNT_TYPE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </Select>
+                        <Controller
+                          name="overtimeRateType"
+                          control={control}
+                          render={({ field }) => (
+                            <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                              <SelectTrigger id="overtimeRateType">
+                                <SelectValue placeholder="Select type..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Select type...</SelectItem>
+                                {AMOUNT_TYPE_OPTIONS.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
                       </div>
                     </div>
                   )}

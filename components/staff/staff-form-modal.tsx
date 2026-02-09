@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -306,10 +306,15 @@ export function StaffFormModal({
                                                 name="skillLevel"
                                                 control={control}
                                                 render={({ field }) => (
-                                                    <Select {...field} disabled={isSubmitting}>
-                                                        <option value={SkillLevel.BEGINNER}>Beginner</option>
-                                                        <option value={SkillLevel.INTERMEDIATE}>Intermediate</option>
-                                                        <option value={SkillLevel.ADVANCED}>Advanced</option>
+                                                    <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select skill level" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value={SkillLevel.BEGINNER}>Beginner</SelectItem>
+                                                            <SelectItem value={SkillLevel.INTERMEDIATE}>Intermediate</SelectItem>
+                                                            <SelectItem value={SkillLevel.ADVANCED}>Advanced</SelectItem>
+                                                        </SelectContent>
                                                     </Select>
                                                 )}
                                             />
@@ -327,15 +332,20 @@ export function StaffFormModal({
                                                     render={({ field }) => (
                                                         <Select
                                                             value={field.value || ''}
-                                                            onChange={(e) => field.onChange(e.target.value || null)}
+                                                            onValueChange={(value) => field.onChange(value || null)}
                                                             disabled={isSubmitting}
                                                         >
-                                                            <option value="">None</option>
-                                                            {companies.map((c) => (
-                                                                <option key={c.id} value={c.id}>
-                                                                    {c.firstName} {c.lastName} ({c.staffId})
-                                                                </option>
-                                                            ))}
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="None" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="">None</SelectItem>
+                                                                {companies.map((c) => (
+                                                                    <SelectItem key={c.id} value={c.id}>
+                                                                        {c.firstName} {c.lastName} ({c.staffId})
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
                                                         </Select>
                                                     )}
                                                 />
@@ -357,10 +367,15 @@ export function StaffFormModal({
                                                 name="accountStatus"
                                                 control={control}
                                                 render={({ field }) => (
-                                                    <Select {...field} disabled={isSubmitting}>
-                                                        <option value={AccountStatus.ACTIVE}>Active</option>
-                                                        <option value={AccountStatus.DISABLED}>Disabled</option>
-                                                        <option value={AccountStatus.PENDING}>Pending</option>
+                                                    <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value={AccountStatus.ACTIVE}>Active</SelectItem>
+                                                            <SelectItem value={AccountStatus.DISABLED}>Disabled</SelectItem>
+                                                            <SelectItem value={AccountStatus.PENDING}>Pending</SelectItem>
+                                                        </SelectContent>
                                                     </Select>
                                                 )}
                                             />
@@ -375,10 +390,15 @@ export function StaffFormModal({
                                                 name="staffType"
                                                 control={control}
                                                 render={({ field }) => (
-                                                    <Select {...field} disabled={isSubmitting}>
-                                                        <option value={StaffType.COMPANY}>Company</option>
-                                                        <option value={StaffType.CONTRACTOR}>Contractor</option>
-                                                        <option value={StaffType.EMPLOYEE}>Employee</option>
+                                                    <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value={StaffType.COMPANY}>Company</SelectItem>
+                                                            <SelectItem value={StaffType.CONTRACTOR}>Contractor</SelectItem>
+                                                            <SelectItem value={StaffType.EMPLOYEE}>Employee</SelectItem>
+                                                        </SelectContent>
                                                     </Select>
                                                 )}
                                             />
@@ -399,10 +419,15 @@ export function StaffFormModal({
                                                 name="availabilityStatus"
                                                 control={control}
                                                 render={({ field }) => (
-                                                    <Select {...field} disabled={isSubmitting}>
-                                                        <option value={AvailabilityStatus.OPEN_TO_OFFERS}>Open to Offers</option>
-                                                        <option value={AvailabilityStatus.BUSY}>Busy</option>
-                                                        <option value={AvailabilityStatus.TIME_OFF}>Time Off</option>
+                                                    <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select availability" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value={AvailabilityStatus.OPEN_TO_OFFERS}>Open to Offers</SelectItem>
+                                                            <SelectItem value={AvailabilityStatus.BUSY}>Busy</SelectItem>
+                                                            <SelectItem value={AvailabilityStatus.TIME_OFF}>Time Off</SelectItem>
+                                                        </SelectContent>
                                                     </Select>
                                                 )}
                                             />
@@ -479,13 +504,17 @@ export function StaffFormModal({
                                         <div className="flex-1">
                                             <Label htmlFor="tm-type">Type</Label>
                                             <Select
-                                                id="tm-type"
                                                 value={newTeamMember.staffType}
-                                                onChange={(e) => setNewTeamMember({ ...newTeamMember, staffType: e.target.value as 'CONTRACTOR' | 'EMPLOYEE' })}
+                                                onValueChange={(value) => setNewTeamMember({ ...newTeamMember, staffType: value as 'CONTRACTOR' | 'EMPLOYEE' })}
                                                 disabled={isSubmitting}
                                             >
-                                                <option value="CONTRACTOR">Contractor</option>
-                                                <option value="EMPLOYEE">Employee</option>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="CONTRACTOR">Contractor</SelectItem>
+                                                    <SelectItem value="EMPLOYEE">Employee</SelectItem>
+                                                </SelectContent>
                                             </Select>
                                         </div>
                                         <Button
@@ -627,11 +656,16 @@ export function StaffFormModal({
                                             name="staffRating"
                                             control={control}
                                             render={({ field }) => (
-                                                <Select {...field} disabled={isSubmitting}>
-                                                    <option value={StaffRating.NA}>N/A</option>
-                                                    <option value={StaffRating.A}>A</option>
-                                                    <option value={StaffRating.B}>B</option>
-                                                    <option value={StaffRating.C}>C</option>
+                                                <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select rating" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value={StaffRating.NA}>N/A</SelectItem>
+                                                        <SelectItem value={StaffRating.A}>A</SelectItem>
+                                                        <SelectItem value={StaffRating.B}>B</SelectItem>
+                                                        <SelectItem value={StaffRating.C}>C</SelectItem>
+                                                    </SelectContent>
                                                 </Select>
                                             )}
                                         />
