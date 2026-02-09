@@ -1,34 +1,32 @@
 import { PrismaClient, Prisma } from "@prisma/client";
-import { InvoiceSchema } from "@/lib/schemas/invoice.schema";
+import { EstimateSchema } from "@/lib/schemas/estimate.schema";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
-type CreateInvoiceInput = z.infer<typeof InvoiceSchema.create>;
-type UpdateInvoiceInput = z.infer<typeof InvoiceSchema.update>;
+type CreateEstimateInput = z.infer<typeof EstimateSchema.create>;
+type UpdateEstimateInput = z.infer<typeof EstimateSchema.update>;
 
-export class InvoiceService {
+export class EstimateService {
     constructor(private prisma: PrismaClient) { }
 
-    async findAll(query: z.infer<typeof InvoiceSchema.query>) {
-        console.log("Invoice Prisma keys:", Object.keys(this.prisma));
-        console.log("Invoice property:", (this.prisma as any).invoice);
+    async findAll(query: z.infer<typeof EstimateSchema.query>) {
         const { page, limit, search, status, clientId, showArchived } = query;
         const skip = (page - 1) * limit;
 
-        const where: Prisma.InvoiceWhereInput = {
+        const where: Prisma.EstimateWhereInput = {
             isArchived: showArchived,
             ...(status && { status }),
             ...(clientId && { clientId }),
             ...(search && {
                 OR: [
-                    { invoiceNo: { contains: search, mode: "insensitive" } },
+                    { estimateNo: { contains: search, mode: "insensitive" } },
                     { client: { businessName: { contains: search, mode: "insensitive" } } },
                 ],
             }),
         };
 
         const [data, total] = await Promise.all([
-            this.prisma.invoice.findMany({
+            this.prisma.estimate.findMany({
                 where,
                 skip,
                 take: limit,
@@ -44,7 +42,7 @@ export class InvoiceService {
                 },
                 orderBy: { createdAt: "desc" },
             }),
-            this.prisma.invoice.count({ where }),
+            this.prisma.estimate.count({ where }),
         ]);
 
         return {
@@ -59,7 +57,7 @@ export class InvoiceService {
     }
 
     async findOne(id: string) {
-        return this.prisma.invoice.findUnique({
+        return this.prisma.estimate.findUnique({
             where: { id },
             include: {
                 items: true,
@@ -68,23 +66,23 @@ export class InvoiceService {
         });
     }
 
-    async create(data: CreateInvoiceInput, userId: string) {
-        const { items, ...invoiceData } = data;
+    async create(data: CreateEstimateInput, userId: string) {
+        const { items, ...estimateData } = data;
 
-        const existingInvoice = await this.prisma.invoice.findUnique({
-            where: { invoiceNo: invoiceData.invoiceNo },
+        const existingEstimate = await this.prisma.estimate.findUnique({
+            where: { estimateNo: estimateData.estimateNo },
         });
 
-        if (existingInvoice) {
+        if (existingEstimate) {
             throw new TRPCError({
                 code: "CONFLICT",
-                message: "Invoice number already exists",
+                message: "Estimate number already exists",
             });
         }
 
-        return this.prisma.invoice.create({
+        return this.prisma.estimate.create({
             data: {
-                ...invoiceData,
+                ...estimateData,
                 createdBy: userId,
                 items: {
                     create: items?.map((item) => ({
@@ -104,31 +102,27 @@ export class InvoiceService {
         });
     }
 
-    async update(id: string, data: Omit<UpdateInvoiceInput, "id">) {
-        const { items, ...invoiceData } = data;
-
-        // Transaction to handle items update (delete all and recreate for simplicity in this version, 
-        // or use upsert if we want to keep IDs. For invoices, usually replacing lines is acceptable 
-        // or checking for IDs)
+    async update(id: string, data: Omit<UpdateEstimateInput, "id">) {
+        const { items, ...estimateData } = data;
 
         return this.prisma.$transaction(async (tx) => {
-            // Update invoice details
-            const invoice = await tx.invoice.update({
+            // Update estimate details
+            const estimate = await tx.estimate.update({
                 where: { id },
-                data: invoiceData,
+                data: estimateData,
             });
 
             if (items) {
                 // Delete existing items
-                await tx.invoiceItem.deleteMany({
-                    where: { invoiceId: id },
+                await tx.estimateItem.deleteMany({
+                    where: { estimateId: id },
                 });
 
                 // Create new items
                 if (items.length > 0) {
-                    await tx.invoiceItem.createMany({
+                    await tx.estimateItem.createMany({
                         data: items.map((item) => ({
-                            invoiceId: id,
+                            estimateId: id,
                             description: item.description,
                             quantity: item.quantity,
                             price: item.price,
@@ -141,7 +135,7 @@ export class InvoiceService {
                 }
             }
 
-            return tx.invoice.findUnique({
+            return tx.estimate.findUnique({
                 where: { id },
                 include: { items: true },
             });
@@ -149,7 +143,7 @@ export class InvoiceService {
     }
 
     async archive(id: string) {
-        return this.prisma.invoice.update({
+        return this.prisma.estimate.update({
             where: { id },
             data: {
                 isArchived: true,
@@ -159,7 +153,7 @@ export class InvoiceService {
     }
 
     async restore(id: string) {
-        return this.prisma.invoice.update({
+        return this.prisma.estimate.update({
             where: { id },
             data: {
                 isArchived: false,
@@ -173,7 +167,7 @@ export class InvoiceService {
     }
 
     async deleteMany(ids: string[]) {
-        return this.prisma.invoice.updateMany({
+        return this.prisma.estimate.updateMany({
             where: {
                 id: { in: ids },
             },
@@ -185,7 +179,7 @@ export class InvoiceService {
     }
 
     async hardDelete(id: string) {
-        return this.prisma.invoice.delete({
+        return this.prisma.estimate.delete({
             where: { id },
         });
     }
