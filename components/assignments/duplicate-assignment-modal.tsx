@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon } from '@/components/ui/icons';
@@ -108,23 +108,23 @@ export function DuplicateAssignmentModal({
     // Get the pay rate value
     const payRateValue = fullData
       ? (typeof fullData.payRate === 'number'
-          ? fullData.payRate
-          : typeof fullData.payRate === 'string'
-            ? parseFloat(fullData.payRate)
-            : (fullData.payRate as any)?.toNumber?.() || 0)
+        ? fullData.payRate
+        : typeof fullData.payRate === 'string'
+          ? parseFloat(fullData.payRate)
+          : (fullData.payRate as any)?.toNumber?.() || 0)
       : (typeof sourceAssignment.payRate === 'number'
-          ? sourceAssignment.payRate
-          : typeof sourceAssignment.payRate === 'string'
-            ? parseFloat(sourceAssignment.payRate)
-            : sourceAssignment.payRate?.toNumber?.() || 0);
+        ? sourceAssignment.payRate
+        : typeof sourceAssignment.payRate === 'string'
+          ? parseFloat(sourceAssignment.payRate)
+          : sourceAssignment.payRate?.toNumber?.() || 0);
 
     // Get the bill rate value from full data
     const billRateValue = fullData
       ? (typeof fullData.billRate === 'number'
-          ? fullData.billRate
-          : typeof fullData.billRate === 'string'
-            ? parseFloat(fullData.billRate)
-            : (fullData.billRate as any)?.toNumber?.() || 0)
+        ? fullData.billRate
+        : typeof fullData.billRate === 'string'
+          ? parseFloat(fullData.billRate)
+          : (fullData.billRate as any)?.toNumber?.() || 0)
       : payRateValue;
 
     // Create a partial call time object with source assignment data for pre-filling
@@ -138,14 +138,14 @@ export function DuplicateAssignmentModal({
       startDate: fullData?.startDate
         ? (typeof fullData.startDate === 'string' ? new Date(fullData.startDate) : fullData.startDate)
         : (typeof sourceAssignment.startDate === 'string'
-            ? new Date(sourceAssignment.startDate)
-            : sourceAssignment.startDate),
+          ? new Date(sourceAssignment.startDate)
+          : sourceAssignment.startDate),
       startTime: fullData?.startTime || sourceAssignment.startTime,
       endDate: fullData?.endDate
         ? (typeof fullData.endDate === 'string' ? new Date(fullData.endDate) : fullData.endDate)
         : (typeof sourceAssignment.endDate === 'string'
-            ? new Date(sourceAssignment.endDate)
-            : sourceAssignment.endDate),
+          ? new Date(sourceAssignment.endDate)
+          : sourceAssignment.endDate),
       endTime: fullData?.endTime || sourceAssignment.endTime,
       payRate: payRateValue,
       payRateType: fullData?.payRateType || sourceAssignment.payRateType,
@@ -201,17 +201,20 @@ export function DuplicateAssignmentModal({
               Target {eventTerm.singular}
             </Label>
             <Select
-              id="eventSelect"
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
+              onValueChange={setSelectedEventId}
               disabled={isLoadingEvents}
             >
-              <option value="">Select an {eventTerm.lower}</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.title} ({event.eventId})
-                </option>
-              ))}
+              <SelectTrigger id="eventSelect">
+                <SelectValue placeholder={`Select an ${eventTerm.lower}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {events.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.title} ({event.eventId})
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
 

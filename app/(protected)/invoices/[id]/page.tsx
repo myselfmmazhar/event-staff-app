@@ -58,7 +58,7 @@ export default function ViewInvoicePage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <Button variant="ghost" size="sm" className="p-2" onClick={() => router.back()}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>
@@ -72,10 +72,10 @@ export default function ViewInvoicePage() {
                     <Badge variant={getStatusVariant(invoice.status) as any} className="text-sm px-3 py-1">
                         {invoice.status}
                     </Badge>
-                    <Button variant="outline" size="icon" onClick={() => window.print()} title="Print Invoice">
+                    <Button variant="outline" size="sm" className="p-2" onClick={() => window.print()} title="Print Invoice">
                         <Printer className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="icon" onClick={() => window.print()} title="Download as PDF">
+                    <Button variant="outline" size="sm" className="p-2" onClick={() => window.print()} title="Download as PDF">
                         <Download className="h-4 w-4" />
                     </Button>
                     <Button onClick={() => router.push(`/invoices/${invoice.id}/edit`)} className="gap-2">
@@ -158,7 +158,7 @@ export default function ViewInvoicePage() {
                                 {invoice.items?.map((item, index) => (
                                     <tr key={index} className="border-b last:border-0">
                                         <td className="py-3 px-2">{item.description}</td>
-                                        <td className="py-3 px-2 text-right">{item.quantity}</td>
+                                        <td className="py-3 px-2 text-right">{Number(item.quantity)}</td>
                                         <td className="py-3 px-2 text-right">${Number(item.price).toFixed(2)}</td>
                                         <td className="py-3 px-2 text-right font-medium">${Number(item.amount).toFixed(2)}</td>
                                     </tr>

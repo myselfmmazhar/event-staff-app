@@ -5,7 +5,7 @@ import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ColorPicker } from './color-picker';
 import { toast } from '@/components/ui/use-toast';
@@ -167,27 +167,35 @@ export function BrandingSettingsPanel() {
           <div className="space-y-2">
             <Label htmlFor="button-style">Button Style</Label>
             <Select
-              id="button-style"
               value={buttonStyle}
-              onChange={(e) => setButtonStyle(e.target.value as ButtonStyle)}
+              onValueChange={(value) => setButtonStyle(value as ButtonStyle)}
             >
-              <option value="gradient">Gradient</option>
-              <option value="solid">Solid</option>
-              <option value="outline">Outline</option>
+              <SelectTrigger id="button-style">
+                <SelectValue placeholder="Select style..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gradient">Gradient</SelectItem>
+                <SelectItem value="solid">Solid</SelectItem>
+                <SelectItem value="outline">Outline</SelectItem>
+              </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="button-radius">Border Radius</Label>
             <Select
-              id="button-radius"
               value={buttonBorderRadius}
-              onChange={(e) => setButtonBorderRadius(e.target.value)}
+              onValueChange={(value) => setButtonBorderRadius(value)}
             >
-              <option value="0px">Square (0px)</option>
-              <option value="4px">Slight (4px)</option>
-              <option value="8px">Rounded (8px)</option>
-              <option value="12px">More Rounded (12px)</option>
-              <option value="9999px">Pill (Full)</option>
+              <SelectTrigger id="button-radius">
+                <SelectValue placeholder="Select radius..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0px">Square (0px)</SelectItem>
+                <SelectItem value="4px">Slight (4px)</SelectItem>
+                <SelectItem value="8px">Rounded (8px)</SelectItem>
+                <SelectItem value="12px">More Rounded (12px)</SelectItem>
+                <SelectItem value="9999px">Pill (Full)</SelectItem>
+              </SelectContent>
             </Select>
           </div>
         </div>
@@ -205,13 +213,16 @@ export function BrandingSettingsPanel() {
         <div className="space-y-2">
           <Label htmlFor="header-background">Header Background</Label>
           <Select
-            id="header-background"
             value={headerBackground}
-            onChange={(e) => setHeaderBackground(e.target.value as HeaderBackground)}
-            className="w-full md:w-[200px]"
+            onValueChange={(value) => setHeaderBackground(value as HeaderBackground)}
           >
-            <option value="gradient">Gradient</option>
-            <option value="solid">Solid Color</option>
+            <SelectTrigger id="header-background" className="w-full md:w-[200px]">
+              <SelectValue placeholder="Select background..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gradient">Gradient</SelectItem>
+              <SelectItem value="solid">Solid Color</SelectItem>
+            </SelectContent>
           </Select>
         </div>
         <div className="rounded-lg overflow-hidden">

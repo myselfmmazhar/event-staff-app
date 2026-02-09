@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InfoIcon } from 'lucide-react';
 import { AccountStatus, StaffType, SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
@@ -157,16 +157,20 @@ export function BulkEditModal({
                                     {formData.accountStatus?.enabled ? (
                                         <Select
                                             value={formData.accountStatus.value || ''}
-                                            onChange={(e) =>
+                                            onValueChange={(value) =>
                                                 updateField('accountStatus', {
-                                                    value: e.target.value as AccountStatus,
+                                                    value: value as AccountStatus,
                                                 })
                                             }
                                         >
-                                            <option value="">Select status...</option>
-                                            <option value={AccountStatus.ACTIVE}>Active</option>
-                                            <option value={AccountStatus.DISABLED}>Disabled</option>
-                                            <option value={AccountStatus.PENDING}>Pending</option>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select status..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value={AccountStatus.ACTIVE}>Active</SelectItem>
+                                                <SelectItem value={AccountStatus.DISABLED}>Disabled</SelectItem>
+                                                <SelectItem value={AccountStatus.PENDING}>Pending</SelectItem>
+                                            </SelectContent>
                                         </Select>
                                     ) : (
                                         <p className="text-sm text-muted-foreground py-2">
@@ -191,16 +195,20 @@ export function BulkEditModal({
                                     {formData.staffType?.enabled ? (
                                         <Select
                                             value={formData.staffType.value || ''}
-                                            onChange={(e) =>
+                                            onValueChange={(value) =>
                                                 updateField('staffType', {
-                                                    value: e.target.value as StaffType,
+                                                    value: value as StaffType,
                                                 })
                                             }
                                         >
-                                            <option value="">Select type...</option>
-                                            <option value={StaffType.COMPANY}>Company</option>
-                                            <option value={StaffType.CONTRACTOR}>Contractor</option>
-                                            <option value={StaffType.EMPLOYEE}>Employee</option>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select type..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value={StaffType.COMPANY}>Company</SelectItem>
+                                                <SelectItem value={StaffType.CONTRACTOR}>Contractor</SelectItem>
+                                                <SelectItem value={StaffType.EMPLOYEE}>Employee</SelectItem>
+                                            </SelectContent>
                                         </Select>
                                     ) : (
                                         <p className="text-sm text-muted-foreground py-2">
@@ -225,16 +233,20 @@ export function BulkEditModal({
                                     {formData.skillLevel?.enabled ? (
                                         <Select
                                             value={formData.skillLevel.value || ''}
-                                            onChange={(e) =>
+                                            onValueChange={(value) =>
                                                 updateField('skillLevel', {
-                                                    value: e.target.value as SkillLevel,
+                                                    value: value as SkillLevel,
                                                 })
                                             }
                                         >
-                                            <option value="">Select experience...</option>
-                                            <option value={SkillLevel.BEGINNER}>Beginner</option>
-                                            <option value={SkillLevel.INTERMEDIATE}>Intermediate</option>
-                                            <option value={SkillLevel.ADVANCED}>Advanced</option>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select experience..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value={SkillLevel.BEGINNER}>Beginner</SelectItem>
+                                                <SelectItem value={SkillLevel.INTERMEDIATE}>Intermediate</SelectItem>
+                                                <SelectItem value={SkillLevel.ADVANCED}>Advanced</SelectItem>
+                                            </SelectContent>
                                         </Select>
                                     ) : (
                                         <p className="text-sm text-muted-foreground py-2">
@@ -259,16 +271,20 @@ export function BulkEditModal({
                                     {formData.availabilityStatus?.enabled ? (
                                         <Select
                                             value={formData.availabilityStatus.value || ''}
-                                            onChange={(e) =>
+                                            onValueChange={(value) =>
                                                 updateField('availabilityStatus', {
-                                                    value: e.target.value as AvailabilityStatus,
+                                                    value: value as AvailabilityStatus,
                                                 })
                                             }
                                         >
-                                            <option value="">Select availability...</option>
-                                            <option value={AvailabilityStatus.OPEN_TO_OFFERS}>Open to Offers</option>
-                                            <option value={AvailabilityStatus.BUSY}>Busy</option>
-                                            <option value={AvailabilityStatus.TIME_OFF}>Time Off</option>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select availability..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value={AvailabilityStatus.OPEN_TO_OFFERS}>Open to Offers</SelectItem>
+                                                <SelectItem value={AvailabilityStatus.BUSY}>Busy</SelectItem>
+                                                <SelectItem value={AvailabilityStatus.TIME_OFF}>Time Off</SelectItem>
+                                            </SelectContent>
                                         </Select>
                                     ) : (
                                         <p className="text-sm text-muted-foreground py-2">
@@ -293,17 +309,21 @@ export function BulkEditModal({
                                     {formData.staffRating?.enabled ? (
                                         <Select
                                             value={formData.staffRating.value || ''}
-                                            onChange={(e) =>
+                                            onValueChange={(value) =>
                                                 updateField('staffRating', {
-                                                    value: e.target.value as StaffRating,
+                                                    value: value as StaffRating,
                                                 })
                                             }
                                         >
-                                            <option value="">Select rating...</option>
-                                            <option value={StaffRating.NA}>N/A</option>
-                                            <option value={StaffRating.A}>A</option>
-                                            <option value={StaffRating.B}>B</option>
-                                            <option value={StaffRating.C}>C</option>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select rating..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value={StaffRating.NA}>N/A</SelectItem>
+                                                <SelectItem value={StaffRating.A}>A</SelectItem>
+                                                <SelectItem value={StaffRating.B}>B</SelectItem>
+                                                <SelectItem value={StaffRating.C}>C</SelectItem>
+                                            </SelectContent>
                                         </Select>
                                     ) : (
                                         <p className="text-sm text-muted-foreground py-2">

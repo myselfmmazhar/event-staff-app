@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { CloseIcon } from '@/components/ui/icons';
 import type { Service } from '@/lib/types/service';
@@ -201,6 +201,7 @@ export function ServiceFormModal({
                 control={control}
                 render={({ field }) => (
                   <Select
+<<<<<<< HEAD
                     id="costUnitType"
                     value={field.value ?? ''}
                     onChange={(e) => field.onChange(e.target.value || null)}
@@ -213,6 +214,22 @@ export function ServiceFormModal({
                         {opt.label}
                       </option>
                     ))}
+=======
+                    value={field.value ?? ''}
+                    onValueChange={(value) => field.onChange(value || null)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="costUnitType">
+                      <SelectValue placeholder="Select unit type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COST_UNIT_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+>>>>>>> e2941f4d24c5c44d4a247fed7adacb1f0a0056ca
                   </Select>
                 )}
               />

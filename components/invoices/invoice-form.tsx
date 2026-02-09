@@ -38,11 +38,6 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     const [showTax, setShowTax] = useState(() =>
         invoice ? Number(invoice.salesTaxAmount) > 0 : false
     );
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
 
     // Fetch Clients
     const { data: clientsData } = trpc.clients.getAll.useQuery({ limit: 100 });
@@ -56,7 +51,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     const services = servicesData?.data || [];
 
     const form = useForm<InvoiceFormValues>({
-        resolver: zodResolver(InvoiceSchema.create),
+        resolver: zodResolver(InvoiceSchema.create) as any,
         defaultValues: invoice ? {
             invoiceNo: invoice.invoiceNo || "",
             clientId: invoice.clientId || "",
@@ -106,32 +101,20 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
     // Clear values when toggled off
     useEffect(() => {
-        if (!isMounted) return;
-        if (!showDiscount && form.getValues("discountValue") !== 0) {
-            form.setValue("discountValue", 0);
-        }
-    }, [showDiscount, form, isMounted]);
+        if (!showDiscount) form.setValue("discountValue", 0);
+    }, [showDiscount, form]);
 
     useEffect(() => {
-        if (!isMounted) return;
-        if (!showDeposit && form.getValues("depositAmount") !== 0) {
-            form.setValue("depositAmount", 0);
-        }
-    }, [showDeposit, form, isMounted]);
+        if (!showDeposit) form.setValue("depositAmount", 0);
+    }, [showDeposit, form]);
 
     useEffect(() => {
-        if (!isMounted) return;
-        if (!showShipping && form.getValues("shippingAmount") !== 0) {
-            form.setValue("shippingAmount", 0);
-        }
-    }, [showShipping, form, isMounted]);
+        if (!showShipping) form.setValue("shippingAmount", 0);
+    }, [showShipping, form]);
 
     useEffect(() => {
-        if (!isMounted) return;
-        if (!showTax && form.getValues("salesTaxAmount") !== 0) {
-            form.setValue("salesTaxAmount", 0);
-        }
-    }, [showTax, form, isMounted]);
+        if (!showTax) form.setValue("salesTaxAmount", 0);
+    }, [showTax, form]);
 
     // Calculate Totals
     const subtotal = useMemo(() => {
@@ -151,18 +134,13 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
     // Update item amount when price or quantity changes
     useEffect(() => {
-        if (!isMounted) return;
         items?.forEach((item, index) => {
-            const quantity = Number(item.quantity) || 0;
-            const price = Number(item.price) || 0;
-            const amount = quantity * price;
-            const currentAmount = Number(item.amount) || 0;
-
-            if (Math.abs(currentAmount - amount) > 0.001) {
+            const amount = (item.quantity || 0) * (item.price || 0);
+            if (item.amount !== amount) {
                 form.setValue(`items.${index}.amount`, amount);
             }
         });
-    }, [JSON.stringify(items?.map(i => ({ q: i.quantity, p: i.price }))), form, isMounted]);
+    }, [JSON.stringify(items?.map(i => ({ q: i.quantity, p: i.price })))]);
 
     const createMutation = trpc.invoices.create.useMutation({
         onSuccess: () => {
@@ -390,7 +368,8 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
+                                    className="h-9 w-9 p-0"
                                     onClick={() => remove(index)}
                                 >
                                     <TrashIcon className="h-4 w-4 text-destructive" />

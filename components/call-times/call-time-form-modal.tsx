@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
 import {
   RATE_TYPE_LABELS,
   type CreateCallTimeInput,
@@ -20,7 +20,7 @@ import {
 import { SkillLevel, RateType } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
@@ -128,6 +128,7 @@ export function CallTimeFormModal({
     setError,
     setValue,
     watch,
+    control,
   } = useForm<FormInput, undefined, FormOutput>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -276,18 +277,28 @@ export function CallTimeFormModal({
                 <Label htmlFor="serviceId" required>
                   Service
                 </Label>
-                <Select
-                  id="serviceId"
-                  {...register('serviceId')}
-                  disabled={isSubmitting}
-                >
-                  <option value="">Select a service</option>
-                  {services.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.title}
-                    </option>
-                  ))}
-                </Select>
+                <Controller
+                  name="serviceId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger id="serviceId">
+                        <SelectValue placeholder="Select a service" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {services.map((service) => (
+                          <SelectItem key={service.id} value={service.id}>
+                            {service.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.serviceId && (
                   <p className="text-sm text-destructive mt-1">
                     {errors.serviceId.message}
@@ -319,17 +330,28 @@ export function CallTimeFormModal({
                   <Label htmlFor="skillLevel" required>
                     Minimum Skill Level
                   </Label>
-                  <Select
-                    id="skillLevel"
-                    {...register('skillLevel')}
-                    disabled={isSubmitting}
-                  >
-                    {SKILL_LEVELS.map((level) => (
-                      <option key={level.value} value={level.value}>
-                        {level.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <Controller
+                    name="skillLevel"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger id="skillLevel">
+                          <SelectValue placeholder="Select skill level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SKILL_LEVELS.map((level) => (
+                            <SelectItem key={level.value} value={level.value}>
+                              {level.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                   {errors.skillLevel && (
                     <p className="text-sm text-destructive mt-1">
                       {errors.skillLevel.message}
@@ -460,17 +482,28 @@ export function CallTimeFormModal({
                 <Label htmlFor="payRateType" required>
                   Rate Type
                 </Label>
-                <Select
-                  id="payRateType"
-                  {...register('payRateType')}
-                  disabled={isSubmitting}
-                >
-                  {RATE_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </Select>
+                <Controller
+                  name="payRateType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger id="payRateType">
+                        <SelectValue placeholder="Select rate type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RATE_TYPES.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 <p className="text-xs text-muted-foreground mt-1">
                   This applies to both pay and bill rates
                 </p>
