@@ -162,6 +162,11 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
               icon: DocumentTextIcon,
             },
             {
+              label: 'Estimates',
+              href: '/estimates',
+              icon: DocumentTextIcon,
+            },
+            {
               label: 'Bills',
               href: '/finance/bills',
               icon: BanknotesIcon,

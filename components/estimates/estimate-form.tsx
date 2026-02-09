@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/client/trpc";
-import { InvoiceSchema, type InvoiceFormValues } from "@/lib/schemas/invoice.schema";
+import { EstimateSchema, type EstimateFormValues } from "@/lib/schemas/estimate.schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,25 +18,25 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
 
-interface InvoiceFormProps {
-    invoice?: any; // Invoice data for editing
+interface EstimateFormProps {
+    estimate?: any; // Estimate data for editing
 }
 
-export function InvoiceForm({ invoice }: InvoiceFormProps) {
-    const isEditMode = !!invoice;
+export function EstimateForm({ estimate }: EstimateFormProps) {
+    const isEditMode = !!estimate;
     const router = useRouter();
     const { toast } = useToast();
     const [showDiscount, setShowDiscount] = useState(() =>
-        invoice ? Number(invoice.discountValue) > 0 : false
+        estimate ? Number(estimate.discountValue) > 0 : false
     );
     const [showDeposit, setShowDeposit] = useState(() =>
-        invoice ? Number(invoice.depositAmount) > 0 : false
+        estimate ? Number(estimate.depositAmount) > 0 : false
     );
     const [showShipping, setShowShipping] = useState(() =>
-        invoice ? Number(invoice.shippingAmount) > 0 : false
+        estimate ? Number(estimate.shippingAmount) > 0 : false
     );
     const [showTax, setShowTax] = useState(() =>
-        invoice ? Number(invoice.salesTaxAmount) > 0 : false
+        estimate ? Number(estimate.salesTaxAmount) > 0 : false
     );
     const [isMounted, setIsMounted] = useState(false);
 
@@ -55,40 +55,46 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     const products = productsData?.data || [];
     const services = servicesData?.data || [];
 
-    const form = useForm<InvoiceFormValues>({
-        resolver: zodResolver(InvoiceSchema.create),
-        defaultValues: invoice ? {
-            invoiceNo: invoice.invoiceNo || "",
-            clientId: invoice.clientId || "",
-            status: invoice.status || "DRAFT",
-            invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate) : new Date(),
-            dueDate: invoice.dueDate ? new Date(invoice.dueDate) : undefined,
-            terms: invoice.terms || "",
-            notes: invoice.notes || "",
-            paymentDetails: invoice.paymentDetails || "",
-            isTaxable: invoice.isTaxable || false,
-            discountType: invoice.discountType || "AMOUNT",
-            discountValue: Number(invoice.discountValue) || 0,
-            depositAmount: Number(invoice.depositAmount) || 0,
-            shippingAmount: Number(invoice.shippingAmount) || 0,
-            salesTaxAmount: Number(invoice.salesTaxAmount) || 0,
-            items: invoice.items?.map((item: any) => ({
+    const form = useForm<EstimateFormValues>({
+        resolver: zodResolver(EstimateSchema.create),
+        defaultValues: estimate ? {
+            estimateNo: estimate.estimateNo || "",
+            clientId: estimate.clientId || "",
+            status: estimate.status || "DRAFT",
+            estimateDate: estimate.estimateDate ? new Date(estimate.estimateDate) : new Date(),
+            expirationDate: estimate.expirationDate ? new Date(estimate.expirationDate) : undefined,
+            approvedBy: estimate.approvedBy || "",
+            approvedDate: estimate.approvedDate ? new Date(estimate.approvedDate) : undefined,
+            terms: estimate.terms || "",
+            notes: estimate.notes || "",
+            paymentDetails: estimate.paymentDetails || "",
+            customField1: estimate.customField1 || "",
+            customField2: estimate.customField2 || "",
+            customField3: estimate.customField3 || "",
+            isTaxable: estimate.isTaxable || false,
+            discountType: estimate.discountType || "AMOUNT",
+            discountValue: Number(estimate.discountValue) || 0,
+            depositAmount: Number(estimate.depositAmount) || 0,
+            shippingAmount: Number(estimate.shippingAmount) || 0,
+            salesTaxAmount: Number(estimate.salesTaxAmount) || 0,
+            items: estimate.items?.map((item: any) => ({
                 description: item.description || "",
-                quantity: item.quantity || 1,
+                quantity: Number(item.quantity) || 1,
                 price: Number(item.price) || 0,
                 amount: Number(item.amount) || 0,
                 productId: item.productId || null,
                 serviceId: item.serviceId || null,
-            })) || [{ description: "", quantity: 1, price: 0, amount: 0 }],
+                date: item.date ? new Date(item.date) : null,
+            })) || [{ description: "", quantity: 1, price: 0, amount: 0, date: null }],
         } : {
             status: "DRAFT",
-            invoiceDate: new Date(),
+            estimateDate: new Date(),
             isTaxable: false,
             items: [
-                { description: "", quantity: 1, price: 0, amount: 0 }
+                { description: "", quantity: 1, price: 0, amount: 0, date: null }
             ],
             discountType: "AMOUNT",
-            invoiceNo: "",
+            estimateNo: "",
         },
     });
 
@@ -164,43 +170,43 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         });
     }, [JSON.stringify(items?.map(i => ({ q: i.quantity, p: i.price }))), form, isMounted]);
 
-    const createMutation = trpc.invoices.create.useMutation({
+    const createMutation = trpc.estimates.create.useMutation({
         onSuccess: () => {
             toast({
                 title: "Success",
-                description: "Invoice created successfully.",
+                description: "Estimate created successfully.",
             });
-            router.push("/invoices");
+            router.push("/estimates");
         },
         onError: (error) => {
             toast({
                 title: "Error",
                 description: error.message,
-                variant: "error",
+                variant: "destructive",
             });
         },
     });
 
-    const updateMutation = trpc.invoices.update.useMutation({
+    const updateMutation = trpc.estimates.update.useMutation({
         onSuccess: () => {
             toast({
                 title: "Success",
-                description: "Invoice updated successfully.",
+                description: "Estimate updated successfully.",
             });
-            router.push("/invoices");
+            router.push("/estimates");
         },
         onError: (error) => {
             toast({
                 title: "Error",
                 description: error.message,
-                variant: "error",
+                variant: "destructive",
             });
         },
     });
 
-    const onSubmit = (data: InvoiceFormValues) => {
-        if (isEditMode && invoice?.id) {
-            updateMutation.mutate({ id: invoice.id, ...data });
+    const onSubmit = (data: EstimateFormValues) => {
+        if (isEditMode && estimate?.id) {
+            updateMutation.mutate({ id: estimate.id, ...data });
         } else {
             createMutation.mutate(data);
         }
@@ -228,7 +234,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         toast({
             title: "Validation Error",
             description: "Please check all required fields.",
-            variant: "error",
+            variant: "destructive",
         });
     };
 
@@ -236,14 +242,14 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-8 max-w-5xl mx-auto">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold">{isEditMode ? "Edit Invoice" : "Add New Invoice"}</h1>
-                    <p className="text-muted-foreground">{isEditMode ? "Update invoice details." : "Create a new invoice for a client."}</p>
+                    <h1 className="text-3xl font-bold">{isEditMode ? "Edit Estimate" : "Add New Estimate"}</h1>
+                    <p className="text-muted-foreground">{isEditMode ? "Update estimate details." : "Create a new estimate for a client."}</p>
                 </div>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Invoice Header</CardTitle>
+                    <CardTitle>Estimate Header</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">
@@ -268,44 +274,43 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <Label>Invoice No</Label>
-                            <Input {...form.register("invoiceNo")} placeholder="INV-001" />
-                            {form.formState.errors.invoiceNo && (
-                                <p className="text-sm text-destructive">{form.formState.errors.invoiceNo.message}</p>
+                            <Label>Estimate No</Label>
+                            <Input {...form.register("estimateNo")} placeholder="EST-001" />
+                            {form.formState.errors.estimateNo && (
+                                <p className="text-sm text-destructive">{form.formState.errors.estimateNo.message}</p>
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label>Terms</Label>
-                            <Select
-                                onValueChange={(val) => form.setValue("terms", val)}
-                                value={form.watch("terms") || ""}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Due on Receipt">Due on Receipt</SelectItem>
-                                    <SelectItem value="Net 15">Net 15</SelectItem>
-                                    <SelectItem value="Net 30">Net 30</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Invoice Date</Label>
+                            <Label>Estimate Date</Label>
                             <Input
                                 type="date"
-                                value={form.watch("invoiceDate") ? new Date(form.watch("invoiceDate")).toISOString().split('T')[0] : ''}
-                                onChange={(e) => form.setValue("invoiceDate", e.target.valueAsDate as Date)}
+                                value={form.watch("estimateDate") ? new Date(form.watch("estimateDate")).toISOString().split('T')[0] : ''}
+                                onChange={(e) => form.setValue("estimateDate", e.target.valueAsDate as Date)}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Due Date</Label>
+                            <Label>Estimate Expiration</Label>
                             <Input
                                 type="date"
-                                value={form.watch("dueDate") ? new Date(form.watch("dueDate")!).toISOString().split('T')[0] : ''}
-                                onChange={(e) => form.setValue("dueDate", e.target.valueAsDate as Date)}
+                                value={form.watch("expirationDate") ? new Date(form.watch("expirationDate")!).toISOString().split('T')[0] : ''}
+                                onChange={(e) => form.setValue("expirationDate", e.target.valueAsDate as Date)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Approved by</Label>
+                            <Input {...form.register("approvedBy")} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Approved Date</Label>
+                            <Input
+                                type="date"
+                                value={form.watch("approvedDate") ? new Date(form.watch("approvedDate")!).toISOString().split('T')[0] : ''}
+                                onChange={(e) => form.setValue("approvedDate", e.target.valueAsDate as Date)}
                             />
                         </div>
                     </div>
@@ -329,16 +334,24 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Invoice Body</CardTitle>
+                    <CardTitle>Estimate Body</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {fields.map((field, index) => (
                         <div key={field.id} className="grid grid-cols-12 gap-4 items-end border-b pb-4 last:border-0 last:pb-0">
-                            <div className="col-span-12 md:col-span-3 space-y-2">
+                            <div className="col-span-12 md:col-span-2 space-y-2">
+                                <Label>Date</Label>
+                                <Input
+                                    type="date"
+                                    value={form.watch(`items.${index}.date`) ? new Date(form.watch(`items.${index}.date`)!).toISOString().split('T')[0] : ''}
+                                    onChange={(e) => form.setValue(`items.${index}.date`, e.target.valueAsDate as Date)}
+                                />
+                            </div>
+                            <div className="col-span-12 md:col-span-2 space-y-2">
                                 <Label>Product / Service</Label>
                                 <Select onValueChange={(val) => handleProductChange(index, val)}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select from Catalog" />
+                                        <SelectValue placeholder="Add new or select from Catalog" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {products.length > 0 && (
@@ -364,21 +377,21 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                 <Label>Description</Label>
                                 <Input {...form.register(`items.${index}.description`)} />
                             </div>
-                            <div className="col-span-4 md:col-span-2 space-y-2">
+                            <div className="col-span-4 md:col-span-1 space-y-2">
                                 <Label>Qty</Label>
                                 <Input
                                     type="number"
                                     {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
                                 />
                             </div>
-                            <div className="col-span-4 md:col-span-2 space-y-2">
+                            <div className="col-span-4 md:col-span-1 space-y-2">
                                 <Label>Price</Label>
                                 <Input
                                     type="number"
                                     {...form.register(`items.${index}.price`, { valueAsNumber: true })}
                                 />
                             </div>
-                            <div className="col-span-3 md:col-span-1 space-y-2">
+                            <div className="col-span-3 md:col-span-2 space-y-2">
                                 <Label>Amount</Label>
                                 <Input
                                     readOnly
@@ -390,7 +403,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
                                     onClick={() => remove(index)}
                                 >
                                     <TrashIcon className="h-4 w-4 text-destructive" />
@@ -399,25 +412,26 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                         </div>
                     ))}
 
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => append({ description: "", quantity: 1, price: 0, amount: 0 })}
-                        className="mt-2"
-                    >
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Add Line Item
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => append({ description: "", quantity: 1, price: 0, amount: 0, date: null })}
+                        >
+                            <PlusIcon className="h-4 w-4 mr-2" />
+                            Save and new line item
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Invoice Total</CardTitle>
+                    <CardTitle>Estimate Total</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-8">
                     {/* Discount */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
                         <div className="space-y-2">
                             <Label className="font-semibold">Discount?</Label>
                             <RadioGroup
@@ -436,7 +450,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                             </RadioGroup>
                         </div>
                         {showDiscount && (
-                            <div className="grid grid-cols-2 gap-4">
+                            <>
                                 <div className="space-y-2">
                                     <Label>If Yes, Discount Value</Label>
                                     <Input
@@ -459,7 +473,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                            </div>
+                            </>
                         )}
                     </div>
 
@@ -497,20 +511,15 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                         <div className="space-y-2">
                             <Label className="font-semibold">Shipping?</Label>
-                            <RadioGroup
-                                className="flex gap-4"
-                                value={showShipping ? "yes" : "no"}
-                                onValueChange={(v) => setShowShipping(v === "yes")}
-                            >
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="yes" id="shipping-yes" />
-                                    <Label htmlFor="shipping-yes">Yes</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="no" id="shipping-no" />
-                                    <Label htmlFor="shipping-no">No</Label>
-                                </div>
-                            </RadioGroup>
+                            <Select onValueChange={(v) => setShowShipping(v === "yes")} value={showShipping ? "yes" : "no"}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="no">First Choice</SelectItem>
+                                    <SelectItem value="yes">Yes</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         {showShipping && (
                             <div className="space-y-2">
@@ -522,42 +531,12 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                             </div>
                         )}
                     </div>
-
-                    {/* Sales Tax */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                        <div className="space-y-2">
-                            <Label className="font-semibold">Sales Tax?</Label>
-                            <RadioGroup
-                                className="flex gap-4"
-                                value={showTax ? "yes" : "no"}
-                                onValueChange={(v) => setShowTax(v === "yes")}
-                            >
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="yes" id="tax-yes" />
-                                    <Label htmlFor="tax-yes">Yes</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="no" id="tax-no" />
-                                    <Label htmlFor="tax-no">No</Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
-                        {showTax && (
-                            <div className="space-y-2">
-                                <Label>Sales Tax Amount</Label>
-                                <Input
-                                    type="number"
-                                    {...form.register("salesTaxAmount", { valueAsNumber: true })}
-                                />
-                            </div>
-                        )}
-                    </div>
                 </CardContent>
             </Card>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Invoice Footer</CardTitle>
+                    <CardTitle>Estimate Footer</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -565,14 +544,12 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                             <Label className="font-semibold">Payment Details</Label>
                             <Textarea
                                 {...form.register("paymentDetails")}
-                                placeholder="Bank Account Details, etc."
                             />
                         </div>
                         <div className="space-y-2">
                             <Label className="font-semibold">Note to clients</Label>
                             <Textarea
                                 {...form.register("notes")}
-                                placeholder="Thank you for your business..."
                             />
                         </div>
                     </div>
@@ -622,17 +599,17 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total Due</span>
-                            {/* Total Due typically subtracts deposit */}
                             <span>{(total - depositAmount).toFixed(2)}</span>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-4 pb-10">
-                <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+            <div className="flex justify-end gap-2 pb-10">
+                {/* <Button type="button" variant="outline" onClick={() => router.push("/estimates")}>Save and close</Button> */}
+                {/* <Button type="button" variant="outline">Convert to Invoice</Button> */}
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : isEditMode ? "Update Invoice" : "Save Invoice"}
+                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : isEditMode ? "Update Estimate" : "Submit"}
                 </Button>
             </div>
         </form>
