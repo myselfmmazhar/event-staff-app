@@ -73,8 +73,8 @@ export function FileUpload({
                             <Button
                                 type="button"
                                 variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
+                                size="sm"
+                                className="h-8 w-8 p-0"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     removeFile(file);

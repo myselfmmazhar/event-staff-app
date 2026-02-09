@@ -51,7 +51,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     const services = servicesData?.data || [];
 
     const form = useForm<InvoiceFormValues>({
-        resolver: zodResolver(InvoiceSchema.create),
+        resolver: zodResolver(InvoiceSchema.create) as any,
         defaultValues: invoice ? {
             invoiceNo: invoice.invoiceNo || "",
             clientId: invoice.clientId || "",
@@ -368,7 +368,8 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
+                                    className="h-9 w-9 p-0"
                                     onClick={() => remove(index)}
                                 >
                                     <TrashIcon className="h-4 w-4 text-destructive" />

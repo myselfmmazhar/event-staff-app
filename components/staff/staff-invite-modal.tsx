@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
@@ -149,10 +149,15 @@ export function StaffInviteModal({
                                 name="staffType"
                                 control={control}
                                 render={({ field }) => (
-                                    <Select {...field} disabled={isSubmitting}>
-                                        <option value={StaffType.COMPANY}>Company</option>
-                                        <option value={StaffType.CONTRACTOR}>Contractor</option>
-                                        <option value={StaffType.EMPLOYEE}>Employee</option>
+                                    <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select type..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={StaffType.COMPANY}>Company</SelectItem>
+                                            <SelectItem value={StaffType.CONTRACTOR}>Contractor</SelectItem>
+                                            <SelectItem value={StaffType.EMPLOYEE}>Employee</SelectItem>
+                                        </SelectContent>
                                     </Select>
                                 )}
                             />
