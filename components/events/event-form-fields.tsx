@@ -11,6 +11,7 @@ import {
   DocumentsSection,
   BillingSection,
   PrivateNotesSection,
+  CustomFieldsSection,
   type EventFormData,
   type ClientOption,
   type TerminologyConfig,
@@ -64,6 +65,12 @@ export function EventFormFields({
   const fileLinksFieldArray = useFieldArray<EventFormData, 'fileLinks'>({
     control,
     name: 'fileLinks',
+  });
+
+  // Custom fields field array
+  const customFieldsFieldArray = useFieldArray<EventFormData, 'customFields'>({
+    control,
+    name: 'customFields',
   });
 
   const spacing = compact ? 'mb-4' : 'mb-6';
@@ -179,16 +186,26 @@ export function EventFormFields({
         )}
       </div>
 
-      {/* === ROW 6: Private Notes (full width) === */}
-      <PrivateNotesSection
-        register={register}
-        control={control}
-        errors={errors}
-        watch={watch}
-        setValue={setValue}
-        disabled={disabled}
-        className="lg:max-w-2xl"
-      />
+      {/* === ROW 6: Private Notes + Custom Fields === */}
+      <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
+        <PrivateNotesSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+        <CustomFieldsSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          customFieldsFieldArray={customFieldsFieldArray}
+          disabled={disabled}
+        />
+      </div>
     </>
   );
 }

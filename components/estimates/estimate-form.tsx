@@ -56,7 +56,7 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
     const services = servicesData?.data || [];
 
     const form = useForm<EstimateFormValues>({
-        resolver: zodResolver(EstimateSchema.create),
+        resolver: zodResolver(EstimateSchema.create) as any,
         defaultValues: estimate ? {
             estimateNo: estimate.estimateNo || "",
             clientId: estimate.clientId || "",

@@ -8,3 +8,4 @@ export * from './pre-event-section';
 export * from './documents-section';
 export * from './billing-section';
 export * from './private-notes-section';
+export * from './custom-fields-section';

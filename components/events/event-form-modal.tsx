@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EventSchema } from '@/lib/schemas/event.schema';
-import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument } from '@/lib/schemas/event.schema';
+import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument, CustomField } from '@/lib/schemas/event.schema';
 import { EventStatus, RequestMethod, AmountType } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState, useCallback } from 'react';
@@ -81,6 +81,10 @@ const editFormSchema = z.object({
     type: z.string().optional(),
     size: z.number().optional(),
   })).optional(),
+  customFields: z.array(z.object({
+    label: z.string().min(1, "Label is required").max(100),
+    value: z.string().max(1000),
+  })).optional(),
   meetingPoint: z.string().max(300).optional().transform(val => val?.trim()),
   onsitePocName: z.string().max(200).optional().transform(val => val?.trim()),
   onsitePocPhone: z.string().max(50).optional().transform(val => val?.trim()),
@@ -140,6 +144,7 @@ interface Event {
   poNumber?: string | null;
   preEventInstructions?: string | null;
   eventDocuments?: EventDocument[] | null;
+  customFields?: CustomField[] | null;
   meetingPoint?: string | null;
   onsitePocName?: string | null;
   onsitePocPhone?: string | null;
@@ -288,6 +293,7 @@ export function EventFormModal({
       poNumber: '',
       preEventInstructions: '',
       eventDocuments: [],
+      customFields: [],
       meetingPoint: '',
       onsitePocName: '',
       onsitePocPhone: '',
@@ -345,6 +351,7 @@ export function EventFormModal({
         poNumber: event.poNumber || '',
         preEventInstructions: event.preEventInstructions || '',
         eventDocuments: eventDocsData || [],
+        customFields: (event.customFields as CustomField[]) || [],
         meetingPoint: event.meetingPoint || '',
         onsitePocName: event.onsitePocName || '',
         onsitePocPhone: event.onsitePocPhone || '',
@@ -403,6 +410,7 @@ export function EventFormModal({
       const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       const fileLinksData = template.fileLinks as FileLink[] | null;
       const templateDocsData = template.eventDocuments as EventDocument[] | null;
+      const templateCustomFields = template.customFields as CustomField[] | null;
 
       reset({
         title: template.title || '',
@@ -433,6 +441,7 @@ export function EventFormModal({
         poNumber: template.poNumber || '',
         preEventInstructions: template.preEventInstructions || '',
         eventDocuments: templateDocsData || [],
+        customFields: templateCustomFields || [],
         meetingPoint: template.meetingPoint || '',
         onsitePocName: template.onsitePocName || '',
         onsitePocPhone: template.onsitePocPhone || '',

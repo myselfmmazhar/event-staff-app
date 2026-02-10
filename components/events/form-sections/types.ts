@@ -7,7 +7,7 @@ import type {
   UseFieldArrayReturn,
 } from 'react-hook-form';
 import type { EventStatus, RequestMethod, AmountType } from '@prisma/client';
-import type { FileLink, EventDocument } from '@/lib/schemas/event.schema';
+import type { FileLink, EventDocument, CustomField } from '@/lib/schemas/event.schema';
 
 /**
  * Form data structure for event creation/editing
@@ -43,6 +43,7 @@ export interface EventFormData {
   poNumber?: string;
   preEventInstructions?: string;
   eventDocuments?: EventDocument[];
+  customFields?: CustomField[];
   meetingPoint?: string;
   onsitePocName?: string;
   onsitePocPhone?: string;
@@ -114,4 +115,12 @@ export interface DateTimeSectionProps extends FormSectionProps {
  */
 export interface DocumentsSectionProps extends FormSectionProps {
   fileLinksFieldArray: UseFieldArrayReturn<EventFormData, 'fileLinks'>;
+}
+
+/**
+ * Props for CustomFieldsSection
+ * Includes useFieldArray return for custom fields management
+ */
+export interface CustomFieldsSectionProps extends FormSectionProps {
+  customFieldsFieldArray: UseFieldArrayReturn<EventFormData, 'customFields'>;
 }
