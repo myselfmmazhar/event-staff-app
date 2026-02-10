@@ -13,8 +13,9 @@ interface ToastProps {
 }
 
 export function Toast({ toast, onDismiss }: ToastProps) {
-  const type = toast.variant ?? toast.type ?? 'info'
-  const { icon: Icon, background, badge } = TOAST_THEMES[type]
+  const type = ((toast.variant as any) === 'destructive' ? 'error' : (toast.variant ?? toast.type ?? 'info')) as keyof typeof TOAST_THEMES
+  const theme = TOAST_THEMES[type] || TOAST_THEMES['info']
+  const { icon: Icon, background, badge } = theme
 
   useEffect(() => {
     const timer = setTimeout(onDismiss, AUTO_DISMISS_MS)

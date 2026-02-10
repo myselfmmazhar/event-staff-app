@@ -201,6 +201,20 @@ export function ServiceFormModal({
                 control={control}
                 render={({ field }) => (
                   <Select
+<<<<<<< HEAD
+                    id="costUnitType"
+                    value={field.value ?? ''}
+                    onChange={(e) => field.onChange(e.target.value || null)}
+                    error={!!errors.costUnitType}
+                    disabled={isSubmitting}
+                  >
+
+                    {COST_UNIT_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+=======
                     value={field.value ?? ''}
                     onValueChange={(value) => field.onChange(value || null)}
                     disabled={isSubmitting}
@@ -215,6 +229,7 @@ export function ServiceFormModal({
                         </SelectItem>
                       ))}
                     </SelectContent>
+>>>>>>> e2941f4d24c5c44d4a247fed7adacb1f0a0056ca
                   </Select>
                 )}
               />
