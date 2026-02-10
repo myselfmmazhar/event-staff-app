@@ -195,10 +195,10 @@ export function EventBulkEditModal({
                                 <div className="flex-1">
                                     {formData.clientId?.enabled ? (
                                         <Select
-                                            value={formData.clientId.value ?? ''}
+                                            value={formData.clientId.value ?? '__none__'}
                                             onValueChange={(value) =>
                                                 updateField('clientId', {
-                                                    value: value || null,
+                                                    value: value === '__none__' ? null : value,
                                                 })
                                             }
                                         >
@@ -206,7 +206,7 @@ export function EventBulkEditModal({
                                                 <SelectValue placeholder="None (Remove client)" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="">None (Remove client)</SelectItem>
+                                                <SelectItem value="__none__">None (Remove client)</SelectItem>
                                                 {clients.map((client) => (
                                                     <SelectItem key={client.id} value={client.id}>
                                                         {client.businessName || `${client.firstName} ${client.lastName}`}

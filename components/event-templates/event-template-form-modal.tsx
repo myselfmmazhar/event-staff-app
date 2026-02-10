@@ -464,12 +464,12 @@ export function EventTemplateFormModal({
                   name="clientId"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                    <Select value={field.value ?? '__none__'} onValueChange={(value) => field.onChange(value === '__none__' ? null : value)} disabled={isSubmitting}>
                       <SelectTrigger id="clientId">
                         <SelectValue placeholder="No default client" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No default client</SelectItem>
+                        <SelectItem value="__none__">No default client</SelectItem>
                         {clientsData?.data.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.businessName}
@@ -525,12 +525,12 @@ export function EventTemplateFormModal({
                     name="requestMethod"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                      <Select value={field.value ?? '__none__'} onValueChange={(value) => field.onChange(value === '__none__' ? null : value)} disabled={isSubmitting}>
                         <SelectTrigger id="requestMethod">
                           <SelectValue placeholder="Select method..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Select method...</SelectItem>
+                          <SelectItem value="__none__">Select method...</SelectItem>
                           {REQUEST_METHODS.map((method) => (
                             <SelectItem key={method.value} value={method.value}>
                               {method.label}
@@ -869,12 +869,12 @@ export function EventTemplateFormModal({
                   name="timezone"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={isSubmitting}>
+                    <Select value={field.value ?? '__none__'} onValueChange={(value) => field.onChange(value === '__none__' ? null : value)} disabled={isSubmitting}>
                       <SelectTrigger id="timezone">
                         <SelectValue placeholder="No default timezone" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No default timezone</SelectItem>
+                        <SelectItem value="__none__">No default timezone</SelectItem>
                         {TIMEZONES.map((tz) => (
                           <SelectItem key={tz} value={tz}>
                             {tz}

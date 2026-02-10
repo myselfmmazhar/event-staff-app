@@ -227,7 +227,23 @@ export class CallTimeService {
    * Delete call time
    */
   async remove(id: string, userId: string) {
-    await this.findOne(id, userId); // Verify ownership
+    const callTime = await this.findOne(id, userId); // Verify ownership
+
+    // Check if any staff have accepted offers - notify them before deletion
+    const acceptedInvitations = callTime.invitations.filter(
+      (inv) => inv.status === 'ACCEPTED'
+    );
+
+    if (acceptedInvitations.length > 0) {
+      // Notify affected staff that their assignment has been cancelled
+      const notificationService = getNotificationTriggerService(this.prisma);
+      await notificationService.onCallTimeCancelled(id, {
+        positionName: callTime.service?.title || 'Staff',
+        eventTitle: callTime.event.title,
+        eventId: callTime.event.id,
+        startDate: callTime.startDate,
+      });
+    }
 
     await this.prisma.callTime.delete({ where: { id } });
     return { success: true, message: 'Call time deleted successfully' };
