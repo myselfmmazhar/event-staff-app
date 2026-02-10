@@ -204,6 +204,9 @@ model Event {
   preEventInstructions String?
   eventDocuments       Json?
 
+  // Custom Fields
+  customFields         Json?
+
   // Onsite Contact & Meeting Point
   meetingPoint     String?        @db.VarChar(300)
   onsitePocName    String?        @db.VarChar(200)
@@ -282,6 +285,9 @@ model EventTemplate {
   // Event Instructions & Documents
   preEventInstructions String?
   eventDocuments       Json?
+
+  // Custom Fields
+  customFields         Json?
 
   // Onsite Contact & Meeting Point
   meetingPoint     String?        @db.VarChar(300)

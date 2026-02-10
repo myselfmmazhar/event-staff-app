@@ -79,6 +79,7 @@ const eventTemplateSelect = {
   // Event Instructions & Documents
   preEventInstructions: true,
   eventDocuments: true,
+  customFields: true,
   // Onsite Contact & Meeting Point
   meetingPoint: true,
   onsitePocName: true,

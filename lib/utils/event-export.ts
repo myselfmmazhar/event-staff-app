@@ -46,6 +46,7 @@ export interface EventExport {
   onsitePocEmail?: string | null;
   fileLinks?: Array<{ name: string; link: string }> | null;
   eventDocuments?: Array<{ name: string; url: string; type?: string; size?: number }> | null;
+  customFields?: Array<{ label: string; value: string }> | null;
   createdAt: Date;
 }
 
@@ -84,13 +85,14 @@ export const EVENT_EXPORT_HEADERS = [
   'Onsite POC Email',
   'File Links',
   'Event Documents',
+  'Custom Fields',
   'Created At',
 ];
 
 /**
  * Column indices for Excel formatting (0-indexed)
  */
-const DATE_COLUMNS = [14, 15, 31]; // Start Date, End Date, Created At
+const DATE_COLUMNS = [14, 15, 32]; // Start Date, End Date, Created At (shifted by 1)
 const NUMBER_COLUMNS = [12, 13]; // Latitude, Longitude
 
 /**
@@ -174,6 +176,7 @@ export function eventToExportRow(event: EventExport): (string | number | null)[]
     event.onsitePocEmail || '',
     serializeJsonArray(event.fileLinks),
     serializeJsonArray(event.eventDocuments),
+    serializeJsonArray(event.customFields),
     formatDate(event.createdAt),
   ];
 }
@@ -267,6 +270,7 @@ export function downloadSampleEventTemplate(fileFormat: 'csv' | 'xlsx' = 'csv'):
       'jane@example.com',
       '', // File Links - JSON array
       '', // Event Documents - JSON array
+      '', // Custom Fields - JSON array
       '', // Created At - read-only
     ];
 
