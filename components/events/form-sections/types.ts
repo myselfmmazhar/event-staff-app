@@ -124,3 +124,18 @@ export interface DocumentsSectionProps extends FormSectionProps {
 export interface CustomFieldsSectionProps extends FormSectionProps {
   customFieldsFieldArray: UseFieldArrayReturn<EventFormData, 'customFields'>;
 }
+
+/**
+ * Re-export Assignment types for convenience
+ */
+export type { Assignment, ProductAssignment, ServiceAssignment, AssignmentSaveAction } from '@/lib/types/assignment.types';
+
+/**
+ * Props for AssignmentsSection
+ */
+export interface AssignmentsSectionProps {
+  assignments: import('@/lib/types/assignment.types').Assignment[];
+  onAssignmentsChange: (assignments: import('@/lib/types/assignment.types').Assignment[]) => void;
+  disabled?: boolean;
+  className?: string;
+}

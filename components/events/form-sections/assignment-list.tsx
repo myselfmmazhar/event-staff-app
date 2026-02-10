@@ -1,0 +1,92 @@
+'use client';
+
+import { Accordion } from '@/components/ui/accordion';
+import { AssignmentItem } from './assignment-item';
+import type { Assignment } from '@/lib/types/assignment.types';
+
+interface AssignmentListProps {
+  assignments: Assignment[];
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  disabled?: boolean;
+}
+
+export function AssignmentList({
+  assignments,
+  onEdit,
+  onDelete,
+  disabled = false,
+}: AssignmentListProps) {
+  if (assignments.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No assignments added yet. Click "Add Assignment" to get started.
+      </div>
+    );
+  }
+
+  // Calculate totals
+  const totals = assignments.reduce(
+    (acc, assignment) => {
+      const price =
+        assignment.customPrice ??
+        (assignment.type === 'PRODUCT'
+          ? assignment.product?.price
+          : assignment.service?.price);
+      const lineTotal = price !== null && price !== undefined
+        ? Number(price) * assignment.quantity
+        : 0;
+
+      if (assignment.type === 'PRODUCT') {
+        acc.productsTotal += lineTotal;
+        acc.productsCount++;
+      } else {
+        acc.servicesTotal += lineTotal;
+        acc.servicesCount++;
+      }
+      acc.grandTotal += lineTotal;
+      return acc;
+    },
+    { productsTotal: 0, servicesTotal: 0, grandTotal: 0, productsCount: 0, servicesCount: 0 }
+  );
+
+  return (
+    <div className="space-y-4">
+      <Accordion type="multiple" className="space-y-2">
+        {assignments.map((assignment) => (
+          <AssignmentItem
+            key={assignment.id}
+            assignment={assignment}
+            onEdit={() => onEdit(assignment.id)}
+            onDelete={() => onDelete(assignment.id)}
+            disabled={disabled}
+          />
+        ))}
+      </Accordion>
+
+      {/* Totals Summary */}
+      <div className="border-t pt-4 mt-4 space-y-2">
+        {totals.servicesCount > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">
+              Services ({totals.servicesCount})
+            </span>
+            <span className="font-medium">${totals.servicesTotal.toFixed(2)}</span>
+          </div>
+        )}
+        {totals.productsCount > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">
+              Products ({totals.productsCount})
+            </span>
+            <span className="font-medium">${totals.productsTotal.toFixed(2)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-base font-semibold border-t pt-2">
+          <span>Grand Total</span>
+          <span>${totals.grandTotal.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}

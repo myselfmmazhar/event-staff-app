@@ -35,7 +35,7 @@ import { useTerminology } from '@/lib/hooks/use-terminology';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EventFormFields } from './event-form-fields';
 import { BatchEntryList } from './batch-entry-list';
-import type { AttachedServiceItem, AttachedProductItem } from './event-attachments-section';
+import type { Assignment, ProductAssignment, ServiceAssignment, ProductAssignmentExtendedData, ServiceAssignmentExtendedData } from '@/lib/types/assignment.types';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;
@@ -202,8 +202,7 @@ export function EventFormModal({
 
   // Template and attachments state
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  const [attachedServices, setAttachedServices] = useState<AttachedServiceItem[]>([]);
-  const [attachedProducts, setAttachedProducts] = useState<AttachedProductItem[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
 
   // Data queries
   const { data: clientsData } = trpc.clients.getAll.useQuery({ page: 1, limit: 100 });
@@ -464,8 +463,7 @@ export function EventFormModal({
   useEffect(() => {
     if (!open) {
       setSelectedTemplateId('');
-      setAttachedServices([]);
-      setAttachedProducts([]);
+      setAssignments([]);
       setEntryType('single');
       setBatchFile(null);
       setBatchStep('upload');
@@ -473,46 +471,86 @@ export function EventFormModal({
     }
   }, [open]);
 
-  // Populate attachments when editing
+  // Populate assignments when editing
   useEffect(() => {
     if (existingAttachments && isEdit) {
-      const services: AttachedServiceItem[] = existingAttachments.services.map((s) => ({
-        serviceId: s.serviceId,
-        quantity: s.quantity,
-        customPrice: s.customPrice ? Number(s.customPrice) : null,
-        notes: s.notes,
-        service: {
-          id: s.service.id,
-          serviceId: s.service.serviceId,
-          title: s.service.title,
-          cost: s.service.cost ? Number(s.service.cost) : null,
-          price: s.service.price ? Number(s.service.price) : null,
-          costUnitType: s.service.costUnitType,
-          description: s.service.description,
-          isActive: s.service.isActive,
-        },
-      }));
+      const serviceAssignments: Assignment[] = existingAttachments.services.map((s) => {
+        // Parse extended data from notes if available
+        let extendedData: ServiceAssignmentExtendedData = {};
+        try {
+          if (s.notes) {
+            extendedData = JSON.parse(s.notes);
+          }
+        } catch {
+          // Notes is plain text, not JSON
+        }
 
-      const products: AttachedProductItem[] = existingAttachments.products.map((p) => ({
-        productId: p.productId,
-        quantity: p.quantity,
-        customPrice: p.customPrice ? Number(p.customPrice) : null,
-        notes: p.notes,
-        product: {
-          id: p.product.id,
-          productId: p.product.productId,
-          title: p.product.title,
-          cost: p.product.cost ? Number(p.product.cost) : null,
-          price: p.product.price ? Number(p.product.price) : null,
-          priceUnitType: p.product.priceUnitType,
-          description: p.product.description,
-          category: p.product.category,
-          isActive: p.product.isActive,
-        },
-      }));
+        return {
+          id: crypto.randomUUID(),
+          type: 'SERVICE' as const,
+          serviceId: s.serviceId,
+          service: {
+            id: s.service.id,
+            serviceId: s.service.serviceId,
+            title: s.service.title,
+            cost: s.service.cost ? Number(s.service.cost) : null,
+            price: s.service.price ? Number(s.service.price) : null,
+            costUnitType: s.service.costUnitType,
+            description: s.service.description,
+            isActive: s.service.isActive,
+          },
+          quantity: s.quantity,
+          customCost: s.customPrice ? Number(s.customPrice) : null,
+          customPrice: s.customPrice ? Number(s.customPrice) : null,
+          costUnitType: s.service.costUnitType || null,
+          commission: extendedData.commission ?? false,
+          startDate: extendedData.startDate ?? null,
+          startTime: extendedData.startTime ?? null,
+          endDate: extendedData.endDate ?? null,
+          endTime: extendedData.endTime ?? null,
+          experienceRequired: extendedData.experienceRequired ?? 'ANY',
+          ratingRequired: extendedData.ratingRequired ?? 'ANY',
+          approveOvertime: extendedData.approveOvertime ?? false,
+        };
+      });
 
-      setAttachedServices(services);
-      setAttachedProducts(products);
+      const productAssignments: Assignment[] = existingAttachments.products.map((p) => {
+        // Parse extended data from notes if available
+        let extendedData: ProductAssignmentExtendedData = {};
+        try {
+          if (p.notes) {
+            extendedData = JSON.parse(p.notes);
+          }
+        } catch {
+          // Notes is plain text, not JSON
+        }
+
+        return {
+          id: crypto.randomUUID(),
+          type: 'PRODUCT' as const,
+          productId: p.productId,
+          product: {
+            id: p.product.id,
+            productId: p.product.productId,
+            title: p.product.title,
+            cost: p.product.cost ? Number(p.product.cost) : null,
+            price: p.product.price ? Number(p.product.price) : null,
+            priceUnitType: p.product.priceUnitType,
+            description: p.product.description,
+            category: p.product.category,
+            isActive: p.product.isActive,
+          },
+          quantity: p.quantity,
+          customCost: p.customPrice ? Number(p.customPrice) : null,
+          customPrice: p.customPrice ? Number(p.customPrice) : null,
+          costUnitType: p.product.priceUnitType || null,
+          commission: extendedData.commission ?? false,
+          description: extendedData.description ?? p.product.description ?? null,
+          instructions: extendedData.instructions ?? null,
+        };
+      });
+
+      setAssignments([...serviceAssignments, ...productAssignments]);
     }
   }, [existingAttachments, isEdit]);
 
@@ -590,19 +628,44 @@ export function EventFormModal({
       endTime: endTimeTBD ? 'TBD' : (data.endTime || undefined),
     };
 
+    // Transform assignments back to backend format
+    const serviceAssignments = assignments.filter((a): a is ServiceAssignment => a.type === 'SERVICE');
+    const productAssignments = assignments.filter((a): a is ProductAssignment => a.type === 'PRODUCT');
+
     const attachments = {
-      services: attachedServices.map((s) => ({
-        serviceId: s.serviceId,
-        quantity: s.quantity,
-        customPrice: s.customPrice,
-        notes: s.notes,
-      })),
-      products: attachedProducts.map((p) => ({
-        productId: p.productId,
-        quantity: p.quantity,
-        customPrice: p.customPrice,
-        notes: p.notes,
-      })),
+      services: serviceAssignments.map((s) => {
+        // Store extended data in notes as JSON
+        const extendedData: ServiceAssignmentExtendedData = {
+          startDate: s.startDate,
+          startTime: s.startTime,
+          endDate: s.endDate,
+          endTime: s.endTime,
+          experienceRequired: s.experienceRequired,
+          ratingRequired: s.ratingRequired,
+          approveOvertime: s.approveOvertime,
+          commission: s.commission,
+        };
+        return {
+          serviceId: s.serviceId,
+          quantity: s.quantity,
+          customPrice: s.customPrice,
+          notes: JSON.stringify(extendedData),
+        };
+      }),
+      products: productAssignments.map((p) => {
+        // Store extended data in notes as JSON
+        const extendedData: ProductAssignmentExtendedData = {
+          description: p.description,
+          instructions: p.instructions,
+          commission: p.commission,
+        };
+        return {
+          productId: p.productId,
+          quantity: p.quantity,
+          customPrice: p.customPrice,
+          notes: JSON.stringify(extendedData),
+        };
+      }),
     };
 
     if (isEdit) {
@@ -829,10 +892,8 @@ export function EventFormModal({
                 setStartTimeTBD={setStartTimeTBD}
                 endTimeTBD={endTimeTBD}
                 setEndTimeTBD={setEndTimeTBD}
-                attachedServices={attachedServices}
-                attachedProducts={attachedProducts}
-                onServicesChange={setAttachedServices}
-                onProductsChange={setAttachedProducts}
+                assignments={assignments}
+                onAssignmentsChange={setAssignments}
                 disabled={isSubmitting}
               />
             </>
