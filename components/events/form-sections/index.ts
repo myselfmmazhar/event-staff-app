@@ -9,3 +9,7 @@ export * from './documents-section';
 export * from './billing-section';
 export * from './private-notes-section';
 export * from './custom-fields-section';
+export * from './assignments-section';
+export * from './assignment-form';
+export * from './assignment-item';
+export * from './assignment-list';
