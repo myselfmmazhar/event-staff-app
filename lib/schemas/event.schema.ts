@@ -241,14 +241,12 @@ export class EventSchema {
       commissionAmount: z
         .number()
         .min(0, "Commission amount must be positive")
-        .transform((val) => parseFloat(val.toFixed(2)))
         .optional(),
       commissionAmountType: z.nativeEnum(AmountType).optional(),
       approveForOvertime: z.boolean().optional(),
       overtimeRate: z
         .number()
         .min(0, "Overtime rate must be positive")
-        .transform((val) => parseFloat(val.toFixed(2)))
         .optional(),
       overtimeRateType: z.nativeEnum(AmountType).optional(),
     })
@@ -448,7 +446,6 @@ export class EventSchema {
       commissionAmount: z
         .number()
         .min(0, "Commission amount must be positive")
-        .transform((val) => parseFloat(val.toFixed(2)))
         .optional()
         .nullable(),
       commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
@@ -456,7 +453,6 @@ export class EventSchema {
       overtimeRate: z
         .number()
         .min(0, "Overtime rate must be positive")
-        .transform((val) => parseFloat(val.toFixed(2)))
         .optional()
         .nullable(),
       overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),

@@ -1,15 +1,19 @@
 'use client';
 
-import { AssignmentTable, type AssignmentData } from './assignment-table';
+import { useMemo } from 'react';
+import { type AssignmentData } from './assignment-table';
+import { GroupedAssignmentTable } from './grouped-assignment-table';
+import { groupAssignmentsByPositionAndTime, type GroupedAssignment } from '@/lib/utils/call-time-grouping';
 import { Pagination } from '@/components/common/pagination';
 import { useAssignmentsFilters } from '@/store/assignments-filters.store';
 import { trpc } from '@/lib/client/trpc';
 
 interface AllAssignmentsViewProps {
-  onView?: (assignment: AssignmentData) => void;
-  onDelete?: (assignment: AssignmentData) => void;
-  onDuplicate?: (assignment: AssignmentData) => void;
-  onSendReminder?: (assignment: AssignmentData) => void;
+  onManage?: (callTimeId: string) => void;
+  onFindTalent?: (callTimeId: string) => void;
+  onDelete?: (group: GroupedAssignment) => void;
+  onDuplicate?: (group: GroupedAssignment) => void;
+  onSendReminder?: (group: GroupedAssignment) => void;
   // Selection support
   selectable?: boolean;
   selectedIds?: Set<string>;
@@ -17,7 +21,8 @@ interface AllAssignmentsViewProps {
 }
 
 export function AllAssignmentsView({
-  onView,
+  onManage,
+  onFindTalent,
   onDelete,
   onDuplicate,
   onSendReminder,
@@ -102,6 +107,12 @@ export function AllAssignmentsView({
     invitations: item.invitations,
   }));
 
+  // Group assignments by position + call time
+  const groupedAssignments = useMemo(
+    () => groupAssignmentsByPositionAndTime(assignments),
+    [assignments]
+  );
+
   const handleSortBy = (field: string) => {
     if (field === 'startDate' || field === 'position' || field === 'event') {
       setSortBy(field);
@@ -110,14 +121,15 @@ export function AllAssignmentsView({
 
   return (
     <div className="space-y-4">
-      <AssignmentTable
-        data={assignments}
+      <GroupedAssignmentTable
+        data={groupedAssignments}
         isLoading={isLoading}
         sortBy={sortBy}
         sortOrder={sortOrder}
         setSortBy={handleSortBy}
         setSortOrder={setSortOrder}
-        onView={onView}
+        onManage={onManage}
+        onFindTalent={onFindTalent}
         onDelete={onDelete}
         onDuplicate={onDuplicate}
         onSendReminder={onSendReminder}

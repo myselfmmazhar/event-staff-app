@@ -61,6 +61,18 @@ model CallTime {
   billRateType          RateType
   notes                 String?
   eventId               String                  @db.Uuid
+
+  // Billing overrides (separate from pay/bill rates for Event Form assignments)
+  customCost            Decimal?                @db.Decimal(10, 2)
+  customPrice           Decimal?                @db.Decimal(10, 2)
+
+  // Staff requirements
+  ratingRequired        StaffRating?
+  approveOvertime       Boolean                 @default(false)
+
+  // Billing flag
+  commission            Boolean                 @default(false)
+
   createdAt             DateTime                @default(now()) @db.Timestamp(6)
   updatedAt             DateTime                @updatedAt @db.Timestamp(6)
   invitations           CallTimeInvitation[]
@@ -231,7 +243,6 @@ model Event {
   latitude        Float?
   longitude       Float?
   callTimes       CallTime[]
-  eventServices   EventService[]
   eventProducts   EventProduct[]
   client          Client?      @relation(fields: [clientId], references: [id])
   createdByUser   User         @relation(fields: [createdBy], references: [id], onDelete: Cascade)
@@ -322,7 +333,6 @@ model Service {
   createdAt             DateTime               @default(now()) @db.Timestamp(6)
   updatedAt             DateTime               @updatedAt @db.Timestamp(6)
   createdByUser         User                   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  eventServices         EventService[]
   callTimes             CallTime[]
   staff                 StaffServiceAssignment[]
   invoiceItems          InvoiceItem[]
@@ -361,24 +371,6 @@ model Product {
   @@index([isActive])
   @@index([category])
   @@map("products")
-}
-
-model EventService {
-  id          String   @id @default(uuid()) @db.Uuid
-  eventId     String   @db.Uuid
-  serviceId   String   @db.Uuid
-  quantity    Int      @default(1)
-  customPrice Decimal? @db.Decimal(10, 2)
-  notes       String?  @db.VarChar(500)
-  createdAt   DateTime @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime @updatedAt @db.Timestamp(6)
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, serviceId])
-  @@index([eventId])
-  @@index([serviceId])
-  @@map("event_services")
 }
 
 model EventProduct {

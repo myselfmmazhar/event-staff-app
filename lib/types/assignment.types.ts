@@ -5,7 +5,7 @@
  * Assignments can be either Product or Service based.
  */
 
-import type { CostUnitType, PriceUnitType, ExperienceRequirement, StaffRating } from '@prisma/client';
+import type { CostUnitType, PriceUnitType, ExperienceRequirement, StaffRating, RateType } from '@prisma/client';
 
 /**
  * Assignment type discriminator
@@ -99,6 +99,14 @@ export interface ServiceAssignment extends BaseAssignment {
   ratingRequired: StaffRating | 'ANY';
   /** Whether overtime is approved */
   approveOvertime: boolean;
+  /** Pay rate for staff */
+  payRate: number | null;
+  /** Bill rate for client */
+  billRate: number | null;
+  /** Rate type (PER_HOUR, PER_SHIFT, PER_DAY, PER_EVENT) */
+  rateType: RateType | null;
+  /** Internal notes */
+  notes: string | null;
 }
 
 /**
@@ -129,26 +137,16 @@ export interface AssignmentFormData {
   experienceRequired?: ExperienceRequirement;
   ratingRequired?: StaffRating | 'ANY';
   approveOvertime?: boolean;
+  payRate?: number | null;
+  billRate?: number | null;
+  rateType?: RateType | null;
+  notes?: string | null;
 }
 
 /**
  * Save action type for the assignment form
  */
 export type AssignmentSaveAction = 'close' | 'new' | 'repeat';
-
-/**
- * Extended JSON data stored in EventService notes field
- */
-export interface ServiceAssignmentExtendedData {
-  startDate?: string | null;
-  startTime?: string | null;
-  endDate?: string | null;
-  endTime?: string | null;
-  experienceRequired?: ExperienceRequirement;
-  ratingRequired?: StaffRating | 'ANY';
-  approveOvertime?: boolean;
-  commission?: boolean;
-}
 
 /**
  * Extended JSON data stored in EventProduct notes field
