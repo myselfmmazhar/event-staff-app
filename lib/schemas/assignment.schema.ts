@@ -5,6 +5,12 @@
  */
 
 import { z } from 'zod';
+import { RateType } from '@prisma/client';
+
+/**
+ * Rate type options (matches Prisma RateType enum)
+ */
+export const rateTypeSchema = z.nativeEnum(RateType);
 
 /**
  * Assignment type enum
@@ -54,6 +60,10 @@ export const serviceAssignmentSchema = z.object({
   experienceRequired: experienceRequiredSchema.default('ANY'),
   ratingRequired: ratingRequiredSchema.default('ANY'),
   approveOvertime: z.boolean().default(false),
+  payRate: z.number().min(0).nullable().optional(),
+  billRate: z.number().min(0).nullable().optional(),
+  rateType: rateTypeSchema.nullable().optional(),
+  notes: z.string().max(5000, 'Notes too long').nullable().optional(),
 });
 
 /**
@@ -87,6 +97,10 @@ export const assignmentFormSchema = z.object({
   experienceRequired: experienceRequiredSchema.default('ANY'),
   ratingRequired: ratingRequiredSchema.default('ANY'),
   approveOvertime: z.boolean().default(false),
+  payRate: z.number().min(0).nullable().optional(),
+  billRate: z.number().min(0).nullable().optional(),
+  rateType: rateTypeSchema.nullable().optional(),
+  notes: z.string().max(5000).nullable().optional(),
 }).superRefine((data, ctx) => {
   // Ensure productId is provided when type is PRODUCT
   if (data.type === 'PRODUCT' && !data.productId) {

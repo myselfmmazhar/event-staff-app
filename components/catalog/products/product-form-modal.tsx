@@ -243,15 +243,15 @@ export function ProductFormModal({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    value={field.value ?? ''}
-                    onValueChange={(value) => field.onChange(value || null)}
+                    value={field.value ?? '__none__'}
+                    onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}
                     disabled={isSubmitting}
                   >
                     <SelectTrigger id="minimumPurchase">
                       <SelectValue placeholder="—" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">—</SelectItem>
+                      <SelectItem value="__none__">—</SelectItem>
                       {MINIMUM_PURCHASE_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}

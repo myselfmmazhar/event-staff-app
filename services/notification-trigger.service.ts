@@ -218,6 +218,64 @@ export class NotificationTriggerService {
     }
 
     /**
+     * Trigger: Assignment/Call Time cancelled (notifies all assigned staff)
+     */
+    async onCallTimeCancelled(
+        callTimeId: string,
+        callTimeDetails: {
+            positionName: string;
+            eventTitle: string;
+            eventId: string;
+            startDate: Date;
+        }
+    ) {
+        const assignedStaff = await this.getAssignedStaffForCallTime(callTimeId);
+
+        if (assignedStaff.length === 0) return;
+
+        const formattedDate = new Date(callTimeDetails.startDate).toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+        });
+
+        await this.notificationService.createBulk(assignedStaff, {
+            type: NotificationType.EVENT_CANCELLED, // Reuse existing type
+            priority: NotificationPriority.URGENT,
+            title: "Assignment Cancelled",
+            message: `Your assignment as ${callTimeDetails.positionName} for "${callTimeDetails.eventTitle}" on ${formattedDate} has been cancelled`,
+            relatedEntityType: "event",
+            relatedEntityId: callTimeDetails.eventId,
+        });
+    }
+
+    /**
+     * Helper: Get user IDs of all staff assigned to a specific call time
+     */
+    private async getAssignedStaffForCallTime(callTimeId: string): Promise<string[]> {
+        const invitations = await this.prisma.callTimeInvitation.findMany({
+            where: {
+                callTimeId,
+                status: "ACCEPTED",
+            },
+            include: {
+                staff: {
+                    select: {
+                        userId: true,
+                    },
+                },
+            },
+        });
+
+        // Filter out staff without user accounts and get unique user IDs
+        const userIds = invitations
+            .map((inv) => inv.staff.userId)
+            .filter((userId): userId is string => userId !== null);
+
+        return [...new Set(userIds)]; // Remove duplicates
+    }
+
+    /**
      * Helper: Get user IDs of all staff assigned to an event
      */
     private async getAssignedStaffUserIds(eventId: string): Promise<string[]> {

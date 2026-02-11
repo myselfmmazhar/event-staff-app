@@ -238,4 +238,28 @@ export const callTimeRouter = router({
       const service = new CallTimeService(ctx.prisma);
       return await service.getInvitationById(input.invitationId, ctx.userId!);
     }),
+
+  /**
+   * Bulk sync CallTimes for an event from Event Form
+   * Replaces all existing CallTimes for the event
+   * Requires: Authentication (event owner)
+   */
+  bulkSyncForEvent: protectedProcedure
+    .input(CallTimeSchema.bulkSyncForEvent)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.bulkSyncForEvent(input, ctx.userId!);
+    }),
+
+  /**
+   * Get CallTimes for an event for billing display
+   * Returns CallTimes with service details for Event Form edit mode
+   * Requires: Authentication (event owner)
+   */
+  getByEventForBilling: protectedProcedure
+    .input(CallTimeSchema.getByEventForBilling)
+    .query(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.getByEventForBilling(input.eventId, ctx.userId!);
+    }),
 });

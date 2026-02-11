@@ -72,7 +72,6 @@ export function CreateAssignmentModal({
   };
 
   const handleCallTimeSubmit = (data: CreateCallTimeInput | Record<string, unknown>) => {
-    // The CallTimeFormModal passes the data with eventId included for create
     createCallTime.mutate(data as CreateCallTimeInput);
   };
 

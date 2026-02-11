@@ -309,7 +309,7 @@ export function ViewEventModal({
             )}
 
             {/* === ROW 5: Billing + Services & Products === */}
-            {((event.estimate || event.taskRateType || event.commission || event.approveForOvertime) || ((event.eventServices && event.eventServices.length > 0) || (event.eventProducts && event.eventProducts.length > 0))) && (
+            {((event.estimate || event.taskRateType || event.commission || event.approveForOvertime) || ((event.callTimes && event.callTimes.length > 0) || (event.eventProducts && event.eventProducts.length > 0))) && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Billing & Rate Settings */}
                 {(event.estimate || event.taskRateType || event.commission || event.approveForOvertime) && (
@@ -386,38 +386,39 @@ export function ViewEventModal({
                 )}
 
                 {/* Services & Products */}
-                {((event.eventServices && event.eventServices.length > 0) || (event.eventProducts && event.eventProducts.length > 0)) && (
+                {((event.callTimes && event.callTimes.length > 0) || (event.eventProducts && event.eventProducts.length > 0)) && (
                   <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
                     <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">Services & Products</h3>
                     <div className="space-y-4">
-                      {/* Services */}
-                      {event.eventServices && event.eventServices.length > 0 && (
+                      {/* Services (from CallTimes) */}
+                      {event.callTimes && event.callTimes.length > 0 && (
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <WrenchScrewdriverIcon className="h-4 w-4 text-muted-foreground" />
-                            <p className="text-sm font-medium">Services ({event.eventServices.length})</p>
+                            <p className="text-sm font-medium">Services ({event.callTimes.length})</p>
                           </div>
                           <div className="space-y-2">
-                            {event.eventServices.map((es: any) => {
-                              const price = es.customPrice != null ? Number(es.customPrice) : (es.service?.cost != null ? Number(es.service.cost) : null);
-                              const lineTotal = price != null ? price * es.quantity : null;
+                            {event.callTimes.map((ct: any) => {
+                              const price = ct.customPrice != null ? Number(ct.customPrice) : (ct.billRate != null ? Number(ct.billRate) : null);
+                              const quantity = ct.numberOfStaffRequired;
+                              const lineTotal = price != null ? price * quantity : null;
                               return (
-                                <div key={es.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-md">
+                                <div key={ct.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-md">
                                   <div className="flex-1">
-                                    <p className="text-sm font-medium">{es.service?.title}</p>
-                                    {es.service?.costUnitType && (
+                                    <p className="text-sm font-medium">{ct.service?.title}</p>
+                                    {ct.service?.costUnitType && (
                                       <p className="text-xs text-muted-foreground">
-                                        {COST_UNIT_TYPE_LABELS[es.service.costUnitType as CostUnitType]}
+                                        {COST_UNIT_TYPE_LABELS[ct.service.costUnitType as CostUnitType]}
                                       </p>
                                     )}
-                                    {es.notes && (
-                                      <p className="text-xs text-muted-foreground mt-1 italic">{es.notes}</p>
+                                    {ct.notes && (
+                                      <p className="text-xs text-muted-foreground mt-1 italic">{ct.notes}</p>
                                     )}
                                   </div>
                                   <div className="text-right">
                                     <p className="text-sm">
-                                      {es.quantity} x {price != null ? `$${price.toFixed(2)}` : '—'}
-                                      {es.customPrice != null && (
+                                      {quantity} x {price != null ? `$${price.toFixed(2)}` : '—'}
+                                      {ct.customPrice != null && (
                                         <span className="text-xs text-primary ml-1">(custom)</span>
                                       )}
                                     </p>
@@ -476,9 +477,9 @@ export function ViewEventModal({
 
                       {/* Grand Total */}
                       {(() => {
-                        const servicesTotal = (event.eventServices || []).reduce((sum: number, es: any) => {
-                          const price = es.customPrice != null ? Number(es.customPrice) : (es.service?.cost != null ? Number(es.service.cost) : 0);
-                          return sum + price * es.quantity;
+                        const servicesTotal = (event.callTimes || []).reduce((sum: number, ct: any) => {
+                          const price = ct.customPrice != null ? Number(ct.customPrice) : (ct.billRate != null ? Number(ct.billRate) : 0);
+                          return sum + price * ct.numberOfStaffRequired;
                         }, 0);
                         const productsTotal = (event.eventProducts || []).reduce((sum: number, ep: any) => {
                           const price = ep.customPrice != null ? Number(ep.customPrice) : (ep.product?.cost != null ? Number(ep.product.cost) : 0);

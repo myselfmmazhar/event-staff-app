@@ -199,13 +199,13 @@ export function AssignmentsSection({
       {/* Assignments Content (when Yes is selected) */}
       {showAddAssignment && (
         <div className="space-y-4">
-          {/* Assignment List */}
-          {assignments.length > 0 && !showForm && (
+          {/* Assignment List - always show when there are assignments */}
+          {assignments.length > 0 && (
             <AssignmentList
               assignments={assignments}
               onEdit={handleEditAssignment}
               onDelete={handleDeleteAssignment}
-              disabled={disabled}
+              disabled={disabled || showForm}
             />
           )}
 

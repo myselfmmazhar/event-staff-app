@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClipboardListIcon, PlusIcon, TrashIcon, XIcon } from '@/components/ui/icons';
@@ -15,13 +16,17 @@ import {
   SendReminderModal,
 } from '@/components/assignments';
 import { CallTimeDetailModal } from '@/components/call-times/call-time-detail-modal';
+import { FindTalentModal } from '@/components/assignments/find-talent-modal';
 import { DeleteCallTimeModal } from '@/components/call-times/delete-call-time-modal';
 import type { AssignmentData } from '@/components/assignments/assignment-table';
 import { trpc } from '@/lib/client/trpc';
 
 export default function AssignmentManagerPage() {
+  const searchParams = useSearchParams();
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [viewingAssignmentId, setViewingAssignmentId] = useState<string | null>(null);
+  const [managingAssignmentId, setManagingAssignmentId] = useState<string | null>(null);
+  const [findTalentAssignmentId, setFindTalentAssignmentId] = useState<string | null>(null);
   const [deletingAssignment, setDeletingAssignment] = useState<AssignmentData | null>(null);
   const [duplicatingAssignment, setDuplicatingAssignment] = useState<AssignmentData | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -78,13 +83,31 @@ export default function AssignmentManagerPage() {
 
   const selectedAssignments = allAssignments.filter(a => selectedIds.has(a.id));
 
-  // Hydrate the store on mount
+  // Hydrate the store on mount, then apply eventId from URL if present
   useEffect(() => {
-    useAssignmentsFilters.persist.rehydrate();
-  }, []);
+    const eventId = searchParams.get('eventId');
 
-  const handleViewAssignment = (assignment: AssignmentData) => {
-    setViewingAssignmentId(assignment.id);
+    // Subscribe to hydration completion
+    const unsubFinish = useAssignmentsFilters.persist.onFinishHydration(() => {
+      if (eventId) {
+        useAssignmentsFilters.getState().setSelectedEventIds([eventId]);
+      }
+    });
+
+    // Trigger hydration
+    useAssignmentsFilters.persist.rehydrate();
+
+    return () => {
+      unsubFinish();
+    };
+  }, [searchParams]);
+
+  const handleManageAssignment = (assignment: AssignmentData) => {
+    setManagingAssignmentId(assignment.id);
+  };
+
+  const handleFindTalent = (assignment: AssignmentData) => {
+    setFindTalentAssignmentId(assignment.id);
   };
 
   const handleDeleteAssignment = (assignment: AssignmentData) => {
@@ -182,7 +205,8 @@ export default function AssignmentManagerPage() {
 
       {/* Tabs with Views */}
       <AssignmentManagerTabs
-        onViewAssignment={handleViewAssignment}
+        onManageAssignment={handleManageAssignment}
+        onFindTalent={handleFindTalent}
         onDeleteAssignment={handleDeleteAssignment}
         onDuplicateAssignment={handleDuplicateAssignment}
         onSendReminder={handleSendReminder}
@@ -198,11 +222,18 @@ export default function AssignmentManagerPage() {
         onSuccess={handleCreateSuccess}
       />
 
-      {/* View/Edit Assignment Modal */}
+      {/* Manage Assignment Modal */}
       <CallTimeDetailModal
-        callTimeId={viewingAssignmentId}
-        open={viewingAssignmentId !== null}
-        onClose={() => setViewingAssignmentId(null)}
+        callTimeId={managingAssignmentId}
+        open={managingAssignmentId !== null}
+        onClose={() => setManagingAssignmentId(null)}
+      />
+
+      {/* Find Talent Modal */}
+      <FindTalentModal
+        callTimeId={findTalentAssignmentId}
+        open={findTalentAssignmentId !== null}
+        onClose={() => setFindTalentAssignmentId(null)}
       />
 
       {/* Delete Assignment Modal */}

@@ -432,12 +432,27 @@ export class EventService {
         createdBy: true,
         createdAt: true,
         updatedAt: true,
-        eventServices: {
+        // CallTimes now hold service assignments (formerly EventService)
+        callTimes: {
           select: {
             id: true,
+            callTimeId: true,
             serviceId: true,
-            quantity: true,
+            numberOfStaffRequired: true,
+            skillLevel: true,
+            startDate: true,
+            startTime: true,
+            endDate: true,
+            endTime: true,
+            payRate: true,
+            payRateType: true,
+            billRate: true,
+            billRateType: true,
+            customCost: true,
             customPrice: true,
+            ratingRequired: true,
+            approveOvertime: true,
+            commission: true,
             notes: true,
             service: {
               select: {
@@ -445,6 +460,7 @@ export class EventService {
                 serviceId: true,
                 title: true,
                 cost: true,
+                price: true,
                 costUnitType: true,
               },
             },

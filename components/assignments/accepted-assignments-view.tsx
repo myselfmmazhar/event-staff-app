@@ -305,7 +305,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
         <CheckCircleIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
         <p className="text-foreground text-lg">No accepted staff</p>
         <p className="text-muted-foreground text-sm mt-2">
-          Staff will appear here once they accept assignment invitations
+          Staff will appear here once they accept assignment offers
         </p>
       </div>
     );
@@ -322,7 +322,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
         setSortBy={handleSortBy}
         setSortOrder={setSortOrder}
         emptyMessage="No accepted staff found"
-        emptyDescription="Staff will appear here once they accept assignment invitations"
+        emptyDescription="Staff will appear here once they accept assignment offers"
         getRowKey={(item) => item.id}
         minWidth="1100px"
         mobileCard={mobileCard}
