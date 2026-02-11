@@ -219,6 +219,7 @@ export function EventFormModal({
     { eventId: event?.id || '' },
     { enabled: isEdit && !!event?.id }
   );
+  const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
 
   // Client map for batch validation
   const clientMap = new Map<string, string>();
@@ -280,7 +281,7 @@ export function EventFormModal({
       startTime: '',
       endDate: todayFormatted as any,
       endTime: '',
-      timezone: 'America/New_York',
+      timezone: companyProfile?.companyTimezone || 'America/New_York',
       dailyDigestMode: false,
       requireStaff: false,
       status: EventStatus.DRAFT,
@@ -371,7 +372,7 @@ export function EventFormModal({
       setStartTimeTBD(false);
       setEndTimeTBD(false);
     }
-  }, [event, reset, open, fullEventData]);
+  }, [event, reset, open, fullEventData, companyProfile]);
 
   // Map backend errors to form fields
   useEffect(() => {
