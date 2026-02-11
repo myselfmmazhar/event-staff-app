@@ -91,6 +91,7 @@ export const EVENT_FIELDS = [
   // JSON fields
   { value: 'fileLinks', label: 'File Links (JSON)', group: 'Other' },
   { value: 'eventDocuments', label: 'Event Documents (JSON)', group: 'Other' },
+  { value: 'customFields', label: 'Custom Fields (JSON)', group: 'Other' },
 ];
 
 /**
@@ -262,6 +263,10 @@ const COLUMN_NAME_MAP: Record<string, string> = {
   'event_documents': 'eventDocuments',
   'eventdocuments': 'eventDocuments',
   'documents': 'eventDocuments',
+  // Custom fields
+  'custom fields': 'customFields',
+  'custom_fields': 'customFields',
+  'customfields': 'customFields',
 
   // Created At (skip - read-only)
   'created at': 'skip',
@@ -474,5 +479,6 @@ export function mapRowToCreateInput(
     onsitePocEmail: nullToUndefined(row.onsitePocEmail),
     fileLinks: nullToUndefined(row.fileLinks) as Array<{ name: string; link: string }> | undefined,
     eventDocuments: nullToUndefined(row.eventDocuments) as Array<{ name: string; url: string; type?: string; size?: number }> | undefined,
+    customFields: nullToUndefined(row.customFields) as Array<{ label: string; value: string }> | undefined,
   };
 }

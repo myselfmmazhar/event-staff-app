@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmModal } from '@/components/common/confirm-modal';
@@ -422,16 +422,20 @@ export function StaffProfileSection() {
                     <div>
                         <Label htmlFor="availabilityStatus">Availability Status</Label>
                         <Select
-                            id="availabilityStatus"
                             value={availabilityStatus}
-                            onChange={(e) => setAvailabilityStatus(e.target.value as AvailabilityStatus)}
+                            onValueChange={(value) => setAvailabilityStatus(value as AvailabilityStatus)}
                             disabled={updateMutation.isPending}
                         >
-                            {AVAILABILITY_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
+                            <SelectTrigger id="availabilityStatus">
+                                <SelectValue placeholder="Select availability..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {AVAILABILITY_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
                         </Select>
                         <p className="text-sm text-muted-foreground mt-1">
                             {AVAILABILITY_OPTIONS.find((o) => o.value === availabilityStatus)?.description}

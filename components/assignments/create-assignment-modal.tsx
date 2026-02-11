@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon } from '@/components/ui/icons';
@@ -126,17 +126,20 @@ export function CreateAssignmentModal({
               {eventTerm.singular}
             </Label>
             <Select
-              id="eventSelect"
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
+              onValueChange={setSelectedEventId}
               disabled={isLoadingEvents}
             >
-              <option value="">Select an {eventTerm.lower}</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.title} ({event.eventId})
-                </option>
-              ))}
+              <SelectTrigger id="eventSelect">
+                <SelectValue placeholder={`Select an ${eventTerm.lower}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {events.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.title} ({event.eventId})
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
 

@@ -39,6 +39,14 @@ const eventDocumentSchema = z.object({
 });
 
 /**
+ * Custom field schema for validation
+ */
+const customFieldSchema = z.object({
+  label: z.string().min(1, "Label is required").max(100, "Label too long"),
+  value: z.string().max(1000, "Value too long"),
+});
+
+/**
  * Event ID format validation (EVT-YYYY-NNN)
  */
 const eventIdRegex = /^EVT-\d{4}-\d{3}$/;
@@ -194,6 +202,12 @@ export class EventSchema {
       eventDocuments: z
         .array(eventDocumentSchema)
         .max(20, "Maximum 20 event documents allowed")
+        .optional(),
+
+      // Custom Fields
+      customFields: z
+        .array(customFieldSchema)
+        .max(20, "Maximum 20 custom fields allowed")
         .optional(),
 
       // Onsite Contact & Meeting Point
@@ -395,6 +409,12 @@ export class EventSchema {
       eventDocuments: z
         .array(eventDocumentSchema)
         .max(20, "Maximum 20 event documents allowed")
+        .optional(),
+
+      // Custom Fields
+      customFields: z
+        .array(customFieldSchema)
+        .max(20, "Maximum 20 custom fields allowed")
         .optional(),
 
       // Onsite Contact & Meeting Point
@@ -599,6 +619,11 @@ export type FileLink = z.infer<typeof fileLinkSchema>;
  * Event document type
  */
 export type EventDocument = z.infer<typeof eventDocumentSchema>;
+
+/**
+ * Custom field type
+ */
+export type CustomField = z.infer<typeof customFieldSchema>;
 
 /**
  * Export common timezones for frontend use

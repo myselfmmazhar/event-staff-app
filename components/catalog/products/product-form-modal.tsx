@@ -11,7 +11,7 @@ import { CloseIcon } from '@/components/ui/icons';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { Product } from '@/lib/types/product';
 import type { CreateProductInput } from '@/lib/schemas/product.schema';
@@ -214,17 +214,20 @@ export function ProductFormModal({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    id="priceUnitType"
                     value={field.value}
-                    onChange={(e) => field.onChange(e.target.value as PriceUnitType)}
-                    error={!!errors.priceUnitType}
+                    onValueChange={(value) => field.onChange(value as PriceUnitType)}
                     disabled={isSubmitting}
                   >
-                    {PRICE_UNIT_TYPE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
+                    <SelectTrigger id="priceUnitType">
+                      <SelectValue placeholder="Select unit type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRICE_UNIT_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 )}
               />
@@ -240,18 +243,21 @@ export function ProductFormModal({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    id="minimumPurchase"
                     value={field.value ?? ''}
-                    onChange={(e) => field.onChange(e.target.value || null)}
-                    error={!!errors.minimumPurchase}
+                    onValueChange={(value) => field.onChange(value || null)}
                     disabled={isSubmitting}
                   >
-                    <option value="">—</option>
-                    {MINIMUM_PURCHASE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
+                    <SelectTrigger id="minimumPurchase">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">—</SelectItem>
+                      {MINIMUM_PURCHASE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 )}
               />

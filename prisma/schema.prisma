@@ -116,6 +116,8 @@ model Client {
   events                         Event[]
   eventTemplates                 EventTemplate[]
   locations                      ClientLocation[]
+  invoices                       Invoice[]
+  estimates                      Estimate[]
 
   @@index([clientId])
   @@index([createdBy])
@@ -202,6 +204,9 @@ model Event {
   preEventInstructions String?
   eventDocuments       Json?
 
+  // Custom Fields
+  customFields         Json?
+
   // Onsite Contact & Meeting Point
   meetingPoint     String?        @db.VarChar(300)
   onsitePocName    String?        @db.VarChar(200)
@@ -281,6 +286,9 @@ model EventTemplate {
   preEventInstructions String?
   eventDocuments       Json?
 
+  // Custom Fields
+  customFields         Json?
+
   // Onsite Contact & Meeting Point
   meetingPoint     String?        @db.VarChar(300)
   onsitePocName    String?        @db.VarChar(200)
@@ -317,6 +325,8 @@ model Service {
   eventServices         EventService[]
   callTimes             CallTime[]
   staff                 StaffServiceAssignment[]
+  invoiceItems          InvoiceItem[]
+  estimateItems         EstimateItem[]
 
   @@index([serviceId])
   @@index([title])
@@ -343,6 +353,8 @@ model Product {
   updatedAt       DateTime         @updatedAt @db.Timestamp(6)
   createdByUser   User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   eventProducts   EventProduct[]
+  invoiceItems    InvoiceItem[]
+  estimateItems   EstimateItem[]
 
   @@index([productId])
   @@index([title])
@@ -561,6 +573,8 @@ model User {
   sessions                         Session[]
   services                         Service[]
   products                         Product[]
+  invoicesCreated                  Invoice[]                 @relation("invoices_created")
+  estimatesCreated                 Estimate[]                @relation("estimates_created")
   staff_staff_createdByTousers     Staff[]                   @relation("staff_createdByTousers")
   staff_staff_userIdTousers        Staff?                    @relation("staff_userIdTousers")
   @@map("users")
@@ -716,4 +730,145 @@ enum UserRole {
   MANAGER
   STAFF
   CLIENT
+}
+
+model Invoice {
+  id              String        @id @default(uuid()) @db.Uuid
+  invoiceNo       String        @unique
+  clientId        String        @db.Uuid
+  status          InvoiceStatus @default(DRAFT)
+  invoiceDate     DateTime      @db.Date
+  dueDate         DateTime?     @db.Date
+  terms           String?
+  customField1    String?
+  customField2    String?
+  customField3    String?
+  discountType    DiscountType?
+  discountValue   Decimal?      @db.Decimal(10, 2)
+  depositAmount   Decimal?      @db.Decimal(10, 2)
+  shippingAmount  Decimal?      @db.Decimal(10, 2)
+  salesTaxAmount  Decimal?      @db.Decimal(10, 2)
+  isTaxable       Boolean       @default(false)
+  notes           String?
+  paymentDetails  String?
+  fileLinks       Json?
+  isArchived      Boolean       @default(false)
+  archivedAt      DateTime?     @db.Timestamp(6)
+  createdBy       String
+  createdAt       DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime      @updatedAt @db.Timestamp(6)
+  client          Client        @relation(fields: [clientId], references: [id])
+  createdByUser   User          @relation("invoices_created", fields: [createdBy], references: [id], onDelete: Cascade)
+  items           InvoiceItem[]
+
+  @@index([clientId])
+  @@index([invoiceNo])
+  @@index([status])
+  @@index([createdBy])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  invoiceId   String   @db.Uuid
+  date        DateTime? @db.Date
+  productId   String?  @db.Uuid
+  serviceId   String?  @db.Uuid
+  description String
+  quantity    Decimal  @db.Decimal(10, 2)
+  price       Decimal  @db.Decimal(10, 2)
+  amount      Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
+  service     Service? @relation(fields: [serviceId], references: [id])
+
+  @@index([invoiceId])
+  @@index([productId])
+  @@index([serviceId])
+  @@map("invoice_items")
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  APPROVED
+  DECLINED
+  EXPIRED
+  CONVERTED
+}
+
+model Estimate {
+  id              String         @id @default(uuid()) @db.Uuid
+  estimateNo      String         @unique
+  clientId        String         @db.Uuid
+  status          EstimateStatus @default(DRAFT)
+  estimateDate    DateTime       @db.Date
+  expirationDate  DateTime?      @db.Date
+  approvedBy      String?
+  approvedDate    DateTime?      @db.Date
+  terms           String?
+  customField1    String?
+  customField2    String?
+  customField3    String?
+  discountType    DiscountType?
+  discountValue   Decimal?       @db.Decimal(10, 2)
+  depositAmount   Decimal?       @db.Decimal(10, 2)
+  shippingAmount  Decimal?       @db.Decimal(10, 2)
+  salesTaxAmount  Decimal?       @db.Decimal(10, 2)
+  isTaxable       Boolean        @default(false)
+  notes           String?
+  paymentDetails  String?
+  fileLinks       Json?
+  isArchived      Boolean        @default(false)
+  archivedAt      DateTime?      @db.Timestamp(6)
+  createdBy       String
+  createdAt       DateTime       @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime       @updatedAt @db.Timestamp(6)
+  client          Client         @relation(fields: [clientId], references: [id])
+  createdByUser   User           @relation("estimates_created", fields: [createdBy], references: [id], onDelete: Cascade)
+  items           EstimateItem[]
+
+  @@index([clientId])
+  @@index([estimateNo])
+  @@index([status])
+  @@index([createdBy])
+  @@map("estimates")
+}
+
+model EstimateItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  estimateId  String    @db.Uuid
+  date        DateTime? @db.Date
+  productId   String?   @db.Uuid
+  serviceId   String?   @db.Uuid
+  description String
+  quantity    Decimal   @db.Decimal(10, 2)
+  price       Decimal   @db.Decimal(10, 2)
+  amount      Decimal   @db.Decimal(10, 2)
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamp(6)
+  estimate    Estimate  @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  product     Product?  @relation(fields: [productId], references: [id])
+  service     Service?  @relation(fields: [serviceId], references: [id])
+
+  @@index([estimateId])
+  @@index([productId])
+  @@index([serviceId])
+  @@map("estimate_items")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  VOID
+  OVERDUE
+  CANCELLED
+}
+
+enum DiscountType {
+  AMOUNT
+  PERCENT
 }

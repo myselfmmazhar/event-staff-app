@@ -76,6 +76,25 @@ export const STAFF_RATING_LABELS: Record<StaffRating, string> = {
 };
 
 /**
+ * Staff Rating Options for forms (including 'Any' option)
+ */
+export const STAFF_RATING_OPTIONS: Array<{ value: StaffRating | 'ANY'; label: string }> = [
+  { value: 'ANY', label: 'Any' },
+  { value: 'A', label: 'A' },
+  { value: 'B', label: 'B' },
+  { value: 'C', label: 'C' },
+  { value: 'NA', label: 'N/A' },
+];
+
+/**
+ * Assignment Type Options for forms
+ */
+export const ASSIGNMENT_TYPE_OPTIONS: Array<{ value: 'PRODUCT' | 'SERVICE'; label: string }> = [
+  { value: 'PRODUCT', label: 'Product' },
+  { value: 'SERVICE', label: 'Service' },
+];
+
+/**
  * Rate Type Labels for display
  */
 export const RATE_TYPE_LABELS: Record<RateType, string> = {

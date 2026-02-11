@@ -55,6 +55,12 @@ const eventDocumentSchema = z.object({
   size: z.number().optional(),
 });
 
+// Custom field schema for JSON parsing
+const customFieldSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+});
+
 /**
  * Schema for a single imported event row
  * Events have required fields: title, venueName, address, city, state, zipCode, startDate, endDate, timezone
@@ -329,6 +335,23 @@ export const importEventRowSchema = z.object({
       }
       return null;
     }),
+  customFields: z
+    .union([z.string(), z.array(customFieldSchema)])
+    .optional()
+    .nullable()
+    .transform((val) => {
+      if (!val) return null;
+      if (Array.isArray(val)) return val;
+      if (typeof val === "string" && val.trim()) {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }),
 });
 
 export type ImportEventRow = z.infer<typeof importEventRowSchema>;
@@ -370,6 +393,7 @@ export const eventBulkImportSchema = z.object({
       onsitePocEmail: z.string().max(255).optional().nullable(),
       fileLinks: z.array(fileLinkSchema).optional().nullable(),
       eventDocuments: z.array(eventDocumentSchema).optional().nullable(),
+      customFields: z.array(customFieldSchema).optional().nullable(),
     })
   ),
   mode: z.enum(["create", "upsert"]).default("create"),

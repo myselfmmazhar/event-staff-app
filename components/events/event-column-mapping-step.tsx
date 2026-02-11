@@ -1,6 +1,6 @@
 'use client';
 
-import { Select } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { CheckIcon, AlertIcon } from '@/components/ui/icons';
 import { EVENT_FIELDS, type ColumnMapping } from '@/lib/utils/event-import';
@@ -96,9 +96,8 @@ export function EventColumnMappingStep({
             return (
               <div
                 key={m.sourceColumn}
-                className={`grid grid-cols-2 gap-4 p-3 border-b last:border-b-0 items-center ${
-                  !isMapped ? 'bg-muted/20' : ''
-                }`}
+                className={`grid grid-cols-2 gap-4 p-3 border-b last:border-b-0 items-center ${!isMapped ? 'bg-muted/20' : ''
+                  }`}
               >
                 <div className="font-mono text-sm truncate" title={m.sourceColumn}>
                   {m.sourceColumn}
@@ -106,20 +105,25 @@ export function EventColumnMappingStep({
                 <div>
                   <Select
                     value={m.targetField}
-                    onChange={(e) => handleFieldChange(m.sourceColumn, e.target.value)}
-                    className="w-full"
+                    onValueChange={(value) => handleFieldChange(m.sourceColumn, value)}
                   >
-                    {groupedFields.map((group) =>
-                      group.fields.length > 0 ? (
-                        <optgroup key={group.group} label={group.group}>
-                          {group.fields.map((field) => (
-                            <option key={field.value} value={field.value}>
-                              {field.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ) : null
-                    )}
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select field" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groupedFields.map((group) =>
+                        group.fields.length > 0 ? (
+                          <SelectGroup key={group.group}>
+                            <SelectLabel>{group.group}</SelectLabel>
+                            {group.fields.map((field) => (
+                              <SelectItem key={field.value} value={field.value}>
+                                {field.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ) : null
+                      )}
+                    </SelectContent>
                   </Select>
                 </div>
               </div>

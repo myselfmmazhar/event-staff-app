@@ -109,6 +109,8 @@ export class EventService {
         // Event Instructions & Documents
         preEventInstructions: data.preEventInstructions?.trim() || null,
         eventDocuments: data.eventDocuments ? JSON.parse(JSON.stringify(data.eventDocuments)) : null,
+        // Custom Fields
+        customFields: data.customFields ? JSON.parse(JSON.stringify(data.customFields)) : null,
         // Onsite Contact & Meeting Point
         meetingPoint: data.meetingPoint?.trim() || null,
         onsitePocName: data.onsitePocName?.trim() || null,
@@ -161,6 +163,7 @@ export class EventService {
           poNumber: true,
           preEventInstructions: true,
           eventDocuments: true,
+          customFields: true,
           meetingPoint: true,
           onsitePocName: true,
           onsitePocPhone: true,
@@ -333,6 +336,7 @@ export class EventService {
           poNumber: true,
           preEventInstructions: true,
           eventDocuments: true,
+          customFields: true,
           meetingPoint: true,
           onsitePocName: true,
           onsitePocPhone: true,
@@ -412,6 +416,7 @@ export class EventService {
         poNumber: true,
         preEventInstructions: true,
         eventDocuments: true,
+          customFields: true,
         meetingPoint: true,
         onsitePocName: true,
         onsitePocPhone: true,
@@ -530,6 +535,10 @@ export class EventService {
       if (data.eventDocuments !== undefined) {
         sanitizedData.eventDocuments = data.eventDocuments ? JSON.parse(JSON.stringify(data.eventDocuments)) : null;
       }
+      // Custom Fields
+      if (data.customFields !== undefined) {
+        sanitizedData.customFields = data.customFields ? JSON.parse(JSON.stringify(data.customFields)) : null;
+      }
       // Onsite Contact & Meeting Point
       if (data.meetingPoint !== undefined) sanitizedData.meetingPoint = data.meetingPoint?.trim() || null;
       if (data.onsitePocName !== undefined) sanitizedData.onsitePocName = data.onsitePocName?.trim() || null;
@@ -581,6 +590,7 @@ export class EventService {
           poNumber: true,
           preEventInstructions: true,
           eventDocuments: true,
+          customFields: true,
           meetingPoint: true,
           onsitePocName: true,
           onsitePocPhone: true,
@@ -724,6 +734,7 @@ export class EventService {
         poNumber: true,
         preEventInstructions: true,
         eventDocuments: true,
+          customFields: true,
         meetingPoint: true,
         onsitePocName: true,
         onsitePocPhone: true,
@@ -980,6 +991,7 @@ export class EventService {
         overtimeRateType: true,
         fileLinks: true,
         eventDocuments: true,
+          customFields: true,
         createdAt: true,
       },
       orderBy: { startDate: 'desc' },
@@ -1169,6 +1181,7 @@ export class EventService {
           poNumber: true,
           preEventInstructions: true,
           eventDocuments: true,
+          customFields: true,
           meetingPoint: true,
           onsitePocName: true,
           onsitePocPhone: true,

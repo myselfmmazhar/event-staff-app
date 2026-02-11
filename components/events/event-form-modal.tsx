@@ -10,26 +10,32 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
-import { EventSchema, TIMEZONES, REQUEST_METHODS } from '@/lib/schemas/event.schema';
-import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument } from '@/lib/schemas/event.schema';
+import { EventSchema } from '@/lib/schemas/event.schema';
+import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument, CustomField } from '@/lib/schemas/event.schema';
 import { EventStatus, RequestMethod, AmountType } from '@prisma/client';
-import { AMOUNT_TYPE_OPTIONS } from '@/lib/constants/enums';
-import { EventDocumentUpload } from './event-document-upload';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form';
+import { useEffect, useState, useCallback } from 'react';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
-import { CloseIcon, EyeIcon, PlusIcon, XIcon } from '@/components/ui/icons';
+import { CloseIcon, EyeIcon, UploadIcon, FileTextIcon, FileSpreadsheetIcon } from '@/components/ui/icons';
+import { Badge } from '@/components/ui/badge';
+import {
+  parseImportFile,
+  autoDetectColumnMapping,
+  applyColumnMapping,
+  validateRow,
+  mapRowToCreateInput,
+  type RowValidationResult,
+} from '@/lib/utils/event-import';
+import type { ImportEventRow } from '@/lib/schemas/event-import.schema';
+import { downloadSampleEventTemplate } from '@/lib/utils/event-export';
+import { toast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
-import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
-import {
-  EventAttachmentsSection,
-  type AttachedServiceItem,
-  type AttachedProductItem,
-} from './event-attachments-section';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EventFormFields } from './event-form-fields';
+import { BatchEntryList } from './batch-entry-list';
+import type { Assignment, ProductAssignment, ServiceAssignment, ProductAssignmentExtendedData, ServiceAssignmentExtendedData } from '@/lib/types/assignment.types';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;
@@ -63,13 +69,11 @@ const editFormSchema = z.object({
     name: z.string().min(1, "File name is required"),
     link: z.string().url("Invalid URL"),
   })).optional(),
-  // Request Information
   requestMethod: z.nativeEnum(RequestMethod).optional().nullable(),
   requestorName: z.string().max(200).optional().transform(val => val?.trim()),
   requestorPhone: z.string().max(50).optional().transform(val => val?.trim()),
   requestorEmail: z.string().email().max(255).optional().or(z.literal('')),
   poNumber: z.string().max(100).optional().transform(val => val?.trim()),
-  // Event Instructions & Documents
   preEventInstructions: z.string().max(10000).optional().transform(val => val?.trim()),
   eventDocuments: z.array(z.object({
     name: z.string(),
@@ -77,12 +81,14 @@ const editFormSchema = z.object({
     type: z.string().optional(),
     size: z.number().optional(),
   })).optional(),
-  // Onsite Contact & Meeting Point
+  customFields: z.array(z.object({
+    label: z.string().min(1, "Label is required").max(100),
+    value: z.string().max(1000),
+  })).optional(),
   meetingPoint: z.string().max(300).optional().transform(val => val?.trim()),
   onsitePocName: z.string().max(200).optional().transform(val => val?.trim()),
   onsitePocPhone: z.string().max(50).optional().transform(val => val?.trim()),
   onsitePocEmail: z.string().email().max(255).optional().or(z.literal('')),
-  // Billing & Rate Settings
   estimate: z.boolean().optional(),
   taskRateType: z.nativeEnum(AmountType).optional().nullable(),
   commission: z.boolean().optional(),
@@ -131,29 +137,24 @@ interface Event {
   requireStaff: boolean;
   status: EventStatus;
   fileLinks?: FileLink[] | null;
-  // Request Information
   requestMethod?: RequestMethod | null;
   requestorName?: string | null;
   requestorPhone?: string | null;
   requestorEmail?: string | null;
   poNumber?: string | null;
-  // Event Instructions & Documents
   preEventInstructions?: string | null;
   eventDocuments?: EventDocument[] | null;
-  // Onsite Contact & Meeting Point
+  customFields?: CustomField[] | null;
   meetingPoint?: string | null;
   onsitePocName?: string | null;
   onsitePocPhone?: string | null;
   onsitePocEmail?: string | null;
-  // Billing & Rate Settings
   estimate?: boolean | null;
   taskRateType?: AmountType | null;
   commission?: boolean | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   commissionAmount?: number | any | null;
   commissionAmountType?: AmountType | null;
   approveForOvertime?: boolean | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   overtimeRate?: number | any | null;
   overtimeRateType?: AmountType | null;
 }
@@ -174,14 +175,7 @@ interface EventFormModalProps {
   onViewDetails?: () => void;
 }
 
-const STATUSES: Array<{ value: EventStatus; label: string }> = [
-  { value: EventStatus.DRAFT, label: 'Draft' },
-  { value: EventStatus.PUBLISHED, label: 'Published' },
-  { value: EventStatus.CONFIRMED, label: 'Confirmed' },
-  { value: EventStatus.IN_PROGRESS, label: 'In Progress' },
-  { value: EventStatus.COMPLETED, label: 'Completed' },
-  { value: EventStatus.CANCELLED, label: 'Cancelled' },
-];
+type EntryType = 'single' | 'batch';
 
 export function EventFormModal({
   event,
@@ -193,42 +187,66 @@ export function EventFormModal({
   onViewDetails,
 }: EventFormModalProps) {
   const { terminology } = useTerminology();
+  const utils = trpc.useUtils();
   const isEdit = !!event;
+
+  // Entry type and batch state
+  const [entryType, setEntryType] = useState<EntryType>('single');
+  const [batchFile, setBatchFile] = useState<File | null>(null);
+  const [batchStep, setBatchStep] = useState<'upload' | 'preview'>('upload');
+  const [batchValidationResults, setBatchValidationResults] = useState<RowValidationResult[]>([]);
+
+  // Time TBD state
   const [startTimeTBD, setStartTimeTBD] = useState(false);
   const [endTimeTBD, setEndTimeTBD] = useState(false);
+
+  // Template and attachments state
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  const [attachedServices, setAttachedServices] = useState<AttachedServiceItem[]>([]);
-  const [attachedProducts, setAttachedProducts] = useState<AttachedProductItem[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
 
-  // Fetch clients for dropdown
-  const { data: clientsData } = trpc.clients.getAll.useQuery({
-    page: 1,
-    limit: 100
-  });
-
-  // Fetch templates for dropdown (only in create mode)
-  const { data: templatesData } = trpc.eventTemplate.getForSelection.useQuery(undefined, {
-    enabled: !isEdit,
-  });
-
-  // Fetch full event data when editing (ensures eventDocuments and all fields are present)
+  // Data queries
+  const { data: clientsData } = trpc.clients.getAll.useQuery({ page: 1, limit: 100 });
+  const { data: templatesData } = trpc.eventTemplate.getForSelection.useQuery(undefined, { enabled: !isEdit });
   const { data: fullEventData } = trpc.event.getById.useQuery(
     { id: event?.id || '' },
     { enabled: isEdit && !!event?.id && open }
   );
-
-  // Fetch full template data when selected
   const { data: selectedTemplateData } = trpc.eventTemplate.getById.useQuery(
     { id: selectedTemplateId },
     { enabled: !!selectedTemplateId && !isEdit }
   );
-
-  // Fetch existing attachments when editing
   const { data: existingAttachments } = trpc.eventAttachment.getByEventId.useQuery(
     { eventId: event?.id || '' },
     { enabled: isEdit && !!event?.id }
   );
 
+  // Client map for batch validation
+  const clientMap = new Map<string, string>();
+  clientsData?.data.forEach((c) => {
+    clientMap.set(c.businessName.toLowerCase(), c.id);
+  });
+
+  // Batch import mutation
+  const batchImportMutation = trpc.event.bulkImport.useMutation({
+    onSuccess: (result) => {
+      const created = result.created ?? 0;
+      const errors = result.errors?.length ?? 0;
+      if (errors === 0) {
+        toast({ title: `Created ${created} ${terminology.event.plural.toLowerCase()} successfully`, type: 'success' });
+      } else {
+        toast({ title: `Created ${created} ${terminology.event.plural.toLowerCase()} with ${errors} errors`, type: 'info' });
+      }
+      // Invalidate event queries to refresh the list
+      utils.event.getAll.invalidate();
+      utils.event.getByDateRange.invalidate();
+      onClose();
+    },
+    onError: (error) => {
+      toast({ title: `Import failed: ${error.message}`, type: 'error' });
+    },
+  });
+
+  // Form setup
   const {
     register,
     handleSubmit,
@@ -240,7 +258,14 @@ export function EventFormModal({
     control,
   } = useForm<FormInput, undefined, FormOutput>({
     resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
-    defaultValues: {
+    defaultValues: getDefaultValues(),
+  });
+
+  function getDefaultValues(): Partial<FormInput> {
+    const today = new Date();
+    const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    return {
       title: '',
       description: '',
       requirements: '',
@@ -251,30 +276,27 @@ export function EventFormModal({
       city: '',
       state: '',
       zipCode: '',
-      startDate: new Date(),
+      startDate: todayFormatted as any,
       startTime: '',
-      endDate: new Date(),
+      endDate: todayFormatted as any,
       endTime: '',
       timezone: 'America/New_York',
       dailyDigestMode: false,
       requireStaff: false,
       status: EventStatus.DRAFT,
       fileLinks: [],
-      // Request Information
       requestMethod: undefined,
       requestorName: '',
       requestorPhone: '',
       requestorEmail: '',
       poNumber: '',
-      // Event Instructions & Documents
       preEventInstructions: '',
       eventDocuments: [],
-      // Onsite Contact & Meeting Point
+      customFields: [],
       meetingPoint: '',
       onsitePocName: '',
       onsitePocPhone: '',
       onsitePocEmail: '',
-      // Billing & Rate Settings
       estimate: false,
       taskRateType: undefined,
       commission: false,
@@ -283,30 +305,21 @@ export function EventFormModal({
       approveForOvertime: false,
       overtimeRate: undefined,
       overtimeRateType: undefined,
-    },
-  });
+    };
+  }
 
-  const { fields, append, remove } = useFieldArray<FormInput, "fileLinks">({
-    control,
-    name: "fileLinks",
-  });
-
+  // Reset form when event changes
   useEffect(() => {
     if (event) {
-      const fileLinksData = event.fileLinks as FileLink[] | null;
-
-      // Format dates to YYYY-MM-DD for date inputs
       const formatDateForInput = (date: Date | string) => {
         const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       };
 
-      // Use full event data from getById if available, otherwise fall back to list data
       const eventDocsSource = fullEventData?.eventDocuments ?? event.eventDocuments;
-      const eventDocsData = Array.isArray(eventDocsSource) ? (eventDocsSource as EventDocument[]) : null;
+      const eventDocsData = Array.isArray(eventDocsSource) ? eventDocsSource as EventDocument[] : null;
+      const fileLinksData = event.fileLinks as FileLink[] | null;
+
       reset({
         eventId: event.eventId,
         title: event.title,
@@ -330,21 +343,18 @@ export function EventFormModal({
         requireStaff: event.requireStaff,
         status: event.status,
         fileLinks: fileLinksData || [],
-        // Request Information
         requestMethod: event.requestMethod || undefined,
         requestorName: event.requestorName || '',
         requestorPhone: event.requestorPhone || '',
         requestorEmail: event.requestorEmail || '',
         poNumber: event.poNumber || '',
-        // Event Instructions & Documents
         preEventInstructions: event.preEventInstructions || '',
         eventDocuments: eventDocsData || [],
-        // Onsite Contact & Meeting Point
+        customFields: (event.customFields as CustomField[]) || [],
         meetingPoint: event.meetingPoint || '',
         onsitePocName: event.onsitePocName || '',
         onsitePocPhone: event.onsitePocPhone || '',
         onsitePocEmail: event.onsitePocEmail || '',
-        // Billing & Rate Settings
         estimate: event.estimate ?? false,
         taskRateType: event.taskRateType || undefined,
         commission: event.commission ?? false,
@@ -357,57 +367,7 @@ export function EventFormModal({
       setStartTimeTBD(event.startTime === 'TBD');
       setEndTimeTBD(event.endTime === 'TBD');
     } else {
-      // Format today's date to YYYY-MM-DD for date inputs
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      const todayFormatted = `${year}-${month}-${day}`;
-
-      reset({
-        title: '',
-        description: '',
-        requirements: '',
-        privateComments: '',
-        clientId: '',
-        venueName: '',
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        startDate: todayFormatted as any,
-        startTime: '',
-        endDate: todayFormatted as any,
-        endTime: '',
-        timezone: 'America/New_York',
-        dailyDigestMode: false,
-        requireStaff: false,
-        status: EventStatus.DRAFT,
-        fileLinks: [],
-        // Request Information
-        requestMethod: undefined,
-        requestorName: '',
-        requestorPhone: '',
-        requestorEmail: '',
-        poNumber: '',
-        // Event Instructions & Documents
-        preEventInstructions: '',
-        eventDocuments: [],
-        // Onsite Contact & Meeting Point
-        meetingPoint: '',
-        onsitePocName: '',
-        onsitePocPhone: '',
-        onsitePocEmail: '',
-        // Billing & Rate Settings
-        estimate: false,
-        taskRateType: undefined,
-        commission: false,
-        commissionAmount: undefined,
-        commissionAmountType: undefined,
-        approveForOvertime: false,
-        overtimeRate: undefined,
-        overtimeRateType: undefined,
-      });
+      reset(getDefaultValues());
       setStartTimeTBD(false);
       setEndTimeTBD(false);
     }
@@ -417,15 +377,12 @@ export function EventFormModal({
   useEffect(() => {
     if (backendErrors && backendErrors.length > 0) {
       backendErrors.forEach((error) => {
-        setError(error.field as FormFieldName, {
-          type: 'manual',
-          message: error.message,
-        });
+        setError(error.field as FormFieldName, { type: 'manual', message: error.message });
       });
     }
   }, [backendErrors, setError]);
 
-  // Auto-fill requirements when a client is selected
+  // Auto-fill requirements when client is selected
   const selectedClientId = watch('clientId');
   useEffect(() => {
     if (!selectedClientId || !clientsData?.data) return;
@@ -438,28 +395,22 @@ export function EventFormModal({
     }
   }, [selectedClientId, clientsData, setValue, watch]);
 
-  // Apply template data when a template is selected
+  // Apply template data
   useEffect(() => {
     if (selectedTemplateData && !isEdit) {
       const template = selectedTemplateData;
-
-      // Format date for input
       const formatDateForInput = (date: Date | string | null | undefined) => {
         if (!date) return undefined;
         const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       };
 
-      // Get today's date as fallback
       const today = new Date();
       const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
       const fileLinksData = template.fileLinks as FileLink[] | null;
-
       const templateDocsData = template.eventDocuments as EventDocument[] | null;
+      const templateCustomFields = template.customFields as CustomField[] | null;
+
       reset({
         title: template.title || '',
         description: template.eventDescription || '',
@@ -482,21 +433,18 @@ export function EventFormModal({
         requireStaff: false,
         status: EventStatus.DRAFT,
         fileLinks: fileLinksData || [],
-        // Request Information
         requestMethod: template.requestMethod || undefined,
         requestorName: template.requestorName || '',
         requestorPhone: template.requestorPhone || '',
         requestorEmail: template.requestorEmail || '',
         poNumber: template.poNumber || '',
-        // Event Instructions & Documents
         preEventInstructions: template.preEventInstructions || '',
         eventDocuments: templateDocsData || [],
-        // Onsite Contact & Meeting Point
+        customFields: templateCustomFields || [],
         meetingPoint: template.meetingPoint || '',
         onsitePocName: template.onsitePocName || '',
         onsitePocPhone: template.onsitePocPhone || '',
         onsitePocEmail: template.onsitePocEmail || '',
-        // Billing & Rate Settings (templates don't have these, use defaults)
         estimate: false,
         taskRateType: undefined,
         commission: false,
@@ -511,60 +459,168 @@ export function EventFormModal({
     }
   }, [selectedTemplateData, isEdit, reset]);
 
-  // Reset template selection when modal closes
+  // Reset state when modal closes
   useEffect(() => {
     if (!open) {
       setSelectedTemplateId('');
-      setAttachedServices([]);
-      setAttachedProducts([]);
+      setAssignments([]);
+      setEntryType('single');
+      setBatchFile(null);
+      setBatchStep('upload');
+      setBatchValidationResults([]);
     }
   }, [open]);
 
-  // Populate attachments when editing
+  // Populate assignments when editing
   useEffect(() => {
     if (existingAttachments && isEdit) {
-      // Map existing services to AttachedServiceItem format
-      const services: AttachedServiceItem[] = existingAttachments.services.map((s) => ({
-        serviceId: s.serviceId,
-        quantity: s.quantity,
-        customPrice: s.customPrice ? Number(s.customPrice) : null,
-        notes: s.notes,
-        service: {
-          id: s.service.id,
-          serviceId: s.service.serviceId,
-          title: s.service.title,
-          cost: s.service.cost ? Number(s.service.cost) : null,
-          price: s.service.price ? Number(s.service.price) : null,
-          costUnitType: s.service.costUnitType,
-          description: s.service.description,
-          isActive: s.service.isActive,
-        },
-      }));
+      const serviceAssignments: Assignment[] = existingAttachments.services.map((s) => {
+        // Parse extended data from notes if available
+        let extendedData: ServiceAssignmentExtendedData = {};
+        try {
+          if (s.notes) {
+            extendedData = JSON.parse(s.notes);
+          }
+        } catch {
+          // Notes is plain text, not JSON
+        }
 
-      // Map existing products to AttachedProductItem format
-      const products: AttachedProductItem[] = existingAttachments.products.map((p) => ({
-        productId: p.productId,
-        quantity: p.quantity,
-        customPrice: p.customPrice ? Number(p.customPrice) : null,
-        notes: p.notes,
-        product: {
-          id: p.product.id,
-          productId: p.product.productId,
-          title: p.product.title,
-          cost: p.product.cost ? Number(p.product.cost) : null,
-          price: p.product.price ? Number(p.product.price) : null,
-          priceUnitType: p.product.priceUnitType,
-          description: p.product.description,
-          category: p.product.category,
-          isActive: p.product.isActive,
-        },
-      }));
+        return {
+          id: crypto.randomUUID(),
+          type: 'SERVICE' as const,
+          serviceId: s.serviceId,
+          service: {
+            id: s.service.id,
+            serviceId: s.service.serviceId,
+            title: s.service.title,
+            cost: s.service.cost ? Number(s.service.cost) : null,
+            price: s.service.price ? Number(s.service.price) : null,
+            costUnitType: s.service.costUnitType,
+            description: s.service.description,
+            isActive: s.service.isActive,
+          },
+          quantity: s.quantity,
+          customCost: s.customPrice ? Number(s.customPrice) : null,
+          customPrice: s.customPrice ? Number(s.customPrice) : null,
+          costUnitType: s.service.costUnitType || null,
+          commission: extendedData.commission ?? false,
+          startDate: extendedData.startDate ?? null,
+          startTime: extendedData.startTime ?? null,
+          endDate: extendedData.endDate ?? null,
+          endTime: extendedData.endTime ?? null,
+          experienceRequired: extendedData.experienceRequired ?? 'ANY',
+          ratingRequired: extendedData.ratingRequired ?? 'ANY',
+          approveOvertime: extendedData.approveOvertime ?? false,
+        };
+      });
 
-      setAttachedServices(services);
-      setAttachedProducts(products);
+      const productAssignments: Assignment[] = existingAttachments.products.map((p) => {
+        // Parse extended data from notes if available
+        let extendedData: ProductAssignmentExtendedData = {};
+        try {
+          if (p.notes) {
+            extendedData = JSON.parse(p.notes);
+          }
+        } catch {
+          // Notes is plain text, not JSON
+        }
+
+        return {
+          id: crypto.randomUUID(),
+          type: 'PRODUCT' as const,
+          productId: p.productId,
+          product: {
+            id: p.product.id,
+            productId: p.product.productId,
+            title: p.product.title,
+            cost: p.product.cost ? Number(p.product.cost) : null,
+            price: p.product.price ? Number(p.product.price) : null,
+            priceUnitType: p.product.priceUnitType,
+            description: p.product.description,
+            category: p.product.category,
+            isActive: p.product.isActive,
+          },
+          quantity: p.quantity,
+          customCost: p.customPrice ? Number(p.customPrice) : null,
+          customPrice: p.customPrice ? Number(p.customPrice) : null,
+          costUnitType: p.product.priceUnitType || null,
+          commission: extendedData.commission ?? false,
+          description: extendedData.description ?? p.product.description ?? null,
+          instructions: extendedData.instructions ?? null,
+        };
+      });
+
+      setAssignments([...serviceAssignments, ...productAssignments]);
     }
   }, [existingAttachments, isEdit]);
 
+  // Batch file handling
+  const handleBatchFileSelect = useCallback(async (selectedFile: File) => {
+    setBatchFile(selectedFile);
+
+    const result = await parseImportFile(selectedFile);
+    if (!result.success) {
+      toast({ title: result.error || 'Failed to parse file', type: 'error' });
+      return;
+    }
+    if (result.rows.length === 0) {
+      toast({ title: 'No data rows found in file', type: 'error' });
+      return;
+    }
+
+    const autoMapping = autoDetectColumnMapping(result.headers);
+    const mappedRows = applyColumnMapping(result.rows, autoMapping);
+    const results = mappedRows.map((row, index) => validateRow(row, index, clientMap));
+    setBatchValidationResults(results);
+    setBatchStep('preview');
+  }, [clientMap]);
+
+  const handleBatchFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith('.csv') || file.name.endsWith('.xlsx'))) {
+      handleBatchFileSelect(file);
+    } else {
+      toast({ title: 'Please upload a CSV or Excel file', type: 'error' });
+    }
+  }, [handleBatchFileSelect]);
+
+  const handleBatchFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleBatchFileSelect(file);
+  }, [handleBatchFileSelect]);
+
+  const handleUpdateBatchEntry = useCallback((index: number, data: Partial<ImportEventRow>) => {
+    setBatchValidationResults((prev) =>
+      prev.map((r) => {
+        if (r.rowIndex !== index) return r;
+        const updatedData = { ...r.data, ...data };
+        return validateRow(updatedData as any, index, clientMap);
+      })
+    );
+  }, [clientMap]);
+
+  const handleRemoveBatchEntry = useCallback((index: number) => {
+    setBatchValidationResults((prev) => prev.filter((r) => r.rowIndex !== index));
+  }, []);
+
+  const handleBatchSubmit = () => {
+    const validRows = batchValidationResults
+      .filter((r) => r.valid && r.data)
+      .map((r) => mapRowToCreateInput(r.data!, clientMap));
+
+    if (validRows.length === 0) {
+      toast({ title: 'No valid entries to import', type: 'error' });
+      return;
+    }
+
+    batchImportMutation.mutate({ events: validRows, mode: 'create' });
+  };
+
+  const batchValidCount = batchValidationResults.filter((r) => r.valid).length;
+
+  // Form submission
   const handleFormSubmit: SubmitHandler<FormOutput> = (data) => {
     const normalizedData = {
       ...data,
@@ -572,20 +628,44 @@ export function EventFormModal({
       endTime: endTimeTBD ? 'TBD' : (data.endTime || undefined),
     };
 
-    // Prepare attachments data
+    // Transform assignments back to backend format
+    const serviceAssignments = assignments.filter((a): a is ServiceAssignment => a.type === 'SERVICE');
+    const productAssignments = assignments.filter((a): a is ProductAssignment => a.type === 'PRODUCT');
+
     const attachments = {
-      services: attachedServices.map((s) => ({
-        serviceId: s.serviceId,
-        quantity: s.quantity,
-        customPrice: s.customPrice,
-        notes: s.notes,
-      })),
-      products: attachedProducts.map((p) => ({
-        productId: p.productId,
-        quantity: p.quantity,
-        customPrice: p.customPrice,
-        notes: p.notes,
-      })),
+      services: serviceAssignments.map((s) => {
+        // Store extended data in notes as JSON
+        const extendedData: ServiceAssignmentExtendedData = {
+          startDate: s.startDate,
+          startTime: s.startTime,
+          endDate: s.endDate,
+          endTime: s.endTime,
+          experienceRequired: s.experienceRequired,
+          ratingRequired: s.ratingRequired,
+          approveOvertime: s.approveOvertime,
+          commission: s.commission,
+        };
+        return {
+          serviceId: s.serviceId,
+          quantity: s.quantity,
+          customPrice: s.customPrice,
+          notes: JSON.stringify(extendedData),
+        };
+      }),
+      products: productAssignments.map((p) => {
+        // Store extended data in notes as JSON
+        const extendedData: ProductAssignmentExtendedData = {
+          description: p.description,
+          instructions: p.instructions,
+          commission: p.commission,
+        };
+        return {
+          productId: p.productId,
+          quantity: p.quantity,
+          customPrice: p.customPrice,
+          notes: JSON.stringify(extendedData),
+        };
+      }),
     };
 
     if (isEdit) {
@@ -597,800 +677,227 @@ export function EventFormModal({
     }
   };
 
+  const clients = clientsData?.data || [];
+
   return (
     <Dialog open={open} onClose={onClose} fullScreen>
       <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>{isEdit ? `Edit ${terminology.event.singular}` : `Create New ${terminology.event.singular}`}</DialogTitle>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-muted-foreground hover:text-foreground"
-            >
+            <DialogTitle>
+              {isEdit ? `Edit ${terminology.event.singular}` : `Create New ${terminology.event.singular}`}
+            </DialogTitle>
+            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
               <CloseIcon className="h-5 w-5" />
             </button>
           </div>
         </DialogHeader>
 
         <DialogContent className="flex-1 overflow-y-auto">
-          {/* Event ID (Editable in edit mode) */}
-          {isEdit && (
-            <div className="mb-6">
-              <Label htmlFor="eventId">{terminology.event.singular} ID</Label>
-              <Input
-                id="eventId"
-                {...register('eventId' as FormFieldName)}
-                placeholder="EVT-YYYY-NNN"
-                className="font-mono"
-              />
-              {(errors as any).eventId && (
-                <p className="text-destructive text-sm mt-1">{(errors as any).eventId.message}</p>
-              )}
+          {/* Entry Type Toggle (only in create mode) */}
+          {!isEdit && (
+            <div className="mb-6 p-4 bg-muted/30 border border-border rounded-lg">
+              <Label className="mb-3 block">Entry Type</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="entryType"
+                    value="single"
+                    checked={entryType === 'single'}
+                    onChange={() => setEntryType('single')}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm font-medium">Single Entry</span>
+                  <span className="text-xs text-muted-foreground">- Create one {terminology.event.singular.toLowerCase()}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="entryType"
+                    value="batch"
+                    checked={entryType === 'batch'}
+                    onChange={() => setEntryType('batch')}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm font-medium">Batch Entry</span>
+                  <span className="text-xs text-muted-foreground">- Import from CSV/Excel</span>
+                </label>
+              </div>
             </div>
           )}
 
-          {/* Template Selector (only in create mode) */}
-          {!isEdit && templatesData && templatesData.length > 0 && (
-            <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-              <Label htmlFor="templateSelect">Start from Template (Optional)</Label>
-              <div className="flex gap-2 mt-1">
-                <Select
-                  id="templateSelect"
-                  value={selectedTemplateId}
-                  onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  <option value="">Select a template...</option>
-                  {templatesData.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </Select>
-                {selectedTemplateId && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedTemplateId('');
-                      // Reset to default values
-                      const today = new Date();
-                      const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                      reset({
-                        title: '',
-                        description: '',
-                        requirements: '',
-                        privateComments: '',
-                        clientId: '',
-                        venueName: '',
-                        address: '',
-                        city: '',
-                        state: '',
-                        zipCode: '',
-                        startDate: todayFormatted as any,
-                        startTime: '',
-                        endDate: todayFormatted as any,
-                        endTime: '',
-                        timezone: 'America/New_York',
-                        dailyDigestMode: false,
-                        requireStaff: false,
-                        status: EventStatus.DRAFT,
-                        fileLinks: [],
-                        requestMethod: undefined,
-                        requestorName: '',
-                        requestorPhone: '',
-                        requestorEmail: '',
-                        poNumber: '',
-                        preEventInstructions: '',
-                        eventDocuments: [],
-                        meetingPoint: '',
-                        onsitePocName: '',
-                        onsitePocPhone: '',
-                        onsitePocEmail: '',
-                        // Billing & Rate Settings
-                        estimate: false,
-                        taskRateType: undefined,
-                        commission: false,
-                        commissionAmount: undefined,
-                        commissionAmountType: undefined,
-                        approveForOvertime: false,
-                        overtimeRate: undefined,
-                        overtimeRateType: undefined,
-                      });
-                      setStartTimeTBD(false);
-                      setEndTimeTBD(false);
-                    }}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Select a template to prefill the form. You can modify any field before saving.
-              </p>
-            </div>
-          )}
-
-          {/* === ROW 1: Basic Information + Date & Time === */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-            {/* Basic Information */}
-            <div className="lg:col-span-3 bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Basic Information</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="title" required>Title</Label>
-                  <Input
-                    id="title"
-                    {...register('title')}
-                    error={!!errors.title}
-                    disabled={isSubmitting}
-                    placeholder={`${terminology.event.singular} title`}
-                  />
-                  {errors.title && (
-                    <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="clientId">Client</Label>
-                    <Select
-                      id="clientId"
-                      {...register('clientId')}
-                      disabled={isSubmitting}
-                    >
-                      <option value="">Not applicable</option>
-                      {clientsData?.data.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.businessName}
-                        </option>
-                      ))}
-                    </Select>
-                    {errors.clientId && (
-                      <p className="text-sm text-destructive mt-1">{errors.clientId.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="status" required>Status</Label>
-                    <Select
-                      id="status"
-                      {...register('status')}
-                      disabled={isSubmitting}
-                    >
-                      {STATUSES.map((status) => (
-                        <option key={status.value} value={status.value}>
-                          {status.label}
-                        </option>
-                      ))}
-                    </Select>
-                    {errors.status && (
-                      <p className="text-sm text-destructive mt-1">{errors.status.message}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    {...register('description')}
-                    disabled={isSubmitting}
-                    rows={3}
-                    placeholder={`${terminology.event.singular} description`}
-                  />
-                  {errors.description && (
-                    <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="requirements">Requirements</Label>
-                  <Textarea
-                    id="requirements"
-                    {...register('requirements')}
-                    disabled={isSubmitting}
-                    rows={3}
-                    placeholder="e.g., Business casual attire, Steel-toed boots required, Must have valid driver's license"
-                  />
-                  {errors.requirements && (
-                    <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Date & Time */}
-            <div className="lg:col-span-2 bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Date & Time</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="startDate" required>Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    {...register('startDate', {
-                      onChange: (e) => {
-                        setValue('endDate', e.target.value);
-                      },
-                    })}
-                    error={!!errors.startDate}
-                    disabled={isSubmitting}
-                  />
-                  {errors.startDate && (
-                    <p className="text-sm text-destructive mt-1">{errors.startDate.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="startTime">Start Time</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="startTime"
-                      type="time"
-                      {...register('startTime')}
-                      error={!!errors.startTime}
-                      disabled={isSubmitting || startTimeTBD}
-                      className="flex-1"
-                    />
-                    <label className="flex items-center gap-2 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={startTimeTBD}
-                        onChange={(e) => {
-                          setStartTimeTBD(e.target.checked);
-                          if (e.target.checked) setValue('startTime', '');
-                        }}
-                        disabled={isSubmitting}
-                        className="rounded border-input"
-                      />
-                      <span className="text-sm">TBD</span>
-                    </label>
-                  </div>
-                  {errors.startTime && (
-                    <p className="text-sm text-destructive mt-1">{errors.startTime.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="endDate" required>End Date</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    {...register('endDate')}
-                    error={!!errors.endDate}
-                    disabled={isSubmitting}
-                  />
-                  {errors.endDate && (
-                    <p className="text-sm text-destructive mt-1">{errors.endDate.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="endTime">End Time</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="endTime"
-                      type="time"
-                      {...register('endTime')}
-                      error={!!errors.endTime}
-                      disabled={isSubmitting || endTimeTBD}
-                      className="flex-1"
-                    />
-                    <label className="flex items-center gap-2 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={endTimeTBD}
-                        onChange={(e) => {
-                          setEndTimeTBD(e.target.checked);
-                          if (e.target.checked) setValue('endTime', '');
-                        }}
-                        disabled={isSubmitting}
-                        className="rounded border-input"
-                      />
-                      <span className="text-sm">TBD</span>
-                    </label>
-                  </div>
-                  {errors.endTime && (
-                    <p className="text-sm text-destructive mt-1">{errors.endTime.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="timezone" required>Timezone</Label>
-                  <Select
-                    id="timezone"
-                    {...register('timezone')}
-                    disabled={isSubmitting}
-                  >
-                    {TIMEZONES.map((tz) => (
-                      <option key={tz} value={tz}>
-                        {tz}
-                      </option>
-                    ))}
-                  </Select>
-                  {errors.timezone && (
-                    <p className="text-sm text-destructive mt-1">{errors.timezone.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* === ROW 2: Venue Information (full width) === */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Venue Information</h3>
+          {/* Batch Entry Section */}
+          {!isEdit && entryType === 'batch' && (
             <div className="space-y-4">
-              {/* Address Autocomplete */}
-              <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
-                <AddressAutocomplete
-                  label="Search Address (Optional)"
-                  placeholder="Type to search for an address..."
-                  onSelect={(addressData) => {
-                    setValue('address', addressData.address);
-                    setValue('city', addressData.city);
-                    setValue('state', addressData.state);
-                    setValue('zipCode', addressData.zipCode);
-                    setValue('latitude', addressData.latitude);
-                    setValue('longitude', addressData.longitude);
-                  }}
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Start typing to search for an address, or fill in the fields below manually
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="venueName" required>Venue Name</Label>
-                <Input
-                  id="venueName"
-                  {...register('venueName')}
-                  error={!!errors.venueName}
-                  disabled={isSubmitting}
-                  placeholder="Convention Center"
-                />
-                {errors.venueName && (
-                  <p className="text-sm text-destructive mt-1">{errors.venueName.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="address" required>Address</Label>
-                <Input
-                  id="address"
-                  {...register('address')}
-                  error={!!errors.address}
-                  disabled={isSubmitting}
-                  placeholder="123 Main Street"
-                />
-                {errors.address && (
-                  <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="city" required>City</Label>
-                  <Input
-                    id="city"
-                    {...register('city')}
-                    error={!!errors.city}
-                    disabled={isSubmitting}
-                    placeholder="New York"
-                  />
-                  {errors.city && (
-                    <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="state" required>State</Label>
-                  <Input
-                    id="state"
-                    {...register('state')}
-                    error={!!errors.state}
-                    disabled={isSubmitting}
-                    placeholder="NY"
-                  />
-                  {errors.state && (
-                    <p className="text-sm text-destructive mt-1">{errors.state.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="zipCode" required>ZIP Code</Label>
-                  <Input
-                    id="zipCode"
-                    {...register('zipCode')}
-                    error={!!errors.zipCode}
-                    disabled={isSubmitting}
-                    placeholder="10001"
-                  />
-                  {errors.zipCode && (
-                    <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* === ROW 3: Request Information + Onsite Contact === */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Request Information */}
-            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Request Information</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="requestMethod">Request Method</Label>
-                    <Select
-                      id="requestMethod"
-                      {...register('requestMethod')}
-                      disabled={isSubmitting}
-                    >
-                      <option value="">Select method...</option>
-                      <option value="EMAIL">Email</option>
-                      <option value="TEXT_SMS">Text/SMS</option>
-                      <option value="PHONE_CALL">Phone Call</option>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="poNumber">PO Number</Label>
-                    <Input
-                      id="poNumber"
-                      {...register('poNumber')}
-                      disabled={isSubmitting}
-                      placeholder="Purchase Order Number"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="requestorName">Requestor Name</Label>
-                  <Input
-                    id="requestorName"
-                    {...register('requestorName')}
-                    disabled={isSubmitting}
-                    placeholder="John Doe"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="requestorPhone">Requestor Phone</Label>
-                    <Input
-                      id="requestorPhone"
-                      type="tel"
-                      {...register('requestorPhone')}
-                      disabled={isSubmitting}
-                      placeholder="(555) 123-4567"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="requestorEmail">Requestor Email</Label>
-                    <Input
-                      id="requestorEmail"
-                      type="email"
-                      {...register('requestorEmail')}
-                      disabled={isSubmitting}
-                      placeholder="john@example.com"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Onsite Contact */}
-            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Onsite Contact</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="meetingPoint">Meeting Point</Label>
-                  <Input
-                    id="meetingPoint"
-                    {...register('meetingPoint')}
-                    disabled={isSubmitting}
-                    placeholder="Where to meet on arrival (e.g., Main lobby, Loading dock)"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="onsitePocName">POC Name</Label>
-                  <Input
-                    id="onsitePocName"
-                    {...register('onsitePocName')}
-                    disabled={isSubmitting}
-                    placeholder="Point of Contact name"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="onsitePocPhone">POC Phone</Label>
-                    <Input
-                      id="onsitePocPhone"
-                      type="tel"
-                      {...register('onsitePocPhone')}
-                      disabled={isSubmitting}
-                      placeholder="(555) 123-4567"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="onsitePocEmail">POC Email</Label>
-                    <Input
-                      id="onsitePocEmail"
-                      type="email"
-                      {...register('onsitePocEmail')}
-                      disabled={isSubmitting}
-                      placeholder="poc@example.com"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* === ROW 4: Pre-Event Instructions + Documents & Files === */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Pre-Event Instructions */}
-            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Pre-Event Instructions</h3>
-              <Textarea
-                id="preEventInstructions"
-                {...register('preEventInstructions')}
-                disabled={isSubmitting}
-                rows={4}
-                placeholder="Instructions for staff before the event..."
-              />
-            </div>
-
-            {/* Documents & File Links Column */}
-            <div className="space-y-6">
-              {/* Event Documents */}
-              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Event Documents</h3>
-                <EventDocumentUpload
-                  documents={watch('eventDocuments') || []}
-                  onChange={(docs) => setValue('eventDocuments', docs)}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              {/* File Links */}
-              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold border-b border-border pb-2 flex-1">File Links</h3>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => append({ name: '', link: '' })}
-                    disabled={isSubmitting}
+              {batchStep === 'upload' && (
+                <>
+                  <div
+                    className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleBatchFileDrop}
+                    onClick={() => document.getElementById('batch-file-input')?.click()}
                   >
-                    <PlusIcon className="h-4 w-4 mr-1" />
-                    Add File
-                  </Button>
-                </div>
-
-                {fields.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No files added yet</p>
-                )}
-
-                <div className="space-y-3">
-                  {fields.map((field, index) => (
-                    <div key={field.id}>
-                      <div className="flex gap-2">
-                        <div className="flex-1 space-y-1">
-                          <Input
-                            {...register(`fileLinks.${index}.name` as const)}
-                            placeholder="File name"
-                            disabled={isSubmitting}
-                            error={!!(errors.fileLinks?.[index]?.name)}
-                          />
-                          {errors.fileLinks?.[index]?.name && (
-                            <p className="text-sm text-destructive">
-                              {errors.fileLinks[index]?.name?.message}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex-[2] space-y-1">
-                          <Input
-                            {...register(`fileLinks.${index}.link` as const)}
-                            placeholder="https://example.com/file.pdf"
-                            disabled={isSubmitting}
-                            error={!!(errors.fileLinks?.[index]?.link)}
-                          />
-                          {errors.fileLinks?.[index]?.link && (
-                            <p className="text-sm text-destructive">
-                              {errors.fileLinks[index]?.link?.message}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => remove(index)}
-                          disabled={isSubmitting}
-                          className="self-start"
-                        >
-                          <XIcon className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* === ROW 5: Billing & Rate Settings + Services & Products === */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Billing & Rate Settings */}
-            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Billing & Rate Settings</h3>
-              <div className="space-y-4">
-                {/* Estimate Flag */}
-                <div>
-                  <label className="flex items-center gap-2">
                     <input
-                      type="checkbox"
-                      {...register('estimate')}
-                      disabled={isSubmitting}
-                      className="rounded border-input"
+                      id="batch-file-input"
+                      type="file"
+                      accept=".csv,.xlsx"
+                      onChange={handleBatchFileInputChange}
+                      className="hidden"
                     />
-                    <span className="text-sm font-medium">This is an estimate</span>
-                  </label>
-                </div>
-
-                {/* Task Rate Type */}
-                <div>
-                  <Label htmlFor="taskRateType">Task Rate Type</Label>
-                  <Select
-                    id="taskRateType"
-                    {...register('taskRateType')}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">Select type...</option>
-                    {AMOUNT_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-
-                {/* Commission Section */}
-                <div className="border-t border-border/30 pt-4">
-                  <h4 className="text-sm font-medium mb-3">Commission</h4>
-                  <div className="mb-3">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        {...register('commission')}
-                        disabled={isSubmitting}
-                        className="rounded border-input"
-                      />
-                      <span className="text-sm">Has commission</span>
-                    </label>
+                    <UploadIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Upload CSV or Excel File</h3>
+                    <p className="text-muted-foreground mb-4">Drag and drop your file here, or click to browse</p>
+                    <p className="text-sm text-muted-foreground">Supported formats: .csv, .xlsx</p>
                   </div>
 
-                  {watch('commission') && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                      <div>
-                        <Label htmlFor="commissionAmount">Commission Amount</Label>
-                        <Input
-                          id="commissionAmount"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          {...register('commissionAmount', { valueAsNumber: true })}
-                          disabled={isSubmitting}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="commissionAmountType">Commission Type</Label>
-                        <Select
-                          id="commissionAmountType"
-                          {...register('commissionAmountType')}
-                          disabled={isSubmitting}
-                        >
-                          <option value="">Select type...</option>
-                          {AMOUNT_TYPE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
+                  <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileTextIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Need a template?</span>
                     </div>
-                  )}
-                </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          downloadSampleEventTemplate('csv');
+                          toast({ title: 'Sample CSV template downloaded', type: 'success' });
+                        }}
+                        className="gap-2"
+                      >
+                        <FileTextIcon className="h-4 w-4" />
+                        Download CSV
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          downloadSampleEventTemplate('xlsx');
+                          toast({ title: 'Sample Excel template downloaded', type: 'success' });
+                        }}
+                        className="gap-2"
+                      >
+                        <FileSpreadsheetIcon className="h-4 w-4" />
+                        Download Excel
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
 
-                {/* Overtime Section */}
-                <div className="border-t border-border/30 pt-4">
-                  <h4 className="text-sm font-medium mb-3">Overtime</h4>
-                  <div className="mb-3">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        {...register('approveForOvertime')}
-                        disabled={isSubmitting}
-                        className="rounded border-input"
-                      />
-                      <span className="text-sm">Approved for overtime</span>
-                    </label>
+              {batchStep === 'preview' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileTextIcon className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium">{batchFile?.name}</span>
+                      <Badge variant="secondary">{batchValidationResults.length} rows</Badge>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setBatchStep('upload');
+                        setBatchFile(null);
+                        setBatchValidationResults([]);
+                      }}
+                    >
+                      Change File
+                    </Button>
                   </div>
 
-                  {watch('approveForOvertime') && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                      <div>
-                        <Label htmlFor="overtimeRate">Overtime Rate</Label>
-                        <Input
-                          id="overtimeRate"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          {...register('overtimeRate', { valueAsNumber: true })}
-                          disabled={isSubmitting}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="overtimeRateType">Overtime Rate Type</Label>
-                        <Select
-                          id="overtimeRateType"
-                          {...register('overtimeRateType')}
-                          disabled={isSubmitting}
-                        >
-                          <option value="">Select type...</option>
-                          {AMOUNT_TYPE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    </div>
-                  )}
+                  <BatchEntryList
+                    entries={batchValidationResults}
+                    onUpdateEntry={handleUpdateBatchEntry}
+                    onRemoveEntry={handleRemoveBatchEntry}
+                    clients={clients}
+                    terminology={terminology}
+                  />
                 </div>
-              </div>
-            </div>
-
-            {/* Services & Products */}
-            <EventAttachmentsSection
-              attachedServices={attachedServices}
-              attachedProducts={attachedProducts}
-              onServicesChange={setAttachedServices}
-              onProductsChange={setAttachedProducts}
-              disabled={isSubmitting}
-            />
-          </div>
-
-          {/* === ROW 6: Private Notes (full width) === */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6 lg:max-w-2xl">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Private Notes</h3>
-            <div>
-              <Label htmlFor="privateComments">Private Comments</Label>
-              <Textarea
-                id="privateComments"
-                {...register('privateComments')}
-                disabled={isSubmitting}
-                rows={3}
-                placeholder="Internal notes (not visible to clients)"
-              />
-              {errors.privateComments && (
-                <p className="text-sm text-destructive mt-1">{errors.privateComments.message}</p>
               )}
             </div>
-          </div>
+          )}
+
+          {/* Single Entry Form */}
+          {(isEdit || entryType === 'single') && (
+            <>
+              {/* Event ID (edit mode only) */}
+              {isEdit && (
+                <div className="mb-6">
+                  <Label htmlFor="eventId">{terminology.event.singular} ID</Label>
+                  <Input
+                    id="eventId"
+                    {...register('eventId' as FormFieldName)}
+                    placeholder="EVT-YYYY-NNN"
+                    className="font-mono"
+                  />
+                  {(errors as any).eventId && (
+                    <p className="text-destructive text-sm mt-1">{(errors as any).eventId.message}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Template Selector (create mode only) */}
+              {!isEdit && templatesData && templatesData.length > 0 && (
+                <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <Label htmlFor="templateSelect">Start from Template (Optional)</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Select
+                      value={selectedTemplateId}
+                      onValueChange={setSelectedTemplateId}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger id="templateSelect" className="flex-1">
+                        <SelectValue placeholder="Select a template..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templatesData.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedTemplateId && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTemplateId('');
+                          reset(getDefaultValues());
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Form Fields */}
+              <EventFormFields
+                register={register as any}
+                control={control as any}
+                errors={errors as any}
+                watch={watch as any}
+                setValue={setValue as any}
+                clients={clients}
+                terminology={terminology}
+                startTimeTBD={startTimeTBD}
+                setStartTimeTBD={setStartTimeTBD}
+                endTimeTBD={endTimeTBD}
+                setEndTimeTBD={setEndTimeTBD}
+                assignments={assignments}
+                onAssignmentsChange={setAssignments}
+                disabled={isSubmitting}
+              />
+            </>
+          )}
         </DialogContent>
 
         <DialogFooter>
@@ -1400,12 +907,24 @@ export function EventFormModal({
               View Details
             </Button>
           )}
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting || batchImportMutation.isPending}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.event.singular}` : `Create ${terminology.event.singular}`}
-          </Button>
+          {!isEdit && entryType === 'batch' && batchStep === 'preview' ? (
+            <Button
+              type="button"
+              onClick={handleBatchSubmit}
+              disabled={batchImportMutation.isPending || batchValidCount === 0}
+            >
+              {batchImportMutation.isPending ? 'Importing...' : `Import ${batchValidCount} ${terminology.event.plural}`}
+            </Button>
+          ) : (
+            (isEdit || entryType === 'single') && (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.event.singular}` : `Create ${terminology.event.singular}`}
+              </Button>
+            )
+          )}
         </DialogFooter>
       </form>
     </Dialog>
