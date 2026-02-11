@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { UserIcon, BriefcaseIcon, MapPinIcon, CheckCircleIcon, AlertIcon, PlusIcon, TrashIcon } from '@/components/ui/icons';
+import { UserIcon, BriefcaseIcon, MapPinIcon, CheckCircleIcon, AlertIcon, PlusIcon, TrashIcon, ClockIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
+import { TIMEZONES } from '@/lib/schemas/event.schema';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ProfileSettingsPage() {
     const [formData, setFormData] = useState({
@@ -16,6 +18,7 @@ export default function ProfileSettingsPage() {
         companyPhone: '',
         companyAddress: '',
         companyLogoUrl: '',
+        companyTimezone: 'UTC',
     });
     const [savedMessage, setSavedMessage] = useState<'success' | 'error' | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -47,6 +50,7 @@ export default function ProfileSettingsPage() {
                 companyPhone: profile.companyPhone || '',
                 companyAddress: profile.companyAddress || '',
                 companyLogoUrl: profile.companyLogoUrl || '',
+                companyTimezone: profile.companyTimezone || 'UTC',
             });
             if (profile.companyLogoUrl) {
                 setLogoPreview(profile.companyLogoUrl);
@@ -101,6 +105,7 @@ export default function ProfileSettingsPage() {
             companyPhone: formData.companyPhone || null,
             companyAddress: formData.companyAddress || null,
             companyLogoUrl: formData.companyLogoUrl || null,
+            companyTimezone: formData.companyTimezone || 'UTC',
         });
     };
 
@@ -281,6 +286,31 @@ export default function ProfileSettingsPage() {
                                     className="pl-10 min-h-[80px]"
                                 />
                             </div>
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="companyTimezone">Default Timezone</Label>
+                            <div className="flex items-center gap-2">
+                                <ClockIcon className="h-4 w-4 text-muted-foreground mr-1" />
+                                <Select
+                                    value={formData.companyTimezone}
+                                    onValueChange={(value) => setFormData(prev => ({ ...prev, companyTimezone: value }))}
+                                >
+                                    <SelectTrigger id="companyTimezone" className="flex-1">
+                                        <SelectValue placeholder="Select timezone..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {TIMEZONES.map((tz) => (
+                                            <SelectItem key={tz} value={tz}>
+                                                {tz}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                This timezone will be used as the default for all new events and tasks.
+                            </p>
                         </div>
                     </div>
                 </Card>

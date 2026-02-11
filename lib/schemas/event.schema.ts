@@ -4,7 +4,8 @@ import { EventStatus, RequestMethod, AmountType } from "@prisma/client";
 /**
  * Common timezone values for validation
  */
-const COMMON_TIMEZONES: readonly string[] = [
+export const TIMEZONES: readonly string[] = [
+  "UTC",
   "America/New_York",
   "America/Chicago",
   "America/Denver",
@@ -155,7 +156,7 @@ export class EventSchema {
         .min(1, "Timezone is required")
         .refine(
           (val) =>
-            COMMON_TIMEZONES.includes(val) ||
+            TIMEZONES.includes(val) ||
             /^[A-Z][a-z]+\/[A-Z][a-z_]+$/.test(val),
           { message: "Invalid timezone format" }
         ),
@@ -361,7 +362,7 @@ export class EventSchema {
         .refine(
           (val) =>
             !val ||
-            COMMON_TIMEZONES.includes(val) ||
+            TIMEZONES.includes(val) ||
             /^[A-Z][a-z]+\/[A-Z][a-z_]+$/.test(val),
           { message: "Invalid timezone format" }
         )
@@ -628,7 +629,7 @@ export type CustomField = z.infer<typeof customFieldSchema>;
 /**
  * Export common timezones for frontend use
  */
-export const TIMEZONES = COMMON_TIMEZONES;
+
 
 /**
  * Export RequestMethod enum values for frontend use

@@ -365,6 +365,7 @@ export class SettingsService {
                     companyWebsite: true,
                     companyPhone: true,
                     companyAddress: true,
+                    companyTimezone: true,
                 },
             });
 
@@ -375,6 +376,7 @@ export class SettingsService {
                 companyWebsite: settings?.companyWebsite || null,
                 companyPhone: settings?.companyPhone || null,
                 companyAddress: settings?.companyAddress || null,
+                companyTimezone: settings?.companyTimezone || "UTC",
             };
         } catch (error) {
             console.error("Error fetching company profile:", error);
@@ -396,6 +398,7 @@ export class SettingsService {
         companyWebsite?: string | null;
         companyPhone?: string | null;
         companyAddress?: string | null;
+        companyTimezone?: string | null;
     }) {
         try {
             const existingSettings = await this.prisma.organizationSettings.findFirst();

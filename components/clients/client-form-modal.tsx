@@ -88,6 +88,7 @@ const formSchema = z.object({
     .transform(val => val?.trim())
     .optional(),
 
+  sameAsContact: z.boolean().optional(),
   hasLoginAccess: z.boolean().optional(),
 });
 
@@ -150,9 +151,25 @@ export function ClientFormModal({
       billingLastName: '',
       billingEmail: '',
       billingPhone: '',
+      sameAsContact: false,
       hasLoginAccess: false,
     },
   });
+
+  const sameAsContact = watch('sameAsContact');
+  const firstName = watch('firstName');
+  const lastName = watch('lastName');
+  const email = watch('email');
+  const cellPhone = watch('cellPhone');
+
+  useEffect(() => {
+    if (sameAsContact) {
+      setValue('billingFirstName', firstName);
+      setValue('billingLastName', lastName);
+      setValue('billingEmail', email);
+      setValue('billingPhone', cellPhone);
+    }
+  }, [sameAsContact, firstName, lastName, email, cellPhone, setValue]);
 
   const hasLoginAccess = watch('hasLoginAccess');
 
@@ -176,6 +193,11 @@ export function ClientFormModal({
         billingLastName: client.billingLastName || '',
         billingEmail: client.billingEmail || '',
         billingPhone: client.billingPhone || '',
+        sameAsContact:
+          (client.billingFirstName || '') === client.firstName &&
+          (client.billingLastName || '') === client.lastName &&
+          (client.billingEmail || '') === client.email &&
+          (client.billingPhone || '') === client.cellPhone,
         hasLoginAccess: client.hasLoginAccess,
       });
     } else {
@@ -197,6 +219,7 @@ export function ClientFormModal({
         billingLastName: '',
         billingEmail: '',
         billingPhone: '',
+        sameAsContact: false,
         hasLoginAccess: false,
       });
       setTempLocations([]);
@@ -476,7 +499,19 @@ export function ClientFormModal({
 
               {/* Billing Contact */}
               <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Billing Contact</h3>
+                <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
+                  <h3 className="text-lg font-semibold">Billing Contact</h3>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="sameAsContact"
+                      {...register('sameAsContact')}
+                      disabled={isSubmitting}
+                    />
+                    <Label htmlFor="sameAsContact" className="text-[14px] font-medium cursor-pointer">
+                      Same as contact
+                    </Label>
+                  </div>
+                </div>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -485,7 +520,7 @@ export function ClientFormModal({
                         id="billingFirstName"
                         {...register('billingFirstName')}
                         error={!!errors.billingFirstName}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || sameAsContact}
                         placeholder="First name"
                       />
                       {errors.billingFirstName && (
@@ -499,7 +534,7 @@ export function ClientFormModal({
                         id="billingLastName"
                         {...register('billingLastName')}
                         error={!!errors.billingLastName}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || sameAsContact}
                         placeholder="Last name"
                       />
                       {errors.billingLastName && (
@@ -516,7 +551,7 @@ export function ClientFormModal({
                         type="email"
                         {...register('billingEmail')}
                         error={!!errors.billingEmail}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || sameAsContact}
                         placeholder="billing@example.com"
                       />
                       {errors.billingEmail && (
@@ -530,7 +565,7 @@ export function ClientFormModal({
                         id="billingPhone"
                         {...register('billingPhone')}
                         error={!!errors.billingPhone}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || sameAsContact}
                         placeholder="(123) 456-7890"
                       />
                       {errors.billingPhone && (
@@ -550,7 +585,7 @@ export function ClientFormModal({
               <ClientLocationsSection
                 clientId={client.id}
                 locations={client.locations || []}
-                onLocationsChange={onLocationsChange || (() => {})}
+                onLocationsChange={onLocationsChange || (() => { })}
               />
             ) : (
               <TemporaryLocationsSection
