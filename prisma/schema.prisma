@@ -457,6 +457,7 @@ model OrganizationSettings {
   companyPhone      String?
   companyTagline    String?
   companyWebsite    String?
+  companyTimezone   String   @default("UTC")
   @@map("organization_settings")
 }
 
