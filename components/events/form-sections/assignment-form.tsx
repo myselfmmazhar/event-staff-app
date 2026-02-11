@@ -19,7 +19,9 @@ import {
   PRICE_UNIT_TYPE_OPTIONS,
   EXPERIENCE_REQUIREMENT_OPTIONS,
   STAFF_RATING_OPTIONS,
+  RATE_TYPE_OPTIONS,
 } from '@/lib/constants/enums';
+import { RateType } from '@prisma/client';
 import type {
   Assignment,
   AssignmentSaveAction,
@@ -93,9 +95,13 @@ export function AssignmentForm({
           experienceRequired: assignment.type === 'SERVICE' ? assignment.experienceRequired : 'ANY',
           ratingRequired: assignment.type === 'SERVICE' ? assignment.ratingRequired : 'ANY',
           approveOvertime: assignment.type === 'SERVICE' ? assignment.approveOvertime : false,
+          payRate: assignment.type === 'SERVICE' ? assignment.payRate : null,
+          billRate: assignment.type === 'SERVICE' ? assignment.billRate : null,
+          rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
+          notes: assignment.type === 'SERVICE' ? assignment.notes : null,
         }
       : {
-          type: 'PRODUCT',
+          type: 'SERVICE',
           quantity: 1,
           customCost: null,
           customPrice: null,
@@ -104,11 +110,16 @@ export function AssignmentForm({
           experienceRequired: 'ANY',
           ratingRequired: 'ANY',
           approveOvertime: false,
+          payRate: null,
+          billRate: null,
+          rateType: null,
+          notes: null,
         },
   });
 
   const { register, control, watch, setValue, handleSubmit, formState: { errors }, trigger } = form;
   const assignmentType = watch('type');
+  const startDate = watch('startDate');
 
   // Filter products based on search
   const filteredProducts = useMemo(() => {
@@ -154,6 +165,18 @@ export function AssignmentForm({
     setValue('customCost', service.cost);
     setValue('customPrice', service.price);
     setValue('costUnitType', service.costUnitType || 'ASSIGNMENT');
+    // Auto-fill pay/bill rates from service cost/price
+    setValue('payRate', service.cost);
+    setValue('billRate', service.price);
+    // Map costUnitType to RateType
+    const rateTypeMap: Record<string, RateType> = {
+      'HOURLY': 'PER_HOUR',
+      'SHIFT': 'PER_SHIFT',
+      'DAY': 'PER_DAY',
+      'JOB': 'PER_EVENT',
+      'ASSIGNMENT': 'PER_SHIFT',
+    };
+    setValue('rateType', service.costUnitType ? rateTypeMap[service.costUnitType] || 'PER_HOUR' : 'PER_HOUR');
     setServiceSelectorOpen(false);
     setServiceSearch('');
   };
@@ -168,6 +191,13 @@ export function AssignmentForm({
       setValue('productId', undefined);
     }
   }, [assignmentType, setValue]);
+
+  // Auto-set end date to match start date when start date changes (for SERVICE assignments)
+  useEffect(() => {
+    if (assignmentType === 'SERVICE' && startDate) {
+      setValue('endDate', startDate);
+    }
+  }, [assignmentType, startDate, setValue]);
 
   // Format price for display
   const formatPrice = (price: number | null) => {
@@ -216,6 +246,10 @@ export function AssignmentForm({
           experienceRequired: data.experienceRequired || 'ANY',
           ratingRequired: data.ratingRequired || 'ANY',
           approveOvertime: data.approveOvertime || false,
+          payRate: data.payRate ?? null,
+          billRate: data.billRate ?? null,
+          rateType: data.rateType ?? null,
+          notes: data.notes ?? null,
         };
         onSave(serviceAssignment, action);
       }
@@ -627,6 +661,66 @@ export function AssignmentForm({
               </div>
             </div>
           </div>
+
+          {/* Pay Rate, Bill Rate, Rate Type */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="payRate" className="text-sm font-medium mb-2 block">Pay Rate</Label>
+              <Input
+                id="payRate"
+                type="number"
+                step="0.01"
+                min={0}
+                {...register('payRate', { valueAsNumber: true })}
+                disabled={disabled}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Rate paid to staff
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="billRate" className="text-sm font-medium mb-2 block">Bill Rate</Label>
+              <Input
+                id="billRate"
+                type="number"
+                step="0.01"
+                min={0}
+                {...register('billRate', { valueAsNumber: true })}
+                disabled={disabled}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Rate billed to client
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
+              <Controller
+                name="rateType"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value || ''}
+                    onValueChange={field.onChange}
+                    disabled={disabled}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select rate type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RATE_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          </div>
+
         </>
       )}
 
@@ -719,6 +813,20 @@ export function AssignmentForm({
           </div>
         </div>
       </div>
+
+      {/* Notes - Service only, at end */}
+      {assignmentType === 'SERVICE' && (
+        <div>
+          <Label htmlFor="notes" className="text-sm font-medium mb-2 block">Notes</Label>
+          <Textarea
+            id="notes"
+            {...register('notes')}
+            disabled={disabled}
+            placeholder="Internal notes for this assignment..."
+            rows={3}
+          />
+        </div>
+      )}
 
       </div>
 

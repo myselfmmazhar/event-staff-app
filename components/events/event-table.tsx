@@ -199,8 +199,8 @@ export function EventTable({
             variant="ghost"
             size="sm"
             className="px-0"
-            onClick={() => router.push(`/events/${event.id}/call-times`)}
-            title="Manage call times"
+            onClick={() => router.push('/assignments')}
+            title="Manage in Assignment Manager"
           >
             <UsersIcon className="h-4 w-4" />
           </Button>
@@ -294,9 +294,9 @@ export function EventTable({
             className="space-y-0.5 cursor-pointer hover:text-primary transition-colors"
             onClick={(e) => {
               e.stopPropagation();
-              router.push('/assignments');
+              router.push(`/assignments?eventId=${event.id}`);
             }}
-            title="View in Assignment Manager"
+            title="View assignments for this event"
           >
             {visible.map((line, idx) => (
               <div key={idx} className="truncate" title={line}>

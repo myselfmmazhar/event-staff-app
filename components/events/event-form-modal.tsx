@@ -35,7 +35,7 @@ import { useTerminology } from '@/lib/hooks/use-terminology';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EventFormFields } from './event-form-fields';
 import { BatchEntryList } from './batch-entry-list';
-import type { Assignment, ProductAssignment, ServiceAssignment, ProductAssignmentExtendedData, ServiceAssignmentExtendedData } from '@/lib/types/assignment.types';
+import type { Assignment, ProductAssignment, ServiceAssignment, ProductAssignmentExtendedData } from '@/lib/types/assignment.types';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;
@@ -92,10 +92,24 @@ const editFormSchema = z.object({
   estimate: z.boolean().optional(),
   taskRateType: z.nativeEnum(AmountType).optional().nullable(),
   commission: z.boolean().optional(),
-  commissionAmount: z.number().min(0).optional().nullable(),
+  commissionAmount: z.union([
+    z.number().min(0),
+    z.literal(''),
+    z.nan(),
+  ]).optional().nullable().transform((val) => {
+    if (val === '' || val === undefined || val === null || (typeof val === 'number' && Number.isNaN(val))) return undefined;
+    return val;
+  }),
   commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
   approveForOvertime: z.boolean().optional(),
-  overtimeRate: z.number().min(0).optional().nullable(),
+  overtimeRate: z.union([
+    z.number().min(0),
+    z.literal(''),
+    z.nan(),
+  ]).optional().nullable().transform((val) => {
+    if (val === '' || val === undefined || val === null || (typeof val === 'number' && Number.isNaN(val))) return undefined;
+    return val;
+  }),
   overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
 }).refine((data) => data.endDate >= data.startDate, {
   message: "End date must be after or equal to start date",
@@ -159,6 +173,28 @@ interface Event {
   overtimeRateType?: AmountType | null;
 }
 
+type SaveAction = 'close' | 'new';
+
+// Type for CallTime assignments from Event Form
+type CallTimeAssignment = {
+  serviceId: string;
+  quantity: number;
+  customCost?: number | null;
+  customPrice?: number | null;
+  startDate?: string | null;
+  startTime?: string | null;
+  endDate?: string | null;
+  endTime?: string | null;
+  experienceRequired?: 'ANY' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  ratingRequired?: 'ANY' | 'NA' | 'A' | 'B' | 'C';
+  approveOvertime?: boolean;
+  commission?: boolean;
+  payRate?: number | null;
+  billRate?: number | null;
+  rateType?: 'PER_HOUR' | 'PER_SHIFT' | 'PER_DAY' | 'PER_EVENT' | null;
+  notes?: string | null;
+};
+
 interface EventFormModalProps {
   event: Event | null;
   open: boolean;
@@ -166,13 +202,16 @@ interface EventFormModalProps {
   onSubmit: (
     data: CreateEventInput | Omit<UpdateEventInput, 'id'>,
     attachments?: {
-      services: Array<{ serviceId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
+      callTimes: CallTimeAssignment[];
       products: Array<{ productId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
-    }
+    },
+    saveAction?: SaveAction
   ) => void;
   isSubmitting: boolean;
   backendErrors?: Array<{ field: string; message: string }>;
   onViewDetails?: () => void;
+  /** Increment this key to reset the form for a new entry (used with Save & New) */
+  resetKey?: number;
 }
 
 type EntryType = 'single' | 'batch';
@@ -185,6 +224,7 @@ export function EventFormModal({
   isSubmitting,
   backendErrors = [],
   onViewDetails,
+  resetKey = 0,
 }: EventFormModalProps) {
   const { terminology } = useTerminology();
   const utils = trpc.useUtils();
@@ -204,6 +244,9 @@ export function EventFormModal({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
 
+  // Save action state (for Save & Close vs Save & New)
+  const [pendingSaveAction, setPendingSaveAction] = useState<SaveAction>('close');
+
   // Data queries
   const { data: clientsData } = trpc.clients.getAll.useQuery({ page: 1, limit: 100 });
   const { data: templatesData } = trpc.eventTemplate.getForSelection.useQuery(undefined, { enabled: !isEdit });
@@ -215,7 +258,13 @@ export function EventFormModal({
     { id: selectedTemplateId },
     { enabled: !!selectedTemplateId && !isEdit }
   );
-  const { data: existingAttachments } = trpc.eventAttachment.getByEventId.useQuery(
+  // Query CallTimes for service assignments (replaces EventService)
+  const { data: existingCallTimes } = trpc.callTime.getByEventForBilling.useQuery(
+    { eventId: event?.id || '' },
+    { enabled: isEdit && !!event?.id }
+  );
+  // Query products (still uses EventProduct)
+  const { data: existingProducts } = trpc.eventAttachment.getProductsByEventId.useQuery(
     { eventId: event?.id || '' },
     { enabled: isEdit && !!event?.id }
   );
@@ -472,50 +521,74 @@ export function EventFormModal({
     }
   }, [open]);
 
-  // Populate assignments when editing
+  // Reset form when resetKey changes (triggered by Save & New)
   useEffect(() => {
-    if (existingAttachments && isEdit) {
-      const serviceAssignments: Assignment[] = existingAttachments.services.map((s) => {
-        // Parse extended data from notes if available
-        let extendedData: ServiceAssignmentExtendedData = {};
-        try {
-          if (s.notes) {
-            extendedData = JSON.parse(s.notes);
+    if (resetKey > 0 && !event) {
+      reset(getDefaultValues());
+      setStartTimeTBD(false);
+      setEndTimeTBD(false);
+      setSelectedTemplateId('');
+      setAssignments([]);
+      setPendingSaveAction('close');
+    }
+  }, [resetKey, event, reset]);
+
+  // Populate assignments when editing - service assignments from CallTimes
+  useEffect(() => {
+    if (isEdit && (existingCallTimes || existingProducts)) {
+      // Map CallTimes to ServiceAssignments
+      const serviceAssignments: Assignment[] = (existingCallTimes || []).map((ct) => {
+        // Format dates for the form (YYYY-MM-DD)
+        const formatDate = (date: Date | string | null): string | null => {
+          if (!date) return null;
+          const d = new Date(date);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+
+        // Map SkillLevel to ExperienceRequirement
+        const mapSkillToExperience = (skillLevel: string): 'ANY' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' => {
+          switch (skillLevel) {
+            case 'INTERMEDIATE': return 'INTERMEDIATE';
+            case 'ADVANCED': return 'ADVANCED';
+            default: return 'ANY';
           }
-        } catch {
-          // Notes is plain text, not JSON
-        }
+        };
 
         return {
           id: crypto.randomUUID(),
           type: 'SERVICE' as const,
-          serviceId: s.serviceId,
-          service: {
-            id: s.service.id,
-            serviceId: s.service.serviceId,
-            title: s.service.title,
-            cost: s.service.cost ? Number(s.service.cost) : null,
-            price: s.service.price ? Number(s.service.price) : null,
-            costUnitType: s.service.costUnitType,
-            description: s.service.description,
-            isActive: s.service.isActive,
-          },
-          quantity: s.quantity,
-          customCost: s.customPrice ? Number(s.customPrice) : null,
-          customPrice: s.customPrice ? Number(s.customPrice) : null,
-          costUnitType: s.service.costUnitType || null,
-          commission: extendedData.commission ?? false,
-          startDate: extendedData.startDate ?? null,
-          startTime: extendedData.startTime ?? null,
-          endDate: extendedData.endDate ?? null,
-          endTime: extendedData.endTime ?? null,
-          experienceRequired: extendedData.experienceRequired ?? 'ANY',
-          ratingRequired: extendedData.ratingRequired ?? 'ANY',
-          approveOvertime: extendedData.approveOvertime ?? false,
+          serviceId: ct.serviceId || '',
+          service: ct.service ? {
+            id: ct.service.id,
+            serviceId: ct.service.serviceId,
+            title: ct.service.title,
+            cost: ct.service.cost ? Number(ct.service.cost) : null,
+            price: ct.service.price ? Number(ct.service.price) : null,
+            costUnitType: ct.service.costUnitType,
+            description: ct.service.description,
+            isActive: ct.service.isActive,
+          } : null,
+          quantity: ct.numberOfStaffRequired,
+          customCost: ct.customCost ? Number(ct.customCost) : null,
+          customPrice: ct.customPrice ? Number(ct.customPrice) : null,
+          costUnitType: ct.service?.costUnitType || null,
+          commission: ct.commission ?? false,
+          startDate: formatDate(ct.startDate),
+          startTime: ct.startTime ?? null,
+          endDate: formatDate(ct.endDate),
+          endTime: ct.endTime ?? null,
+          experienceRequired: mapSkillToExperience(ct.skillLevel),
+          ratingRequired: ct.ratingRequired ?? 'ANY',
+          approveOvertime: ct.approveOvertime ?? false,
+          payRate: ct.payRate ? Number(ct.payRate) : null,
+          billRate: ct.billRate ? Number(ct.billRate) : null,
+          rateType: ct.payRateType ?? null,
+          notes: ct.notes ?? null,
         };
       });
 
-      const productAssignments: Assignment[] = existingAttachments.products.map((p) => {
+      // Map EventProducts to ProductAssignments
+      const productAssignments: Assignment[] = (existingProducts || []).map((p) => {
         // Parse extended data from notes if available
         let extendedData: ProductAssignmentExtendedData = {};
         try {
@@ -553,7 +626,7 @@ export function EventFormModal({
 
       setAssignments([...serviceAssignments, ...productAssignments]);
     }
-  }, [existingAttachments, isEdit]);
+  }, [existingCallTimes, existingProducts, isEdit]);
 
   // Batch file handling
   const handleBatchFileSelect = useCallback(async (selectedFile: File) => {
@@ -623,6 +696,11 @@ export function EventFormModal({
 
   // Form submission
   const handleFormSubmit: SubmitHandler<FormOutput> = (data) => {
+    console.log('[EventFormModal] handleFormSubmit called');
+    console.log('[EventFormModal] isEdit:', isEdit);
+    console.log('[EventFormModal] form data:', data);
+    console.log('[EventFormModal] pendingSaveAction:', pendingSaveAction);
+
     const normalizedData = {
       ...data,
       startTime: startTimeTBD ? 'TBD' : (data.startTime || undefined),
@@ -634,25 +712,25 @@ export function EventFormModal({
     const productAssignments = assignments.filter((a): a is ProductAssignment => a.type === 'PRODUCT');
 
     const attachments = {
-      services: serviceAssignments.map((s) => {
-        // Store extended data in notes as JSON
-        const extendedData: ServiceAssignmentExtendedData = {
-          startDate: s.startDate,
-          startTime: s.startTime,
-          endDate: s.endDate,
-          endTime: s.endTime,
-          experienceRequired: s.experienceRequired,
-          ratingRequired: s.ratingRequired,
-          approveOvertime: s.approveOvertime,
-          commission: s.commission,
-        };
-        return {
-          serviceId: s.serviceId,
-          quantity: s.quantity,
-          customPrice: s.customPrice,
-          notes: JSON.stringify(extendedData),
-        };
-      }),
+      // Service assignments now create CallTime records
+      callTimes: serviceAssignments.map((s) => ({
+        serviceId: s.serviceId,
+        quantity: s.quantity,
+        customCost: s.customCost,
+        customPrice: s.customPrice,
+        startDate: s.startDate,
+        startTime: s.startTime,
+        endDate: s.endDate,
+        endTime: s.endTime,
+        experienceRequired: s.experienceRequired,
+        ratingRequired: s.ratingRequired,
+        approveOvertime: s.approveOvertime,
+        commission: s.commission,
+        payRate: s.payRate,
+        billRate: s.billRate,
+        rateType: s.rateType,
+        notes: s.notes,
+      })),
       products: productAssignments.map((p) => {
         // Store extended data in notes as JSON
         const extendedData: ProductAssignmentExtendedData = {
@@ -669,12 +747,55 @@ export function EventFormModal({
       }),
     };
 
-    if (isEdit) {
-      const finalData = editFormSchema.parse(normalizedData);
-      onSubmit(finalData, attachments);
-    } else {
-      const finalData = createFormSchema.parse(normalizedData);
-      onSubmit(finalData, attachments);
+    console.log('[EventFormModal] normalizedData:', normalizedData);
+    console.log('[EventFormModal] attachments:', attachments);
+
+    try {
+      if (isEdit) {
+        console.log('[EventFormModal] Parsing with editFormSchema...');
+        const finalData = editFormSchema.parse(normalizedData);
+        console.log('[EventFormModal] Parsed finalData:', finalData);
+        console.log('[EventFormModal] Calling onSubmit...');
+        onSubmit(finalData, attachments, pendingSaveAction);
+        console.log('[EventFormModal] onSubmit called successfully');
+      } else {
+        console.log('[EventFormModal] Parsing with createFormSchema...');
+        const finalData = createFormSchema.parse(normalizedData);
+        console.log('[EventFormModal] Parsed finalData:', finalData);
+        console.log('[EventFormModal] Calling onSubmit...');
+        onSubmit(finalData, attachments, pendingSaveAction);
+        console.log('[EventFormModal] onSubmit called successfully');
+      }
+    } catch (error) {
+      console.error('[EventFormModal] Form validation error:', error);
+      if (error instanceof z.ZodError) {
+        const firstError = error.issues[0];
+        console.error('[EventFormModal] Zod validation issues:', error.issues);
+        toast({ title: 'Validation error', description: firstError?.message || 'Please check the form', type: 'error' });
+      }
+    }
+  };
+
+  const handleSaveAndClose = () => {
+    console.log('[EventFormModal] handleSaveAndClose clicked');
+    setPendingSaveAction('close');
+  };
+
+  const handleSaveAndNew = () => {
+    console.log('[EventFormModal] handleSaveAndNew clicked');
+    setPendingSaveAction('new');
+  };
+
+  // Handle form validation errors from react-hook-form
+  const handleFormError = (formErrors: any) => {
+    console.error('[EventFormModal] Form validation errors:', formErrors);
+    // Find the first error and show it
+    const firstErrorKey = Object.keys(formErrors)[0];
+    if (firstErrorKey) {
+      const firstError = formErrors[firstErrorKey];
+      const message = firstError?.message || `Invalid ${firstErrorKey}`;
+      console.error('[EventFormModal] First error:', firstErrorKey, message);
+      toast({ title: 'Validation error', description: message, type: 'error' });
     }
   };
 
@@ -682,7 +803,7 @@ export function EventFormModal({
 
   return (
     <Dialog open={open} onClose={onClose} fullScreen>
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
+      <form onSubmit={handleSubmit(handleFormSubmit, handleFormError)} className="h-full flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>
@@ -921,9 +1042,25 @@ export function EventFormModal({
             </Button>
           ) : (
             (isEdit || entryType === 'single') && (
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.event.singular}` : `Create ${terminology.event.singular}`}
-              </Button>
+              <>
+                {!isEdit && (
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={handleSaveAndNew}
+                  >
+                    {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  onClick={handleSaveAndClose}
+                >
+                  {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? `Update ${terminology.event.singular}` : 'Save & Close'}
+                </Button>
+              </>
             )
           )}
         </DialogFooter>

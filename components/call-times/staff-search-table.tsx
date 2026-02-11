@@ -131,7 +131,7 @@ export function StaffSearchTable({
         <div className="flex items-center gap-2 p-3 bg-info/10 border border-info/20 rounded-lg text-sm">
           <AlertIcon className="h-4 w-4 text-info flex-shrink-0" />
           <span className="text-info">
-            {unregisteredCount} {staffTerm.lowerPlural} haven't completed registration and cannot receive invitations.
+            {unregisteredCount} {staffTerm.lowerPlural} haven't completed registration and cannot receive offers.
           </span>
         </div>
       )}
