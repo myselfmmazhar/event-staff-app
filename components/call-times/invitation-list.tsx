@@ -63,7 +63,7 @@ export function InvitationList({
     return (
       <div className="text-center py-8 border border-dashed border-border rounded-lg">
         <p className="text-muted-foreground">
-          No invitations sent yet. Search for {staffTerm.lowerPlural} and send invitations.
+          No offers sent yet. Search for {staffTerm.lowerPlural} and send offers.
         </p>
       </div>
     );
@@ -117,7 +117,7 @@ export function InvitationList({
               size="sm"
               onClick={() => onResend(invitation.id)}
               disabled={isResending === invitation.id}
-              title="Resend invitation"
+              title="Resend offer"
             >
               <RefreshCwIcon
                 className={`h-4 w-4 ${isResending === invitation.id ? 'animate-spin' : ''}`}
@@ -130,7 +130,7 @@ export function InvitationList({
               size="sm"
               onClick={() => onCancel(invitation.id)}
               disabled={isCancelling === invitation.id}
-              title="Cancel invitation"
+              title="Cancel offer"
               className="text-destructive hover:text-destructive"
             >
               <XIcon className="h-4 w-4" />

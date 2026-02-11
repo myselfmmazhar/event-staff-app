@@ -168,18 +168,7 @@ export function EventFormFields({
         />
       </div>
 
-      {/* === ROW 6: Billing & Rate Settings === */}
-      <BillingSection
-        register={register}
-        control={control}
-        errors={errors}
-        watch={watch}
-        setValue={setValue}
-        disabled={disabled}
-        className={spacing}
-      />
-
-      {/* === ROW 7: Private Notes + Custom Fields === */}
+      {/* === ROW 6: Private Notes + Custom Fields === */}
       <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
         <PrivateNotesSection
           register={register}
@@ -199,6 +188,17 @@ export function EventFormFields({
           disabled={disabled}
         />
       </div>
+
+      {/* === ROW 7: Task Settings (Billing & Rates) === */}
+      <BillingSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        disabled={disabled}
+        className={spacing}
+      />
     </>
   );
 }

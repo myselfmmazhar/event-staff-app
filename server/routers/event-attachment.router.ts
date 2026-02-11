@@ -2,56 +2,21 @@ import { router, protectedProcedure } from '../trpc';
 import { EventAttachmentSchema } from '@/lib/schemas/event-attachment.schema';
 import { EventAttachmentService } from '@/services/event-attachment.service';
 
+/**
+ * Event Attachment Router - Handles products attached to events
+ *
+ * NOTE: Service assignments are now handled by CallTime via call-time.router.ts
+ */
 export const eventAttachmentRouter = router({
   /**
-   * Get all services and products attached to an event
+   * Get all products attached to an event
+   * (Services are now retrieved via CallTime)
    */
   getByEventId: protectedProcedure
     .input(EventAttachmentSchema.getByEventId)
     .query(async ({ ctx, input }) => {
       const service = new EventAttachmentService(ctx.prisma);
       return await service.getByEventId(input.eventId, ctx.userId!);
-    }),
-
-  /**
-   * Add a service to an event
-   */
-  addService: protectedProcedure
-    .input(EventAttachmentSchema.addService)
-    .mutation(async ({ ctx, input }) => {
-      const service = new EventAttachmentService(ctx.prisma);
-      return await service.addService(input, ctx.userId!);
-    }),
-
-  /**
-   * Update an attached service
-   */
-  updateService: protectedProcedure
-    .input(EventAttachmentSchema.updateService)
-    .mutation(async ({ ctx, input }) => {
-      const { eventId, serviceId, ...data } = input;
-      const service = new EventAttachmentService(ctx.prisma);
-      return await service.updateService(eventId, serviceId, data, ctx.userId!);
-    }),
-
-  /**
-   * Remove a service from an event
-   */
-  removeService: protectedProcedure
-    .input(EventAttachmentSchema.removeService)
-    .mutation(async ({ ctx, input }) => {
-      const service = new EventAttachmentService(ctx.prisma);
-      return await service.removeService(input.eventId, input.serviceId, ctx.userId!);
-    }),
-
-  /**
-   * Bulk update services on an event (replace all)
-   */
-  bulkUpdateServices: protectedProcedure
-    .input(EventAttachmentSchema.bulkUpdateServices)
-    .mutation(async ({ ctx, input }) => {
-      const service = new EventAttachmentService(ctx.prisma);
-      return await service.bulkUpdateServices(input, ctx.userId!);
     }),
 
   /**
@@ -93,5 +58,16 @@ export const eventAttachmentRouter = router({
     .mutation(async ({ ctx, input }) => {
       const service = new EventAttachmentService(ctx.prisma);
       return await service.bulkUpdateProducts(input, ctx.userId!);
+    }),
+
+  /**
+   * Get products attached to an event (for Event Form edit mode)
+   */
+  getProductsByEventId: protectedProcedure
+    .input(EventAttachmentSchema.getByEventId)
+    .query(async ({ ctx, input }) => {
+      const service = new EventAttachmentService(ctx.prisma);
+      const result = await service.getByEventId(input.eventId, ctx.userId!);
+      return result.products;
     }),
 });

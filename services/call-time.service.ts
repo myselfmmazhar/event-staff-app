@@ -3,6 +3,8 @@ import {
   CallTimeInvitationStatus,
   SkillLevel,
   Prisma,
+  RateType,
+  StaffRating,
 } from '@prisma/client';
 import { TRPCError } from '@trpc/server';
 import type {
@@ -12,6 +14,8 @@ import type {
   SendInvitationsInput,
   RespondToInvitationInput,
   StaffSearchInput,
+  EventFormAssignmentInput,
+  BulkSyncForEventInput,
 } from '@/lib/schemas/call-time.schema';
 import { generateCallTimeId } from '@/lib/utils/id-generator';
 import { getNotificationTriggerService } from '@/services/notification-trigger.service';
@@ -227,7 +231,23 @@ export class CallTimeService {
    * Delete call time
    */
   async remove(id: string, userId: string) {
-    await this.findOne(id, userId); // Verify ownership
+    const callTime = await this.findOne(id, userId); // Verify ownership
+
+    // Check if any staff have accepted offers - notify them before deletion
+    const acceptedInvitations = callTime.invitations.filter(
+      (inv) => inv.status === 'ACCEPTED'
+    );
+
+    if (acceptedInvitations.length > 0) {
+      // Notify affected staff that their assignment has been cancelled
+      const notificationService = getNotificationTriggerService(this.prisma);
+      await notificationService.onCallTimeCancelled(id, {
+        positionName: callTime.service?.title || 'Staff',
+        eventTitle: callTime.event.title,
+        eventId: callTime.event.id,
+        startDate: callTime.startDate,
+      });
+    }
 
     await this.prisma.callTime.delete({ where: { id } });
     return { success: true, message: 'Call time deleted successfully' };
@@ -1006,5 +1026,176 @@ export class CallTimeService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Map ExperienceRequirement string to SkillLevel
+   */
+  private mapExperienceToSkillLevel(experience: string): SkillLevel {
+    switch (experience) {
+      case 'INTERMEDIATE':
+        return SkillLevel.INTERMEDIATE;
+      case 'ADVANCED':
+        return SkillLevel.ADVANCED;
+      case 'ANY':
+      case 'BEGINNER':
+      default:
+        return SkillLevel.BEGINNER;
+    }
+  }
+
+  /**
+   * Map CostUnitType to RateType (best effort)
+   */
+  private mapCostUnitToRateType(costUnitType: string | null): RateType {
+    if (!costUnitType) return RateType.PER_HOUR;
+
+    const lower = costUnitType.toLowerCase();
+    if (lower.includes('hour')) return RateType.PER_HOUR;
+    if (lower.includes('shift')) return RateType.PER_SHIFT;
+    if (lower.includes('day')) return RateType.PER_DAY;
+    if (lower.includes('event')) return RateType.PER_EVENT;
+
+    return RateType.PER_HOUR;
+  }
+
+  /**
+   * Bulk sync CallTimes for an event from Event Form
+   * Replaces all existing CallTimes for the event with new ones from assignments
+   */
+  async bulkSyncForEvent(input: BulkSyncForEventInput, userId: string) {
+    // Verify event exists and user owns it
+    const event = await this.prisma.event.findFirst({
+      where: { id: input.eventId, createdBy: userId },
+    });
+
+    if (!event) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Event not found or you do not have permission',
+      });
+    }
+
+    // Use transaction to ensure atomicity
+    return await this.prisma.$transaction(async (tx) => {
+      // Delete existing CallTimes for this event
+      // Note: This will cascade delete CallTimeInvitations as well
+      await tx.callTime.deleteMany({
+        where: { eventId: input.eventId },
+      });
+
+      // If no assignments, we're done
+      if (input.assignments.length === 0) {
+        return [];
+      }
+
+      // Create new CallTimes from assignments
+      const createdCallTimes = [];
+
+      for (const assignment of input.assignments) {
+        // Get service details for default rates
+        const service = await tx.service.findUnique({
+          where: { id: assignment.serviceId },
+        });
+
+        if (!service) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: `Service not found: ${assignment.serviceId}`,
+          });
+        }
+
+        const callTimeId = await generateCallTimeId(tx as PrismaClient);
+
+        // Parse dates - use event dates as fallback
+        const startDate = assignment.startDate
+          ? new Date(assignment.startDate)
+          : event.startDate;
+        const endDate = assignment.endDate
+          ? new Date(assignment.endDate)
+          : event.endDate;
+
+        // Determine rates - use explicit payRate/billRate if provided, otherwise derive from customCost/customPrice or service defaults
+        const payRate = assignment.payRate ?? assignment.customCost ?? Number(service.cost) ?? 0;
+        const billRate = assignment.billRate ?? assignment.customPrice ?? Number(service.price) ?? 0;
+        // Use explicit rateType if provided, otherwise derive from service costUnitType
+        const rateType = assignment.rateType ?? this.mapCostUnitToRateType(service.costUnitType);
+
+        // Map rating required
+        const ratingRequired = assignment.ratingRequired === 'ANY'
+          ? null
+          : assignment.ratingRequired as StaffRating;
+
+        const callTime = await tx.callTime.create({
+          data: {
+            callTimeId,
+            eventId: input.eventId,
+            serviceId: assignment.serviceId,
+            numberOfStaffRequired: assignment.quantity,
+            skillLevel: this.mapExperienceToSkillLevel(assignment.experienceRequired),
+            startDate,
+            startTime: assignment.startTime,
+            endDate,
+            endTime: assignment.endTime,
+            payRate,
+            payRateType: rateType,
+            billRate,
+            billRateType: rateType,
+            customCost: assignment.customCost,
+            customPrice: assignment.customPrice,
+            ratingRequired,
+            approveOvertime: assignment.approveOvertime,
+            commission: assignment.commission,
+            notes: assignment.notes,
+          },
+          include: {
+            service: true,
+          },
+        });
+
+        createdCallTimes.push(callTime);
+      }
+
+      return createdCallTimes;
+    });
+  }
+
+  /**
+   * Get CallTimes for an event for billing display
+   * Returns CallTimes with service details for Event Form edit mode
+   */
+  async getByEventForBilling(eventId: string, userId: string) {
+    // Verify event exists and user owns it
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, createdBy: userId },
+    });
+
+    if (!event) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Event not found or you do not have permission',
+      });
+    }
+
+    const callTimes = await this.prisma.callTime.findMany({
+      where: { eventId },
+      include: {
+        service: {
+          select: {
+            id: true,
+            serviceId: true,
+            title: true,
+            cost: true,
+            price: true,
+            costUnitType: true,
+            description: true,
+            isActive: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return callTimes;
   }
 }

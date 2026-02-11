@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { SkillLevel, RateType, CallTimeInvitationStatus } from '@prisma/client';
 
+// Experience requirement options (matches Prisma ExperienceRequirement enum)
+// Using string literals instead of z.nativeEnum for browser compatibility
+const experienceRequiredValues = ['ANY', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
+
+// Staff rating options (matches Prisma StaffRating enum)
+const staffRatingValues = ['NA', 'A', 'B', 'C'] as const;
+
 // Time format validation (HH:MM)
 const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
 
@@ -260,6 +267,51 @@ export class CallTimeSchema {
     dateTo: z.coerce.date().optional(),
     staffingStatus: z.enum(['needsStaff', 'fullyStaffed', 'all']).default('all').optional(),
   });
+
+  /**
+   * Event Form Assignment Schema - For creating CallTimes from Event Form
+   */
+  static eventFormAssignment = z.object({
+    serviceId: z.string().uuid(FieldErrors.serviceId),
+    quantity: z.number().int().min(1).default(1),
+    customCost: z.number().min(0).optional().nullable(),
+    customPrice: z.number().min(0).optional().nullable(),
+    startDate: z.string().optional().nullable(), // YYYY-MM-DD
+    startTime: z
+      .string()
+      .refine((val) => !val || timeRegex.test(val), { message: FieldErrors.timeFormat })
+      .optional()
+      .nullable(),
+    endDate: z.string().optional().nullable(), // YYYY-MM-DD
+    endTime: z
+      .string()
+      .refine((val) => !val || timeRegex.test(val), { message: FieldErrors.timeFormat })
+      .optional()
+      .nullable(),
+    experienceRequired: z.enum(experienceRequiredValues).default('ANY'),
+    ratingRequired: z.enum([...staffRatingValues, 'ANY']).default('ANY'),
+    approveOvertime: z.boolean().default(false),
+    commission: z.boolean().default(false),
+    payRate: z.number().min(0).optional().nullable(),
+    billRate: z.number().min(0).optional().nullable(),
+    rateType: z.nativeEnum(RateType).optional().nullable(),
+    notes: z.string().max(5000).optional().nullable(),
+  });
+
+  /**
+   * Bulk Sync For Event Schema - Replace all CallTimes for an event from Event Form
+   */
+  static bulkSyncForEvent = z.object({
+    eventId: z.string().uuid(FieldErrors.eventId),
+    assignments: z.array(CallTimeSchema.eventFormAssignment),
+  });
+
+  /**
+   * Get By Event For Billing Schema - Query CallTimes for billing display
+   */
+  static getByEventForBilling = z.object({
+    eventId: z.string().uuid(FieldErrors.eventId),
+  });
 }
 
 // Export types
@@ -272,6 +324,9 @@ export type StaffSearchInput = z.infer<typeof CallTimeSchema.staffSearch>;
 export type ResendInvitationInput = z.infer<typeof CallTimeSchema.resendInvitation>;
 export type CancelInvitationInput = z.infer<typeof CallTimeSchema.cancelInvitation>;
 export type GetMyInvitationsInput = z.infer<typeof CallTimeSchema.getMyInvitations>;
+export type EventFormAssignmentInput = z.infer<typeof CallTimeSchema.eventFormAssignment>;
+export type BulkSyncForEventInput = z.infer<typeof CallTimeSchema.bulkSyncForEvent>;
+export type GetByEventForBillingInput = z.infer<typeof CallTimeSchema.getByEventForBilling>;
 
 // Rate type labels for UI
 export const RATE_TYPE_LABELS: Record<RateType, string> = {

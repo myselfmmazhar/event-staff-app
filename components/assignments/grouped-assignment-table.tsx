@@ -1,59 +1,28 @@
 'use client';
 
+import { useState } from 'react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SettingsIcon, TrashIcon, DocumentDuplicateIcon, BellIcon, SearchIcon } from '@/components/ui/icons';
 import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
-import type { RateType } from '@prisma/client';
-import { AssignmentMobileCard } from './assignment-mobile-card';
+import type { GroupedAssignment } from '@/lib/utils/call-time-grouping';
+import { AssignmentExpandedRow } from './assignment-expanded-row';
+import { GroupedAssignmentMobileCard } from './grouped-assignment-mobile-card';
 
-export interface AssignmentData {
-  id: string;
-  callTimeId: string;
-  startDate: Date | string;
-  startTime: string | null;
-  endDate: Date | string;
-  endTime: string | null;
-  numberOfStaffRequired: number;
-  payRate: number | string | { toNumber?: () => number };
-  payRateType: RateType;
-  service: { id: string; title: string } | null;
-  event: {
-    id: string;
-    eventId: string;
-    title: string;
-    venueName: string | null;
-    city: string | null;
-    state: string | null;
-  };
-  confirmedCount: number;
-  needsStaff: boolean;
-  invitations: Array<{
-    id: string;
-    status: string;
-    isConfirmed: boolean;
-    staff: {
-      id: string;
-      firstName: string;
-      lastName: string;
-    };
-  }>;
-}
-
-interface AssignmentTableProps {
-  data: AssignmentData[];
+interface GroupedAssignmentTableProps {
+  data: GroupedAssignment[];
   isLoading?: boolean;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   setSortBy?: (field: string) => void;
   setSortOrder?: (order: 'asc' | 'desc') => void;
-  onManage?: (assignment: AssignmentData) => void;
-  onFindTalent?: (assignment: AssignmentData) => void;
-  onDelete?: (assignment: AssignmentData) => void;
-  onDuplicate?: (assignment: AssignmentData) => void;
-  onSendReminder?: (assignment: AssignmentData) => void;
+  onManage?: (callTimeId: string) => void;
+  onFindTalent?: (callTimeId: string) => void;
+  onDelete?: (group: GroupedAssignment) => void;
+  onDuplicate?: (group: GroupedAssignment) => void;
+  onSendReminder?: (group: GroupedAssignment) => void;
   // Selection support
   selectable?: boolean;
   selectedIds?: Set<string>;
@@ -78,16 +47,7 @@ function formatDateShort(date: Date | string): string {
   return format(d, 'EEE, MMM d');
 }
 
-function getPayRateValue(payRate: AssignmentData['payRate']): number {
-  if (typeof payRate === 'number') return payRate;
-  if (typeof payRate === 'string') return parseFloat(payRate);
-  if (payRate && typeof payRate === 'object' && 'toNumber' in payRate && payRate.toNumber) {
-    return payRate.toNumber();
-  }
-  return 0;
-}
-
-export function AssignmentTable({
+export function GroupedAssignmentTable({
   data,
   isLoading = false,
   sortBy,
@@ -102,34 +62,55 @@ export function AssignmentTable({
   selectable = false,
   selectedIds = new Set(),
   onSelectionChange,
-}: AssignmentTableProps) {
-  const allSelected = data.length > 0 && data.every((item) => selectedIds.has(item.id));
-  const someSelected = data.some((item) => selectedIds.has(item.id)) && !allSelected;
+}: GroupedAssignmentTableProps) {
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+
+  const handleToggleExpand = (key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  // For selection, we use the primary call time ID
+  const allSelected = data.length > 0 && data.every((item) => selectedIds.has(item.primaryCallTimeId));
+  const someSelected = data.some((item) => selectedIds.has(item.primaryCallTimeId)) && !allSelected;
 
   const handleSelectAll = () => {
     if (allSelected) {
-      // Deselect all current page items
       const newSet = new Set(selectedIds);
-      data.forEach((item) => newSet.delete(item.id));
+      data.forEach((item) => {
+        // Remove all call time IDs in the group
+        item.callTimeIds.forEach((id) => newSet.delete(id));
+      });
       onSelectionChange?.(newSet);
     } else {
-      // Select all current page items
       const newSet = new Set(selectedIds);
-      data.forEach((item) => newSet.add(item.id));
+      data.forEach((item) => {
+        // Add all call time IDs in the group
+        item.callTimeIds.forEach((id) => newSet.add(id));
+      });
       onSelectionChange?.(newSet);
     }
   };
 
-  const handleSelectOne = (id: string) => {
+  const handleSelectOne = (group: GroupedAssignment) => {
     const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
+    const isSelected = group.callTimeIds.every((id) => selectedIds.has(id));
+    if (isSelected) {
+      group.callTimeIds.forEach((id) => newSet.delete(id));
     } else {
-      newSet.add(id);
+      group.callTimeIds.forEach((id) => newSet.add(id));
     }
     onSelectionChange?.(newSet);
   };
-  const columns: ColumnDef<AssignmentData>[] = [
+
+  const columns: ColumnDef<GroupedAssignment>[] = [
     // Selection checkbox column (conditionally added)
     ...(selectable
       ? [
@@ -147,16 +128,19 @@ export function AssignmentTable({
               />
             ),
             headerClassName: 'text-center py-3 px-2 w-10',
-            render: (item: AssignmentData) => (
-              <input
-                type="checkbox"
-                checked={selectedIds.has(item.id)}
-                onChange={() => handleSelectOne(item.id)}
-                onClick={(e) => e.stopPropagation()}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-            ),
-          } as ColumnDef<AssignmentData>,
+            render: (item: GroupedAssignment) => {
+              const isSelected = item.callTimeIds.every((id) => selectedIds.has(id));
+              return (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => handleSelectOne(item)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+              );
+            },
+          } as ColumnDef<GroupedAssignment>,
         ]
       : []),
     {
@@ -164,13 +148,13 @@ export function AssignmentTable({
       label: 'Actions',
       headerClassName: 'text-left py-3 px-4 w-28',
       render: (item) => (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {onManage && (
             <Button
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
-              onClick={() => onManage(item)}
+              onClick={() => onManage(item.primaryCallTimeId)}
               title="Manage Assignment"
             >
               <SettingsIcon className="h-4 w-4" />
@@ -181,7 +165,7 @@ export function AssignmentTable({
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
-              onClick={() => onFindTalent(item)}
+              onClick={() => onFindTalent(item.primaryCallTimeId)}
               title="Find Talent"
             >
               <SearchIcon className="h-4 w-4" />
@@ -258,9 +242,14 @@ export function AssignmentTable({
       label: 'Position',
       sortable: true,
       render: (item) => (
-        <span className="text-foreground">
-          {item.service?.title || 'No Position'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-foreground">{item.serviceName}</span>
+          {item.callTimeIds.length > 1 && (
+            <Badge variant="secondary" size="sm">
+              x{item.callTimeIds.length}
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -303,7 +292,7 @@ export function AssignmentTable({
       label: 'Pay Rate',
       render: (item) => (
         <span className="text-foreground">
-          {formatRate(getPayRateValue(item.payRate), item.payRateType)}
+          {formatRate(item.payRate, item.payRateType)}
         </span>
       ),
     },
@@ -320,19 +309,30 @@ export function AssignmentTable({
       setSortOrder={setSortOrder}
       emptyMessage="No assignments found"
       emptyDescription="Try adjusting your filters or create a new assignment"
-      getRowKey={(item) => item.id}
+      getRowKey={(item) => item.groupKey}
       minWidth="1000px"
+      expandableContent={(item) => (
+        <AssignmentExpandedRow
+          group={item}
+          onFindTalent={(callTimeId) => onFindTalent?.(callTimeId)}
+          onViewDetails={(callTimeId) => onManage?.(callTimeId)}
+        />
+      )}
+      expandedKeys={expandedKeys}
+      onToggleExpand={handleToggleExpand}
       mobileCard={(item) => (
-        <AssignmentMobileCard
-          assignment={item}
-          onManage={onManage ? () => onManage(item) : undefined}
-          onFindTalent={onFindTalent ? () => onFindTalent(item) : undefined}
+        <GroupedAssignmentMobileCard
+          group={item}
+          onManage={onManage ? () => onManage(item.primaryCallTimeId) : undefined}
+          onFindTalent={onFindTalent ? () => onFindTalent(item.primaryCallTimeId) : undefined}
           onDelete={onDelete ? () => onDelete(item) : undefined}
           onDuplicate={onDuplicate ? () => onDuplicate(item) : undefined}
           onSendReminder={onSendReminder ? () => onSendReminder(item) : undefined}
           selectable={selectable}
-          selected={selectedIds.has(item.id)}
-          onSelect={() => handleSelectOne(item.id)}
+          selected={item.callTimeIds.every((id) => selectedIds.has(id))}
+          onSelect={() => handleSelectOne(item)}
+          isExpanded={expandedKeys.has(item.groupKey)}
+          onToggleExpand={() => handleToggleExpand(item.groupKey)}
         />
       )}
     />

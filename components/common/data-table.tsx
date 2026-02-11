@@ -1,10 +1,11 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, Fragment } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SortableHeader } from './sortable-header';
 import { handleSort } from '@/lib/utils/table-utils';
 import { useTableLabels } from '@/lib/hooks/use-labels';
+import { ChevronDownIcon, ChevronRightIcon } from '@/components/ui/icons';
 
 export interface ColumnDef<T> {
   key: string;
@@ -31,6 +32,10 @@ interface DataTableProps<T> {
   getRowKey: (item: T) => string;
   minWidth?: string;
   skeletonRows?: number;
+  // Expandable row support
+  expandableContent?: (item: T) => ReactNode;
+  expandedKeys?: Set<string>;
+  onToggleExpand?: (key: string) => void;
 }
 
 export function DataTable<T>({
@@ -48,6 +53,9 @@ export function DataTable<T>({
   getRowKey,
   minWidth = '800px',
   skeletonRows = 5,
+  expandableContent,
+  expandedKeys,
+  onToggleExpand,
 }: DataTableProps<T>) {
   const tableLabels = useTableLabels();
   // Use provided emptyMessage or fallback to global label
@@ -87,6 +95,9 @@ export function DataTable<T>({
           <table className="w-full" style={{ minWidth }}>
             <thead>
               <tr className="border-b border-border">
+                {expandableContent && (
+                  <th className="w-10 py-3 px-2" />
+                )}
                 {columns.map((col) => (
                   <th
                     key={col.key}
@@ -110,21 +121,55 @@ export function DataTable<T>({
               </tr>
             </thead>
             <tbody>
-              {data.map((item) => (
-                <tr
-                  key={getRowKey(item)}
-                  className="border-b border-border hover:bg-muted/50 transition-colors"
-                >
-                  {columns.map((col) => (
-                    <td
-                      key={col.key}
-                      className={col.className || 'py-4 px-4'}
+              {data.map((item) => {
+                const rowKey = getRowKey(item);
+                const isExpanded = expandedKeys?.has(rowKey) ?? false;
+
+                return (
+                  <Fragment key={rowKey}>
+                    <tr
+                      className={`border-b border-border hover:bg-muted/50 transition-colors ${
+                        expandableContent ? 'cursor-pointer' : ''
+                      } ${isExpanded ? 'bg-muted/30' : ''}`}
+                      onClick={expandableContent && onToggleExpand ? () => onToggleExpand(rowKey) : undefined}
                     >
-                      {col.render(item)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+                      {expandableContent && (
+                        <td className="w-10 py-4 px-2">
+                          <button
+                            type="button"
+                            className="p-1 hover:bg-muted rounded transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleExpand?.(rowKey);
+                            }}
+                          >
+                            {isExpanded ? (
+                              <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </button>
+                        </td>
+                      )}
+                      {columns.map((col) => (
+                        <td
+                          key={col.key}
+                          className={col.className || 'py-4 px-4'}
+                        >
+                          {col.render(item)}
+                        </td>
+                      ))}
+                    </tr>
+                    {expandableContent && isExpanded && (
+                      <tr className="bg-muted/20">
+                        <td colSpan={columns.length + 1} className="p-0">
+                          {expandableContent(item)}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
