@@ -200,6 +200,7 @@ export function EventTemplateFormModal({
     page: 1,
     limit: 100
   });
+  const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
 
   const {
     register,
@@ -242,7 +243,7 @@ export function EventTemplateFormModal({
       startTime: '',
       endDate: undefined,
       endTime: '',
-      timezone: '',
+      timezone: companyProfile?.companyTimezone || 'America/New_York',
       // Event Instructions & Documents
       preEventInstructions: '',
       eventDocuments: [],
@@ -347,7 +348,7 @@ export function EventTemplateFormModal({
         startTime: '',
         endDate: undefined,
         endTime: '',
-        timezone: '',
+        timezone: companyProfile?.companyTimezone || 'America/New_York',
         // Event Instructions & Documents
         preEventInstructions: '',
         eventDocuments: [],
@@ -359,7 +360,7 @@ export function EventTemplateFormModal({
       setStartTimeTBD(false);
       setEndTimeTBD(false);
     }
-  }, [template, reset, open]);
+  }, [template, reset, open, companyProfile]);
 
   // Map backend errors to form fields
   useEffect(() => {

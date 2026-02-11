@@ -117,6 +117,7 @@ const baseFields = {
     )
     .transform((val) => val?.trim())
     .optional(),
+  sameAsContact: z.boolean().optional(),
 };
 
 /**
