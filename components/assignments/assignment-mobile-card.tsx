@@ -3,14 +3,15 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { EyeIcon, MapPinIcon, CalendarIcon, TrashIcon, DocumentDuplicateIcon, BellIcon } from '@/components/ui/icons';
+import { SettingsIcon, MapPinIcon, CalendarIcon, TrashIcon, DocumentDuplicateIcon, BellIcon, SearchIcon } from '@/components/ui/icons';
 import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
 import type { AssignmentData } from './assignment-table';
 
 interface AssignmentMobileCardProps {
   assignment: AssignmentData;
-  onView?: () => void;
+  onManage?: () => void;
+  onFindTalent?: () => void;
   onDelete?: () => void;
   onDuplicate?: () => void;
   onSendReminder?: () => void;
@@ -44,7 +45,8 @@ function getPayRateValue(payRate: AssignmentData['payRate']): number {
 
 export function AssignmentMobileCard({
   assignment,
-  onView,
+  onManage,
+  onFindTalent,
   onDelete,
   onDuplicate,
   onSendReminder,
@@ -73,15 +75,28 @@ export function AssignmentMobileCard({
           </Badge>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={onView}
-            title="View Details"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
+          {onManage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={onManage}
+              title="Manage Assignment"
+            >
+              <SettingsIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {onFindTalent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={onFindTalent}
+              title="Find Talent"
+            >
+              <SearchIcon className="h-4 w-4" />
+            </Button>
+          )}
           {onDuplicate && (
             <Button
               variant="ghost"

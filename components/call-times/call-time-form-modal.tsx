@@ -17,7 +17,8 @@ import {
   type CreateCallTimeInput,
   type UpdateCallTimeInput,
 } from '@/lib/schemas/call-time.schema';
-import { SkillLevel, RateType } from '@prisma/client';
+import { SkillLevel, RateType, StaffRating } from '@prisma/client';
+import { STAFF_RATING_OPTIONS } from '@/lib/constants/enums';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
@@ -26,22 +27,30 @@ import { CloseIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 
-// Form schema for UI (handles TBD checkboxes)
+// Staff rating options for form (string literals for browser compatibility)
+const staffRatingValues = ['NA', 'A', 'B', 'C'] as const;
+
+// Form schema for UI (handles TBD checkboxes and new billing fields)
 const formSchema = z
   .object({
     serviceId: z.string().min(1, 'Service is required'),
     numberOfStaffRequired: z.coerce.number().int().min(1, 'At least 1 staff required'),
     skillLevel: z.nativeEnum(SkillLevel),
+    ratingRequired: z.enum([...staffRatingValues, 'ANY']).default('ANY'),
     startDate: z.string().min(1, 'Start date is required'),
     startTime: z.string().optional(),
     startTimeTBD: z.boolean().default(false),
     endDate: z.string().min(1, 'End date is required'),
     endTime: z.string().optional(),
     endTimeTBD: z.boolean().default(false),
-    payRate: z.coerce.number().positive('Pay rate must be positive'),
+    payRate: z.coerce.number().min(0, 'Pay rate must be non-negative'),
     payRateType: z.nativeEnum(RateType),
-    billRate: z.coerce.number().positive('Bill rate must be positive'),
+    billRate: z.coerce.number().min(0, 'Bill rate must be non-negative'),
     billRateType: z.nativeEnum(RateType),
+    customCost: z.coerce.number().min(0).optional().nullable(),
+    customPrice: z.coerce.number().min(0).optional().nullable(),
+    approveOvertime: z.boolean().default(false),
+    commission: z.boolean().default(false),
     notes: z.string().optional(),
   })
   .refine((data) => data.payRateType === data.billRateType, {
@@ -62,6 +71,7 @@ interface CallTime {
   serviceId: string;
   numberOfStaffRequired: number;
   skillLevel: SkillLevel;
+  ratingRequired: StaffRating | null;
   startDate: Date;
   startTime: string | null;
   endDate: Date;
@@ -70,6 +80,10 @@ interface CallTime {
   payRateType: RateType;
   billRate: number | { toNumber: () => number };
   billRateType: RateType;
+  customCost: number | { toNumber: () => number } | null;
+  customPrice: number | { toNumber: () => number } | null;
+  approveOvertime: boolean;
+  commission: boolean;
   notes: string | null;
 }
 
@@ -93,11 +107,16 @@ const RATE_TYPES: Array<{ value: RateType; label: string }> = Object.entries(
   RATE_TYPE_LABELS
 ).map(([value, label]) => ({ value: value as RateType, label }));
 
-type ServiceOption = { id: string; title: string };
+type ServiceOption = { id: string; title: string; cost?: number | null; price?: number | null };
 
 const formatDateInputValue = (value: Date | string): string => {
   const [datePart = ''] = new Date(value).toISOString().split('T');
   return datePart;
+};
+
+const toNumber = (val: number | { toNumber: () => number } | null | undefined): number | null => {
+  if (val === null || val === undefined) return null;
+  return typeof val === 'object' ? val.toNumber() : val;
 };
 
 export function CallTimeFormModal({
@@ -135,6 +154,7 @@ export function CallTimeFormModal({
       serviceId: '',
       numberOfStaffRequired: 1,
       skillLevel: SkillLevel.BEGINNER,
+      ratingRequired: 'ANY',
       startDate: '',
       startTime: '',
       startTimeTBD: false,
@@ -145,32 +165,49 @@ export function CallTimeFormModal({
       payRateType: RateType.PER_HOUR,
       billRate: 0,
       billRateType: RateType.PER_HOUR,
+      customCost: null,
+      customPrice: null,
+      approveOvertime: false,
+      commission: false,
       notes: '',
     },
   });
 
   const payRateType = watch('payRateType');
+  const serviceId = watch('serviceId');
 
   // Sync billRateType with payRateType
   useEffect(() => {
     setValue('billRateType', payRateType);
   }, [payRateType, setValue]);
 
+  // Auto-fill rates when service is selected (for new call times only)
+  useEffect(() => {
+    if (!isEdit && serviceId && services.length > 0) {
+      const selectedService = services.find(s => s.id === serviceId);
+      if (selectedService) {
+        if (selectedService.cost !== null && selectedService.cost !== undefined) {
+          setValue('payRate', Number(selectedService.cost));
+        }
+        if (selectedService.price !== null && selectedService.price !== undefined) {
+          setValue('billRate', Number(selectedService.price));
+        }
+      }
+    }
+  }, [serviceId, services, isEdit, setValue]);
+
   useEffect(() => {
     if (callTime) {
-      const payRateValue =
-        typeof callTime.payRate === 'object'
-          ? callTime.payRate.toNumber()
-          : callTime.payRate;
-      const billRateValue =
-        typeof callTime.billRate === 'object'
-          ? callTime.billRate.toNumber()
-          : callTime.billRate;
+      const payRateValue = toNumber(callTime.payRate) ?? 0;
+      const billRateValue = toNumber(callTime.billRate) ?? 0;
+      const customCostValue = toNumber(callTime.customCost);
+      const customPriceValue = toNumber(callTime.customPrice);
 
       reset({
         serviceId: callTime.serviceId,
         numberOfStaffRequired: callTime.numberOfStaffRequired,
         skillLevel: callTime.skillLevel,
+        ratingRequired: callTime.ratingRequired ?? 'ANY',
         startDate: formatDateInputValue(callTime.startDate),
         startTime: callTime.startTime || '',
         startTimeTBD: !callTime.startTime,
@@ -181,6 +218,10 @@ export function CallTimeFormModal({
         payRateType: callTime.payRateType,
         billRate: billRateValue,
         billRateType: callTime.billRateType,
+        customCost: customCostValue,
+        customPrice: customPriceValue,
+        approveOvertime: callTime.approveOvertime,
+        commission: callTime.commission,
         notes: callTime.notes || '',
       });
       setStartTimeTBD(!callTime.startTime);
@@ -191,6 +232,7 @@ export function CallTimeFormModal({
         serviceId: '',
         numberOfStaffRequired: 1,
         skillLevel: SkillLevel.BEGINNER,
+        ratingRequired: 'ANY',
         startDate: today,
         startTime: '',
         startTimeTBD: false,
@@ -201,6 +243,10 @@ export function CallTimeFormModal({
         payRateType: RateType.PER_HOUR,
         billRate: 0,
         billRateType: RateType.PER_HOUR,
+        customCost: null,
+        customPrice: null,
+        approveOvertime: false,
+        commission: false,
         notes: '',
       });
       setStartTimeTBD(false);
@@ -357,6 +403,62 @@ export function CallTimeFormModal({
                       {errors.skillLevel.message}
                     </p>
                   )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="ratingRequired">
+                    Required Rating
+                  </Label>
+                  <Controller
+                    name="ratingRequired"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger id="ratingRequired">
+                          <SelectValue placeholder="Any rating" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STAFF_RATING_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+
+                <div>
+                  <Label>Approve Overtime?</Label>
+                  <div className="flex items-center gap-4 h-10">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={watch('approveOvertime') === true}
+                        onChange={() => setValue('approveOvertime', true)}
+                        disabled={isSubmitting}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">Yes</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={watch('approveOvertime') === false}
+                        onChange={() => setValue('approveOvertime', false)}
+                        disabled={isSubmitting}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">No</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -553,6 +655,70 @@ export function CallTimeFormModal({
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="customCost">
+                    Custom Cost Override ($)
+                  </Label>
+                  <Input
+                    id="customCost"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    {...register('customCost')}
+                    disabled={isSubmitting}
+                    placeholder="Leave empty to use pay rate"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Override cost for billing calculations
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="customPrice">
+                    Custom Price Override ($)
+                  </Label>
+                  <Input
+                    id="customPrice"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    {...register('customPrice')}
+                    disabled={isSubmitting}
+                    placeholder="Leave empty to use bill rate"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Override price for billing calculations
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <Label>Commission?</Label>
+                <div className="flex items-center gap-4 h-10">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      checked={watch('commission') === true}
+                      onChange={() => setValue('commission', true)}
+                      disabled={isSubmitting}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">Yes</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      checked={watch('commission') === false}
+                      onChange={() => setValue('commission', false)}
+                      disabled={isSubmitting}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">No</span>
+                  </label>
+                </div>
+              </div>
+
               {/* Hidden field to keep billRateType in sync */}
               <input type="hidden" {...register('billRateType')} />
             </div>
@@ -590,7 +756,10 @@ export function CallTimeFormModal({
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+          >
             {isSubmitting
               ? 'Saving...'
               : isEdit

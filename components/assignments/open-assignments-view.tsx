@@ -97,8 +97,8 @@ export function OpenAssignmentsView() {
   const sendInvitations = trpc.callTime.sendInvitations.useMutation({
     onSuccess: (result) => {
       toast({
-        title: 'Invitations sent',
-        description: `Successfully sent ${result.sent} invitation(s)`,
+        title: 'Offers sent',
+        description: `Successfully sent ${result.sent} offer(s)`,
       });
       setSelectedStaffIds([]);
       if (selectedAssignmentId) {
@@ -266,7 +266,7 @@ export function OpenAssignmentsView() {
                   disabled={sendInvitations.isPending}
                 >
                   <SendIcon className="h-4 w-4 mr-2" />
-                  Send {selectedStaffIds.length} Invitation{selectedStaffIds.length > 1 ? 's' : ''}
+                  Send {selectedStaffIds.length} Offer{selectedStaffIds.length > 1 ? 's' : ''}
                 </Button>
               )}
             </div>

@@ -9,17 +9,17 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StaffSearchTable } from './staff-search-table';
 import { InvitationList } from './invitation-list';
 import {
   RATE_TYPE_LABELS,
 } from '@/lib/schemas/call-time.schema';
-import { SkillLevel, RateType, CallTimeInvitationStatus } from '@prisma/client';
+import { SkillLevel, RateType } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
-import { CloseIcon, SendIcon, UsersIcon } from '@/components/ui/icons';
-import { useEventTerm, useStaffTerm } from '@/lib/hooks/use-terminology';
+import { CloseIcon, EditIcon } from '@/components/ui/icons';
+import { useEventTerm } from '@/lib/hooks/use-terminology';
+import { CallTimeFormModal } from './call-time-form-modal';
+import type { UpdateCallTimeInput } from '@/lib/schemas/call-time.schema';
 
 interface CallTimeDetailModalProps {
   callTimeId: string | null;
@@ -39,13 +39,10 @@ export function CallTimeDetailModal({
   onClose,
 }: CallTimeDetailModalProps) {
   const eventTerm = useEventTerm();
-  const staffTerm = useStaffTerm();
   const { toast } = useToast();
-  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
-  const [includeAlreadyInvited, setIncludeAlreadyInvited] = useState(false);
-  const [activeTab, setActiveTab] = useState('invitations');
   const [resendingId, setResendingId] = useState<string | undefined>();
   const [cancellingId, setCancellingId] = useState<string | undefined>();
+  const [isEditing, setIsEditing] = useState(false);
 
   const utils = trpc.useUtils();
   const hasCallTimeId = Boolean(callTimeId);
@@ -57,44 +54,12 @@ export function CallTimeDetailModal({
     { enabled: hasCallTimeId && open }
   );
 
-  // Fetch available staff
-  const { data: staffData, isLoading: isLoadingStaff } =
-    trpc.callTime.searchStaff.useQuery(
-      {
-        callTimeId: callTimeQueryId,
-        includeAlreadyInvited,
-      },
-      { enabled: hasCallTimeId && open && activeTab === 'search' }
-    );
-
-  // Send invitations mutation
-  const sendInvitations = trpc.callTime.sendInvitations.useMutation({
-    onSuccess: (data) => {
-      toast({
-        title: 'Invitations sent',
-        description: `Successfully sent ${data.sent} invitation(s)`,
-      });
-      setSelectedStaffIds([]);
-      if (hasCallTimeId) {
-        utils.callTime.getById.invalidate({ id: callTimeQueryId });
-        utils.callTime.searchStaff.invalidate({ callTimeId: callTimeQueryId });
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'error',
-      });
-    },
-  });
-
   // Resend invitation mutation
   const resendInvitation = trpc.callTime.resendInvitation.useMutation({
     onSuccess: () => {
       toast({
-        title: 'Invitation resent',
-        description: 'The invitation has been resent successfully',
+        title: 'Offer resent',
+        description: 'The offer has been resent successfully',
       });
       if (hasCallTimeId) {
         utils.callTime.getById.invalidate({ id: callTimeQueryId });
@@ -108,6 +73,28 @@ export function CallTimeDetailModal({
         variant: 'error',
       });
       setResendingId(undefined);
+    },
+  });
+
+  // Update call time mutation
+  const updateCallTime = trpc.callTime.update.useMutation({
+    onSuccess: () => {
+      toast({
+        title: 'Assignment updated',
+        description: 'The assignment has been updated successfully',
+      });
+      setIsEditing(false);
+      if (hasCallTimeId) {
+        utils.callTime.getById.invalidate({ id: callTimeQueryId });
+        utils.callTime.getAll.invalidate();
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'error',
+      });
     },
   });
 
@@ -115,8 +102,8 @@ export function CallTimeDetailModal({
   const cancelInvitation = trpc.callTime.cancelInvitation.useMutation({
     onSuccess: () => {
       toast({
-        title: 'Invitation cancelled',
-        description: 'The invitation has been cancelled',
+        title: 'Offer cancelled',
+        description: 'The offer has been cancelled',
       });
       if (hasCallTimeId) {
         utils.callTime.getById.invalidate({ id: callTimeQueryId });
@@ -132,14 +119,6 @@ export function CallTimeDetailModal({
       setCancellingId(undefined);
     },
   });
-
-  const handleSendInvitations = () => {
-    if (selectedStaffIds.length === 0 || !hasCallTimeId) return;
-    sendInvitations.mutate({
-      callTimeId: callTimeQueryId,
-      staffIds: selectedStaffIds,
-    });
-  };
 
   const handleResend = (invitationId: string) => {
     setResendingId(invitationId);
@@ -149,6 +128,12 @@ export function CallTimeDetailModal({
   const handleCancel = (invitationId: string) => {
     setCancellingId(invitationId);
     cancelInvitation.mutate({ invitationId });
+  };
+
+  const handleEditSubmit = (data: Omit<UpdateCallTimeInput, 'id'>) => {
+    if (callTime) {
+      updateCallTime.mutate({ ...data, id: callTime.id });
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -215,13 +200,24 @@ export function CallTimeDetailModal({
               {callTime.callTimeId}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <CloseIcon className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              className="gap-1"
+            >
+              <EditIcon className="h-4 w-4" />
+              Edit
+            </Button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </DialogHeader>
 
@@ -284,70 +280,52 @@ export function CallTimeDetailModal({
           </div>
         )}
 
-        {/* Tabs for Invitations and Staff Search */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="invitations" className="flex items-center gap-2">
-              <UsersIcon className="h-4 w-4" />
-              Invitations ({callTime.invitations.length})
-            </TabsTrigger>
-            <TabsTrigger value="search" className="flex items-center gap-2">
-              <SendIcon className="h-4 w-4" />
-              Find {staffTerm.plural}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="invitations">
-            <InvitationList
-              invitations={callTime.invitations}
-              onResend={handleResend}
-              onCancel={handleCancel}
-              isResending={resendingId}
-              isCancelling={cancellingId}
-            />
-          </TabsContent>
-
-          <TabsContent value="search">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={includeAlreadyInvited}
-                    onChange={(e) => setIncludeAlreadyInvited(e.target.checked)}
-                    className="rounded border-input"
-                  />
-                  Include already invited {staffTerm.lowerPlural}
-                </label>
-
-                {selectedStaffIds.length > 0 && (
-                  <Button
-                    onClick={handleSendInvitations}
-                    disabled={sendInvitations.isPending}
-                  >
-                    <SendIcon className="h-4 w-4 mr-2" />
-                    Send {selectedStaffIds.length} Invitation
-                    {selectedStaffIds.length > 1 ? 's' : ''}
-                  </Button>
-                )}
-              </div>
-
-              <StaffSearchTable
-                staff={staffData?.data || []}
-                selectedIds={selectedStaffIds}
-                onSelectionChange={setSelectedStaffIds}
-                isLoading={isLoadingStaff}
-              />
-
-              {staffData && staffData.meta.totalPages > 1 && (
-                <p className="text-sm text-muted-foreground text-center">
-                  Showing {staffData.data.length} of {staffData.meta.total} {staffTerm.lowerPlural}
-                </p>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
+        {/* Offers Section */}
+        <div>
+          <h3 className="font-medium text-foreground mb-4">
+            Offers ({callTime.invitations.length})
+          </h3>
+          <InvitationList
+            invitations={callTime.invitations}
+            onResend={handleResend}
+            onCancel={handleCancel}
+            isResending={resendingId}
+            isCancelling={cancellingId}
+          />
+        </div>
       </DialogContent>
+
+      {/* Edit Assignment Modal */}
+      {callTime && (
+        <CallTimeFormModal
+          callTime={{
+            id: callTime.id,
+            callTimeId: callTime.callTimeId,
+            serviceId: callTime.service?.id || '',
+            numberOfStaffRequired: callTime.numberOfStaffRequired,
+            skillLevel: callTime.skillLevel,
+            ratingRequired: callTime.ratingRequired,
+            startDate: new Date(callTime.startDate),
+            startTime: callTime.startTime,
+            endDate: new Date(callTime.endDate),
+            endTime: callTime.endTime,
+            payRate: payRate,
+            payRateType: callTime.payRateType,
+            billRate: billRate,
+            billRateType: callTime.billRateType,
+            customCost: callTime.customCost,
+            customPrice: callTime.customPrice,
+            approveOvertime: callTime.approveOvertime ?? false,
+            commission: callTime.commission ?? false,
+            notes: callTime.notes,
+          }}
+          eventId={callTime.event.id}
+          open={isEditing}
+          onClose={() => setIsEditing(false)}
+          onSubmit={handleEditSubmit}
+          isSubmitting={updateCallTime.isPending}
+        />
+      )}
     </Dialog>
   );
 }

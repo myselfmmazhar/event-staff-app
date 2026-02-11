@@ -95,7 +95,6 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           label: 'Assignment Manager',
           href: '/assignments',
           icon: ClipboardListIcon,
-          comingSoon: true,
         },
       ],
     },

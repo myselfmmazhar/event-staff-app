@@ -331,15 +331,15 @@ export function StaffFormModal({
                                                     control={control}
                                                     render={({ field }) => (
                                                         <Select
-                                                            value={field.value || ''}
-                                                            onValueChange={(value) => field.onChange(value || null)}
+                                                            value={field.value || '__none__'}
+                                                            onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}
                                                             disabled={isSubmitting}
                                                         >
                                                             <SelectTrigger>
                                                                 <SelectValue placeholder="None" />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="">None</SelectItem>
+                                                                <SelectItem value="__none__">None</SelectItem>
                                                                 {companies.map((c) => (
                                                                     <SelectItem key={c.id} value={c.id}>
                                                                         {c.firstName} {c.lastName} ({c.staffId})
