@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { PlusIcon, XIcon } from '@/components/ui/icons';
 import { EventDocumentUpload } from '../event-document-upload';
 import { cn } from '@/lib/utils';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 import type { DocumentsSectionProps } from './types';
 
 export function DocumentsSection({
@@ -17,12 +18,13 @@ export function DocumentsSection({
   fileLinksFieldArray,
 }: DocumentsSectionProps) {
   const { fields, append, remove } = fileLinksFieldArray;
+  const { terminology } = useTerminology();
 
   return (
     <div className={cn('space-y-6', className)}>
       {/* Event Documents */}
       <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Event Documents</h3>
+        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">{terminology.event.singular} Documents</h3>
         <EventDocumentUpload
           documents={watch('eventDocuments') || []}
           onChange={(docs) => setValue('eventDocuments', docs)}

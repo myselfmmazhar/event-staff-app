@@ -8,16 +8,19 @@ import { Badge } from '@/components/ui/badge';
 import { FilterIcon, CalendarIcon, SearchIcon, AlertIcon, CheckCircleIcon } from '@/components/ui/icons';
 import { useAssignmentsFilters, type QuickFilter } from '@/store/assignments-filters.store';
 import { trpc } from '@/lib/client/trpc';
-
-const QUICK_FILTERS: Array<{ value: QuickFilter; label: string; icon?: React.ComponentType<{ className?: string }> }> = [
-  { value: 'all', label: 'All Assignments' },
-  { value: 'needsStaff', label: 'Needs Staff', icon: AlertIcon },
-  { value: 'filled', label: 'Filled', icon: CheckCircleIcon },
-  { value: 'today', label: 'Today', icon: CalendarIcon },
-  { value: 'thisWeek', label: 'This Week', icon: CalendarIcon },
-];
+import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
 
 export function AssignmentFilters() {
+  const staffTerm = useStaffTerm();
+  const { terminology } = useTerminology();
+
+  const QUICK_FILTERS: Array<{ value: QuickFilter; label: string; icon?: React.ComponentType<{ className?: string }> }> = [
+    { value: 'all', label: 'All Assignments' },
+    { value: 'needsStaff', label: `Needs ${staffTerm.singular}`, icon: AlertIcon },
+    { value: 'filled', label: 'Filled', icon: CheckCircleIcon },
+    { value: 'today', label: 'Today', icon: CalendarIcon },
+    { value: 'thisWeek', label: 'This Week', icon: CalendarIcon },
+  ];
   const {
     search,
     setSearch,
@@ -120,27 +123,27 @@ export function AssignmentFilters() {
         <div className="flex flex-col gap-2">
           <Label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
-            Event
+            {terminology.event.singular}
           </Label>
           <MultiSelect
             options={eventOptions}
             value={selectedEventIds}
             onChange={setSelectedEventIds}
-            placeholder="All Events"
+            placeholder={`All ${terminology.event.plural}`}
           />
         </div>
 
-        {/* Position/Service Filter */}
+        {/* Service Filter */}
         <div className="flex flex-col gap-2">
           <Label className="text-sm font-medium text-foreground flex items-center gap-2">
             <FilterIcon className="h-4 w-4" />
-            Position
+            Service
           </Label>
           <MultiSelect
             options={serviceOptions}
             value={selectedServiceIds}
             onChange={setSelectedServiceIds}
-            placeholder="All Positions"
+            placeholder="All Services"
           />
         </div>
 

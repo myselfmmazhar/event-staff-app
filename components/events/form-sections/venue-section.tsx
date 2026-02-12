@@ -15,7 +15,7 @@ export function VenueSection({
 }: FormSectionProps) {
   return (
     <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
-      <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Venue Information</h3>
+      <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Location Information</h3>
       <div className="space-y-4">
         {/* Address Autocomplete */}
         <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
@@ -37,7 +37,7 @@ export function VenueSection({
         </div>
 
         <div>
-          <Label htmlFor="venueName" required>Venue Name</Label>
+          <Label htmlFor="venueName" required>Location Name</Label>
           <Input
             id="venueName"
             {...register('venueName')}

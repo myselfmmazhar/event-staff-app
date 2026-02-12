@@ -13,9 +13,9 @@ interface UpcomingEvent {
   venueName: string;
   city: string;
   state: string;
-  startDate: Date;
+  startDate: Date | null;
   startTime: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime: string | null;
   status: EventStatus;
   client?: {

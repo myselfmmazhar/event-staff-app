@@ -15,9 +15,9 @@ interface Invitation {
     id: string;
     callTimeId: string;
     service: { title: string } | null;
-    startDate: Date;
+    startDate: Date | null;
     startTime: string | null;
-    endDate: Date;
+    endDate: Date | null;
     endTime: string | null;
     payRate: number | { toNumber: () => number };
     payRateType: RateType;
@@ -39,8 +39,12 @@ interface PastEventsListProps {
 export function PastEventsList({ invitations }: PastEventsListProps) {
   const eventTerm = useEventTerm();
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const formatDate = (date: Date | null) => {
+    if (!date) return 'UBD';
+    const d = new Date(date);
+    // Check for epoch date (superjson bug workaround for null dates)
+    if (d.getFullYear() === 1970) return 'UBD';
+    return d.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',

@@ -250,9 +250,9 @@ export class EmailService {
       eventTitle: string;
       eventVenue: string;
       eventLocation: string;
-      startDate: Date;
+      startDate: Date | null;
       startTime?: string | null;
-      endDate: Date;
+      endDate: Date | null;
       endTime?: string | null;
       payRate: number;
       payRateType: string;
@@ -260,13 +260,15 @@ export class EmailService {
   ): Promise<{ success: boolean; error?: string }> {
     const dashboardUrl = `${this.appUrl}/my-schedule`;
 
-    const formatDate = (date: Date) =>
-      date.toLocaleDateString('en-US', {
+    const formatDate = (date: Date | null) => {
+      if (!date || date.getFullYear() === 1970) return 'UBD';
+      return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
       });
+    };
 
     const formatTime = (time: string | null | undefined) => {
       if (!time) return 'TBD';
@@ -287,9 +289,10 @@ export class EmailService {
       return labels[type] || type.toLowerCase().replace('_', ' ');
     };
 
-    const isSameDay =
-      callTimeDetails.startDate.toDateString() ===
-      callTimeDetails.endDate.toDateString();
+    const startD = callTimeDetails.startDate;
+    const endD = callTimeDetails.endDate;
+    const isSameDay = startD && endD && startD.getFullYear() !== 1970 && endD.getFullYear() !== 1970 &&
+      startD.toDateString() === endD.toDateString();
 
     try {
       const { subject, html } = await this.templateService.renderEmail(
@@ -333,19 +336,21 @@ export class EmailService {
       eventTitle: string;
       eventVenue: string;
       eventLocation: string;
-      startDate: Date;
+      startDate: Date | null;
       startTime?: string | null;
     }
   ): Promise<{ success: boolean; error?: string }> {
     const dashboardUrl = `${this.appUrl}/my-schedule`;
 
-    const formatDate = (date: Date) =>
-      date.toLocaleDateString('en-US', {
+    const formatDate = (date: Date | null) => {
+      if (!date || date.getFullYear() === 1970) return 'UBD';
+      return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
       });
+    };
 
     const formatTime = (time: string | null | undefined) => {
       if (!time) return 'TBD';

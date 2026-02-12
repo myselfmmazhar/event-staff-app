@@ -26,9 +26,9 @@ interface UpcomingEvent {
   venueName: string;
   city: string;
   state: string;
-  startDate: Date;
+  startDate: Date | null;
   startTime: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime: string | null;
   status: EventStatus;
   client?: {
@@ -68,10 +68,21 @@ const DATE_COLUMNS = [6, 8]; // Start Date, End Date
 const NUMBER_COLUMNS = [12, 13, 14, 15, 16, 17, 18]; // Position counts, work shifts, availability
 
 /**
- * Formats a date consistently for Excel (reused from CSV)
+ * Check if date is null or UBD (epoch date from superjson bug)
  */
-function formatDate(date: Date): string {
-  return format(new Date(date), 'MMM d, yyyy');
+function isDateUBD(date: Date | null): boolean {
+  if (!date) return true;
+  const d = new Date(date);
+  return d.getFullYear() === 1970;
+}
+
+/**
+ * Formats a date consistently for Excel (reused from CSV)
+ * Returns "UBD" for null or epoch dates
+ */
+function formatDate(date: Date | null): string {
+  if (isDateUBD(date)) return 'UBD';
+  return format(new Date(date!), 'MMM d, yyyy');
 }
 
 /**

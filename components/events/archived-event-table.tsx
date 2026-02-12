@@ -19,9 +19,9 @@ interface ArchivedEvent {
   venueName: string;
   city: string;
   state: string;
-  startDate: Date;
+  startDate: Date | null;
   startTime?: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime?: string | null;
   timezone: string;
   status: EventStatus;

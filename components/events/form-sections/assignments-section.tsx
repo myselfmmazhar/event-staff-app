@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { PlusIcon } from '@/components/ui/icons';
 import { cn } from '@/lib/utils';
 import { AssignmentForm } from './assignment-form';
@@ -28,9 +27,10 @@ export function AssignmentsSection({
   className,
 }: AssignmentsSectionProps) {
   const { toast } = useToast();
+  const utils = trpc.useUtils();
   const [mounted, setMounted] = useState(false);
-  const [showAddAssignment, setShowAddAssignment] = useState(assignments.length > 0);
   const [showForm, setShowForm] = useState(false);
+  const [defaultType, setDefaultType] = useState<'SERVICE' | 'PRODUCT'>('SERVICE');
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [showCreateService, setShowCreateService] = useState(false);
   const [showCreateProduct, setShowCreateProduct] = useState(false);
@@ -40,13 +40,6 @@ export function AssignmentsSection({
     setMounted(true);
   }, []);
 
-  // Update toggle when assignments change externally
-  useEffect(() => {
-    if (assignments.length > 0 && !showAddAssignment) {
-      setShowAddAssignment(true);
-    }
-  }, [assignments.length, showAddAssignment]);
-
   // Service creation mutation
   const createServiceMutation = trpc.service.create.useMutation({
     onSuccess: (data) => {
@@ -55,6 +48,8 @@ export function AssignmentsSection({
         description: `${data.title} has been created successfully.`,
       });
       setShowCreateService(false);
+      // Invalidate cache so the new service appears in the dropdown
+      utils.service.getAll.invalidate();
     },
     onError: (error) => {
       toast({
@@ -73,6 +68,8 @@ export function AssignmentsSection({
         description: `${data.title} has been created successfully.`,
       });
       setShowCreateProduct(false);
+      // Invalidate cache so the new product appears in the dropdown
+      utils.product.getAll.invalidate();
     },
     onError: (error) => {
       toast({
@@ -82,17 +79,6 @@ export function AssignmentsSection({
       });
     },
   });
-
-  // Handle toggle change
-  const handleToggleChange = (value: boolean) => {
-    setShowAddAssignment(value);
-    if (!value) {
-      // If user selects "No", clear all assignments
-      onAssignmentsChange([]);
-      setShowForm(false);
-      setEditingAssignment(null);
-    }
-  };
 
   // Handle save assignment
   const handleSaveAssignment = (assignment: Assignment, action: AssignmentSaveAction) => {
@@ -157,9 +143,17 @@ export function AssignmentsSection({
     setEditingAssignment(null);
   };
 
-  // Handle add new assignment
-  const handleAddAssignment = () => {
+  // Handle add new service assignment
+  const handleAddServiceAssignment = () => {
     setEditingAssignment(null);
+    setDefaultType('SERVICE');
+    setShowForm(true);
+  };
+
+  // Handle add new product assignment
+  const handleAddProductAssignment = () => {
+    setEditingAssignment(null);
+    setDefaultType('PRODUCT');
     setShowForm(true);
   };
 
@@ -167,80 +161,61 @@ export function AssignmentsSection({
     <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Assignments</h3>
 
-      {/* Add Assignment Toggle */}
-      <div className="mb-4">
-        <Label className="text-sm font-medium mb-2 block">Add Assignment to this Task?</Label>
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="showAddAssignment"
-              checked={showAddAssignment === true}
-              onChange={() => handleToggleChange(true)}
+      <div className="space-y-4">
+        {/* Assignment List - always show when there are assignments */}
+        {assignments.length > 0 && (
+          <AssignmentList
+            assignments={assignments}
+            onEdit={handleEditAssignment}
+            onDelete={handleDeleteAssignment}
+            disabled={disabled || showForm}
+          />
+        )}
+
+        {/* Assignment Form */}
+        {showForm && (
+          <div className="border border-border rounded-lg p-4 bg-background">
+            <h4 className="text-base font-medium mb-4">
+              {editingAssignment ? 'Edit Assignment' : 'Assignment Details'}
+            </h4>
+            <AssignmentForm
+              assignment={editingAssignment}
+              defaultType={editingAssignment ? undefined : defaultType}
+              onSave={handleSaveAssignment}
+              onCancel={handleCancelForm}
+              onCreateService={() => setShowCreateService(true)}
+              onCreateProduct={() => setShowCreateProduct(true)}
               disabled={disabled}
-              className="accent-primary"
             />
-            <span className="text-sm">Yes</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="showAddAssignment"
-              checked={showAddAssignment === false}
-              onChange={() => handleToggleChange(false)}
-              disabled={disabled}
-              className="accent-primary"
-            />
-            <span className="text-sm">No</span>
-          </label>
-        </div>
-      </div>
+          </div>
+        )}
 
-      {/* Assignments Content (when Yes is selected) */}
-      {showAddAssignment && (
-        <div className="space-y-4">
-          {/* Assignment List - always show when there are assignments */}
-          {assignments.length > 0 && (
-            <AssignmentList
-              assignments={assignments}
-              onEdit={handleEditAssignment}
-              onDelete={handleDeleteAssignment}
-              disabled={disabled || showForm}
-            />
-          )}
-
-          {/* Assignment Form */}
-          {showForm && (
-            <div className="border border-border rounded-lg p-4 bg-background">
-              <h4 className="text-base font-medium mb-4">
-                {editingAssignment ? 'Edit Assignment' : 'Assignment Details'}
-              </h4>
-              <AssignmentForm
-                assignment={editingAssignment}
-                onSave={handleSaveAssignment}
-                onCancel={handleCancelForm}
-                onCreateService={() => setShowCreateService(true)}
-                onCreateProduct={() => setShowCreateProduct(true)}
-                disabled={disabled}
-              />
-            </div>
-          )}
-
-          {/* Add Assignment Button */}
-          {!showForm && (
+        {/* Add Assignment Buttons */}
+        {!showForm && (
+          <div className="flex items-center gap-3">
             <Button
               type="button"
               variant="outline"
-              onClick={handleAddAssignment}
+              onClick={handleAddServiceAssignment}
               disabled={disabled}
               className="gap-2"
             >
               <PlusIcon className="h-4 w-4" />
-              Add {assignments.length > 0 ? 'Another ' : ''}Assignment
+              Add Service Assignment
             </Button>
-          )}
-        </div>
-      )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddProductAssignment}
+              disabled={disabled}
+              className="gap-2"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add Product Assignment
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Service Creation Modal */}
       {mounted &&

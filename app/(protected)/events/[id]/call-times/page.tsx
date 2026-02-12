@@ -15,6 +15,7 @@ import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import { ArrowLeftIcon, PlusIcon } from '@/components/ui/icons';
 import type { CreateCallTimeInput, UpdateCallTimeInput } from '@/lib/schemas/call-time.schema';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 
 // Using any for call time type to avoid type conflicts between components
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -169,14 +170,14 @@ export default function EventCallTimesPage() {
             <ArrowLeftIcon className="h-4 w-4 mr-1" />
             Back to {eventTerm.plural}
           </Button>
-          <h1 className="text-3xl font-bold">Call Times</h1>
+          <h1 className="text-3xl font-bold">Assignments</h1>
           <p className="text-muted-foreground mt-1">
             {event.title} ({event.eventId})
           </p>
         </div>
         <Button onClick={handleCreate}>
           <PlusIcon className="h-4 w-4 mr-2" />
-          Create Call Time
+          Create Assignment
         </Button>
       </div>
 
@@ -195,7 +196,7 @@ export default function EventCallTimesPage() {
         <div>
           <p className="text-sm text-muted-foreground">Date</p>
           <p className="font-medium">
-            {new Date(event.startDate).toLocaleDateString('en-US', {
+            {isDateNullOrUBD(event.startDate) ? 'UBD' : new Date(event.startDate!).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
@@ -203,7 +204,7 @@ export default function EventCallTimesPage() {
           </p>
         </div>
         <div>
-          <p className="text-sm text-muted-foreground">Call Times</p>
+          <p className="text-sm text-muted-foreground">Assignments</p>
           <p className="font-medium">{callTimesData?.meta.total || 0} total</p>
         </div>
       </div>

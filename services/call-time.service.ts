@@ -216,9 +216,18 @@ export class CallTimeService {
   ) {
     await this.findOne(id, userId); // Verify ownership
 
+    // Transform serviceId to Prisma relation syntax
+    const { serviceId, ...restData } = data;
+    const prismaData: any = { ...restData };
+
+    // Handle service relation
+    if (serviceId !== undefined) {
+      prismaData.service = serviceId ? { connect: { id: serviceId } } : { disconnect: true };
+    }
+
     return await this.prisma.callTime.update({
       where: { id },
-      data,
+      data: prismaData,
       include: {
         service: true,
         event: { select: { id: true, eventId: true, title: true } },
@@ -289,39 +298,43 @@ export class CallTimeService {
       skillLevel: { in: eligibleSkillLevels },
       // Active account
       accountStatus: 'ACTIVE',
-      // Not on time off during call time dates
-      NOT: {
-        AND: [
-          { availabilityStatus: 'TIME_OFF' },
-          {
-            OR: [
-              // Time off overlaps with call time
-              {
-                timeOffStart: { lte: callTime.endDate },
-                timeOffEnd: { gte: callTime.startDate },
-              },
-            ],
-          },
-        ],
-      },
+      // Not on time off during call time dates (only when dates are known)
+      ...(callTime.startDate && callTime.endDate ? {
+        NOT: {
+          AND: [
+            { availabilityStatus: 'TIME_OFF' },
+            {
+              OR: [
+                // Time off overlaps with call time
+                {
+                  timeOffStart: { lte: callTime.endDate as Date },
+                  timeOffEnd: { gte: callTime.startDate as Date },
+                },
+              ],
+            },
+          ],
+        },
+      } : {}),
       // Exclude already invited (if requested)
       ...(excludeStaffIds.length > 0 && {
         id: { notIn: excludeStaffIds },
       }),
-      // No conflicting confirmed call times
-      callTimeInvitations: {
-        none: {
-          isConfirmed: true,
-          status: 'ACCEPTED',
-          callTime: {
-            // Call time conflicts (date overlap)
-            startDate: { lte: callTime.endDate },
-            endDate: { gte: callTime.startDate },
-            // Exclude current call time
-            id: { not: callTime.id },
+      // No conflicting confirmed call times (only when dates are known)
+      ...(callTime.startDate && callTime.endDate ? {
+        callTimeInvitations: {
+          none: {
+            isConfirmed: true,
+            status: 'ACCEPTED',
+            callTime: {
+              // Call time conflicts (date overlap)
+              startDate: { lte: callTime.endDate as Date },
+              endDate: { gte: callTime.startDate as Date },
+              // Exclude current call time
+              id: { not: callTime.id },
+            },
           },
         },
-      },
+      } : {}),
     };
 
     const [staff, total] = await Promise.all([
@@ -713,17 +726,12 @@ export class CallTimeService {
    * Get call time invitations for a staff member (staff dashboard)
    */
   async getMyInvitations(userId: string, status?: CallTimeInvitationStatus) {
-    console.log('[getMyInvitations] Looking up staff for userId:', userId);
-
     const staff = await this.prisma.staff.findUnique({
       where: { userId },
       select: { id: true, firstName: true, lastName: true, email: true },
     });
 
-    console.log('[getMyInvitations] Found staff:', staff);
-
     if (!staff) {
-      console.log('[getMyInvitations] No staff found for userId, returning empty');
       return { pending: [], accepted: [], past: [], declined: [] };
     }
 
@@ -758,9 +766,6 @@ export class CallTimeService {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    console.log('[getMyInvitations] Found', invitations.length, 'total invitations');
-    console.log('[getMyInvitations] startOfToday:', startOfToday);
-
     // Categorize invitations
     // Show all pending invitations regardless of date (to avoid timezone issues hiding today's events)
     const pending = invitations.filter((inv) => inv.status === 'PENDING');
@@ -768,17 +773,16 @@ export class CallTimeService {
       (inv) =>
         inv.status === 'ACCEPTED' &&
         inv.isConfirmed &&
-        new Date(inv.callTime.startDate) >= startOfToday
+        (!inv.callTime.startDate || new Date(inv.callTime.startDate) >= startOfToday)
     );
     const past = invitations.filter(
       (inv) =>
         inv.status === 'ACCEPTED' &&
         inv.isConfirmed &&
+        !!inv.callTime.endDate &&
         new Date(inv.callTime.endDate) < startOfToday
     );
     const declined = invitations.filter((inv) => inv.status === 'DECLINED');
-
-    console.log('[getMyInvitations] Categorized - pending:', pending.length, 'accepted:', accepted.length, 'past:', past.length, 'declined:', declined.length);
 
     return { pending, accepted, past, declined };
   }

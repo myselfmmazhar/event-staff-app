@@ -10,7 +10,7 @@ import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from '@/lib/constants';
-import { formatDateTime } from '@/lib/utils/date-formatter';
+import { formatDateTime, isDateNullOrUBD } from '@/lib/utils/date-formatter';
 
 interface Event {
   id: string;
@@ -18,9 +18,9 @@ interface Event {
   venueName: string;
   city: string;
   state: string;
-  startDate: Date;
+  startDate: Date | null;
   startTime?: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime?: string | null;
   timezone: string;
   status: EventStatus;
@@ -78,7 +78,8 @@ export function EventTable({
     title: 'Title',
     client: 'Client',
     venue: 'Venue',
-    assignments: 'Assignments',
+    openAssignments: 'Open Assignments',
+    closedAssignments: 'Closed Assignments',
     progress: 'Progress',
   });
 
@@ -87,7 +88,7 @@ export function EventTable({
 
     const groups = new Map<
       string,
-      { serviceName: string; required: number; accepted: number }
+      { serviceId: string | null; serviceName: string; required: number; accepted: number }
     >();
 
     let totalRequired = 0;
@@ -105,13 +106,15 @@ export function EventTable({
       totalAccepted += accepted;
       totalConfirmed += confirmed;
 
-      const key = callTime.service?.id ?? callTime.service?.title ?? callTime.id;
+      const serviceId = callTime.service?.id ?? null;
+      const key = serviceId ?? callTime.service?.title ?? callTime.id;
       const existing = groups.get(key);
       if (existing) {
         existing.required += required;
         existing.accepted += accepted;
       } else {
         groups.set(key, {
+          serviceId,
           serviceName: callTime.service?.title ?? 'Unknown',
           required,
           accepted,
@@ -119,11 +122,17 @@ export function EventTable({
       }
     }
 
-    const lines = Array.from(groups.values())
-      .sort((a, b) => b.required - a.required || a.serviceName.localeCompare(b.serviceName))
-      .map((g) => `${g.required} ${g.serviceName}: ${g.accepted}/${g.required} Accepted`);
+    const allGroups = Array.from(groups.values())
+      .sort((a, b) => b.required - a.required || a.serviceName.localeCompare(b.serviceName));
 
-    return { lines, totalRequired, totalAccepted, totalConfirmed };
+    // Open assignments = accepted < required (needs more staff)
+    const openAssignments = allGroups.filter((g) => g.accepted < g.required);
+    // Closed assignments = accepted >= required (fully staffed)
+    const closedAssignments = allGroups.filter((g) => g.accepted >= g.required);
+
+    const lines = allGroups.map((g) => `${g.required} ${g.serviceName}: ${g.accepted}/${g.required} Accepted`);
+
+    return { lines, openAssignments, closedAssignments, totalRequired, totalAccepted, totalConfirmed };
   };
 
   // Selection handlers
@@ -199,8 +208,8 @@ export function EventTable({
             variant="ghost"
             size="sm"
             className="px-0"
-            onClick={() => router.push('/assignments')}
-            title="Manage in Assignment Manager"
+            onClick={() => router.push(`/assignments?eventId=${event.id}`)}
+            title="Manage Assignments"
           >
             <UsersIcon className="h-4 w-4" />
           </Button>
@@ -235,7 +244,7 @@ export function EventTable({
       render: (event) => (
         <div>
           <div>{formatDateTime(event.startDate, event.startTime)}</div>
-          {event.endDate && (
+          {!isDateNullOrUBD(event.endDate) && (
             <div className="text-xs opacity-75">
               to {formatDateTime(event.endDate, event.endTime)}
             </div>
@@ -277,32 +286,80 @@ export function EventTable({
       ),
     },
     {
-      key: 'assignments',
-      label: columnLabels.assignments,
+      key: 'openAssignments',
+      label: columnLabels.openAssignments,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (event) => {
-        const { lines } = getAssignmentSummary(event);
-        if (lines.length === 0) {
-          return <span className="text-muted-foreground/50 italic">No assignments</span>;
+        const { openAssignments } = getAssignmentSummary(event);
+        if (openAssignments.length === 0) {
+          return <span className="text-muted-foreground/50 italic">—</span>;
         }
 
-        const visible = lines.slice(0, 3);
-        const remaining = lines.length - visible.length;
+        const visible = openAssignments.slice(0, 3);
+        const remaining = openAssignments.length - visible.length;
 
         return (
-          <div
-            className="space-y-0.5 cursor-pointer hover:text-primary transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/assignments?eventId=${event.id}`);
-            }}
-            title="View assignments for this event"
-          >
-            {visible.map((line, idx) => (
-              <div key={idx} className="truncate" title={line}>
-                {line}
-              </div>
-            ))}
+          <div className="space-y-0.5">
+            {visible.map((item, idx) => {
+              const line = `${item.required} ${item.serviceName}: ${item.accepted}/${item.required}`;
+              const url = item.serviceId
+                ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
+                : `/assignments?eventId=${event.id}`;
+              return (
+                <div
+                  key={idx}
+                  className="truncate cursor-pointer hover:text-primary transition-colors"
+                  title={`${line} - Click to view`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(url);
+                  }}
+                >
+                  {line}
+                </div>
+              );
+            })}
+            {remaining > 0 && (
+              <div className="text-xs opacity-75">+{remaining} more</div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'closedAssignments',
+      label: columnLabels.closedAssignments,
+      className: 'py-4 px-4 text-sm text-muted-foreground',
+      render: (event) => {
+        const { closedAssignments } = getAssignmentSummary(event);
+        if (closedAssignments.length === 0) {
+          return <span className="text-muted-foreground/50 italic">—</span>;
+        }
+
+        const visible = closedAssignments.slice(0, 3);
+        const remaining = closedAssignments.length - visible.length;
+
+        return (
+          <div className="space-y-0.5">
+            {visible.map((item, idx) => {
+              const line = `${item.required} ${item.serviceName}: ${item.accepted}/${item.required}`;
+              const url = item.serviceId
+                ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
+                : `/assignments?eventId=${event.id}`;
+              return (
+                <div
+                  key={idx}
+                  className="truncate cursor-pointer hover:text-primary transition-colors"
+                  title={`${line} - Click to view`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(url);
+                  }}
+                >
+                  {line}
+                </div>
+              );
+            })}
             {remaining > 0 && (
               <div className="text-xs opacity-75">+{remaining} more</div>
             )}
@@ -323,7 +380,7 @@ export function EventTable({
 
         const summary = `${totalAccepted} of ${totalRequired} Assignments`;
         const statusLabel =
-          totalAccepted === 0 ? 'Needs staff' : totalConfirmed >= totalRequired ? 'Filled' : 'Accepted';
+          totalAccepted === 0 ? `Needs ${terminology.staff.lower}` : totalConfirmed >= totalRequired ? 'Filled' : 'Accepted';
         const statusVariant: 'warning' | 'success' | 'info' =
           totalAccepted === 0 ? 'warning' : totalConfirmed >= totalRequired ? 'success' : 'info';
 

@@ -429,9 +429,12 @@ function nullToUndefined<T>(value: T | null): T | undefined {
 
 /**
  * Event import input (extends CreateEventInput with optional eventId for upsert matching)
+ * Import always requires dates (no UBD support for CSV imports)
  */
-export type EventImportInput = CreateEventInput & {
+export type EventImportInput = Omit<CreateEventInput, 'startDate' | 'endDate'> & {
   eventId?: string | null;
+  startDate: Date;
+  endDate: Date;
 };
 
 /**

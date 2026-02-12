@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EventFormFields } from './event-form-fields';
 import { BatchEntryList } from './batch-entry-list';
 import type { Assignment, ProductAssignment, ServiceAssignment, ProductAssignmentExtendedData } from '@/lib/types/assignment.types';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;
@@ -55,10 +56,18 @@ const editFormSchema = z.object({
   zipCode: z.string().min(1, "ZIP code is required").max(20).transform(val => val.trim()),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
-  startDate: z.coerce.date({ message: "Start date is required" }),
+  // Date and Time (nullable for UBD support)
+  // Empty string or null both map to null (UBD). z.null() must come first.
+  startDate: z.preprocess(
+    (val) => (val === '' || val === undefined ? null : val),
+    z.union([z.null(), z.coerce.date()])
+  ).optional(),
   startTime: z.string().optional(),
   startTimeTBD: z.boolean().default(false),
-  endDate: z.coerce.date({ message: "End date is required" }),
+  endDate: z.preprocess(
+    (val) => (val === '' || val === undefined ? null : val),
+    z.union([z.null(), z.coerce.date()])
+  ).optional(),
   endTime: z.string().optional(),
   endTimeTBD: z.boolean().default(false),
   timezone: z.string().min(1, "Timezone is required"),
@@ -111,7 +120,13 @@ const editFormSchema = z.object({
     return val;
   }),
   overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
-}).refine((data) => data.endDate >= data.startDate, {
+}).refine((data) => {
+  // Only validate if both dates are provided (not UBD)
+  if (data.startDate && data.endDate) {
+    return data.endDate >= data.startDate;
+  }
+  return true;
+}, {
   message: "End date must be after or equal to start date",
   path: ["endDate"],
 });
@@ -142,9 +157,9 @@ interface Event {
   zipCode: string;
   latitude?: number | null;
   longitude?: number | null;
-  startDate: Date;
+  startDate: Date | null;
   startTime?: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime?: string | null;
   timezone: string;
   dailyDigestMode: boolean;
@@ -236,7 +251,9 @@ export function EventFormModal({
   const [batchStep, setBatchStep] = useState<'upload' | 'preview'>('upload');
   const [batchValidationResults, setBatchValidationResults] = useState<RowValidationResult[]>([]);
 
-  // Time TBD state
+  // Date UBD and Time TBD state
+  const [startDateUBD, setStartDateUBD] = useState(false);
+  const [endDateUBD, setEndDateUBD] = useState(false);
   const [startTimeTBD, setStartTimeTBD] = useState(false);
   const [endTimeTBD, setEndTimeTBD] = useState(false);
 
@@ -361,10 +378,15 @@ export function EventFormModal({
   // Reset form when event changes
   useEffect(() => {
     if (event) {
-      const formatDateForInput = (date: Date | string) => {
+      const formatDateForInput = (date: Date | string | null) => {
+        if (!date) return '';
         const d = new Date(date);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       };
+
+      // Check for UBD dates (null or epoch date from superjson bug)
+      const startDateIsUBD = isDateNullOrUBD(event.startDate);
+      const endDateIsUBD = isDateNullOrUBD(event.endDate);
 
       const eventDocsSource = fullEventData?.eventDocuments ?? event.eventDocuments;
       const eventDocsData = Array.isArray(eventDocsSource) ? eventDocsSource as EventDocument[] : null;
@@ -384,9 +406,9 @@ export function EventFormModal({
         zipCode: event.zipCode,
         latitude: event.latitude || undefined,
         longitude: event.longitude || undefined,
-        startDate: formatDateForInput(event.startDate) as any,
+        startDate: !startDateIsUBD ? formatDateForInput(event.startDate) as any : '',
         startTime: event.startTime === 'TBD' ? '' : (event.startTime || ''),
-        endDate: formatDateForInput(event.endDate) as any,
+        endDate: !endDateIsUBD ? formatDateForInput(event.endDate) as any : '',
         endTime: event.endTime === 'TBD' ? '' : (event.endTime || ''),
         timezone: event.timezone,
         dailyDigestMode: event.dailyDigestMode,
@@ -414,10 +436,15 @@ export function EventFormModal({
         overtimeRate: event.overtimeRate ? Number(event.overtimeRate) : undefined,
         overtimeRateType: event.overtimeRateType || undefined,
       });
+      // Set UBD/TBD state
+      setStartDateUBD(startDateIsUBD);
+      setEndDateUBD(endDateIsUBD);
       setStartTimeTBD(event.startTime === 'TBD');
       setEndTimeTBD(event.endTime === 'TBD');
     } else {
       reset(getDefaultValues());
+      setStartDateUBD(false);
+      setEndDateUBD(false);
       setStartTimeTBD(false);
       setEndTimeTBD(false);
     }
@@ -504,6 +531,8 @@ export function EventFormModal({
         overtimeRate: undefined,
         overtimeRateType: undefined,
       });
+      setStartDateUBD(template.startDate === null);
+      setEndDateUBD(template.endDate === null);
       setStartTimeTBD(template.startTime === 'TBD');
       setEndTimeTBD(template.endTime === 'TBD');
     }
@@ -525,6 +554,8 @@ export function EventFormModal({
   useEffect(() => {
     if (resetKey > 0 && !event) {
       reset(getDefaultValues());
+      setStartDateUBD(false);
+      setEndDateUBD(false);
       setStartTimeTBD(false);
       setEndTimeTBD(false);
       setSelectedTemplateId('');
@@ -703,6 +734,9 @@ export function EventFormModal({
 
     const normalizedData = {
       ...data,
+      // Handle UBD dates - send null when UBD is checked
+      startDate: startDateUBD ? null : (data.startDate ? new Date(data.startDate) : null),
+      endDate: endDateUBD ? null : (data.endDate ? new Date(data.endDate) : null),
       startTime: startTimeTBD ? 'TBD' : (data.startTime || undefined),
       endTime: endTimeTBD ? 'TBD' : (data.endTime || undefined),
     };
@@ -1010,6 +1044,10 @@ export function EventFormModal({
                 setValue={setValue as any}
                 clients={clients}
                 terminology={terminology}
+                startDateUBD={startDateUBD}
+                setStartDateUBD={setStartDateUBD}
+                endDateUBD={endDateUBD}
+                setEndDateUBD={setEndDateUBD}
                 startTimeTBD={startTimeTBD}
                 setStartTimeTBD={setStartTimeTBD}
                 endTimeTBD={endTimeTBD}

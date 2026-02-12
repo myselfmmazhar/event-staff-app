@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit2Icon, Trash2Icon } from 'lucide-react';
+import { Edit2Icon, Trash2Icon, CalendarIcon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { AvailabilityStatus, AccountStatus, StaffType, SkillLevel, StaffRating } from '@prisma/client';
 import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
@@ -57,12 +57,13 @@ interface StaffTableProps {
     staff: StaffWithRelations[];
     onEdit: (staff: StaffWithRelations) => void;
     onDelete: (staff: StaffWithRelations) => void;
+    onAssign?: (staff: StaffWithRelations) => void;
     // Optional selection props
     selectedIds?: Set<string>;
     onSelectionChange?: (ids: Set<string>) => void;
 }
 
-export function StaffTable({ staff, onEdit, onDelete, selectedIds, onSelectionChange }: StaffTableProps) {
+export function StaffTable({ staff, onEdit, onDelete, onAssign, selectedIds, onSelectionChange }: StaffTableProps) {
     const staffTerm = useStaffTerm();
     const { terminology } = useTerminology();
 
@@ -210,6 +211,17 @@ export function StaffTable({ staff, onEdit, onDelete, selectedIds, onSelectionCh
                     >
                         <Edit2Icon className="h-4 w-4" />
                     </Button>
+                    {onAssign && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="px-0"
+                            onClick={() => onAssign(member)}
+                            title={`Assign to ${terminology.event.lower}`}
+                        >
+                            <CalendarIcon className="h-4 w-4" />
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
                         size="sm"

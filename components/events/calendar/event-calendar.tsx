@@ -11,6 +11,7 @@ import { CalendarEventTooltip } from './calendar-event-tooltip';
 import { ViewMode, CalendarEvent } from '@/lib/utils/calendar-helpers';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 import {
   startOfMonth,
   endOfMonth,
@@ -92,7 +93,7 @@ export function EventCalendar({ onEventClick, statuses, clientIds, search, start
   }, [viewMode, currentDate]);
 
   // Fetch events for the current date range
-  const { data: events = [], isLoading } = trpc.event.getByDateRange.useQuery({
+  const { data: rawEvents = [], isLoading } = trpc.event.getByDateRange.useQuery({
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
     statuses: statuses && statuses.length > 0 ? statuses : undefined,
@@ -101,6 +102,14 @@ export function EventCalendar({ onEventClick, statuses, clientIds, search, start
     startDateFrom,
     startDateTo,
   });
+
+  // Filter out events with UBD dates - calendar requires dates to position events
+  const events = useMemo(() =>
+    rawEvents.filter(event =>
+      !isDateNullOrUBD(event.startDate) && !isDateNullOrUBD(event.endDate)
+    ) as CalendarEvent[],
+    [rawEvents]
+  );
 
   // Navigation handlers
   const handleNavigate = (direction: 'prev' | 'next') => {

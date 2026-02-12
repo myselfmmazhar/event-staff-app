@@ -12,9 +12,9 @@ interface CallTime {
   service: { title: string } | null;
   numberOfStaffRequired: number;
   skillLevel: SkillLevel;
-  startDate: Date;
+  startDate: Date | null;
   startTime: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime: string | null;
   payRate: number | { toNumber: () => number };
   payRateType: RateType;
@@ -59,13 +59,13 @@ export function CallTimeList({
   if (callTimes.length === 0) {
     return (
       <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
-        <h3 className="text-lg font-medium mb-2">No call times yet</h3>
+        <h3 className="text-lg font-medium mb-2">No assignments yet</h3>
         <p className="text-muted-foreground mb-4">
-          Create your first call time to start staffing this {eventTerm.lower}.
+          Create your first assignment to start staffing this {eventTerm.lower}.
         </p>
         <Button onClick={onCreate}>
           <PlusIcon className="h-4 w-4 mr-2" />
-          Create Call Time
+          Create Assignment
         </Button>
       </div>
     );

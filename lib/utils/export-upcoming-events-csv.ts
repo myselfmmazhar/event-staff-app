@@ -22,9 +22,9 @@ interface UpcomingEvent {
   venueName: string;
   city: string;
   state: string;
-  startDate: Date;
+  startDate: Date | null;
   startTime: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime: string | null;
   status: EventStatus;
   client?: {
@@ -58,10 +58,21 @@ const CSV_HEADERS = [
 ];
 
 /**
- * Formats a date consistently for CSV
+ * Check if date is null or UBD (epoch date from superjson bug)
  */
-function formatDate(date: Date): string {
-  return format(new Date(date), 'MMM d, yyyy');
+function isDateUBD(date: Date | null): boolean {
+  if (!date) return true;
+  const d = new Date(date);
+  return d.getFullYear() === 1970;
+}
+
+/**
+ * Formats a date consistently for CSV
+ * Returns "UBD" for null or epoch dates
+ */
+function formatDate(date: Date | null): string {
+  if (isDateUBD(date)) return 'UBD';
+  return format(new Date(date!), 'MMM d, yyyy');
 }
 
 /**

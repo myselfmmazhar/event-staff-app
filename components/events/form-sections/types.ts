@@ -27,9 +27,9 @@ export interface EventFormData {
   zipCode: string;
   latitude?: number;
   longitude?: number;
-  startDate: Date | string;
+  startDate: Date | string | null;
   startTime?: string;
-  endDate: Date | string;
+  endDate: Date | string | null;
   endTime?: string;
   timezone: string;
   dailyDigestMode?: boolean;
@@ -103,6 +103,10 @@ export interface BasicInfoSectionProps extends FormSectionProps {
  * Props for DateTimeSection
  */
 export interface DateTimeSectionProps extends FormSectionProps {
+  startDateUBD: boolean;
+  setStartDateUBD: (value: boolean) => void;
+  endDateUBD: boolean;
+  setEndDateUBD: (value: boolean) => void;
   startTimeTBD: boolean;
   setStartTimeTBD: (value: boolean) => void;
   endTimeTBD: boolean;

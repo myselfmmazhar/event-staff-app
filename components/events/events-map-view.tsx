@@ -36,7 +36,7 @@ interface MapEvent {
   venueName: string;
   city: string;
   state: string;
-  startDate: Date;
+  startDate: Date | null;
   status: EventStatus;
   latitude: number;
   longitude: number;

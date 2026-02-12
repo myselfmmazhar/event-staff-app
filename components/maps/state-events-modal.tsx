@@ -14,6 +14,7 @@ import { MapPin, Map as MapIcon, Clock, Eye } from "lucide-react";
 import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from "@/lib/constants";
 import { format } from "date-fns";
 import { EventStatus } from "@prisma/client";
+import { isDateNullOrUBD } from "@/lib/utils/date-formatter";
 
 interface StateEvent {
   id: string;
@@ -22,8 +23,8 @@ interface StateEvent {
   venueName: string | null;
   city: string | null;
   state: string | null;
-  startDate: Date;
-  endDate: Date;
+  startDate: Date | null;
+  endDate: Date | null;
   status: EventStatus;
 }
 
@@ -90,7 +91,7 @@ export function StateEventsModal({
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock size={12} />
-                      {format(new Date(event.startDate), "MMM d, yyyy")}
+                      {isDateNullOrUBD(event.startDate) ? 'UBD' : format(new Date(event.startDate!), "MMM d, yyyy")}
                     </span>
                   </div>
                   {event.venueName && (

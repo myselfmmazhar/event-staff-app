@@ -47,8 +47,9 @@ export class CallTimeSchema {
         .default(1),
       skillLevel: z.nativeEnum(SkillLevel).default(SkillLevel.BEGINNER),
 
-      // Date/Time
-      startDate: z.coerce.date({ message: FieldErrors.startDate }),
+      // Date/Time (nullable for UBD support)
+      // Note: z.null() must come first, otherwise z.coerce.date(null) produces epoch date
+      startDate: z.union([z.null(), z.coerce.date()]).optional(),
       startTime: z
         .string()
         .refine((val) => !val || timeRegex.test(val), {
@@ -56,7 +57,7 @@ export class CallTimeSchema {
         })
         .optional()
         .nullable(),
-      endDate: z.coerce.date({ message: FieldErrors.endDate }),
+      endDate: z.union([z.null(), z.coerce.date()]).optional(),
       endTime: z
         .string()
         .refine((val) => !val || timeRegex.test(val), {
@@ -87,10 +88,19 @@ export class CallTimeSchema {
       message: FieldErrors.rateTypeMismatch,
       path: ['billRateType'],
     })
-    .refine((data) => data.endDate >= data.startDate, {
-      message: FieldErrors.endDateAfterStart,
-      path: ['endDate'],
-    });
+    .refine(
+      (data) => {
+        // Only validate if both dates are provided (not UBD)
+        if (data.startDate && data.endDate) {
+          return data.endDate >= data.startDate;
+        }
+        return true;
+      },
+      {
+        message: FieldErrors.endDateAfterStart,
+        path: ['endDate'],
+      }
+    );
 
   /**
    * Update Call Time Schema
@@ -101,7 +111,8 @@ export class CallTimeSchema {
       serviceId: z.string().uuid(FieldErrors.serviceId).optional(),
       numberOfStaffRequired: z.number().int().min(1).optional(),
       skillLevel: z.nativeEnum(SkillLevel).optional(),
-      startDate: z.coerce.date().optional(),
+      // Note: z.null() must come first, otherwise z.coerce.date(null) produces epoch date
+      startDate: z.union([z.null(), z.coerce.date()]).optional(),
       startTime: z
         .string()
         .refine((val) => !val || timeRegex.test(val), {
@@ -109,7 +120,7 @@ export class CallTimeSchema {
         })
         .optional()
         .nullable(),
-      endDate: z.coerce.date().optional(),
+      endDate: z.union([z.null(), z.coerce.date()]).optional(),
       endTime: z
         .string()
         .refine((val) => !val || timeRegex.test(val), {

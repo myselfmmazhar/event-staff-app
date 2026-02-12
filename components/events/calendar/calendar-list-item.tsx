@@ -40,8 +40,8 @@ function getTimeDisplay(event: CalendarEvent): string {
   const startTime = formatEventTime(event.startTime);
   const endTime = event.endTime ? formatEventTime(event.endTime) : null;
 
-  // Check if multi-day event
-  const isMultiDay = !isSameDay(new Date(event.startDate), new Date(event.endDate));
+  // Check if multi-day event (calendar only shows events with valid dates)
+  const isMultiDay = event.startDate && event.endDate && !isSameDay(new Date(event.startDate), new Date(event.endDate));
 
   if (isMultiDay) {
     return endTime ? `${startTime} - ${endTime} (multi-day)` : `${startTime} (multi-day)`;

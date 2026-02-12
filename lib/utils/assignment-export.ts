@@ -15,9 +15,9 @@ import type { RateType } from '@prisma/client';
 export interface AssignmentExport {
   id: string;
   callTimeId: string;
-  startDate: Date | string;
+  startDate: Date | string | null;
   startTime: string | null;
-  endDate: Date | string;
+  endDate: Date | string | null;
   endTime: string | null;
   numberOfStaffRequired: number;
   payRate: number | string | { toNumber?: () => number };
@@ -106,13 +106,20 @@ function formatTime(time: string | null): string {
 }
 
 /**
+ * Helper function to format date for export, handling null/UBD dates
+ */
+function formatDateForExport(date: Date | string | null): string {
+  if (!date) return 'UBD';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  // Check for epoch date (superjson bug workaround)
+  if (d.getFullYear() === 1970) return 'UBD';
+  return format(d, 'EEE, MMM d, yyyy');
+}
+
+/**
  * Transform a single assignment into export row
  */
 function transformAssignmentToRow(assignment: AssignmentExport): string[] {
-  const startDate = typeof assignment.startDate === 'string'
-    ? new Date(assignment.startDate)
-    : assignment.startDate;
-
   const confirmedStaff = assignment.invitations.filter(inv => inv.isConfirmed);
   const staffNames = confirmedStaff.map(inv => `${inv.staff.firstName} ${inv.staff.lastName}`).join(', ');
   const staffEmails = confirmedStaff.map(inv => inv.staff.email || '').filter(Boolean).join(', ');
@@ -122,7 +129,7 @@ function transformAssignmentToRow(assignment: AssignmentExport): string[] {
     assignment.callTimeId || '',
     assignment.event.title || '',
     assignment.event.eventId || '',
-    format(startDate, 'EEE, MMM d, yyyy'),
+    formatDateForExport(assignment.startDate),
     formatTime(assignment.startTime),
     formatTime(assignment.endTime),
     assignment.service?.title || 'No Position',

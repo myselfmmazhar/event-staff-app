@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
 
@@ -116,8 +117,8 @@ export default function ClientPortalMyEvents() {
                                             <div className="flex items-center gap-1.5">
                                                 <CalendarIcon className="h-4 w-4" />
                                                 <span>
-                                                    {format(new Date(event.startDate), 'MMM d, yyyy')}
-                                                    {event.endDate && event.endDate !== event.startDate && (
+                                                    {isDateNullOrUBD(event.startDate) ? 'UBD' : format(new Date(event.startDate!), 'MMM d, yyyy')}
+                                                    {event.endDate && !isDateNullOrUBD(event.endDate) && event.endDate !== event.startDate && (
                                                         <> - {format(new Date(event.endDate), 'MMM d, yyyy')}</>
                                                     )}
                                                 </span>

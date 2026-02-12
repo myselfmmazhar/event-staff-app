@@ -17,9 +17,9 @@ export interface CalendarEvent {
   id: string;
   eventId: string;
   title: string;
-  startDate: Date;
+  startDate: Date | null;
   startTime: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime: string | null;
   status: EventStatus;
   timezone: string;
@@ -119,8 +119,8 @@ export function getEventsForDay(events: CalendarEvent[], date: Date): CalendarEv
   const dayEnd = endOfDay(date);
 
   return events.filter((event) => {
-    const eventStart = startOfDay(new Date(event.startDate));
-    const eventEnd = endOfDay(new Date(event.endDate));
+    const eventStart = startOfDay(new Date(event.startDate!));
+    const eventEnd = endOfDay(new Date(event.endDate!));
 
     // Event occurs on this day if it overlaps with this day
     return (
@@ -160,8 +160,8 @@ export function getEventsForRange(
   end: Date
 ): CalendarEvent[] {
   const filteredEvents = events.filter((event) => {
-    const eventStart = new Date(event.startDate);
-    const eventEnd = new Date(event.endDate);
+    const eventStart = new Date(event.startDate!);
+    const eventEnd = new Date(event.endDate!);
 
     // Event overlaps with range if:
     // - Event starts before or on range end AND
@@ -171,7 +171,7 @@ export function getEventsForRange(
 
   // Sort by start date, then by start time
   return filteredEvents.sort((a, b) => {
-    const dateCompare = new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+    const dateCompare = new Date(a.startDate!).getTime() - new Date(b.startDate!).getTime();
     if (dateCompare !== 0) return dateCompare;
 
     // If same start date, sort by time
@@ -191,8 +191,8 @@ export function getEventSpan(
   weekStartDate: Date
 ): { startCol: number; endCol: number; daysInWeek: number } {
   const weekDays = generateWeekGrid(weekStartDate);
-  const eventStart = startOfDay(new Date(event.startDate));
-  const eventEnd = endOfDay(new Date(event.endDate));
+  const eventStart = startOfDay(new Date(event.startDate!));
+  const eventEnd = endOfDay(new Date(event.endDate!));
 
   let startCol = -1;
   let endCol = -1;
@@ -248,8 +248,8 @@ export function formatEventTime(time: string | null): string {
 export function isEventOnDay(event: CalendarEvent, date: Date): boolean {
   const dayStart = startOfDay(date);
   const dayEnd = endOfDay(date);
-  const eventStart = startOfDay(new Date(event.startDate));
-  const eventEnd = endOfDay(new Date(event.endDate));
+  const eventStart = startOfDay(new Date(event.startDate!));
+  const eventEnd = endOfDay(new Date(event.endDate!));
 
   return (
     isWithinInterval(dayStart, { start: eventStart, end: eventEnd }) ||
@@ -266,7 +266,7 @@ export function groupEventsByDate(events: CalendarEvent[]): Map<string, Calendar
   const grouped = new Map<string, CalendarEvent[]>();
 
   events.forEach((event) => {
-    const dateKey = format(new Date(event.startDate), 'yyyy-MM-dd');
+    const dateKey = format(new Date(event.startDate!), 'yyyy-MM-dd');
 
     if (!grouped.has(dateKey)) {
       grouped.set(dateKey, []);
@@ -373,8 +373,8 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
 
   // Filter events that overlap with this week
   const weekEvents = events.filter(event => {
-    const eventStart = startOfDay(new Date(event.startDate));
-    const eventEnd = endOfDay(new Date(event.endDate));
+    const eventStart = startOfDay(new Date(event.startDate!));
+    const eventEnd = endOfDay(new Date(event.endDate!));
     return (eventStart <= weekEnd && eventEnd >= weekStart);
   });
 
@@ -382,10 +382,10 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
   // 1. Multi-day events first (longer duration first)
   // 2. Then by start time
   weekEvents.sort((a, b) => {
-    const aStart = startOfDay(new Date(a.startDate));
-    const aEnd = endOfDay(new Date(a.endDate));
-    const bStart = startOfDay(new Date(b.startDate));
-    const bEnd = endOfDay(new Date(b.endDate));
+    const aStart = startOfDay(new Date(a.startDate!));
+    const aEnd = endOfDay(new Date(a.endDate!));
+    const bStart = startOfDay(new Date(b.startDate!));
+    const bEnd = endOfDay(new Date(b.endDate!));
 
     const aDuration = aEnd.getTime() - aStart.getTime();
     const bDuration = bEnd.getTime() - bStart.getTime();
@@ -399,8 +399,8 @@ export function getEventLayout(events: CalendarEvent[], weekStart: Date): EventL
   const slots: boolean[][] = Array(7).fill(null).map(() => []); // 7 days, dynamic rows
 
   weekEvents.forEach(event => {
-    const eventStart = startOfDay(new Date(event.startDate));
-    const eventEnd = endOfDay(new Date(event.endDate));
+    const eventStart = startOfDay(new Date(event.startDate!));
+    const eventEnd = endOfDay(new Date(event.endDate!));
 
     // Calculate column span
     let colStart = 0;
@@ -546,8 +546,8 @@ export function getTimedEventLayout(
   const dayEvents = events.filter((event) => {
     if (!event.startTime) return false; // Skip all-day events
 
-    const eventStart = startOfDay(new Date(event.startDate));
-    const eventEnd = endOfDay(new Date(event.endDate));
+    const eventStart = startOfDay(new Date(event.startDate!));
+    const eventEnd = endOfDay(new Date(event.endDate!));
 
     // Event occurs on this day if it overlaps
     return eventStart <= dayEnd && eventEnd >= dayStart;
@@ -575,8 +575,8 @@ export function getTimedEventLayout(
   const columns: number[] = []; // Track end time of each column
 
   dayEvents.forEach((event) => {
-    const eventStartDate = startOfDay(new Date(event.startDate));
-    const eventEndDate = startOfDay(new Date(event.endDate));
+    const eventStartDate = startOfDay(new Date(event.startDate!));
+    const eventEndDate = startOfDay(new Date(event.endDate!));
 
     const isFirstDay = isSameDay(dayStart, eventStartDate);
     const isLastDay = isSameDay(dayStart, eventEndDate);
@@ -677,17 +677,17 @@ export function getMonthEventLayout(
 
     // Filter events for this week
     const weekEvents = events.filter((event) => {
-      const eventStart = startOfDay(new Date(event.startDate));
-      const eventEnd = endOfDay(new Date(event.endDate));
+      const eventStart = startOfDay(new Date(event.startDate!));
+      const eventEnd = endOfDay(new Date(event.endDate!));
       return eventStart <= weekEnd && eventEnd >= weekStart;
     });
 
     // Sort events: multi-day first (longer duration), then by start time
     weekEvents.sort((a, b) => {
-      const aStart = startOfDay(new Date(a.startDate));
-      const aEnd = endOfDay(new Date(a.endDate));
-      const bStart = startOfDay(new Date(b.startDate));
-      const bEnd = endOfDay(new Date(b.endDate));
+      const aStart = startOfDay(new Date(a.startDate!));
+      const aEnd = endOfDay(new Date(a.endDate!));
+      const bStart = startOfDay(new Date(b.startDate!));
+      const bEnd = endOfDay(new Date(b.endDate!));
 
       const aDuration = aEnd.getTime() - aStart.getTime();
       const bDuration = bEnd.getTime() - bStart.getTime();
@@ -702,8 +702,8 @@ export function getMonthEventLayout(
       .map(() => []);
 
     weekEvents.forEach((event) => {
-      const eventStart = startOfDay(new Date(event.startDate));
-      const eventEnd = endOfDay(new Date(event.endDate));
+      const eventStart = startOfDay(new Date(event.startDate!));
+      const eventEnd = endOfDay(new Date(event.endDate!));
 
       // Calculate column span
       let colStart = 0;

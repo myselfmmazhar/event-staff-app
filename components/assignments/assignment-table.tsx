@@ -8,13 +8,14 @@ import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
 import type { RateType } from '@prisma/client';
 import { AssignmentMobileCard } from './assignment-mobile-card';
+import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
 
 export interface AssignmentData {
   id: string;
   callTimeId: string;
-  startDate: Date | string;
+  startDate: Date | string | null;
   startTime: string | null;
-  endDate: Date | string;
+  endDate: Date | string | null;
   endTime: string | null;
   numberOfStaffRequired: number;
   payRate: number | string | { toNumber?: () => number };
@@ -73,8 +74,11 @@ function formatTime(time: string | null): string {
   return `${hour12}:${minutes}${ampm}`;
 }
 
-function formatDateShort(date: Date | string): string {
+function formatDateShort(date: Date | string | null): string {
+  if (!date) return 'UBD';
   const d = typeof date === 'string' ? new Date(date) : date;
+  // Check for epoch date (superjson bug workaround for null dates)
+  if (d.getFullYear() === 1970) return 'UBD';
   return format(d, 'EEE, MMM d');
 }
 
@@ -103,6 +107,8 @@ export function AssignmentTable({
   selectedIds = new Set(),
   onSelectionChange,
 }: AssignmentTableProps) {
+  const staffTerm = useStaffTerm();
+  const { terminology } = useTerminology();
   const allSelected = data.length > 0 && data.every((item) => selectedIds.has(item.id));
   const someSelected = data.some((item) => selectedIds.has(item.id)) && !allSelected;
 
@@ -244,7 +250,7 @@ export function AssignmentTable({
     },
     {
       key: 'event',
-      label: 'Event',
+      label: terminology.event.singular,
       sortable: true,
       render: (item) => (
         <div>
@@ -255,17 +261,17 @@ export function AssignmentTable({
     },
     {
       key: 'position',
-      label: 'Position',
+      label: 'Service',
       sortable: true,
       render: (item) => (
         <span className="text-foreground">
-          {item.service?.title || 'No Position'}
+          {item.service?.title || 'No Service'}
         </span>
       ),
     },
     {
       key: 'venue',
-      label: 'Venue',
+      label: 'Location',
       render: (item) => (
         <div className="text-sm">
           <p className="text-foreground">{item.event.venueName || '-'}</p>
@@ -294,17 +300,8 @@ export function AssignmentTable({
       label: 'Status',
       render: (item) => (
         <Badge variant={item.needsStaff ? 'warning' : 'success'}>
-          {item.needsStaff ? 'Needs Staff' : 'Filled'}
+          {item.needsStaff ? `Needs ${staffTerm.singular}` : 'Filled'}
         </Badge>
-      ),
-    },
-    {
-      key: 'payRate',
-      label: 'Pay Rate',
-      render: (item) => (
-        <span className="text-foreground">
-          {formatRate(getPayRateValue(item.payRate), item.payRateType)}
-        </span>
       ),
     },
   ];

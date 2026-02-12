@@ -24,9 +24,9 @@ interface UpcomingEvent {
   venueName: string;
   city: string;
   state: string;
-  startDate: Date;
+  startDate: Date | null;
   startTime: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime: string | null;
   status: EventStatus;
   client?: {
@@ -35,17 +35,29 @@ interface UpcomingEvent {
 }
 
 /**
- * Formats a date consistently (reused from CSV/Excel)
+ * Check if date is null or UBD (epoch date from superjson bug)
  */
-function formatDate(date: Date): string {
-  return format(new Date(date), 'MMM d, yyyy');
+function isDateUBD(date: Date | null): boolean {
+  if (!date) return true;
+  const d = new Date(date);
+  return d.getFullYear() === 1970;
+}
+
+/**
+ * Formats a date consistently (reused from CSV/Excel)
+ * Returns "UBD" for null or epoch dates
+ */
+function formatDate(date: Date | null): string {
+  if (isDateUBD(date)) return 'UBD';
+  return format(new Date(date!), 'MMM d, yyyy');
 }
 
 /**
  * Formats date and time together
  */
-function formatDateTime(date: Date, time: string | null): string {
+function formatDateTime(date: Date | null, time: string | null): string {
   const dateStr = formatDate(date);
+  if (dateStr === 'UBD') return time ? `UBD ${time}` : 'UBD';
   return time ? `${dateStr} ${time}` : `${dateStr} (TBD)`;
 }
 

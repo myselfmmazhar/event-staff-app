@@ -21,9 +21,9 @@ interface Invitation {
     id: string;
     callTimeId: string;
     service: { title: string } | null;
-    startDate: Date;
+    startDate: Date | null;
     startTime: string | null;
-    endDate: Date;
+    endDate: Date | null;
     endTime: string | null;
     payRate: number | { toNumber: () => number };
     payRateType: RateType;
@@ -45,8 +45,12 @@ interface UpcomingEventsListProps {
 export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
   const eventTerm = useEventTerm();
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const formatDate = (date: Date | null) => {
+    if (!date) return 'UBD';
+    const d = new Date(date);
+    // Check for epoch date (superjson bug workaround for null dates)
+    if (d.getFullYear() === 1970) return 'UBD';
+    return d.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -64,7 +68,8 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
     return `${normalizedHour > 12 ? normalizedHour - 12 : normalizedHour}:${minutes} ${normalizedHour >= 12 ? 'PM' : 'AM'}`;
   };
 
-  const getDaysUntil = (date: Date) => {
+  const getDaysUntil = (date: Date | null) => {
+    if (!date) return null;
     const now = new Date();
     const eventDate = new Date(date);
     const diffTime = eventDate.getTime() - now.getTime();
@@ -91,7 +96,7 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
             ? invitation.callTime.payRate.toNumber()
             : Number(invitation.callTime.payRate);
 
-        const isSameDay =
+        const isSameDay = invitation.callTime.startDate && invitation.callTime.endDate &&
           new Date(invitation.callTime.startDate).toDateString() ===
           new Date(invitation.callTime.endDate).toDateString();
 
@@ -116,7 +121,7 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
                   </div>
                   <div className="text-right">
                     <Badge variant="default">Confirmed</Badge>
-                    {daysUntil > 0 && daysUntil <= 7 && (
+                    {daysUntil !== null && daysUntil > 0 && daysUntil <= 7 && (
                       <p className="text-sm text-muted-foreground mt-1">
                         {daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`}
                       </p>

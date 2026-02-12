@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import type { GroupedAssignment } from '@/lib/utils/call-time-grouping';
 import { AssignmentExpandedRow } from './assignment-expanded-row';
 import { GroupedAssignmentMobileCard } from './grouped-assignment-mobile-card';
+import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
 
 interface GroupedAssignmentTableProps {
   data: GroupedAssignment[];
@@ -42,8 +43,11 @@ function formatTime(time: string | null): string {
   return `${hour12}:${minutes}${ampm}`;
 }
 
-function formatDateShort(date: Date | string): string {
+function formatDateShort(date: Date | string | null | undefined): string {
+  if (!date) return 'UBD';
   const d = typeof date === 'string' ? new Date(date) : date;
+  // Check for epoch date (superjson bug workaround for null dates)
+  if (d.getFullYear() === 1970) return 'UBD';
   return format(d, 'EEE, MMM d');
 }
 
@@ -63,6 +67,8 @@ export function GroupedAssignmentTable({
   selectedIds = new Set(),
   onSelectionChange,
 }: GroupedAssignmentTableProps) {
+  const staffTerm = useStaffTerm();
+  const { terminology } = useTerminology();
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
   const handleToggleExpand = (key: string) => {
@@ -228,7 +234,7 @@ export function GroupedAssignmentTable({
     },
     {
       key: 'event',
-      label: 'Event',
+      label: terminology.event.singular,
       sortable: true,
       render: (item) => (
         <div>
@@ -239,7 +245,7 @@ export function GroupedAssignmentTable({
     },
     {
       key: 'position',
-      label: 'Position',
+      label: 'Service',
       sortable: true,
       render: (item) => (
         <div className="flex items-center gap-2">
@@ -254,7 +260,7 @@ export function GroupedAssignmentTable({
     },
     {
       key: 'venue',
-      label: 'Venue',
+      label: 'Location',
       render: (item) => (
         <div className="text-sm">
           <p className="text-foreground">{item.event.venueName || '-'}</p>
@@ -283,17 +289,8 @@ export function GroupedAssignmentTable({
       label: 'Status',
       render: (item) => (
         <Badge variant={item.needsStaff ? 'warning' : 'success'}>
-          {item.needsStaff ? 'Needs Staff' : 'Filled'}
+          {item.needsStaff ? `Needs ${staffTerm.singular}` : 'Filled'}
         </Badge>
-      ),
-    },
-    {
-      key: 'payRate',
-      label: 'Pay Rate',
-      render: (item) => (
-        <span className="text-foreground">
-          {formatRate(item.payRate, item.payRateType)}
-        </span>
       ),
     },
   ];

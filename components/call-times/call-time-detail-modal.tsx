@@ -19,6 +19,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon, EditIcon } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
 import { CallTimeFormModal } from './call-time-form-modal';
+import { isDateNullOrUBD, isSameDay as checkSameDay } from '@/lib/utils/date-formatter';
 import type { UpdateCallTimeInput } from '@/lib/schemas/call-time.schema';
 
 interface CallTimeDetailModalProps {
@@ -136,8 +137,12 @@ export function CallTimeDetailModal({
     }
   };
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const formatDate = (date: Date | null | undefined) => {
+    // Check for null/undefined or epoch date (superjson bug workaround)
+    if (!date) return 'UBD';
+    const dateObj = new Date(date);
+    if (dateObj.getFullYear() === 1970) return 'UBD';
+    return dateObj.toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
@@ -179,9 +184,10 @@ export function CallTimeDetailModal({
   const billRateTypeLabel = RATE_TYPE_LABELS[callTime.billRateType as RateType];
   const skillLevelLabel = SKILL_LEVEL_LABELS[callTime.skillLevel as SkillLevel];
 
-  const isSameDay =
-    new Date(callTime.startDate).toDateString() ===
-    new Date(callTime.endDate).toDateString();
+  // Check if dates are UBD (null or epoch from superjson bug)
+  const isStartDateUBD = isDateNullOrUBD(callTime.startDate);
+  const isEndDateUBD = isDateNullOrUBD(callTime.endDate);
+  const isSameDay = checkSameDay(callTime.startDate, callTime.endDate);
 
   const isFilled = callTime.confirmedCount >= callTime.numberOfStaffRequired;
 
@@ -244,13 +250,13 @@ export function CallTimeDetailModal({
             </p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Pay Rate</p>
+            <p className="text-sm text-muted-foreground">Cost</p>
             <p className="font-medium">
               ${payRate.toFixed(2)} {payRateTypeLabel.toLowerCase()}
             </p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Bill Rate</p>
+            <p className="text-sm text-muted-foreground">Price</p>
             <p className="font-medium">
               ${billRate.toFixed(2)} {billRateTypeLabel.toLowerCase()}
             </p>
@@ -305,9 +311,9 @@ export function CallTimeDetailModal({
             numberOfStaffRequired: callTime.numberOfStaffRequired,
             skillLevel: callTime.skillLevel,
             ratingRequired: callTime.ratingRequired,
-            startDate: new Date(callTime.startDate),
+            startDate: isStartDateUBD ? null : new Date(callTime.startDate!),
             startTime: callTime.startTime,
-            endDate: new Date(callTime.endDate),
+            endDate: isEndDateUBD ? null : new Date(callTime.endDate!),
             endTime: callTime.endTime,
             payRate: payRate,
             payRateType: callTime.payRateType,

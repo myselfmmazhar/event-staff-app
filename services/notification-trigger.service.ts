@@ -226,18 +226,21 @@ export class NotificationTriggerService {
             positionName: string;
             eventTitle: string;
             eventId: string;
-            startDate: Date;
+            startDate: Date | null;
         }
     ) {
         const assignedStaff = await this.getAssignedStaffForCallTime(callTimeId);
 
         if (assignedStaff.length === 0) return;
 
-        const formattedDate = new Date(callTimeDetails.startDate).toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-        });
+        const sd = callTimeDetails.startDate;
+        const formattedDate = (!sd || sd.getFullYear() === 1970)
+            ? 'TBD'
+            : new Date(sd).toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+            });
 
         await this.notificationService.createBulk(assignedStaff, {
             type: NotificationType.EVENT_CANCELLED, // Reuse existing type

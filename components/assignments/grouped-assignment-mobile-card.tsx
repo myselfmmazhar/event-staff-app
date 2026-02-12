@@ -17,6 +17,7 @@ import {
   ClockIcon,
 } from '@/components/ui/icons';
 import { formatRate } from '@/lib/utils/currency-formatter';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 import { format } from 'date-fns';
 import type { GroupedAssignment } from '@/lib/utils/call-time-grouping';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
@@ -62,9 +63,10 @@ export function GroupedAssignmentMobileCard({
   onToggleExpand,
 }: GroupedAssignmentMobileCardProps) {
   const staffTerm = useStaffTerm();
-  const startDate = typeof group.startDate === 'string'
+  const startDateUBD = isDateNullOrUBD(group.startDate);
+  const startDate = startDateUBD ? null : (typeof group.startDate === 'string'
     ? new Date(group.startDate)
-    : group.startDate;
+    : group.startDate);
 
   // Group invitations by status
   const confirmedInvitations = group.invitations.filter(
@@ -90,7 +92,7 @@ export function GroupedAssignmentMobileCard({
             />
           )}
           <Badge variant={group.needsStaff ? 'warning' : 'success'}>
-            {group.needsStaff ? 'Needs Staff' : 'Filled'}
+            {group.needsStaff ? `Needs ${staffTerm.singular}` : 'Filled'}
           </Badge>
           {group.callTimeIds.length > 1 && (
             <Badge variant="secondary" size="sm">
@@ -167,7 +169,7 @@ export function GroupedAssignmentMobileCard({
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
         <CalendarIcon className="h-4 w-4" />
         <span>
-          {format(startDate, 'EEE, MMM d')} &middot; {formatTime(group.startTime)} - {formatTime(group.endTime)}
+          {startDateUBD ? 'UBD' : format(startDate!, 'EEE, MMM d')} &middot; {formatTime(group.startTime)} - {formatTime(group.endTime)}
         </span>
       </div>
 

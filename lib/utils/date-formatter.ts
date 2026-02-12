@@ -1,10 +1,27 @@
 import { format } from 'date-fns';
 
 /**
- * Format a date to a short format (e.g., "Jan 15, 2025")
+ * Check if a date value should be treated as null/UBD.
+ * superjson may deserialize null dates as epoch (1970-01-01) dates,
+ * so we check for that case as well as actual null/undefined.
  */
-export function formatDateShort(date: Date | string): string {
-  return new Date(date).toLocaleDateString('en-US', {
+export function isDateNullOrUBD(date: Date | string | null | undefined): boolean {
+  if (date === null || date === undefined) return true;
+  // Check if it's the epoch date (superjson bug workaround)
+  const dateObj = new Date(date);
+  if (dateObj.getFullYear() === 1970) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Format a date to a short format (e.g., "Jan 15, 2025")
+ * Returns "UBD" if date is null, undefined, or epoch (superjson bug)
+ */
+export function formatDateShort(date: Date | string | null | undefined): string {
+  if (isDateNullOrUBD(date)) return 'UBD';
+  return new Date(date!).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -13,9 +30,11 @@ export function formatDateShort(date: Date | string): string {
 
 /**
  * Format a date with weekday (e.g., "Mon, Jan 15, 2025")
+ * Returns "UBD" if date is null, undefined, or epoch (superjson bug)
  */
-export function formatDateWithWeekday(date: Date | string): string {
-  return new Date(date).toLocaleDateString('en-US', {
+export function formatDateWithWeekday(date: Date | string | null | undefined): string {
+  if (isDateNullOrUBD(date)) return 'UBD';
+  return new Date(date!).toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -25,9 +44,11 @@ export function formatDateWithWeekday(date: Date | string): string {
 
 /**
  * Format a date to a long format (e.g., "Monday, January 15, 2025")
+ * Returns "UBD" if date is null, undefined, or epoch (superjson bug)
  */
-export function formatDateLong(date: Date | string): string {
-  return format(new Date(date), 'EEEE, MMMM d, yyyy');
+export function formatDateLong(date: Date | string | null | undefined): string {
+  if (isDateNullOrUBD(date)) return 'UBD';
+  return format(new Date(date!), 'EEEE, MMMM d, yyyy');
 }
 
 /**
@@ -51,7 +72,7 @@ export function formatTime(time: string | null | undefined): string {
 
 /**
  * Format date and time together
- * @param date - The date
+ * @param date - The date (can be null/undefined for UBD)
  * @param time - Optional time string (HH:mm)
  * @param options - Formatting options
  * @returns Formatted date and time string
@@ -63,11 +84,14 @@ export function formatTime(time: string | null | undefined): string {
  * formatDateTime(new Date(), null)
  * // Returns: "Jan 15, 2025 - TBD"
  *
+ * formatDateTime(null, '14:30')
+ * // Returns: "UBD 2:30 PM"
+ *
  * formatDateTime(new Date(), '14:30', { dateFormat: 'long' })
  * // Returns: "Monday, January 15, 2025 at 2:30 PM"
  */
 export function formatDateTime(
-  date: Date | string,
+  date: Date | string | null | undefined,
   time?: string | null,
   options?: {
     dateFormat?: 'short' | 'long' | 'withWeekday';
@@ -89,6 +113,11 @@ export function formatDateTime(
   }
 
   const timeStr = formatTime(time);
+
+  // If both are UBD/TBD
+  if (dateStr === 'UBD' && timeStr === 'TBD') {
+    return 'UBD';
+  }
 
   if (timeStr === 'TBD') {
     return `${dateStr} - TBD`;
@@ -113,20 +142,27 @@ export function formatDateTime(
  * // Different days
  * formatDateRange(new Date('2025-01-15'), new Date('2025-01-17'))
  * // Returns: "Jan 15, 2025 - Jan 17, 2025"
+ *
+ * // UBD dates
+ * formatDateRange(null, null)
+ * // Returns: "UBD"
  */
 export function formatDateRange(
-  startDate: Date | string,
-  endDate: Date | string,
+  startDate: Date | string | null | undefined,
+  endDate: Date | string | null | undefined,
   options?: { dateFormat?: 'short' | 'long' | 'withWeekday' }
 ): string {
   const { dateFormat = 'short' } = options || {};
 
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const startIsUBD = isDateNullOrUBD(startDate);
+  const endIsUBD = isDateNullOrUBD(endDate);
 
-  const isSameDay = start.toDateString() === end.toDateString();
+  // If both are UBD, return single UBD
+  if (startIsUBD && endIsUBD) {
+    return 'UBD';
+  }
 
-  let formatFn: (date: Date | string) => string;
+  let formatFn: (date: Date | string | null | undefined) => string;
   switch (dateFormat) {
     case 'long':
       formatFn = formatDateLong;
@@ -138,7 +174,16 @@ export function formatDateRange(
       formatFn = formatDateShort;
   }
 
-  if (isSameDay) {
+  // If only one is UBD, show the known date with UBD
+  if (startIsUBD) {
+    return `UBD - ${formatFn(endDate)}`;
+  }
+  if (endIsUBD) {
+    return `${formatFn(startDate)} - UBD`;
+  }
+
+  const sameDay = isSameDay(startDate, endDate);
+  if (sameDay) {
     return formatFn(startDate);
   }
 
@@ -160,9 +205,11 @@ export function formatTimeRange(
 
 /**
  * Check if two dates are the same day
+ * Returns false if either date is null/UBD
  */
-export function isSameDay(date1: Date | string, date2: Date | string): boolean {
-  return new Date(date1).toDateString() === new Date(date2).toDateString();
+export function isSameDay(date1: Date | string | null | undefined, date2: Date | string | null | undefined): boolean {
+  if (isDateNullOrUBD(date1) || isDateNullOrUBD(date2)) return false;
+  return new Date(date1!).toDateString() === new Date(date2!).toDateString();
 }
 
 /**
@@ -175,13 +222,29 @@ export function isSameDay(date1: Date | string, date2: Date | string): boolean {
  * // Multi-day event
  * formatEventDateTimeRange(startDate, endDate, '09:00', '17:00')
  * // Returns: "Jan 15, 2025 9:00 AM - Jan 17, 2025 5:00 PM"
+ *
+ * // UBD dates
+ * formatEventDateTimeRange(null, null, null, null)
+ * // Returns: "UBD"
  */
 export function formatEventDateTimeRange(
-  startDate: Date | string,
-  endDate: Date | string,
+  startDate: Date | string | null | undefined,
+  endDate: Date | string | null | undefined,
   startTime: string | null | undefined,
   endTime: string | null | undefined
 ): string {
+  const startDateUBD = isDateNullOrUBD(startDate);
+  const endDateUBD = isDateNullOrUBD(endDate);
+
+  // If both dates are UBD
+  if (startDateUBD && endDateUBD) {
+    const timeRange = formatTimeRange(startTime, endTime);
+    if (timeRange === 'TBD - TBD') {
+      return 'UBD';
+    }
+    return `UBD | ${timeRange}`;
+  }
+
   const sameDay = isSameDay(startDate, endDate);
 
   if (sameDay) {

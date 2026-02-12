@@ -112,6 +112,8 @@ export default function EventsPage() {
   // Use filters store
   const filters = useEventsFilters();
 
+  const utils = trpc.useUtils();
+
   // Use CRUD mutations hook
   const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, handleSuccess, handleError } = useCrudMutations();
 
@@ -255,8 +257,6 @@ export default function EventsPage() {
       onSuccess: () => {
         setIsFormOpen(false);
         setSelectedEvent(null);
-        refetch();
-        refetchExport();
       },
     })
   );
@@ -441,6 +441,10 @@ export default function EventsPage() {
             products: attachments.products,
           });
         }
+
+        // Invalidate after all mutations complete so the list reflects updated assignments
+        utils.event.getAll.invalidate();
+        utils.event.getAllForExport.invalidate();
       } else {
         // Create new event
         const newEvent = await createMutation.mutateAsync(data as CreateEventInput);

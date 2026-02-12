@@ -17,9 +17,9 @@ interface Invitation {
     id: string;
     callTimeId: string;
     service: { title: string } | null;
-    startDate: Date;
+    startDate: Date | null;
     startTime: string | null;
-    endDate: Date;
+    endDate: Date | null;
     endTime: string | null;
     payRate: number | { toNumber: () => number };
     payRateType: RateType;
@@ -48,8 +48,12 @@ export function PendingRequestsList({
   const eventTerm = useEventTerm();
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const formatDate = (date: Date | null) => {
+    if (!date) return 'UBD';
+    const d = new Date(date);
+    // Check for epoch date (superjson bug workaround for null dates)
+    if (d.getFullYear() === 1970) return 'UBD';
+    return d.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -86,7 +90,7 @@ export function PendingRequestsList({
             ? invitation.callTime.payRate.toNumber()
             : Number(invitation.callTime.payRate);
 
-        const isSameDay =
+        const isSameDay = invitation.callTime.startDate && invitation.callTime.endDate &&
           new Date(invitation.callTime.startDate).toDateString() ===
           new Date(invitation.callTime.endDate).toDateString();
 

@@ -32,6 +32,8 @@ import type {
 interface AssignmentFormProps {
   /** Existing assignment to edit (null for new) */
   assignment: Assignment | null;
+  /** Default type for new assignments (SERVICE or PRODUCT) */
+  defaultType?: 'SERVICE' | 'PRODUCT';
   /** Called when assignment is saved */
   onSave: (assignment: Assignment, action: AssignmentSaveAction) => void;
   /** Called when form is cancelled */
@@ -46,6 +48,7 @@ interface AssignmentFormProps {
 
 export function AssignmentForm({
   assignment,
+  defaultType = 'SERVICE',
   onSave,
   onCancel,
   onCreateService,
@@ -61,6 +64,20 @@ export function AssignmentForm({
   );
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(
     assignment?.type === 'SERVICE' ? assignment.service : null
+  );
+
+  // UBD/TBD state for date/time fields
+  const [startDateUBD, setStartDateUBD] = useState(
+    assignment?.type === 'SERVICE' ? assignment.startDateUBD ?? false : false
+  );
+  const [startTimeTBD, setStartTimeTBD] = useState(
+    assignment?.type === 'SERVICE' ? assignment.startTimeTBD ?? false : false
+  );
+  const [endDateUBD, setEndDateUBD] = useState(
+    assignment?.type === 'SERVICE' ? assignment.endDateUBD ?? false : false
+  );
+  const [endTimeTBD, setEndTimeTBD] = useState(
+    assignment?.type === 'SERVICE' ? assignment.endTimeTBD ?? false : false
   );
 
   // Fetch products and services
@@ -101,7 +118,7 @@ export function AssignmentForm({
           notes: assignment.type === 'SERVICE' ? assignment.notes : null,
         }
       : {
-          type: 'SERVICE',
+          type: defaultType,
           quantity: 1,
           customCost: null,
           customPrice: null,
@@ -239,10 +256,14 @@ export function AssignmentForm({
           customPrice: data.customPrice ?? null,
           costUnitType: data.costUnitType ?? null,
           commission: data.commission,
-          startDate: data.startDate ?? null,
-          startTime: data.startTime ?? null,
-          endDate: data.endDate ?? null,
-          endTime: data.endTime ?? null,
+          startDate: startDateUBD ? null : (data.startDate ?? null),
+          startDateUBD,
+          startTime: startTimeTBD ? null : (data.startTime ?? null),
+          startTimeTBD,
+          endDate: endDateUBD ? null : (data.endDate ?? null),
+          endDateUBD,
+          endTime: endTimeTBD ? null : (data.endTime ?? null),
+          endTimeTBD,
           experienceRequired: data.experienceRequired || 'ANY',
           ratingRequired: data.ratingRequired || 'ANY',
           approveOvertime: data.approveOvertime || false,
@@ -544,39 +565,103 @@ export function AssignmentForm({
           {/* Date & Time Fields */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <Label htmlFor="startDate" className="text-sm font-medium mb-2 block">Start Date</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="startDate" className="text-sm font-medium">Start Date</Label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={startDateUBD}
+                    onChange={(e) => {
+                      setStartDateUBD(e.target.checked);
+                      if (e.target.checked) setValue('startDate', '');
+                    }}
+                    disabled={disabled}
+                    className="accent-primary h-3 w-3"
+                  />
+                  <span className="text-xs text-muted-foreground">UBD</span>
+                </label>
+              </div>
               <Input
                 id="startDate"
                 type="date"
                 {...register('startDate')}
-                disabled={disabled}
+                disabled={disabled || startDateUBD}
+                className={startDateUBD ? 'opacity-50' : ''}
               />
             </div>
             <div>
-              <Label htmlFor="startTime" className="text-sm font-medium mb-2 block">Start Time</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="startTime" className="text-sm font-medium">Start Time</Label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={startTimeTBD}
+                    onChange={(e) => {
+                      setStartTimeTBD(e.target.checked);
+                      if (e.target.checked) setValue('startTime', '');
+                    }}
+                    disabled={disabled}
+                    className="accent-primary h-3 w-3"
+                  />
+                  <span className="text-xs text-muted-foreground">TBD</span>
+                </label>
+              </div>
               <Input
                 id="startTime"
                 type="time"
                 {...register('startTime')}
-                disabled={disabled}
+                disabled={disabled || startTimeTBD}
+                className={startTimeTBD ? 'opacity-50' : ''}
               />
             </div>
             <div>
-              <Label htmlFor="endDate" className="text-sm font-medium mb-2 block">End Date</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={endDateUBD}
+                    onChange={(e) => {
+                      setEndDateUBD(e.target.checked);
+                      if (e.target.checked) setValue('endDate', '');
+                    }}
+                    disabled={disabled}
+                    className="accent-primary h-3 w-3"
+                  />
+                  <span className="text-xs text-muted-foreground">UBD</span>
+                </label>
+              </div>
               <Input
                 id="endDate"
                 type="date"
                 {...register('endDate')}
-                disabled={disabled}
+                disabled={disabled || endDateUBD}
+                className={endDateUBD ? 'opacity-50' : ''}
               />
             </div>
             <div>
-              <Label htmlFor="endTime" className="text-sm font-medium mb-2 block">End Time</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="endTime" className="text-sm font-medium">End Time</Label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={endTimeTBD}
+                    onChange={(e) => {
+                      setEndTimeTBD(e.target.checked);
+                      if (e.target.checked) setValue('endTime', '');
+                    }}
+                    disabled={disabled}
+                    className="accent-primary h-3 w-3"
+                  />
+                  <span className="text-xs text-muted-foreground">TBD</span>
+                </label>
+              </div>
               <Input
                 id="endTime"
                 type="time"
                 {...register('endTime')}
-                disabled={disabled}
+                disabled={disabled || endTimeTBD}
+                className={endTimeTBD ? 'opacity-50' : ''}
               />
             </div>
           </div>
@@ -662,10 +747,10 @@ export function AssignmentForm({
             </div>
           </div>
 
-          {/* Pay Rate, Bill Rate, Rate Type */}
+          {/* Cost, Price, Rate Type */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="payRate" className="text-sm font-medium mb-2 block">Pay Rate</Label>
+              <Label htmlFor="payRate" className="text-sm font-medium mb-2 block">Cost</Label>
               <Input
                 id="payRate"
                 type="number"
@@ -676,11 +761,11 @@ export function AssignmentForm({
                 placeholder="0.00"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Rate paid to staff
+                Cost paid to staff
               </p>
             </div>
             <div>
-              <Label htmlFor="billRate" className="text-sm font-medium mb-2 block">Bill Rate</Label>
+              <Label htmlFor="billRate" className="text-sm font-medium mb-2 block">Price</Label>
               <Input
                 id="billRate"
                 type="number"
@@ -691,7 +776,7 @@ export function AssignmentForm({
                 placeholder="0.00"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Rate billed to client
+                Price billed to client
               </p>
             </div>
             <div>

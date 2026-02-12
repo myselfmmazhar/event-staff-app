@@ -11,6 +11,7 @@ import { trpc } from '@/lib/client/trpc';
 import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
 import type { RateType } from '@prisma/client';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 
 interface AcceptedStaffRow {
   id: string; // unique row id (invitation id)
@@ -21,7 +22,7 @@ interface AcceptedStaffRow {
   isConfirmed: boolean;
   confirmedAt: Date | null;
   position: string;
-  assignmentDate: Date | string;
+  assignmentDate: Date | string | null;
   startTime: string | null;
   endTime: string | null;
   eventTitle: string;
@@ -194,13 +195,14 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
       label: 'Date/Time',
       sortable: true,
       render: (item) => {
-        const date = typeof item.assignmentDate === 'string'
+        const dateIsUBD = isDateNullOrUBD(item.assignmentDate);
+        const date = dateIsUBD ? null : (typeof item.assignmentDate === 'string'
           ? new Date(item.assignmentDate)
-          : item.assignmentDate;
+          : item.assignmentDate);
         return (
           <div className="text-sm">
             <p className="font-medium text-foreground">
-              {format(date, 'EEE, MMM d, yyyy')}
+              {dateIsUBD ? 'UBD' : format(date!, 'EEE, MMM d, yyyy')}
             </p>
             <p className="text-muted-foreground">
               {formatTime(item.startTime)} - {formatTime(item.endTime)}
@@ -244,21 +246,13 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
         </Badge>
       ),
     },
-    {
-      key: 'payRate',
-      label: 'Pay Rate',
-      render: (item) => (
-        <span className="text-foreground">
-          {formatRate(getPayRateValue(item.payRate), item.payRateType)}
-        </span>
-      ),
-    },
   ];
 
   const mobileCard = (item: AcceptedStaffRow) => {
-    const date = typeof item.assignmentDate === 'string'
+    const dateIsUBD = isDateNullOrUBD(item.assignmentDate);
+    const date = dateIsUBD ? null : (typeof item.assignmentDate === 'string'
       ? new Date(item.assignmentDate)
-      : item.assignmentDate;
+      : item.assignmentDate);
 
     return (
       <Card className="p-4">
@@ -278,7 +272,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
           <div className="flex items-center gap-2 text-muted-foreground">
             <CalendarIcon className="h-4 w-4" />
             <span>
-              {format(date, 'EEE, MMM d')} &middot; {formatTime(item.startTime)} - {formatTime(item.endTime)}
+              {dateIsUBD ? 'UBD' : format(date!, 'EEE, MMM d')} &middot; {formatTime(item.startTime)} - {formatTime(item.endTime)}
             </span>
           </div>
 

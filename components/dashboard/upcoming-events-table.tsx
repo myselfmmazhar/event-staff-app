@@ -21,6 +21,7 @@ import { exportUpcomingEventsToCSV } from "@/lib/utils/export-upcoming-events-cs
 import { exportUpcomingEventsToExcel } from "@/lib/utils/export-upcoming-events-excel";
 import { exportUpcomingEventsToPDF } from "@/lib/utils/export-upcoming-events-pdf";
 import { useEventTerm } from "@/lib/hooks/use-terminology";
+import { isDateNullOrUBD } from "@/lib/utils/date-formatter";
 
 interface UpcomingEvent {
   id: string;
@@ -29,9 +30,9 @@ interface UpcomingEvent {
   venueName: string;
   city: string;
   state: string;
-  startDate: Date;
+  startDate: Date | null;
   startTime: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime: string | null;
   status: EventStatus;
   client?: {
@@ -189,8 +190,11 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
     }
   };
 
-  const formatDateTime = (date: Date, time: string | null) => {
-    const dateStr = format(new Date(date), "MMM d, yyyy");
+  const formatDateTime = (date: Date | null, time: string | null) => {
+    if (isDateNullOrUBD(date)) {
+      return "Date UBD";
+    }
+    const dateStr = format(new Date(date!), "MMM d, yyyy");
     if (!time) {
       return `${dateStr} - TBD`;
     }

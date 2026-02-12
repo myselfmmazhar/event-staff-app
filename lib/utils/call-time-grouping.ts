@@ -8,9 +8,9 @@ export interface GroupedAssignment {
   callTimeId: string; // For compatibility with existing code
   serviceName: string;
   serviceId: string | null;
-  startDate: Date | string;
+  startDate: Date | string | null;
   startTime: string | null;
-  endDate: Date | string;
+  endDate: Date | string | null;
   endTime: string | null;
   event: {
     id: string;
@@ -102,8 +102,8 @@ export function groupAssignmentsByPositionAndTime(
 
   // Sort by date (ascending), then by position name (alphabetical)
   return Array.from(groups.values()).sort((a, b) => {
-    const dateA = new Date(a.startDate).getTime();
-    const dateB = new Date(b.startDate).getTime();
+    const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+    const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
     if (dateA !== dateB) return dateA - dateB;
 
     // Then by start time

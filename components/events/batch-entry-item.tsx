@@ -85,6 +85,8 @@ export function BatchEntryItem({
   clients,
   terminology,
 }: BatchEntryItemProps) {
+  const [startDateUBD, setStartDateUBD] = useState(false);
+  const [endDateUBD, setEndDateUBD] = useState(false);
   const [startTimeTBD, setStartTimeTBD] = useState(false);
   const [endTimeTBD, setEndTimeTBD] = useState(false);
 
@@ -103,9 +105,9 @@ export function BatchEntryItem({
   const handleUpdate = useCallback(() => {
     const values = form.getValues();
 
-    // Helper to ensure date is a Date object
-    const toDate = (val: Date | string | undefined): Date | undefined => {
-      if (!val) return undefined;
+    // Helper to ensure date is a Date object (handles null for UBD)
+    const toDate = (val: Date | string | null | undefined): Date | undefined => {
+      if (val === null || val === undefined) return undefined;
       if (val instanceof Date) return val;
       const d = new Date(val);
       return isNaN(d.getTime()) ? undefined : d;
@@ -211,6 +213,10 @@ export function BatchEntryItem({
           setValue={setValue}
           clients={clients}
           terminology={terminology}
+          startDateUBD={startDateUBD}
+          setStartDateUBD={setStartDateUBD}
+          endDateUBD={endDateUBD}
+          setEndDateUBD={setEndDateUBD}
           startTimeTBD={startTimeTBD}
           setStartTimeTBD={setStartTimeTBD}
           endTimeTBD={endTimeTBD}

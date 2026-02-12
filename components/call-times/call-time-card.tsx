@@ -16,9 +16,9 @@ interface CallTimeCardProps {
     service: { title: string } | null;
     numberOfStaffRequired: number;
     skillLevel: SkillLevel;
-    startDate: Date;
+    startDate: Date | null;
     startTime: string | null;
-    endDate: Date;
+    endDate: Date | null;
     endTime: string | null;
     payRate: number | string | { toNumber: () => number };
     payRateType: RateType;

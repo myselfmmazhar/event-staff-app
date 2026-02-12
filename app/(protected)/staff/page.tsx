@@ -7,6 +7,7 @@ import { PlusIcon } from 'lucide-react';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { StaffFormModal } from '@/components/staff/staff-form-modal';
 import { StaffTable, type StaffWithRelations } from '@/components/staff/staff-table';
+import { AssignStaffModal } from '@/components/staff/assign-staff-modal';
 import { StaffSearch } from '@/components/staff/staff-search';
 import { StaffFilters } from '@/components/staff/staff-filters';
 import { ActiveFilters } from '@/components/common/active-filters';
@@ -69,6 +70,7 @@ export default function StaffPage() {
     const [isDisableConfirmOpen, setIsDisableConfirmOpen] = useState(false);
     const [staffToResend, setStaffToResend] = useState<StaffWithRelations | null>(null);
     const [staffToDisable, setStaffToDisable] = useState<StaffWithRelations | null>(null);
+    const [assigningStaff, setAssigningStaff] = useState<StaffWithRelations | null>(null);
 
     // Rehydrate date filters from localStorage on mount
     useEffect(() => {
@@ -583,6 +585,7 @@ export default function StaffPage() {
                                 staff={data?.data ?? []}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
+                                onAssign={(staff) => setAssigningStaff(staff)}
                                 selectedIds={selectedIds}
                                 onSelectionChange={setSelectedIds}
                             />
@@ -716,6 +719,15 @@ export default function StaffPage() {
                     </div>
                 )}
             </ConfirmModal>
+
+            {/* Assign Staff Modal */}
+            {assigningStaff && (
+                <AssignStaffModal
+                    staff={assigningStaff}
+                    open={!!assigningStaff}
+                    onClose={() => setAssigningStaff(null)}
+                />
+            )}
         </div>
     );
 }

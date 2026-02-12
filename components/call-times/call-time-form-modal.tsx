@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,62 +9,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
+import { CloseIcon } from '@/components/ui/icons';
 import {
-  RATE_TYPE_LABELS,
   type CreateCallTimeInput,
   type UpdateCallTimeInput,
 } from '@/lib/schemas/call-time.schema';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 import { SkillLevel, RateType, StaffRating } from '@prisma/client';
-import { STAFF_RATING_OPTIONS } from '@/lib/constants/enums';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
-import { z } from 'zod';
-import { CloseIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
-import { useStaffTerm } from '@/lib/hooks/use-terminology';
-
-// Staff rating options for form (string literals for browser compatibility)
-const staffRatingValues = ['NA', 'A', 'B', 'C'] as const;
-
-// Form schema for UI (handles TBD checkboxes and new billing fields)
-const formSchema = z
-  .object({
-    serviceId: z.string().min(1, 'Service is required'),
-    numberOfStaffRequired: z.coerce.number().int().min(1, 'At least 1 staff required'),
-    skillLevel: z.nativeEnum(SkillLevel),
-    ratingRequired: z.enum([...staffRatingValues, 'ANY']).default('ANY'),
-    startDate: z.string().min(1, 'Start date is required'),
-    startTime: z.string().optional(),
-    startTimeTBD: z.boolean().default(false),
-    endDate: z.string().min(1, 'End date is required'),
-    endTime: z.string().optional(),
-    endTimeTBD: z.boolean().default(false),
-    payRate: z.coerce.number().min(0, 'Pay rate must be non-negative'),
-    payRateType: z.nativeEnum(RateType),
-    billRate: z.coerce.number().min(0, 'Bill rate must be non-negative'),
-    billRateType: z.nativeEnum(RateType),
-    customCost: z.coerce.number().min(0).optional().nullable(),
-    customPrice: z.coerce.number().min(0).optional().nullable(),
-    approveOvertime: z.boolean().default(false),
-    commission: z.boolean().default(false),
-    notes: z.string().optional(),
-  })
-  .refine((data) => data.payRateType === data.billRateType, {
-    message: 'Pay rate type and bill rate type must match',
-    path: ['billRateType'],
-  })
-  .refine((data) => new Date(data.endDate) >= new Date(data.startDate), {
-    message: 'End date must be after or equal to start date',
-    path: ['endDate'],
-  });
-
-type FormInput = z.input<typeof formSchema>;
-type FormOutput = z.infer<typeof formSchema>;
+import {
+  AssignmentFormFields,
+  useAssignmentForm,
+  type AssignmentFieldsOutput,
+  type ServiceOption,
+} from '@/components/shared/assignment-form-fields';
 
 interface CallTime {
   id: string;
@@ -72,9 +31,9 @@ interface CallTime {
   numberOfStaffRequired: number;
   skillLevel: SkillLevel;
   ratingRequired: StaffRating | null;
-  startDate: Date;
+  startDate: Date | null;
   startTime: string | null;
-  endDate: Date;
+  endDate: Date | null;
   endTime: string | null;
   payRate: number | { toNumber: () => number };
   payRateType: RateType;
@@ -97,18 +56,6 @@ interface CallTimeFormModalProps {
   backendErrors?: Array<{ field: string; message: string }>;
 }
 
-const SKILL_LEVELS: Array<{ value: SkillLevel; label: string }> = [
-  { value: SkillLevel.BEGINNER, label: 'Beginner' },
-  { value: SkillLevel.INTERMEDIATE, label: 'Intermediate' },
-  { value: SkillLevel.ADVANCED, label: 'Advanced' },
-];
-
-const RATE_TYPES: Array<{ value: RateType; label: string }> = Object.entries(
-  RATE_TYPE_LABELS
-).map(([value, label]) => ({ value: value as RateType, label }));
-
-type ServiceOption = { id: string; title: string; cost?: number | null; price?: number | null };
-
 const formatDateInputValue = (value: Date | string): string => {
   const [datePart = ''] = new Date(value).toISOString().split('T');
   return datePart;
@@ -128,74 +75,27 @@ export function CallTimeFormModal({
   isSubmitting,
   backendErrors = [],
 }: CallTimeFormModalProps) {
-  const staffTerm = useStaffTerm();
   const isEdit = !!callTime;
+
+  // UBD/TBD state
+  const [startDateUBD, setStartDateUBD] = useState(false);
+  const [endDateUBD, setEndDateUBD] = useState(false);
   const [startTimeTBD, setStartTimeTBD] = useState(false);
   const [endTimeTBD, setEndTimeTBD] = useState(false);
+  const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
 
-  // Fetch services for dropdown
-  const { data: servicesData } = trpc.staff.getServices.useQuery(undefined, {
-    enabled: open,
-  });
+  // Fetch services for the selector
+  const { data: servicesData, isLoading: servicesLoading } = trpc.staff.getServices.useQuery(
+    undefined,
+    { enabled: open }
+  );
   const services = (servicesData ?? []) as ServiceOption[];
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    setError,
-    setValue,
-    watch,
-    control,
-  } = useForm<FormInput, undefined, FormOutput>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      serviceId: '',
-      numberOfStaffRequired: 1,
-      skillLevel: SkillLevel.BEGINNER,
-      ratingRequired: 'ANY',
-      startDate: '',
-      startTime: '',
-      startTimeTBD: false,
-      endDate: '',
-      endTime: '',
-      endTimeTBD: false,
-      payRate: 0,
-      payRateType: RateType.PER_HOUR,
-      billRate: 0,
-      billRateType: RateType.PER_HOUR,
-      customCost: null,
-      customPrice: null,
-      approveOvertime: false,
-      commission: false,
-      notes: '',
-    },
-  });
+  // Form setup using shared hook
+  const form = useAssignmentForm();
+  const { reset, setError, handleSubmit } = form;
 
-  const payRateType = watch('payRateType');
-  const serviceId = watch('serviceId');
-
-  // Sync billRateType with payRateType
-  useEffect(() => {
-    setValue('billRateType', payRateType);
-  }, [payRateType, setValue]);
-
-  // Auto-fill rates when service is selected (for new call times only)
-  useEffect(() => {
-    if (!isEdit && serviceId && services.length > 0) {
-      const selectedService = services.find(s => s.id === serviceId);
-      if (selectedService) {
-        if (selectedService.cost !== null && selectedService.cost !== undefined) {
-          setValue('payRate', Number(selectedService.cost));
-        }
-        if (selectedService.price !== null && selectedService.price !== undefined) {
-          setValue('billRate', Number(selectedService.price));
-        }
-      }
-    }
-  }, [serviceId, services, isEdit, setValue]);
-
+  // Load existing call time data
   useEffect(() => {
     if (callTime) {
       const payRateValue = toNumber(callTime.payRate) ?? 0;
@@ -203,15 +103,22 @@ export function CallTimeFormModal({
       const customCostValue = toNumber(callTime.customCost);
       const customPriceValue = toNumber(callTime.customPrice);
 
+      // Check if dates are null/undefined/epoch (UBD was checked)
+      // Note: superjson may deserialize null dates as epoch dates, so we check for that too
+      const startDateIsUBD = isDateNullOrUBD(callTime.startDate);
+      const endDateIsUBD = isDateNullOrUBD(callTime.endDate);
+
       reset({
         serviceId: callTime.serviceId,
         numberOfStaffRequired: callTime.numberOfStaffRequired,
         skillLevel: callTime.skillLevel,
         ratingRequired: callTime.ratingRequired ?? 'ANY',
-        startDate: formatDateInputValue(callTime.startDate),
+        startDate: !startDateIsUBD ? formatDateInputValue(callTime.startDate!) : '',
+        startDateUBD: startDateIsUBD,
         startTime: callTime.startTime || '',
         startTimeTBD: !callTime.startTime,
-        endDate: formatDateInputValue(callTime.endDate),
+        endDate: !endDateIsUBD ? formatDateInputValue(callTime.endDate!) : '',
+        endDateUBD: endDateIsUBD,
         endTime: callTime.endTime || '',
         endTimeTBD: !callTime.endTime,
         payRate: payRateValue,
@@ -224,6 +131,8 @@ export function CallTimeFormModal({
         commission: callTime.commission,
         notes: callTime.notes || '',
       });
+      setStartDateUBD(startDateIsUBD);
+      setEndDateUBD(endDateIsUBD);
       setStartTimeTBD(!callTime.startTime);
       setEndTimeTBD(!callTime.endTime);
     } else {
@@ -234,9 +143,11 @@ export function CallTimeFormModal({
         skillLevel: SkillLevel.BEGINNER,
         ratingRequired: 'ANY',
         startDate: today,
+        startDateUBD: false,
         startTime: '',
         startTimeTBD: false,
         endDate: today,
+        endDateUBD: false,
         endTime: '',
         endTimeTBD: false,
         payRate: 0,
@@ -249,16 +160,29 @@ export function CallTimeFormModal({
         commission: false,
         notes: '',
       });
+      setStartDateUBD(false);
+      setEndDateUBD(false);
       setStartTimeTBD(false);
       setEndTimeTBD(false);
+      setSelectedService(null);
     }
   }, [callTime, reset, open]);
+
+  // Set selected service when services are loaded (for edit mode)
+  useEffect(() => {
+    if (callTime && services.length > 0 && !selectedService) {
+      const existingService = services.find(s => s.id === callTime.serviceId);
+      if (existingService) {
+        setSelectedService(existingService);
+      }
+    }
+  }, [callTime, services, selectedService]);
 
   // Map backend errors to form fields
   useEffect(() => {
     if (backendErrors && backendErrors.length > 0) {
       backendErrors.forEach((error) => {
-        setError(error.field as keyof FormInput, {
+        setError(error.field as any, {
           type: 'manual',
           message: error.message,
         });
@@ -266,15 +190,15 @@ export function CallTimeFormModal({
     }
   }, [backendErrors, setError]);
 
-  const handleFormSubmit: SubmitHandler<FormOutput> = (data) => {
+  const handleFormSubmit = (data: AssignmentFieldsOutput) => {
     const submitData = {
       ...(isEdit ? {} : { eventId }),
       serviceId: data.serviceId,
       numberOfStaffRequired: data.numberOfStaffRequired,
       skillLevel: data.skillLevel,
-      startDate: new Date(data.startDate),
+      startDate: startDateUBD ? null : (data.startDate ? new Date(data.startDate) : null),
       startTime: startTimeTBD ? null : data.startTime || null,
-      endDate: new Date(data.endDate),
+      endDate: endDateUBD ? null : (data.endDate ? new Date(data.endDate) : null),
       endTime: endTimeTBD ? null : data.endTime || null,
       payRate: data.payRate,
       payRateType: data.payRateType,
@@ -287,12 +211,12 @@ export function CallTimeFormModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} className="max-w-2xl">
-      <form onSubmit={handleSubmit(handleFormSubmit)}>
+    <Dialog open={open} onClose={onClose} fullScreen>
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>
-              {isEdit ? 'Edit Call Time' : 'Create Call Time'}
+              {isEdit ? 'Edit Assignment' : 'Create Assignment'}
             </DialogTitle>
             <button
               type="button"
@@ -304,447 +228,32 @@ export function CallTimeFormModal({
           </div>
         </DialogHeader>
 
-        <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
-          {/* Call Time ID (Read-only in edit mode) */}
+        <DialogContent className="flex-1 overflow-y-auto">
+          {/* Assignment ID (Read-only in edit mode) */}
           {isEdit && callTime && (
             <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
-              <p className="text-sm text-muted-foreground">Call Time ID</p>
+              <p className="text-sm text-muted-foreground">Assignment ID</p>
               <p className="text-base font-medium">{callTime.callTimeId}</p>
             </div>
           )}
 
-          {/* Service & Staff Requirements */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-              Service & Requirements
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="serviceId" required>
-                  Service
-                </Label>
-                <Controller
-                  name="serviceId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger id="serviceId">
-                        <SelectValue placeholder="Select a service" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {services.map((service) => (
-                          <SelectItem key={service.id} value={service.id}>
-                            {service.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.serviceId && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.serviceId.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="numberOfStaffRequired" required>
-                    Number of {staffTerm.plural} Required
-                  </Label>
-                  <Input
-                    id="numberOfStaffRequired"
-                    type="number"
-                    min={1}
-                    {...register('numberOfStaffRequired')}
-                    error={!!errors.numberOfStaffRequired}
-                    disabled={isSubmitting}
-                  />
-                  {errors.numberOfStaffRequired && (
-                    <p className="text-sm text-destructive mt-1">
-                      {errors.numberOfStaffRequired.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="skillLevel" required>
-                    Minimum Skill Level
-                  </Label>
-                  <Controller
-                    name="skillLevel"
-                    control={control}
-                    render={({ field }) => (
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger id="skillLevel">
-                          <SelectValue placeholder="Select skill level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SKILL_LEVELS.map((level) => (
-                            <SelectItem key={level.value} value={level.value}>
-                              {level.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {errors.skillLevel && (
-                    <p className="text-sm text-destructive mt-1">
-                      {errors.skillLevel.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="ratingRequired">
-                    Required Rating
-                  </Label>
-                  <Controller
-                    name="ratingRequired"
-                    control={control}
-                    render={({ field }) => (
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger id="ratingRequired">
-                          <SelectValue placeholder="Any rating" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STAFF_RATING_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-
-                <div>
-                  <Label>Approve Overtime?</Label>
-                  <div className="flex items-center gap-4 h-10">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        checked={watch('approveOvertime') === true}
-                        onChange={() => setValue('approveOvertime', true)}
-                        disabled={isSubmitting}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm">Yes</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        checked={watch('approveOvertime') === false}
-                        onChange={() => setValue('approveOvertime', false)}
-                        disabled={isSubmitting}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm">No</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Date & Time */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-              Date & Time
-            </h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="startDate" required>
-                    Start Date
-                  </Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    {...register('startDate')}
-                    error={!!errors.startDate}
-                    disabled={isSubmitting}
-                  />
-                  {errors.startDate && (
-                    <p className="text-sm text-destructive mt-1">
-                      {errors.startDate.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="startTime">Start Time</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="startTime"
-                      type="time"
-                      {...register('startTime')}
-                      error={!!errors.startTime}
-                      disabled={isSubmitting || startTimeTBD}
-                      className="flex-1"
-                    />
-                    <label className="flex items-center gap-2 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={startTimeTBD}
-                        onChange={(e) => {
-                          setStartTimeTBD(e.target.checked);
-                          if (e.target.checked) setValue('startTime', '');
-                        }}
-                        disabled={isSubmitting}
-                        className="rounded border-input"
-                      />
-                      <span className="text-sm">TBD</span>
-                    </label>
-                  </div>
-                  {errors.startTime && (
-                    <p className="text-sm text-destructive mt-1">
-                      {errors.startTime.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="endDate" required>
-                    End Date
-                  </Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    {...register('endDate')}
-                    error={!!errors.endDate}
-                    disabled={isSubmitting}
-                  />
-                  {errors.endDate && (
-                    <p className="text-sm text-destructive mt-1">
-                      {errors.endDate.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="endTime">End Time</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="endTime"
-                      type="time"
-                      {...register('endTime')}
-                      error={!!errors.endTime}
-                      disabled={isSubmitting || endTimeTBD}
-                      className="flex-1"
-                    />
-                    <label className="flex items-center gap-2 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={endTimeTBD}
-                        onChange={(e) => {
-                          setEndTimeTBD(e.target.checked);
-                          if (e.target.checked) setValue('endTime', '');
-                        }}
-                        disabled={isSubmitting}
-                        className="rounded border-input"
-                      />
-                      <span className="text-sm">TBD</span>
-                    </label>
-                  </div>
-                  {errors.endTime && (
-                    <p className="text-sm text-destructive mt-1">
-                      {errors.endTime.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Rates */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-              Pay & Bill Rates
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="payRateType" required>
-                  Rate Type
-                </Label>
-                <Controller
-                  name="payRateType"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger id="payRateType">
-                        <SelectValue placeholder="Select rate type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RATE_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  This applies to both pay and bill rates
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="payRate" required>
-                    Pay Rate ($)
-                  </Label>
-                  <Input
-                    id="payRate"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register('payRate')}
-                    error={!!errors.payRate}
-                    disabled={isSubmitting}
-                    placeholder="0.00"
-                  />
-                  {errors.payRate && (
-                    <p className="text-sm text-destructive mt-1">
-                      {errors.payRate.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="billRate" required>
-                    Bill Rate ($)
-                  </Label>
-                  <Input
-                    id="billRate"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register('billRate')}
-                    error={!!errors.billRate}
-                    disabled={isSubmitting}
-                    placeholder="0.00"
-                  />
-                  {errors.billRate && (
-                    <p className="text-sm text-destructive mt-1">
-                      {errors.billRate.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="customCost">
-                    Custom Cost Override ($)
-                  </Label>
-                  <Input
-                    id="customCost"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register('customCost')}
-                    disabled={isSubmitting}
-                    placeholder="Leave empty to use pay rate"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Override cost for billing calculations
-                  </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="customPrice">
-                    Custom Price Override ($)
-                  </Label>
-                  <Input
-                    id="customPrice"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register('customPrice')}
-                    disabled={isSubmitting}
-                    placeholder="Leave empty to use bill rate"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Override price for billing calculations
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <Label>Commission?</Label>
-                <div className="flex items-center gap-4 h-10">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={watch('commission') === true}
-                      onChange={() => setValue('commission', true)}
-                      disabled={isSubmitting}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm">Yes</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={watch('commission') === false}
-                      onChange={() => setValue('commission', false)}
-                      disabled={isSubmitting}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm">No</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Hidden field to keep billRateType in sync */}
-              <input type="hidden" {...register('billRateType')} />
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-              Notes
-            </h3>
-            <div>
-              <Label htmlFor="notes">Internal Notes</Label>
-              <Textarea
-                id="notes"
-                {...register('notes')}
-                disabled={isSubmitting}
-                rows={3}
-                placeholder="Any additional notes about this call time..."
-              />
-              {errors.notes && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.notes.message}
-                </p>
-              )}
-            </div>
-          </div>
+          {/* Shared Form Fields */}
+          <AssignmentFormFields
+            form={form}
+            disabled={isSubmitting}
+            services={services}
+            servicesLoading={servicesLoading}
+            startDateUBD={startDateUBD}
+            setStartDateUBD={setStartDateUBD}
+            endDateUBD={endDateUBD}
+            setEndDateUBD={setEndDateUBD}
+            startTimeTBD={startTimeTBD}
+            setStartTimeTBD={setStartTimeTBD}
+            endTimeTBD={endTimeTBD}
+            setEndTimeTBD={setEndTimeTBD}
+            selectedService={selectedService}
+            setSelectedService={setSelectedService}
+          />
         </DialogContent>
 
         <DialogFooter>
@@ -763,8 +272,8 @@ export function CallTimeFormModal({
             {isSubmitting
               ? 'Saving...'
               : isEdit
-                ? 'Update Call Time'
-                : 'Create Call Time'}
+                ? 'Update Assignment'
+                : 'Create Assignment'}
           </Button>
         </DialogFooter>
       </form>

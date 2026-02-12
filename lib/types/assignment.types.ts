@@ -87,12 +87,20 @@ export interface ServiceAssignment extends BaseAssignment {
   service: ServiceItem | null;
   /** Assignment start date (YYYY-MM-DD format) */
   startDate: string | null;
+  /** Whether start date is UBD (Until Better Defined) */
+  startDateUBD?: boolean;
   /** Assignment start time (HH:MM format) */
   startTime: string | null;
+  /** Whether start time is TBD (To Be Determined) */
+  startTimeTBD?: boolean;
   /** Assignment end date (YYYY-MM-DD format) */
   endDate: string | null;
+  /** Whether end date is UBD (Until Better Defined) */
+  endDateUBD?: boolean;
   /** Assignment end time (HH:MM format) */
   endTime: string | null;
+  /** Whether end time is TBD (To Be Determined) */
+  endTimeTBD?: boolean;
   /** Required experience level */
   experienceRequired: ExperienceRequirement;
   /** Required rating level */
@@ -131,9 +139,13 @@ export interface AssignmentFormData {
   instructions?: string | null;
   // Service-specific
   startDate?: string | null;
+  startDateUBD?: boolean;
   startTime?: string | null;
+  startTimeTBD?: boolean;
   endDate?: string | null;
+  endDateUBD?: boolean;
   endTime?: string | null;
+  endTimeTBD?: boolean;
   experienceRequired?: ExperienceRequirement;
   ratingRequired?: StaffRating | 'ANY';
   approveOvertime?: boolean;

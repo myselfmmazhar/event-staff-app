@@ -27,6 +27,10 @@ export interface EventFormFieldsProps {
   setValue: UseFormSetValue<EventFormData>;
   clients: ClientOption[];
   terminology: TerminologyConfig;
+  startDateUBD: boolean;
+  setStartDateUBD: (value: boolean) => void;
+  endDateUBD: boolean;
+  setEndDateUBD: (value: boolean) => void;
   startTimeTBD: boolean;
   setStartTimeTBD: (value: boolean) => void;
   endTimeTBD: boolean;
@@ -45,6 +49,10 @@ export function EventFormFields({
   setValue,
   clients,
   terminology,
+  startDateUBD,
+  setStartDateUBD,
+  endDateUBD,
+  setEndDateUBD,
   startTimeTBD,
   setStartTimeTBD,
   endTimeTBD,
@@ -90,6 +98,10 @@ export function EventFormFields({
           errors={errors}
           watch={watch}
           setValue={setValue}
+          startDateUBD={startDateUBD}
+          setStartDateUBD={setStartDateUBD}
+          endDateUBD={endDateUBD}
+          setEndDateUBD={setEndDateUBD}
           startTimeTBD={startTimeTBD}
           setStartTimeTBD={setStartTimeTBD}
           endTimeTBD={endTimeTBD}

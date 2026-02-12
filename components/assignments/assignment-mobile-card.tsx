@@ -5,8 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SettingsIcon, MapPinIcon, CalendarIcon, TrashIcon, DocumentDuplicateIcon, BellIcon, SearchIcon } from '@/components/ui/icons';
 import { formatRate } from '@/lib/utils/currency-formatter';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 import { format } from 'date-fns';
 import type { AssignmentData } from './assignment-table';
+import { useStaffTerm } from '@/lib/hooks/use-terminology';
 
 interface AssignmentMobileCardProps {
   assignment: AssignmentData;
@@ -54,9 +56,11 @@ export function AssignmentMobileCard({
   selected = false,
   onSelect,
 }: AssignmentMobileCardProps) {
-  const startDate = typeof assignment.startDate === 'string'
+  const staffTerm = useStaffTerm();
+  const startDateUBD = isDateNullOrUBD(assignment.startDate);
+  const startDate = startDateUBD ? null : (typeof assignment.startDate === 'string'
     ? new Date(assignment.startDate)
-    : assignment.startDate;
+    : assignment.startDate);
 
   return (
     <Card className={`p-4 ${selected ? 'ring-2 ring-primary' : ''}`}>
@@ -71,7 +75,7 @@ export function AssignmentMobileCard({
             />
           )}
           <Badge variant={assignment.needsStaff ? 'warning' : 'success'}>
-            {assignment.needsStaff ? 'Needs Staff' : 'Filled'}
+            {assignment.needsStaff ? `Needs ${staffTerm.singular}` : 'Filled'}
           </Badge>
         </div>
         <div className="flex items-center gap-1">
@@ -143,7 +147,7 @@ export function AssignmentMobileCard({
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
         <CalendarIcon className="h-4 w-4" />
         <span>
-          {format(startDate, 'EEE, MMM d')} &middot; {formatTime(assignment.startTime)} - {formatTime(assignment.endTime)}
+          {startDateUBD ? 'UBD' : format(startDate!, 'EEE, MMM d')} &middot; {formatTime(assignment.startTime)} - {formatTime(assignment.endTime)}
         </span>
       </div>
 

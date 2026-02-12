@@ -23,6 +23,7 @@ import {
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
 
@@ -142,8 +143,8 @@ export default function ClientEventDetailPage() {
                                 <div>
                                     <p className="text-sm text-muted-foreground">Date</p>
                                     <p className="font-medium">
-                                        {format(new Date(event.startDate), 'EEEE, MMMM d, yyyy')}
-                                        {event.endDate && event.endDate !== event.startDate && (
+                                        {isDateNullOrUBD(event.startDate) ? 'UBD' : format(new Date(event.startDate!), 'EEEE, MMMM d, yyyy')}
+                                        {event.endDate && !isDateNullOrUBD(event.endDate) && event.endDate !== event.startDate && (
                                             <> – {format(new Date(event.endDate), 'MMMM d, yyyy')}</>
                                         )}
                                     </p>

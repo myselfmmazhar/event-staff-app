@@ -20,9 +20,12 @@ import { FindTalentModal } from '@/components/assignments/find-talent-modal';
 import { DeleteCallTimeModal } from '@/components/call-times/delete-call-time-modal';
 import type { AssignmentData } from '@/components/assignments/assignment-table';
 import { trpc } from '@/lib/client/trpc';
+import { useTerminology, useStaffTerm } from '@/lib/hooks/use-terminology';
 
 export default function AssignmentManagerPage() {
   const searchParams = useSearchParams();
+  const { terminology } = useTerminology();
+  const staffTerm = useStaffTerm();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [managingAssignmentId, setManagingAssignmentId] = useState<string | null>(null);
@@ -83,14 +86,18 @@ export default function AssignmentManagerPage() {
 
   const selectedAssignments = allAssignments.filter(a => selectedIds.has(a.id));
 
-  // Hydrate the store on mount, then apply eventId from URL if present
+  // Hydrate the store on mount, then apply eventId and serviceId from URL if present
   useEffect(() => {
     const eventId = searchParams.get('eventId');
+    const serviceId = searchParams.get('serviceId');
 
     // Subscribe to hydration completion
     const unsubFinish = useAssignmentsFilters.persist.onFinishHydration(() => {
       if (eventId) {
         useAssignmentsFilters.getState().setSelectedEventIds([eventId]);
+      }
+      if (serviceId) {
+        useAssignmentsFilters.getState().setSelectedServiceIds([serviceId]);
       }
     });
 
@@ -147,7 +154,7 @@ export default function AssignmentManagerPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Assignment Manager</h1>
             <p className="text-sm text-muted-foreground">
-              Manage staff assignments and scheduling across all events
+              Manage {staffTerm.lower} assignments and scheduling across all {terminology.event.lowerPlural}
             </p>
           </div>
         </div>

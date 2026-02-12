@@ -134,8 +134,9 @@ export class EventSchema {
         .max(180, "Longitude must be between -180 and 180")
         .optional(),
 
-      // Date and Time
-      startDate: z.coerce.date({ message: "Start date is required" }),
+      // Date and Time (nullable for UBD support)
+      // Note: z.null() must come first, otherwise z.coerce.date(null) produces epoch date
+      startDate: z.union([z.null(), z.coerce.date()]).optional(),
       startTime: z
         .string()
         .refine(
@@ -143,7 +144,7 @@ export class EventSchema {
           { message: "Start time must be in HH:MM format or TBD" }
         )
         .optional(),
-      endDate: z.coerce.date({ message: "End date is required" }),
+      endDate: z.union([z.null(), z.coerce.date()]).optional(),
       endTime: z
         .string()
         .refine(
@@ -250,10 +251,19 @@ export class EventSchema {
         .optional(),
       overtimeRateType: z.nativeEnum(AmountType).optional(),
     })
-    .refine((data) => data.endDate >= data.startDate, {
-      message: "End date must be after or equal to start date",
-      path: ["endDate"],
-    });
+    .refine(
+      (data) => {
+        // Only validate if both dates are provided (not UBD)
+        if (data.startDate && data.endDate) {
+          return data.endDate >= data.startDate;
+        }
+        return true;
+      },
+      {
+        message: "End date must be after or equal to start date",
+        path: ["endDate"],
+      }
+    );
 
   /**
    * Update Event Schema (all fields optional except ID)
@@ -338,8 +348,9 @@ export class EventSchema {
         .max(180, "Longitude must be between -180 and 180")
         .optional(),
 
-      // Date and Time
-      startDate: z.coerce.date().optional(),
+      // Date and Time (nullable for UBD support)
+      // Note: z.null() must come first, otherwise z.coerce.date(null) produces epoch date
+      startDate: z.union([z.null(), z.coerce.date()]).optional(),
       startTime: z
         .string()
         .refine(
@@ -347,7 +358,7 @@ export class EventSchema {
           { message: "Start time must be in HH:MM format or TBD" }
         )
         .optional(),
-      endDate: z.coerce.date().optional(),
+      endDate: z.union([z.null(), z.coerce.date()]).optional(),
       endTime: z
         .string()
         .refine(

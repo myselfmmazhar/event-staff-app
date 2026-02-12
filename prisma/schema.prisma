@@ -51,9 +51,9 @@ model CallTime {
   serviceId             String?                 @db.Uuid
   numberOfStaffRequired Int                     @default(1)
   skillLevel            SkillLevel              @default(BEGINNER)
-  startDate             DateTime                @db.Date
+  startDate             DateTime?               @db.Date
   startTime             String?
-  endDate               DateTime                @db.Date
+  endDate               DateTime?               @db.Date
   endTime               String?
   payRate               Decimal                 @db.Decimal(10, 2)
   payRateType           RateType
@@ -195,9 +195,9 @@ model Event {
   city            String
   state           String
   zipCode         String
-  startDate       DateTime     @db.Date
+  startDate       DateTime?    @db.Date
   startTime       String?
-  endDate         DateTime     @db.Date
+  endDate         DateTime?    @db.Date
   endTime         String?
   timezone        String
   status          EventStatus  @default(DRAFT)

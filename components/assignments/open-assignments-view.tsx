@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 import {
   SendIcon,
   UsersIcon,
@@ -137,7 +138,7 @@ export function OpenAssignmentsView() {
         <UsersIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
         <p className="text-foreground text-lg">No open assignments</p>
         <p className="text-muted-foreground text-sm mt-2">
-          All assignments are fully staffed
+          All assignments have {staffTerm.lower}
         </p>
       </div>
     );
@@ -150,7 +151,7 @@ export function OpenAssignmentsView() {
         <div className="flex items-center justify-between">
           <h3 className="font-medium text-foreground">Open Assignments</h3>
           <span className="text-sm text-muted-foreground">
-            {openAssignments.length} assignment{openAssignments.length !== 1 ? 's' : ''} need staff
+            {openAssignments.length} assignment{openAssignments.length !== 1 ? 's' : ''} need {staffTerm.lower}
           </span>
         </div>
 
@@ -164,9 +165,10 @@ export function OpenAssignmentsView() {
           <div className="space-y-3">
             {openAssignments.map((assignment) => {
               const isSelected = assignment.id === selectedAssignmentId;
-              const startDate = typeof assignment.startDate === 'string'
+              const dateIsUBD = isDateNullOrUBD(assignment.startDate);
+              const startDate = dateIsUBD ? null : (typeof assignment.startDate === 'string'
                 ? new Date(assignment.startDate)
-                : assignment.startDate;
+                : assignment.startDate);
               const staffNeeded = assignment.numberOfStaffRequired - assignment.confirmedCount;
 
               return (
@@ -199,7 +201,7 @@ export function OpenAssignmentsView() {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <CalendarIcon className="h-4 w-4" />
-                      <span>{format(startDate, 'MMM d')}</span>
+                      <span>{dateIsUBD ? 'UBD' : format(startDate!, 'MMM d')}</span>
                     </div>
                     <span>{formatTime(assignment.startTime)} - {formatTime(assignment.endTime)}</span>
                     {assignment.event.city && (

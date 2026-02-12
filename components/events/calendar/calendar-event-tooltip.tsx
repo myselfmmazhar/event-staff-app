@@ -58,13 +58,13 @@ export function CalendarEventTooltip({ event, position }: CalendarEventTooltipPr
         {/* Start Date/Time */}
         <div>
           <span className="font-medium">Start:</span>{' '}
-          {formatEventDateTime(new Date(event.startDate), event.startTime, event.timezone)}
+          {event.startDate ? formatEventDateTime(new Date(event.startDate), event.startTime, event.timezone) : 'UBD'}
         </div>
 
         {/* End Date/Time */}
         <div>
           <span className="font-medium">End:</span>{' '}
-          {formatEventDateTime(new Date(event.endDate), event.endTime, event.timezone)}
+          {event.endDate ? formatEventDateTime(new Date(event.endDate), event.endTime, event.timezone) : 'UBD'}
         </div>
 
         {/* Venue */}

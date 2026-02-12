@@ -15,6 +15,10 @@ export function DateTimeSection({
   setValue,
   disabled = false,
   className,
+  startDateUBD,
+  setStartDateUBD,
+  endDateUBD,
+  setEndDateUBD,
   startTimeTBD,
   setStartTimeTBD,
   endTimeTBD,
@@ -25,18 +29,36 @@ export function DateTimeSection({
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Date & Time</h3>
       <div className="space-y-4">
         <div>
-          <Label htmlFor="startDate" required>Start Date</Label>
-          <Input
-            id="startDate"
-            type="date"
-            {...register('startDate', {
-              onChange: (e) => {
-                setValue('endDate', e.target.value);
-              },
-            })}
-            error={!!errors.startDate}
-            disabled={disabled}
-          />
+          <Label htmlFor="startDate" required={!startDateUBD}>Start Date</Label>
+          <div className="flex gap-2">
+            <Input
+              id="startDate"
+              type="date"
+              {...register('startDate', {
+                onChange: (e) => {
+                  if (!endDateUBD) {
+                    setValue('endDate', e.target.value);
+                  }
+                },
+              })}
+              error={!!errors.startDate}
+              disabled={disabled || startDateUBD}
+              className="flex-1"
+            />
+            <label className="flex items-center gap-2 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={startDateUBD}
+                onChange={(e) => {
+                  setStartDateUBD(e.target.checked);
+                  if (e.target.checked) setValue('startDate', '');
+                }}
+                disabled={disabled}
+                className="rounded border-input"
+              />
+              <span className="text-sm">UBD</span>
+            </label>
+          </div>
           {errors.startDate && (
             <p className="text-sm text-destructive mt-1">{errors.startDate.message}</p>
           )}
@@ -73,14 +95,30 @@ export function DateTimeSection({
         </div>
 
         <div>
-          <Label htmlFor="endDate" required>End Date</Label>
-          <Input
-            id="endDate"
-            type="date"
-            {...register('endDate')}
-            error={!!errors.endDate}
-            disabled={disabled}
-          />
+          <Label htmlFor="endDate" required={!endDateUBD}>End Date</Label>
+          <div className="flex gap-2">
+            <Input
+              id="endDate"
+              type="date"
+              {...register('endDate')}
+              error={!!errors.endDate}
+              disabled={disabled || endDateUBD}
+              className="flex-1"
+            />
+            <label className="flex items-center gap-2 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={endDateUBD}
+                onChange={(e) => {
+                  setEndDateUBD(e.target.checked);
+                  if (e.target.checked) setValue('endDate', '');
+                }}
+                disabled={disabled}
+                className="rounded border-input"
+              />
+              <span className="text-sm">UBD</span>
+            </label>
+          </div>
           {errors.endDate && (
             <p className="text-sm text-destructive mt-1">{errors.endDate.message}</p>
           )}
