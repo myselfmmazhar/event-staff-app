@@ -398,7 +398,7 @@ export class SettingsService {
         companyWebsite?: string | null;
         companyPhone?: string | null;
         companyAddress?: string | null;
-        companyTimezone?: string | null;
+        companyTimezone?: string;
     }) {
         try {
             const existingSettings = await this.prisma.organizationSettings.findFirst();

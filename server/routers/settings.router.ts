@@ -118,7 +118,7 @@ export const settingsRouter = router({
                 companyWebsite: z.string().url().nullish(),
                 companyPhone: z.string().max(50).nullish(),
                 companyAddress: z.string().max(500).nullish(),
-                companyTimezone: z.string().nullish(),
+                companyTimezone: z.string().optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
