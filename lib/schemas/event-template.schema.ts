@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RequestMethod } from "@prisma/client";
+import { RequestMethod, AmountType } from "@prisma/client";
 
 /**
  * Common timezone values for validation
@@ -45,6 +45,14 @@ const eventDocumentSchema = z.object({
  * Time format validation (HH:MM)
  */
 const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+
+/**
+ * Custom field schema for validation
+ */
+const customFieldSchema = z.object({
+  label: z.string().min(1, "Label is required").max(100, "Label too long"),
+  value: z.string().max(1000, "Value too long"),
+});
 
 /**
  * Event Template Zod Schemas for validation
@@ -220,6 +228,28 @@ export class EventTemplateSchema {
         .max(255, "POC email must be 255 characters or less")
         .optional()
         .or(z.literal("")),
+
+      // Custom Fields
+      customFields: z
+        .array(customFieldSchema)
+        .max(20, "Maximum 20 custom fields allowed")
+        .optional(),
+
+      // Billing & Rate Settings
+      estimate: z.boolean().optional(),
+      taskRateType: z.nativeEnum(AmountType).optional(),
+      commission: z.boolean().optional(),
+      commissionAmount: z
+        .number()
+        .min(0, "Commission amount must be positive")
+        .optional(),
+      commissionAmountType: z.nativeEnum(AmountType).optional(),
+      approveForOvertime: z.boolean().optional(),
+      overtimeRate: z
+        .number()
+        .min(0, "Overtime rate must be positive")
+        .optional(),
+      overtimeRateType: z.nativeEnum(AmountType).optional(),
     })
     .refine(
       (data) => {
@@ -414,6 +444,31 @@ export class EventTemplateSchema {
         .max(255, "POC email must be 255 characters or less")
         .optional()
         .or(z.literal("")),
+
+      // Custom Fields
+      customFields: z
+        .array(customFieldSchema)
+        .max(20, "Maximum 20 custom fields allowed")
+        .optional()
+        .nullable(),
+
+      // Billing & Rate Settings
+      estimate: z.boolean().optional().nullable(),
+      taskRateType: z.nativeEnum(AmountType).optional().nullable(),
+      commission: z.boolean().optional().nullable(),
+      commissionAmount: z
+        .number()
+        .min(0, "Commission amount must be positive")
+        .optional()
+        .nullable(),
+      commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
+      approveForOvertime: z.boolean().optional().nullable(),
+      overtimeRate: z
+        .number()
+        .min(0, "Overtime rate must be positive")
+        .optional()
+        .nullable(),
+      overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
     })
     .refine(
       (data) => {
@@ -475,3 +530,8 @@ export type FileLink = z.infer<typeof fileLinkSchema>;
  * Event document type
  */
 export type EventDocument = z.infer<typeof eventDocumentSchema>;
+
+/**
+ * Custom field type
+ */
+export type CustomField = z.infer<typeof customFieldSchema>;

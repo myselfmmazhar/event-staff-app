@@ -274,7 +274,7 @@ export function GroupedAssignmentTable({
     },
     {
       key: 'staff',
-      label: 'Staff',
+      label: staffTerm.singular,
       render: (item) => (
         <div className="flex items-center gap-2">
           <span className={`font-medium ${item.needsStaff ? 'text-yellow-600' : 'text-green-600'}`}>

@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { CreateEventTemplateInput, UpdateEventTemplateInput, FileLink } from '@/lib/schemas/event-template.schema';
+import type { CreateEventTemplateInput, UpdateEventTemplateInput, FileLink, CustomField } from '@/lib/schemas/event-template.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm, useFieldArray, Controller, type SubmitHandler } from 'react-hook-form';
@@ -22,7 +22,8 @@ import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import { EventDocumentUpload, type EventDocument } from '@/components/events/event-document-upload';
-import { RequestMethod } from '@prisma/client';
+import { RequestMethod, AmountType } from '@prisma/client';
+import { AMOUNT_TYPE_OPTIONS } from '@/lib/constants/enums';
 
 // Request method options
 const REQUEST_METHODS = [
@@ -63,6 +64,12 @@ const eventDocumentSchema = z.object({
   url: z.string().url("Invalid document URL"),
   type: z.string().optional(),
   size: z.number().optional(),
+});
+
+// Custom field schema
+const customFieldSchema = z.object({
+  label: z.string().min(1, "Label is required").max(100, "Label too long"),
+  value: z.string().max(1000, "Value too long"),
 });
 
 // Form schema - define directly to avoid refinement extension issues
@@ -124,6 +131,19 @@ const formSchema = z.object({
   // File Links
   fileLinks: z.array(fileLinkSchema).max(20).optional(),
 
+  // Custom Fields
+  customFields: z.array(customFieldSchema).max(20).optional(),
+
+  // Billing & Rate Settings
+  estimate: z.boolean().optional(),
+  taskRateType: z.nativeEnum(AmountType).optional().nullable(),
+  commission: z.boolean().optional(),
+  commissionAmount: z.number().min(0).optional().nullable(),
+  commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
+  approveForOvertime: z.boolean().optional(),
+  overtimeRate: z.number().min(0).optional().nullable(),
+  overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
+
   // UI-only fields
   startTimeTBD: z.boolean().default(false),
   endTimeTBD: z.boolean().default(false),
@@ -171,6 +191,17 @@ interface EventTemplate {
   eventDocuments?: EventDocument[] | null;
   // File Links
   fileLinks?: FileLink[] | null;
+  // Custom Fields
+  customFields?: CustomField[] | null;
+  // Billing & Rate Settings
+  estimate?: boolean | null;
+  taskRateType?: AmountType | null;
+  commission?: boolean | null;
+  commissionAmount?: number | null;
+  commissionAmountType?: AmountType | null;
+  approveForOvertime?: boolean | null;
+  overtimeRate?: number | null;
+  overtimeRateType?: AmountType | null;
 }
 
 interface EventTemplateFormModalProps {
@@ -249,6 +280,17 @@ export function EventTemplateFormModal({
       eventDocuments: [],
       // File Links
       fileLinks: [],
+      // Custom Fields
+      customFields: [],
+      // Billing & Rate Settings
+      estimate: undefined,
+      taskRateType: undefined,
+      commission: undefined,
+      commissionAmount: undefined,
+      commissionAmountType: undefined,
+      approveForOvertime: undefined,
+      overtimeRate: undefined,
+      overtimeRateType: undefined,
       startTimeTBD: false,
       endTimeTBD: false,
     },
@@ -259,10 +301,16 @@ export function EventTemplateFormModal({
     name: "fileLinks",
   });
 
+  const { fields: customFieldsFields, append: appendCustomField, remove: removeCustomField } = useFieldArray<FormInput, "customFields">({
+    control,
+    name: "customFields",
+  });
+
   useEffect(() => {
     if (template) {
       const fileLinksData = template.fileLinks as FileLink[] | null;
       const eventDocumentsData = template.eventDocuments as EventDocument[] | null;
+      const customFieldsData = template.customFields as CustomField[] | null;
 
       // Format dates to YYYY-MM-DD for date inputs
       const formatDateForInput = (date: Date | string | null | undefined) => {
@@ -312,6 +360,17 @@ export function EventTemplateFormModal({
         eventDocuments: eventDocumentsData || [],
         // File Links
         fileLinks: fileLinksData || [],
+        // Custom Fields
+        customFields: customFieldsData || [],
+        // Billing & Rate Settings
+        estimate: template.estimate ?? undefined,
+        taskRateType: template.taskRateType || undefined,
+        commission: template.commission ?? undefined,
+        commissionAmount: template.commissionAmount ?? undefined,
+        commissionAmountType: template.commissionAmountType || undefined,
+        approveForOvertime: template.approveForOvertime ?? undefined,
+        overtimeRate: template.overtimeRate ?? undefined,
+        overtimeRateType: template.overtimeRateType || undefined,
         startTimeTBD: template.startTime === 'TBD',
         endTimeTBD: template.endTime === 'TBD',
       });
@@ -354,6 +413,17 @@ export function EventTemplateFormModal({
         eventDocuments: [],
         // File Links
         fileLinks: [],
+        // Custom Fields
+        customFields: [],
+        // Billing & Rate Settings
+        estimate: undefined,
+        taskRateType: undefined,
+        commission: undefined,
+        commissionAmount: undefined,
+        commissionAmountType: undefined,
+        approveForOvertime: undefined,
+        overtimeRate: undefined,
+        overtimeRateType: undefined,
         startTimeTBD: false,
         endTimeTBD: false,
       });
@@ -404,7 +474,7 @@ export function EventTemplateFormModal({
           </div>
         </DialogHeader>
 
-        <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
+        <DialogContent className="flex-1 overflow-y-auto">
           {/* Template Information */}
           <div className="bg-primary/5 border border-primary/20 p-5 rounded-lg mb-6">
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Template Information</h3>
@@ -1009,6 +1079,270 @@ export function EventTemplateFormModal({
                 {errors.privateComments && (
                   <p className="text-sm text-destructive mt-1">{errors.privateComments.message}</p>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Fields */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 flex-1">Custom Fields</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => appendCustomField({ label: '', value: '' })}
+                disabled={isSubmitting}
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Field
+              </Button>
+            </div>
+
+            {customFieldsFields.length === 0 && (
+              <p className="text-sm text-muted-foreground">No custom fields added yet</p>
+            )}
+
+            <div className="space-y-3">
+              {customFieldsFields.map((field, index) => (
+                <div key={field.id}>
+                  <div className="flex gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Input
+                        {...register(`customFields.${index}.label` as const)}
+                        placeholder="Field label"
+                        disabled={isSubmitting}
+                        error={!!(errors.customFields?.[index]?.label)}
+                      />
+                      {errors.customFields?.[index]?.label && (
+                        <p className="text-sm text-destructive">
+                          {errors.customFields[index]?.label?.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex-2 space-y-1">
+                      <Input
+                        {...register(`customFields.${index}.value` as const)}
+                        placeholder="Field value"
+                        disabled={isSubmitting}
+                        error={!!(errors.customFields?.[index]?.value)}
+                      />
+                      {errors.customFields?.[index]?.value && (
+                        <p className="text-sm text-destructive">
+                          {errors.customFields[index]?.value?.message}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeCustomField(index)}
+                      disabled={isSubmitting}
+                      className="self-start"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Task Settings */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Task Settings</h3>
+            <div className="space-y-6">
+              {/* Row 1: Create an estimate? + Task Rate Type */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Create an estimate?</Label>
+                  <div className="flex items-center gap-4 h-10">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="estimate"
+                        checked={watch('estimate') === true}
+                        onChange={() => setValue('estimate', true)}
+                        disabled={isSubmitting}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">Yes</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="estimate"
+                        checked={watch('estimate') === false}
+                        onChange={() => setValue('estimate', false)}
+                        disabled={isSubmitting}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">No</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="taskRateType">Task Rate Type</Label>
+                  <Controller
+                    name="taskRateType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(value) => field.onChange(value || null)}
+                        disabled={isSubmitting || !watch('estimate')}
+                      >
+                        <SelectTrigger id="taskRateType">
+                          <SelectValue placeholder="Multiplier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AMOUNT_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Commission? + Amount + Amount Type */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Commission?</Label>
+                  <div className="flex items-center gap-4 h-10">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="commission"
+                        checked={watch('commission') === true}
+                        onChange={() => setValue('commission', true)}
+                        disabled={isSubmitting}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">Yes</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="commission"
+                        checked={watch('commission') === false}
+                        onChange={() => setValue('commission', false)}
+                        disabled={isSubmitting}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">No</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="commissionAmount">If Yes, please enter amount</Label>
+                  <Input
+                    id="commissionAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    {...register('commissionAmount', { valueAsNumber: true })}
+                    disabled={isSubmitting || !watch('commission')}
+                    placeholder=""
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="commissionAmountType">Amount type</Label>
+                  <Controller
+                    name="commissionAmountType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(value) => field.onChange(value || null)}
+                        disabled={isSubmitting || !watch('commission')}
+                      >
+                        <SelectTrigger id="commissionAmountType">
+                          <SelectValue placeholder="Multiplier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AMOUNT_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Approve for Overtime? + Rate + OT Type */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Approve for Overtime?</Label>
+                  <div className="flex items-center gap-4 h-10">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="approveForOvertime"
+                        checked={watch('approveForOvertime') === true}
+                        onChange={() => setValue('approveForOvertime', true)}
+                        disabled={isSubmitting}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">Yes</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="approveForOvertime"
+                        checked={watch('approveForOvertime') === false}
+                        onChange={() => setValue('approveForOvertime', false)}
+                        disabled={isSubmitting}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">No</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="overtimeRate">If Yes, please enter rate</Label>
+                  <Input
+                    id="overtimeRate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    {...register('overtimeRate', { valueAsNumber: true })}
+                    disabled={isSubmitting || !watch('approveForOvertime')}
+                    placeholder=""
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="overtimeRateType">OT Type</Label>
+                  <Controller
+                    name="overtimeRateType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(value) => field.onChange(value || null)}
+                        disabled={isSubmitting || !watch('approveForOvertime')}
+                      >
+                        <SelectTrigger id="overtimeRateType">
+                          <SelectValue placeholder="Multiplier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AMOUNT_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
               </div>
             </div>
           </div>

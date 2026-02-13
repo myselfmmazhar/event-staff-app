@@ -79,7 +79,7 @@ export function EventTable({
     client: 'Client',
     venue: 'Venue',
     openAssignments: 'Open Assignments',
-    closedAssignments: 'Closed Assignments',
+    closedAssignments: 'Accepted Assignments',
     progress: 'Progress',
   });
 

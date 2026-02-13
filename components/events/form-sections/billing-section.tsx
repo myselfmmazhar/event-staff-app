@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { Controller } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AMOUNT_TYPE_OPTIONS } from '@/lib/constants/enums';
 import { cn } from '@/lib/utils';
+import { ChevronDownIcon } from '@/components/ui/icons';
 import type { FormSectionProps } from './types';
 
 export function BillingSection({
@@ -16,14 +18,22 @@ export function BillingSection({
   disabled = false,
   className,
 }: FormSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const isEstimate = watch('estimate');
   const hasCommission = watch('commission');
   const approveForOvertime = watch('approveForOvertime');
 
   return (
     <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
-      <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Task settings</h3>
-      <div className="space-y-6">
+      <div
+        className="flex items-center justify-between cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <h3 className="text-lg font-semibold">Task settings</h3>
+        <ChevronDownIcon className={cn('h-5 w-5 text-muted-foreground transition-transform', isExpanded && 'rotate-180')} />
+      </div>
+      {isExpanded && (
+      <div className="space-y-6 mt-4 pt-4 border-t border-border">
         {/* Row 1: Create an estimate? + Task Rate Type */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -216,6 +226,7 @@ export function BillingSection({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
