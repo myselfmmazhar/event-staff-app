@@ -72,7 +72,7 @@ export function TalentDetailsSection({
           </div>
 
           <div>
-            <Label htmlFor="phone" required>
+            <Label htmlFor="phone">
               Phone
             </Label>
             <Input
@@ -106,7 +106,7 @@ export function TalentDetailsSection({
         </div>
 
         <div>
-          <Label htmlFor="streetAddress" required>
+          <Label htmlFor="streetAddress">
             Address
           </Label>
           <Input
@@ -123,7 +123,7 @@ export function TalentDetailsSection({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="city" required>
+            <Label htmlFor="city">
               City
             </Label>
             <Input
@@ -139,7 +139,7 @@ export function TalentDetailsSection({
           </div>
 
           <div>
-            <Label htmlFor="state" required>
+            <Label htmlFor="state">
               State
             </Label>
             <Input
@@ -155,7 +155,7 @@ export function TalentDetailsSection({
           </div>
 
           <div>
-            <Label htmlFor="zipCode" required>
+            <Label htmlFor="zipCode">
               ZIP Code
             </Label>
             <Input

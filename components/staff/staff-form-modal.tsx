@@ -335,12 +335,6 @@ function StaffFormContent({
                         ref={isEdit ? undefined : taxFormRef}
                         staffId={staff?.id}
                         initialData={staff?.taxDetails ?? null}
-                        onSuccess={() => {
-                            toast({
-                                title: 'Tax details saved',
-                                description: 'Tax details have been updated successfully',
-                            });
-                        }}
                     />
                 </div>
             </DialogContent>
