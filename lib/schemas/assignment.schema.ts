@@ -25,7 +25,7 @@ export const experienceRequiredSchema = z.enum(['ANY', 'BEGINNER', 'INTERMEDIATE
 /**
  * Rating options including ANY (matches Prisma StaffRating enum + ANY)
  */
-export const ratingRequiredSchema = z.enum(['ANY', 'NA', 'A', 'B', 'C']);
+export const ratingRequiredSchema = z.enum(['ANY', 'NA', 'A', 'B', 'C', 'D']);
 
 /**
  * Product assignment schema

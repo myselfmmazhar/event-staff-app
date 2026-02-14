@@ -6,7 +6,7 @@ import { SkillLevel, RateType, CallTimeInvitationStatus } from '@prisma/client';
 const experienceRequiredValues = ['ANY', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
 
 // Staff rating options (matches Prisma StaffRating enum)
-const staffRatingValues = ['NA', 'A', 'B', 'C'] as const;
+const staffRatingValues = ['NA', 'A', 'B', 'C', 'D'] as const;
 
 // Time format validation (HH:MM)
 const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;

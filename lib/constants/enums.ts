@@ -1,4 +1,5 @@
 import {
+  AccountStatus,
   SkillLevel,
   AvailabilityStatus,
   StaffType,
@@ -10,6 +11,17 @@ import {
   MinimumPurchase,
   PriceUnitType,
 } from '@prisma/client';
+
+/**
+ * Account Status Options for forms
+ */
+export const ACCOUNT_STATUS_OPTIONS: Array<{ value: AccountStatus; label: string }> = [
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'DISABLED', label: 'Disabled' },
+  { value: 'TERMINATED', label: 'Terminated' },
+  { value: 'ARCHIVED', label: 'Archived' },
+];
 
 /**
  * Skill Level Labels for display
@@ -54,6 +66,7 @@ export const STAFF_TYPE_LABELS: Record<StaffType, string> = {
   COMPANY: 'Company',
   EMPLOYEE: 'Employee',
   CONTRACTOR: 'Contractor',
+  FREELANCE: 'Freelance',
 };
 
 /**
@@ -63,6 +76,7 @@ export const STAFF_TYPE_OPTIONS: Array<{ value: StaffType; label: string }> = [
   { value: 'COMPANY', label: 'Company' },
   { value: 'EMPLOYEE', label: 'Employee' },
   { value: 'CONTRACTOR', label: 'Contractor' },
+  { value: 'FREELANCE', label: 'Freelance' },
 ];
 
 /**
@@ -73,6 +87,7 @@ export const STAFF_RATING_LABELS: Record<StaffRating, string> = {
   A: 'A',
   B: 'B',
   C: 'C',
+  D: 'D',
 };
 
 /**
@@ -83,6 +98,7 @@ export const STAFF_RATING_OPTIONS: Array<{ value: StaffRating | 'ANY'; label: st
   { value: 'A', label: 'A' },
   { value: 'B', label: 'B' },
   { value: 'C', label: 'C' },
+  { value: 'D', label: 'D' },
   { value: 'NA', label: 'N/A' },
 ];
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,10 +20,13 @@ import { toast } from '@/components/ui/use-toast';
 import { EyeIcon, EyeOffIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { StaffSchema } from '@/lib/schemas/staff.schema';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BusinessStructure } from '@prisma/client';
 
-// Form schema based on acceptInvitation schema but without token
-const formSchema = z.object({
+// Base form schema without refinements (for type inference)
+const baseFormSchema = z.object({
     password: StaffSchema.acceptInvitation.shape.password,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
     phone: StaffSchema.acceptInvitation.shape.phone,
@@ -34,12 +37,42 @@ const formSchema = z.object({
     state: StaffSchema.acceptInvitation.shape.state,
     zipCode: StaffSchema.acceptInvitation.shape.zipCode,
     country: StaffSchema.acceptInvitation.shape.country,
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
+    // Tax details (optional)
+    provideTaxDetails: z.boolean(),
+    collectTaxDetails: z.boolean(),
+    trackFor1099: z.boolean(),
+    businessStructure: z.nativeEnum(BusinessStructure),
+    businessName: z.string().optional(),
+    ssn: z.string().optional(),
+    ein: z.string().optional(),
+    electronic1099Consent: z.boolean(),
 });
 
-type FormData = z.infer<typeof formSchema>;
+// Form schema with refinements for validation
+const formSchema = baseFormSchema.refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+}).refine((data) => {
+    // If providing tax details and tracking for 1099, SSN or EIN is required
+    if (data.provideTaxDetails && data.trackFor1099) {
+        return !!(data.ssn || data.ein);
+    }
+    return true;
+}, {
+    message: "SSN or EIN is required when tracking for 1099",
+    path: ['ssn'],
+});
+
+type FormData = z.infer<typeof baseFormSchema>;
+
+// Business structure display names
+const businessStructureLabels: Record<BusinessStructure, string> = {
+    INDIVIDUAL: 'Individual / Sole Proprietor',
+    LLC: 'LLC',
+    CORPORATION: 'Corporation',
+    PARTNERSHIP: 'Partnership',
+    OTHER: 'Other',
+};
 
 function AcceptStaffInvitationContent() {
     const router = useRouter();
@@ -48,6 +81,7 @@ function AcceptStaffInvitationContent() {
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showTaxSection, setShowTaxSection] = useState(false);
 
     // Fetch invitation info
     const { data: invitationInfo, isLoading: isLoadingInfo, error: infoError } = trpc.staff.getInvitationInfo.useQuery(
@@ -55,13 +89,53 @@ function AcceptStaffInvitationContent() {
         { enabled: !!token }
     );
 
-    const acceptMutation = trpc.staff.acceptInvitation.useMutation({
+    // Store tax details to submit after account creation
+    const [pendingTaxDetails, setPendingTaxDetails] = useState<{
+        staffId: string;
+        data: FormData;
+    } | null>(null);
+
+    // Tax details mutation (called after successful account creation)
+    const taxDetailsMutation = trpc.staffTaxDetails.upsert.useMutation({
         onSuccess: () => {
             toast({
-                message: 'Your account has been created successfully! You can now log in.',
+                message: 'Your account and tax details have been saved successfully! You can now log in.',
                 type: 'success',
             });
             router.push('/login');
+        },
+        onError: (error) => {
+            // Account was created but tax details failed
+            toast({
+                message: 'Account created, but failed to save tax details. You can update them after logging in.',
+                type: 'info',
+            });
+            router.push('/login');
+        },
+    });
+
+    const acceptMutation = trpc.staff.acceptInvitation.useMutation({
+        onSuccess: (staff, variables) => {
+            // Check if we need to save tax details
+            if (pendingTaxDetails && pendingTaxDetails.data.provideTaxDetails) {
+                const data = pendingTaxDetails.data;
+                taxDetailsMutation.mutate({
+                    staffId: staff.id,
+                    collectTaxDetails: data.collectTaxDetails,
+                    trackFor1099: data.trackFor1099,
+                    businessStructure: data.businessStructure,
+                    businessName: data.businessName || undefined,
+                    ssn: data.ssn || undefined,
+                    ein: data.ein || undefined,
+                    electronic1099Consent: data.electronic1099Consent,
+                });
+            } else {
+                toast({
+                    message: 'Your account has been created successfully! You can now log in.',
+                    type: 'success',
+                });
+                router.push('/login');
+            }
         },
         onError: (error) => {
             // Extract user-friendly message from tRPC/Zod errors
@@ -105,11 +179,30 @@ function AcceptStaffInvitationContent() {
             state: '',
             zipCode: '',
             country: 'USA',
+            // Tax details defaults
+            provideTaxDetails: false,
+            collectTaxDetails: false,
+            trackFor1099: false,
+            businessStructure: BusinessStructure.INDIVIDUAL,
+            businessName: '',
+            ssn: '',
+            ein: '',
+            electronic1099Consent: false,
         },
     });
 
+    // Watch tax-related fields
+    const provideTaxDetails = form.watch('provideTaxDetails');
+    const trackFor1099 = form.watch('trackFor1099');
+    const businessStructure = form.watch('businessStructure');
+
     const onSubmit = (data: FormData) => {
         if (!token) return;
+
+        // Store tax details data if provided (will be submitted after account creation)
+        if (data.provideTaxDetails) {
+            setPendingTaxDetails({ staffId: '', data });
+        }
 
         acceptMutation.mutate({
             token,
@@ -450,15 +543,173 @@ function AcceptStaffInvitationContent() {
                                 </div>
                             </div>
 
+                            {/* Tax Details Section (Optional) */}
+                            <div className="space-y-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTaxSection(!showTaxSection)}
+                                    className="flex items-center justify-between w-full text-lg font-medium border-b pb-2 hover:text-primary transition-colors"
+                                >
+                                    <span>Tax Information (Optional)</span>
+                                    {showTaxSection ? (
+                                        <ChevronUp className="h-5 w-5" />
+                                    ) : (
+                                        <ChevronDown className="h-5 w-5" />
+                                    )}
+                                </button>
+
+                                {showTaxSection && (
+                                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                                        <p className="text-sm text-muted-foreground">
+                                            You can provide your tax information now or update it later from your profile.
+                                        </p>
+
+                                        {/* Provide Tax Details Checkbox */}
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="provideTaxDetails"
+                                                checked={provideTaxDetails}
+                                                onChange={(e) => form.setValue('provideTaxDetails', e.target.checked)}
+                                                disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                            />
+                                            <Label htmlFor="provideTaxDetails" className="cursor-pointer">
+                                                I want to provide my tax details now
+                                            </Label>
+                                        </div>
+
+                                        {provideTaxDetails && (
+                                            <div className="space-y-4 mt-4">
+                                                {/* Tax Preferences */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="collectTaxDetails"
+                                                            checked={form.watch('collectTaxDetails')}
+                                                            onChange={(e) => form.setValue('collectTaxDetails', e.target.checked)}
+                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                        />
+                                                        <Label htmlFor="collectTaxDetails" className="cursor-pointer text-sm">
+                                                            Collect tax details
+                                                        </Label>
+                                                    </div>
+
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="trackFor1099"
+                                                            checked={trackFor1099}
+                                                            onChange={(e) => form.setValue('trackFor1099', e.target.checked)}
+                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                        />
+                                                        <Label htmlFor="trackFor1099" className="cursor-pointer text-sm">
+                                                            Track for 1099
+                                                        </Label>
+                                                    </div>
+                                                </div>
+
+                                                {/* Business Structure */}
+                                                <div>
+                                                    <Label htmlFor="businessStructure">Business Structure</Label>
+                                                    <Select
+                                                        value={businessStructure}
+                                                        onValueChange={(value) => form.setValue('businessStructure', value as BusinessStructure)}
+                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                    >
+                                                        <SelectTrigger id="businessStructure">
+                                                            <SelectValue placeholder="Select structure" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {Object.entries(businessStructureLabels).map(([value, label]) => (
+                                                                <SelectItem key={value} value={value}>
+                                                                    {label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {/* Business Name (conditional) */}
+                                                {businessStructure !== BusinessStructure.INDIVIDUAL && (
+                                                    <div>
+                                                        <Label htmlFor="businessName">Business Name</Label>
+                                                        <Input
+                                                            id="businessName"
+                                                            placeholder="Your business name"
+                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                            {...form.register('businessName')}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {/* Tax Identifiers (required if tracking for 1099) */}
+                                                {trackFor1099 && (
+                                                    <div className="space-y-4 p-3 border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 rounded-lg">
+                                                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                                                            Since you're tracking for 1099, please provide your SSN or EIN.
+                                                        </p>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div>
+                                                                <Label htmlFor="ssn">
+                                                                    Social Security Number (SSN)
+                                                                </Label>
+                                                                <Input
+                                                                    id="ssn"
+                                                                    type="password"
+                                                                    placeholder="XXX-XX-XXXX"
+                                                                    invalid={!!form.formState.errors.ssn}
+                                                                    disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                                    {...form.register('ssn')}
+                                                                />
+                                                                {form.formState.errors.ssn && (
+                                                                    <p className="text-sm text-destructive mt-1">
+                                                                        {String(form.formState.errors.ssn.message)}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+
+                                                            <div>
+                                                                <Label htmlFor="ein">
+                                                                    Employer Identification Number (EIN)
+                                                                </Label>
+                                                                <Input
+                                                                    id="ein"
+                                                                    type="password"
+                                                                    placeholder="XX-XXXXXXX"
+                                                                    disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                                    {...form.register('ein')}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Electronic 1099 Consent */}
+                                                <div className="flex items-start space-x-2">
+                                                    <Checkbox
+                                                        id="electronic1099Consent"
+                                                        checked={form.watch('electronic1099Consent')}
+                                                        onChange={(e) => form.setValue('electronic1099Consent', e.target.checked)}
+                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                        className="mt-1"
+                                                    />
+                                                    <Label htmlFor="electronic1099Consent" className="cursor-pointer text-sm">
+                                                        I consent to receive my 1099 form electronically
+                                                    </Label>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
                             <Button
                                 type="submit"
                                 variant="default"
                                 size="lg"
-                                isLoading={form.formState.isSubmitting || acceptMutation.isPending}
+                                isLoading={form.formState.isSubmitting || acceptMutation.isPending || taxDetailsMutation.isPending}
                                 className="w-full"
                             >
-                                {form.formState.isSubmitting || acceptMutation.isPending
-                                    ? 'Creating Account...'
+                                {form.formState.isSubmitting || acceptMutation.isPending || taxDetailsMutation.isPending
+                                    ? (taxDetailsMutation.isPending ? 'Saving Tax Details...' : 'Creating Account...')
                                     : 'Create Account'}
                             </Button>
                         </form>

@@ -32,11 +32,13 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
  */
 export const ACCOUNT_STATUS_COLORS: Record<
   AccountStatus,
-  'default' | 'info' | 'success' | 'danger' | 'secondary'
+  'default' | 'info' | 'success' | 'danger' | 'secondary' | 'warning'
 > = {
   PENDING: 'secondary',
   ACTIVE: 'success',
   DISABLED: 'danger',
+  TERMINATED: 'danger',
+  ARCHIVED: 'warning',
 };
 
 /**
@@ -46,6 +48,8 @@ export const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
   PENDING: 'Pending',
   ACTIVE: 'Active',
   DISABLED: 'Disabled',
+  TERMINATED: 'Terminated',
+  ARCHIVED: 'Archived',
 };
 
 /**

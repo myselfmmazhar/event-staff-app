@@ -70,7 +70,7 @@ export function MultiSelect<T extends string = string>({
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-sm shadow-sm transition-all duration-200',
+          'flex h-9 w-full items-center justify-between rounded-md border bg-background px-3 text-sm shadow-sm transition-all duration-200',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0',
           'disabled:cursor-not-allowed disabled:opacity-50',
           error

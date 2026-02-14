@@ -7,6 +7,7 @@ import { eventTemplateRouter } from "./event-template.router";
 import { clientRouter } from "./client.router";
 import { clientLocationRouter } from "./client-location.router";
 import { staffRouter } from "./staff.router";
+import { staffTaxDetailsRouter } from "./staff-tax-details.router";
 import { settingsRouter } from "./settings.router";
 import { callTimeRouter } from "./call-time.router";
 import { notificationRouter } from "./notification.router";
@@ -30,6 +31,7 @@ export const appRouter = router({
   clients: clientRouter,
   clientLocation: clientLocationRouter,
   staff: staffRouter,
+  staffTaxDetails: staffTaxDetailsRouter,
   settings: settingsRouter,
   callTime: callTimeRouter,
   notification: notificationRouter,

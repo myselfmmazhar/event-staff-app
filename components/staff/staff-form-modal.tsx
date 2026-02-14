@@ -8,42 +8,359 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useForm, Controller, SubmitHandler } from 'react-hook-form';
-import { SearchIcon, PlusIcon, XIcon } from 'lucide-react';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon, EyeIcon } from '@/components/ui/icons';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
-import { AccountStatus, StaffType, SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
+import { AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import type { StaffWithRelations } from '@/components/staff/staff-table';
 import { ServiceFormModal } from '@/components/catalog/services/service-form-modal';
 import type { CreateServiceInput } from '@/lib/schemas/service.schema';
 import { toast } from '@/components/ui/use-toast';
+import {
+    AccountDetailsSection,
+    ServiceDetailsSection,
+    TalentDetailsSection,
+    TeamDetailsSection,
+    TeamMembersSection,
+    DocumentsSection,
+    type ServiceOption,
+    type CompanyOption,
+    type TeamMemberInput,
+} from './form-sections';
+import { TaxDetailsForm, type TaxDetailsFormRef } from './tax-details-form';
+
+// Helper to get default form values
+const getDefaultFormValues = () => ({
+    accountStatus: AccountStatus.PENDING,
+    staffType: StaffType.EMPLOYEE,
+    staffRole: StaffRole.INDIVIDUAL,
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    streetAddress: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    skillLevel: SkillLevel.BEGINNER,
+    availabilityStatus: AvailabilityStatus.OPEN_TO_OFFERS,
+    timeOffStart: null,
+    timeOffEnd: null,
+    experience: '',
+    staffRating: StaffRating.NA,
+    internalNotes: '',
+    companyId: null,
+    serviceIds: [] as string[],
+    customField1: '',
+    customField2: '',
+    customField3: '',
+    documents: [] as Array<{ name: string; url: string; type?: string; size?: number }>,
+    teamEntityName: '',
+    teamEmail: '',
+    teamPhone: '',
+    teamAddressLine1: '',
+    teamCity: '',
+    teamState: '',
+    teamZipCode: '',
+});
+
+// Helper to get form values from staff data
+const getFormValuesFromStaff = (staff: StaffWithRelations) => ({
+    accountStatus: staff.accountStatus,
+    staffType: staff.staffType,
+    staffRole: staff.staffRole,
+    firstName: staff.firstName,
+    lastName: staff.lastName,
+    email: staff.email,
+    phone: staff.phone || '',
+    streetAddress: staff.streetAddress || '',
+    city: staff.city || '',
+    state: staff.state || '',
+    zipCode: staff.zipCode || '',
+    skillLevel: staff.skillLevel,
+    availabilityStatus: staff.availabilityStatus,
+    timeOffStart: staff.timeOffStart ? new Date(staff.timeOffStart) : null,
+    timeOffEnd: staff.timeOffEnd ? new Date(staff.timeOffEnd) : null,
+    experience: staff.experience || '',
+    staffRating: staff.staffRating ?? StaffRating.NA,
+    internalNotes: staff.internalNotes || '',
+    companyId: staff.companyId || null,
+    serviceIds: staff.services?.map((s) => s.service.id) || [],
+    customField1: staff.customField1 || '',
+    customField2: staff.customField2 || '',
+    customField3: staff.customField3 || '',
+    documents: (staff.documents as Array<{ name: string; url: string; type?: string; size?: number }>) || [],
+    teamEntityName: staff.teamEntityName || '',
+    teamEmail: staff.teamEmail || '',
+    teamPhone: staff.teamPhone || '',
+    teamAddressLine1: staff.teamAddressLine1 || '',
+    teamCity: staff.teamCity || '',
+    teamState: staff.teamState || '',
+    teamZipCode: staff.teamZipCode || '',
+});
 
 // Form schema for client-side
 const formSchema = StaffSchema.create;
 type StaffFormInput = z.input<typeof formSchema>;
 type StaffFormOutput = z.infer<typeof formSchema>;
 
-type ServiceOption = { id: string; title: string };
-type CompanyOption = { id: string; firstName: string; lastName: string; staffId: string };
-type TeamMemberInput = { email: string; firstName: string; lastName: string; staffType: 'CONTRACTOR' | 'EMPLOYEE' };
-
 interface StaffFormModalProps {
     staff: StaffWithRelations | null;
     open: boolean;
     onClose: () => void;
-    onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>) => void;
+    onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => void;
     isSubmitting: boolean;
     onViewDetails?: () => void;
+}
+
+// Inner form component that gets remounted when staff changes
+interface StaffFormContentProps {
+    staff: StaffWithRelations | null;
+    onClose: () => void;
+    onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => void;
+    isSubmitting: boolean;
+    onViewDetails?: () => void;
+    services: ServiceOption[];
+    companies: CompanyOption[];
+    terminology: { staff: { singular: string; plural: string; lower: string } };
+}
+
+function StaffFormContent({
+    staff,
+    onClose,
+    onSubmit,
+    isSubmitting,
+    onViewDetails,
+    services,
+    companies,
+    terminology,
+}: StaffFormContentProps) {
+    const isEdit = !!staff;
+    const [serviceSearch, setServiceSearch] = useState('');
+    const taxFormRef = useRef<TaxDetailsFormRef>(null);
+
+    // Team members state for TEAM role
+    const [teamMembers, setTeamMembers] = useState<TeamMemberInput[]>(() => {
+        // Initialize from staff data
+        if (staff?.staffRole === StaffRole.TEAM && staff.teamMembers && staff.teamMembers.length > 0) {
+            return staff.teamMembers.map((tm) => ({
+                firstName: tm.firstName,
+                lastName: tm.lastName || '',
+                email: tm.email,
+                phone: tm.phone || '',
+                serviceIds: tm.services?.map((s) => s.serviceId) || [],
+            }));
+        }
+        return [];
+    });
+    const [newTeamMember, setNewTeamMember] = useState<TeamMemberInput>({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        serviceIds: [],
+    });
+
+    // Filter services by search term
+    const filteredServices = useMemo<ServiceOption[]>(() => {
+        if (!serviceSearch.trim()) return services;
+        const searchLower = serviceSearch.toLowerCase();
+        return services.filter((service) =>
+            service.title.toLowerCase().includes(searchLower)
+        );
+    }, [services, serviceSearch]);
+
+    // Compute initial form values - only once on mount
+    const initialValues = useMemo(() => {
+        if (staff) {
+            return getFormValuesFromStaff(staff);
+        }
+        return getDefaultFormValues();
+    }, []); // Empty deps - only compute once on mount
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+        reset,
+        control,
+        watch,
+        setValue,
+    } = useForm<StaffFormInput, undefined, StaffFormOutput>({
+        resolver: zodResolver(formSchema),
+        defaultValues: initialValues,
+    });
+
+    const staffRole = watch('staffRole');
+
+    // Helper functions for team members
+    const addTeamMember = useCallback(() => {
+        if (newTeamMember.firstName && newTeamMember.email) {
+            setTeamMembers(prev => [...prev, { ...newTeamMember }]);
+            setNewTeamMember({ firstName: '', lastName: '', email: '', phone: '', serviceIds: [] });
+        }
+    }, [newTeamMember]);
+
+    const removeTeamMember = useCallback((index: number) => {
+        setTeamMembers(prev => prev.filter((_, i) => i !== index));
+    }, []);
+
+    // Properly typed submit handler
+    const handleFormSubmit: SubmitHandler<StaffFormOutput> = async (data) => {
+        const submitData = {
+            ...data,
+            teamMembers: data.staffRole === StaffRole.TEAM ? teamMembers : undefined,
+        };
+        // In create mode, collect tax data from the ref
+        if (!isEdit && taxFormRef.current) {
+            const taxData = await taxFormRef.current.getFormData();
+            onSubmit(submitData, taxData ? (taxData as unknown as Record<string, unknown>) : undefined);
+        } else {
+            onSubmit(submitData);
+        }
+    };
+
+    // Shared props for form sections
+    const sectionProps = {
+        register,
+        control,
+        errors,
+        watch,
+        setValue,
+        reset,
+        disabled: isSubmitting,
+    };
+
+    return (
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
+            <DialogHeader>
+                <div className="flex items-center justify-between">
+                    <DialogTitle>{isEdit ? `Edit ${terminology.staff.singular}` : `Add New ${terminology.staff.singular}`}</DialogTitle>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
+                        <CloseIcon className="h-5 w-5" />
+                    </button>
+                </div>
+                {!isEdit && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                        An invitation email will be sent to complete their registration.
+                    </p>
+                )}
+            </DialogHeader>
+
+            <DialogContent className="flex-1 overflow-y-auto">
+                {/* Staff ID (Read-only in edit mode) */}
+                {isEdit && staff && (
+                    <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
+                        <p className="text-sm text-muted-foreground">{terminology.staff.singular} ID</p>
+                        <p className="text-base font-medium">{staff.staffId}</p>
+                    </div>
+                )}
+
+                {/* Team Membership Info (Read-only - shown if staff belongs to a team) */}
+                {isEdit && staff?.company && (
+                    <div className="mb-6 p-4 bg-primary/10 rounded-md border border-primary/30">
+                        <p className="text-sm font-medium text-foreground mb-2">Team Membership</p>
+                        <p className="text-sm text-muted-foreground">
+                            This {terminology.staff.lower} is a member of team:{' '}
+                            <span className="font-semibold text-foreground">
+                                {staff.company.teamEntityName || `${staff.company.firstName} ${staff.company.lastName}`}
+                            </span>
+                            {' '}({staff.company.staffId})
+                        </p>
+                    </div>
+                )}
+
+                {/* Account Details Section */}
+                <AccountDetailsSection
+                    {...sectionProps}
+                    companies={companies}
+                    terminology={terminology}
+                    className="mb-6"
+                />
+
+                {/* Service Details Section */}
+                <ServiceDetailsSection
+                    {...sectionProps}
+                    services={filteredServices}
+                    serviceSearch={serviceSearch}
+                    onServiceSearchChange={setServiceSearch}
+                    className="mb-6"
+                />
+
+                {/* Talent Details Section */}
+                <TalentDetailsSection
+                    {...sectionProps}
+                    className="mb-6"
+                />
+
+                {/* Team Details Section - Only for TEAM role */}
+                {staffRole === StaffRole.TEAM && (
+                    <>
+                        <TeamDetailsSection
+                            {...sectionProps}
+                            className="mb-6"
+                        />
+
+                        <TeamMembersSection
+                            teamMembers={teamMembers}
+                            newTeamMember={newTeamMember}
+                            onTeamMembersChange={setTeamMembers}
+                            onNewTeamMemberChange={setNewTeamMember}
+                            onAddTeamMember={addTeamMember}
+                            onRemoveTeamMember={removeTeamMember}
+                            services={services}
+                            disabled={isSubmitting}
+                            className="mb-6"
+                        />
+                    </>
+                )}
+
+                {/* Documents Section */}
+                <DocumentsSection {...sectionProps} className="mb-6" />
+
+                {/* Tax Details Section */}
+                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Tax Details</h3>
+                    <TaxDetailsForm
+                        ref={isEdit ? undefined : taxFormRef}
+                        staffId={staff?.id}
+                        initialData={staff?.taxDetails ?? null}
+                        onSuccess={() => {
+                            toast({
+                                title: 'Tax details saved',
+                                description: 'Tax details have been updated successfully',
+                            });
+                        }}
+                    />
+                </div>
+            </DialogContent>
+
+            <DialogFooter>
+                {isEdit && onViewDetails && (
+                    <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto">
+                        <EyeIcon className="h-4 w-4 mr-2" />
+                        View Details
+                    </Button>
+                )}
+                <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                    Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.staff.singular}` : `Create & Send Invitation`}
+                </Button>
+            </DialogFooter>
+        </form>
+    );
 }
 
 export function StaffFormModal({
@@ -54,22 +371,10 @@ export function StaffFormModal({
     isSubmitting,
     onViewDetails,
 }: StaffFormModalProps) {
-
     const { terminology } = useTerminology();
-    const isEdit = !!staff;
-    const [serviceSearch, setServiceSearch] = useState('');
     const [showCreateService, setShowCreateService] = useState(false);
     const [mounted, setMounted] = useState(false);
     const utils = trpc.useUtils();
-
-    // Team members state for COMPANY type
-    const [teamMembers, setTeamMembers] = useState<TeamMemberInput[]>([]);
-    const [newTeamMember, setNewTeamMember] = useState<TeamMemberInput>({
-        email: '',
-        firstName: '',
-        lastName: '',
-        staffType: 'EMPLOYEE',
-    });
 
     useEffect(() => {
         setMounted(true);
@@ -82,15 +387,6 @@ export function StaffFormModal({
     const services = (servicesData ?? []) as ServiceOption[];
     const companies = (companiesData ?? []) as CompanyOption[];
 
-    // Filter services by search term
-    const filteredServices = useMemo<ServiceOption[]>(() => {
-        if (!serviceSearch.trim()) return services;
-        const searchLower = serviceSearch.toLowerCase();
-        return services.filter((service) =>
-            service.title.toLowerCase().includes(searchLower)
-        );
-    }, [services, serviceSearch]);
-
     // Service creation mutation
     const createServiceMutation = trpc.service.create.useMutation({
         onSuccess: (data) => {
@@ -98,7 +394,6 @@ export function StaffFormModal({
                 title: 'Service created',
                 description: `Service "${data.title}" created successfully`,
             });
-            // Refresh services list
             utils.staff.getServices.invalidate();
             setShowCreateService(false);
         },
@@ -115,592 +410,24 @@ export function StaffFormModal({
         createServiceMutation.mutate(data);
     };
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-        reset,
-        control,
-        watch,
-    } = useForm<StaffFormInput, undefined, StaffFormOutput>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            accountStatus: AccountStatus.PENDING,
-            staffType: StaffType.EMPLOYEE,
-            firstName: '',
-            lastName: '',
-            email: '',
-            skillLevel: SkillLevel.BEGINNER,
-            availabilityStatus: AvailabilityStatus.OPEN_TO_OFFERS,
-            timeOffStart: null,
-            timeOffEnd: null,
-            experience: '',
-            staffRating: StaffRating.NA,
-            internalNotes: '',
-            companyId: null,
-            serviceIds: [],
-        },
-    });
-
-    const staffType = watch('staffType');
-
-    // Helper functions for team members
-    const addTeamMember = () => {
-        if (newTeamMember.email && newTeamMember.firstName && newTeamMember.lastName) {
-            setTeamMembers([...teamMembers, { ...newTeamMember }]);
-            setNewTeamMember({ email: '', firstName: '', lastName: '', staffType: 'EMPLOYEE' });
-        }
-    };
-
-    const removeTeamMember = (index: number) => {
-        setTeamMembers(teamMembers.filter((_, i) => i !== index));
-    };
-
-    useEffect(() => {
-        if (staff && open) {
-            setServiceSearch('');
-            reset({
-                accountStatus: staff.accountStatus,
-                staffType: staff.staffType,
-                firstName: staff.firstName,
-                lastName: staff.lastName,
-                email: staff.email,
-                skillLevel: staff.skillLevel,
-                availabilityStatus: staff.availabilityStatus,
-                timeOffStart: staff.timeOffStart ? new Date(staff.timeOffStart) : null,
-                timeOffEnd: staff.timeOffEnd ? new Date(staff.timeOffEnd) : null,
-                experience: staff.experience || '',
-                staffRating: staff.staffRating ?? StaffRating.NA,
-                internalNotes: staff.internalNotes || '',
-                companyId: staff.companyId || null,
-                serviceIds: staff.services?.map((s) => s.service.id) || [],
-            });
-            // Populate team members from fetched data for COMPANY type
-            if (staff.staffType === StaffType.COMPANY && staff.teamMembers) {
-                setTeamMembers(
-                    staff.teamMembers.map((tm) => ({
-                        email: tm.email,
-                        firstName: tm.firstName,
-                        lastName: tm.lastName,
-                        staffType: tm.staffType === 'CONTRACTOR' ? 'CONTRACTOR' : 'EMPLOYEE',
-                    }))
-                );
-            } else {
-                setTeamMembers([]);
-            }
-        } else if (!staff && open) {
-            setServiceSearch('');
-            reset({
-                accountStatus: AccountStatus.PENDING,
-                staffType: StaffType.EMPLOYEE,
-                firstName: '',
-                lastName: '',
-                email: '',
-                skillLevel: SkillLevel.BEGINNER,
-                availabilityStatus: AvailabilityStatus.OPEN_TO_OFFERS,
-                timeOffStart: null,
-                timeOffEnd: null,
-                experience: '',
-                staffRating: StaffRating.NA,
-                internalNotes: '',
-                companyId: null,
-                serviceIds: [],
-            });
-            setTeamMembers([]);
-        }
-    }, [staff, open, reset]);
-
-    // Properly typed submit handler to match react-hook-form expectations
-    const handleFormSubmit: SubmitHandler<StaffFormOutput> = (data) => {
-        // Include team members if staff type is COMPANY
-        const submitData = {
-            ...data,
-            teamMembers: data.staffType === StaffType.COMPANY ? teamMembers : undefined,
-        };
-        onSubmit(submitData);
-    };
+    // Key based on staff ID to force remount of form content
+    const formKey = staff?.id ?? 'new';
 
     return (
         <>
             <Dialog open={open} onClose={onClose} fullScreen>
-                <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
-                    <DialogHeader>
-                        <div className="flex items-center justify-between">
-                            <DialogTitle>{isEdit ? `Edit ${terminology.staff.singular}` : `Add New ${terminology.staff.singular}`}</DialogTitle>
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="text-muted-foreground hover:text-foreground"
-                            >
-                                <CloseIcon className="h-5 w-5" />
-                            </button>
-                        </div>
-                        {!isEdit && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                                An invitation email will be sent to complete their registration.
-                            </p>
-                        )}
-                    </DialogHeader>
-
-                    <DialogContent className="flex-1 overflow-y-auto">
-                        {/* Staff ID (Read-only in edit mode) */}
-                        {isEdit && staff && (
-                            <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
-                                <p className="text-sm text-muted-foreground">{terminology.staff.singular} ID</p>
-                                <p className="text-base font-medium">{staff.staffId}</p>
-                            </div>
-                        )}
-
-                        {/* Row 1: Staff Information + Account Details & Availability (side-by-side on lg+) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                            {/* Staff Information */}
-                            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">{terminology.staff.singular} Information</h3>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <Label htmlFor="firstName" required>First Name</Label>
-                                            <Input
-                                                id="firstName"
-                                                {...register('firstName')}
-                                                error={!!errors.firstName}
-                                                disabled={isSubmitting}
-                                            />
-                                            {errors.firstName && (
-                                                <p className="text-sm text-destructive mt-1">{errors.firstName.message}</p>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <Label htmlFor="lastName" required>Last Name</Label>
-                                            <Input
-                                                id="lastName"
-                                                {...register('lastName')}
-                                                error={!!errors.lastName}
-                                                disabled={isSubmitting}
-                                            />
-                                            {errors.lastName && (
-                                                <p className="text-sm text-destructive mt-1">{errors.lastName.message}</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="email" required>Email</Label>
-                                        <Input
-                                            id="email"
-                                            type="email"
-                                            {...register('email')}
-                                            error={!!errors.email}
-                                            disabled={isSubmitting}
-                                        />
-                                        {errors.email && (
-                                            <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
-                                        )}
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <Label htmlFor="skillLevel" required>Experience</Label>
-                                            <Controller
-                                                name="skillLevel"
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select skill level" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value={SkillLevel.BEGINNER}>Beginner</SelectItem>
-                                                            <SelectItem value={SkillLevel.INTERMEDIATE}>Intermediate</SelectItem>
-                                                            <SelectItem value={SkillLevel.ADVANCED}>Advanced</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                            />
-                                            {errors.skillLevel && (
-                                                <p className="text-sm text-destructive mt-1">{errors.skillLevel.message}</p>
-                                            )}
-                                        </div>
-
-                                        {(staffType === StaffType.CONTRACTOR || staffType === StaffType.EMPLOYEE) && (
-                                            <div>
-                                                <Label htmlFor="companyId">Company</Label>
-                                                <Controller
-                                                    name="companyId"
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <Select
-                                                            value={field.value || '__none__'}
-                                                            onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}
-                                                            disabled={isSubmitting}
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="None" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="__none__">None</SelectItem>
-                                                                {companies.map((c) => (
-                                                                    <SelectItem key={c.id} value={c.id}>
-                                                                        {c.firstName} {c.lastName} ({c.staffId})
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Account Details + Availability (stacked in right column) */}
-                            <div className="space-y-6">
-                                {/* Account Details */}
-                                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Account Details</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <Label htmlFor="accountStatus" required>Account Status</Label>
-                                            <Controller
-                                                name="accountStatus"
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select status" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value={AccountStatus.ACTIVE}>Active</SelectItem>
-                                                            <SelectItem value={AccountStatus.DISABLED}>Disabled</SelectItem>
-                                                            <SelectItem value={AccountStatus.PENDING}>Pending</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                            />
-                                            {errors.accountStatus && (
-                                                <p className="text-sm text-destructive mt-1">{errors.accountStatus.message}</p>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <Label htmlFor="staffType" required>{terminology.staff.singular} Type</Label>
-                                            <Controller
-                                                name="staffType"
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select type" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value={StaffType.COMPANY}>Company</SelectItem>
-                                                            <SelectItem value={StaffType.CONTRACTOR}>Contractor</SelectItem>
-                                                            <SelectItem value={StaffType.EMPLOYEE}>Employee</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                            />
-                                            {errors.staffType && (
-                                                <p className="text-sm text-destructive mt-1">{errors.staffType.message}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Availability Status */}
-                                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Availability</h3>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <Label htmlFor="availabilityStatus">Availability Status</Label>
-                                            <Controller
-                                                name="availabilityStatus"
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select availability" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value={AvailabilityStatus.OPEN_TO_OFFERS}>Open to Offers</SelectItem>
-                                                            <SelectItem value={AvailabilityStatus.BUSY}>Busy</SelectItem>
-                                                            <SelectItem value={AvailabilityStatus.TIME_OFF}>Time Off</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                            />
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <Label htmlFor="timeOffStart">Time Off Start</Label>
-                                                <Input
-                                                    id="timeOffStart"
-                                                    type="date"
-                                                    {...register('timeOffStart', { valueAsDate: true })}
-                                                    disabled={isSubmitting}
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <Label htmlFor="timeOffEnd">Time Off End</Label>
-                                                <Input
-                                                    id="timeOffEnd"
-                                                    type="date"
-                                                    {...register('timeOffEnd', { valueAsDate: true })}
-                                                    disabled={isSubmitting}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Team Members Section - Only for COMPANY type */}
-                        {staffType === StaffType.COMPANY && (
-                            <div className="mb-6 bg-accent/5 border border-border/30 p-5 rounded-lg">
-                                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Team Members</h3>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    Add team members who will be invited when this company is created.
-                                </p>
-
-                                {/* Add new team member form */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-                                    <div>
-                                        <Label htmlFor="tm-email">Email</Label>
-                                        <Input
-                                            id="tm-email"
-                                            type="email"
-                                            placeholder="email@example.com"
-                                            value={newTeamMember.email}
-                                            onChange={(e) => setNewTeamMember({ ...newTeamMember, email: e.target.value })}
-                                            disabled={isSubmitting}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="tm-firstName">First Name</Label>
-                                        <Input
-                                            id="tm-firstName"
-                                            placeholder="First name"
-                                            value={newTeamMember.firstName}
-                                            onChange={(e) => setNewTeamMember({ ...newTeamMember, firstName: e.target.value })}
-                                            disabled={isSubmitting}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="tm-lastName">Last Name</Label>
-                                        <Input
-                                            id="tm-lastName"
-                                            placeholder="Last name"
-                                            value={newTeamMember.lastName}
-                                            onChange={(e) => setNewTeamMember({ ...newTeamMember, lastName: e.target.value })}
-                                            disabled={isSubmitting}
-                                        />
-                                    </div>
-                                    <div className="flex items-end gap-2">
-                                        <div className="flex-1">
-                                            <Label htmlFor="tm-type">Type</Label>
-                                            <Select
-                                                value={newTeamMember.staffType}
-                                                onValueChange={(value) => setNewTeamMember({ ...newTeamMember, staffType: value as 'CONTRACTOR' | 'EMPLOYEE' })}
-                                                disabled={isSubmitting}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select type" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="CONTRACTOR">Contractor</SelectItem>
-                                                    <SelectItem value="EMPLOYEE">Employee</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={addTeamMember}
-                                            disabled={isSubmitting || !newTeamMember.email || !newTeamMember.firstName || !newTeamMember.lastName}
-                                        >
-                                            <PlusIcon className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* Team members list */}
-                                {teamMembers.length > 0 && (
-                                    <div className="border rounded-md divide-y">
-                                        {teamMembers.map((member, index) => (
-                                            <div key={index} className="flex items-center justify-between p-3">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-sm font-medium">{member.firstName} {member.lastName}</span>
-                                                    <span className="text-sm text-muted-foreground">{member.email}</span>
-                                                    <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                                                        {member.staffType === 'CONTRACTOR' ? 'Contractor' : 'Employee'}
-                                                    </span>
-                                                </div>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => removeTeamMember(index)}
-                                                    disabled={isSubmitting}
-                                                >
-                                                    <XIcon className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {teamMembers.length === 0 && (
-                                    <p className="text-sm text-muted-foreground text-center py-4 border rounded-md">
-                                        No team members added yet. Use the form above to add team members.
-                                    </p>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Row 2: Assigned Services + Admin Only Fields (side-by-side on lg+) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Assigned Services */}
-                            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Assigned Services</h3>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <Label required>Services</Label>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setShowCreateService(true)}
-                                            disabled={isSubmitting}
-                                            className="text-xs"
-                                        >
-                                            <PlusIcon className="h-3 w-3 mr-1" />
-                                            Add New
-                                        </Button>
-                                    </div>
-                                    <div className="relative">
-                                        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="Search services..."
-                                            value={serviceSearch}
-                                            onChange={(e) => setServiceSearch(e.target.value)}
-                                            className="pl-9"
-                                        />
-                                    </div>
-                                    <Controller
-                                        name="serviceIds"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-3 border rounded-md">
-                                                {filteredServices.length > 0 ? (
-                                                    filteredServices.map((service) => (
-                                                        <div key={service.id} className="flex items-center space-x-2">
-                                                            <input
-                                                                type="checkbox"
-                                                                id={`service-${service.id}`}
-                                                                checked={field.value?.includes(service.id)}
-                                                                onChange={(e) => {
-                                                                    if (e.target.checked) {
-                                                                        field.onChange([...(field.value || []), service.id]);
-                                                                    } else {
-                                                                        field.onChange(field.value?.filter((id) => id !== service.id));
-                                                                    }
-                                                                }}
-                                                                disabled={isSubmitting}
-                                                                className="rounded border-gray-300"
-                                                            />
-                                                            <label htmlFor={`service-${service.id}`} className="text-sm cursor-pointer">
-                                                                {service.title}
-                                                            </label>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <p className="text-sm text-muted-foreground col-span-full text-center py-2">
-                                                        {serviceSearch ? `No services found matching "${serviceSearch}"` : 'No services available'}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-                                    />
-                                    {errors.serviceIds && (
-                                        <p className="text-sm text-destructive mt-1">{errors.serviceIds.message}</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Admin Only Fields */}
-                            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-                                    Admin Only Fields
-                                </h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label htmlFor="experience">Experience</Label>
-                                        <Textarea
-                                            id="experience"
-                                            {...register('experience')}
-                                            disabled={isSubmitting}
-                                            rows={3}
-                                            placeholder={`${terminology.staff.singular} experience and background`}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="staffRating">{terminology.staff.singular} Rating</Label>
-                                        <Controller
-                                            name="staffRating"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select rating" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value={StaffRating.NA}>N/A</SelectItem>
-                                                        <SelectItem value={StaffRating.A}>A</SelectItem>
-                                                        <SelectItem value={StaffRating.B}>B</SelectItem>
-                                                        <SelectItem value={StaffRating.C}>C</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            )}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="internalNotes">Internal Admin Notes</Label>
-                                        <Textarea
-                                            id="internalNotes"
-                                            {...register('internalNotes')}
-                                            disabled={isSubmitting}
-                                            rows={3}
-                                            placeholder={`Internal notes (not visible to ${terminology.staff.lower})`}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </DialogContent>
-
-                    <DialogFooter>
-                        {isEdit && onViewDetails && (
-                            <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto">
-                                <EyeIcon className="h-4 w-4 mr-2" />
-                                View Details
-                            </Button>
-                        )}
-                        <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.staff.singular}` : `Create & Send Invitation`}
-                        </Button>
-                    </DialogFooter>
-                </form>
+                {/* Key on the form content forces complete remount when staff changes */}
+                <StaffFormContent
+                    key={formKey}
+                    staff={staff}
+                    onClose={onClose}
+                    onSubmit={onSubmit}
+                    isSubmitting={isSubmitting}
+                    onViewDetails={onViewDetails}
+                    services={services}
+                    companies={companies}
+                    terminology={terminology}
+                />
             </Dialog>
             {/* Service Modal rendered via portal to avoid nested form issues */}
             {mounted && showCreateService && createPortal(

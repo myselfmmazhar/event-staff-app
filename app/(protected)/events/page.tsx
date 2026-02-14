@@ -397,7 +397,7 @@ export default function EventsPage() {
     endDate?: string | null;
     endTime?: string | null;
     experienceRequired?: 'ANY' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
-    ratingRequired?: 'ANY' | 'NA' | 'A' | 'B' | 'C';
+    ratingRequired?: 'ANY' | 'NA' | 'A' | 'B' | 'C' | 'D';
     approveOvertime?: boolean;
     commission?: boolean;
     payRate?: number | null;

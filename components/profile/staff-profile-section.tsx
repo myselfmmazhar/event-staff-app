@@ -42,12 +42,15 @@ const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
     [AccountStatus.ACTIVE]: 'Active',
     [AccountStatus.DISABLED]: 'Disabled',
     [AccountStatus.PENDING]: 'Pending',
+    [AccountStatus.TERMINATED]: 'Terminated',
+    [AccountStatus.ARCHIVED]: 'Archived',
 };
 
 const STAFF_TYPE_LABELS: Record<StaffType, string> = {
     [StaffType.COMPANY]: 'Company',
     [StaffType.EMPLOYEE]: 'Employee',
     [StaffType.CONTRACTOR]: 'Contractor',
+    [StaffType.FREELANCE]: 'Freelance',
 };
 
 export function StaffProfileSection() {

@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
     AccountStatus,
     StaffType,
+    StaffRole,
     SkillLevel,
     StaffRating,
     AvailabilityStatus,
@@ -16,6 +17,7 @@ const baseFields = {
     // Account Details
     accountStatus: z.nativeEnum(AccountStatus).default(AccountStatus.PENDING),
     staffType: z.nativeEnum(StaffType).default(StaffType.EMPLOYEE),
+    staffRole: z.nativeEnum(StaffRole).default(StaffRole.INDIVIDUAL),
 
     // Staff Information
     firstName: z
@@ -115,12 +117,94 @@ const baseFields = {
     // Company ID (nullable for contractors/employees who may not belong to a company)
     companyId: z.string().uuid("Invalid company ID").optional().nullable(),
 
-    // Team members (only for COMPANY type - used when creating a company with team members)
+    // Custom fields
+    customField1: z
+        .string()
+        .max(500, "Custom field 1 must be 500 characters or less")
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+    customField2: z
+        .string()
+        .max(500, "Custom field 2 must be 500 characters or less")
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+    customField3: z
+        .string()
+        .max(500, "Custom field 3 must be 500 characters or less")
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+
+    // Documents (JSON array)
+    documents: z.array(z.object({
+        name: z.string(),
+        url: z.string().url(),
+        type: z.string().optional(),
+        size: z.number().optional(),
+    })).optional().nullable(),
+
+    // Team Details (only when staffRole = TEAM)
+    teamEntityName: z
+        .string()
+        .max(200, "Team/Entity name must be 200 characters or less")
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+    teamEmail: z
+        .string()
+        .email({ message: FieldErrors.email.invalid })
+        .transform((val) => val?.trim().toLowerCase())
+        .optional()
+        .nullable(),
+    teamPhone: z
+        .string()
+        .refine(
+            (phone) => !phone || phoneValidation.isValid(phone),
+            { message: FieldErrors.phone.invalid }
+        )
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+    teamAddressLine1: z
+        .string()
+        .max(300, "Address must be 300 characters or less")
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+    teamAddressLine2: z
+        .string()
+        .max(300, "Address must be 300 characters or less")
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+    teamCity: z
+        .string()
+        .max(100, "City must be 100 characters or less")
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+    teamState: z
+        .string()
+        .max(50, "State must be 50 characters or less")
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+    teamZipCode: z
+        .string()
+        .max(20, "ZIP code must be 20 characters or less")
+        .transform((val) => val?.trim())
+        .optional()
+        .nullable(),
+
+    // Team members (only for TEAM role - used when creating a team with members)
     teamMembers: z.array(z.object({
+        firstName: z.string().min(1, "Name is required"),
+        lastName: z.string().optional(),
         email: z.string().email("Invalid email"),
-        firstName: z.string().min(1, "First name is required"),
-        lastName: z.string().min(1, "Last name is required"),
-        staffType: z.enum(["CONTRACTOR", "EMPLOYEE"]),
+        phone: z.string().optional(),
+        serviceIds: z.array(z.string().uuid("Invalid service ID")).optional(),
     })).optional(),
 
     // Service IDs (multi-select)

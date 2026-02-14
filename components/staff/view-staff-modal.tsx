@@ -1,5 +1,6 @@
 'use client';
 
+
 import {
     Dialog,
     DialogContent,
@@ -11,9 +12,11 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CloseIcon } from '@/components/ui/icons';
 import { format } from 'date-fns';
-import { AccountStatus, AvailabilityStatus, StaffType } from '@prisma/client';
+import { AccountStatus, AvailabilityStatus, StaffType, StaffRole } from '@prisma/client';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import type { StaffWithRelations } from '@/components/staff/staff-table';
+import { TaxDetailsView } from './tax-details-view';
+import { FileText, Download } from 'lucide-react';
 
 interface ViewStaffModalProps {
     staff: StaffWithRelations | null;
@@ -63,6 +66,7 @@ export function ViewStaffModal({
     isActioning = false,
 }: ViewStaffModalProps) {
     const { terminology } = useTerminology();
+
     if (!staff) return null;
 
     const isPending = staff.accountStatus === AccountStatus.PENDING;
@@ -70,6 +74,9 @@ export function ViewStaffModal({
     const hasLoginAccess = staff.hasLoginAccess;
 
     const hasAdminInfo = staff.experience || staff.internalNotes || staff.staffRating !== 'NA';
+    const hasCustomFields = staff.customField1 || staff.customField2 || staff.customField3;
+    const documents = (staff.documents as Array<{ name: string; url: string; type?: string; size?: number }>) || [];
+    const hasDocuments = documents.length > 0;
 
     return (
         <Dialog open={open} onClose={onClose} fullScreen>
@@ -153,6 +160,12 @@ export function ViewStaffModal({
                                         <Badge variant="secondary">{staff.staffType}</Badge>
                                     </div>
                                     <div>
+                                        <p className="text-sm text-muted-foreground">Role</p>
+                                        <Badge variant="secondary">
+                                            {staff.staffRole === StaffRole.TEAM ? 'Team' : 'Individual'}
+                                        </Badge>
+                                    </div>
+                                    <div>
                                         <p className="text-sm text-muted-foreground">Login Access</p>
                                         <Badge variant={hasLoginAccess ? 'success' : 'secondary'}>
                                             {hasLoginAccess ? 'Enabled' : 'Disabled'}
@@ -228,21 +241,71 @@ export function ViewStaffModal({
                         </div>
                     </div>
 
-                    {/* Team Members (only for COMPANY type staff) */}
-                    {staff.staffType === StaffType.COMPANY && staff.teamMembers && staff.teamMembers.length > 0 && (
+                    {/* Team Details (only for TEAM role) */}
+                    {staff.staffRole === StaffRole.TEAM && (
+                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Team Details</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {staff.teamEntityName && (
+                                    <div className="md:col-span-2">
+                                        <p className="text-sm text-muted-foreground">Team/Entity Name</p>
+                                        <p className="text-base font-medium">{staff.teamEntityName}</p>
+                                    </div>
+                                )}
+                                {staff.teamEmail && (
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Team Email</p>
+                                        <p className="text-base">{staff.teamEmail}</p>
+                                    </div>
+                                )}
+                                {staff.teamPhone && (
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Team Phone</p>
+                                        <p className="text-base">{staff.teamPhone}</p>
+                                    </div>
+                                )}
+                                {(staff.teamAddressLine1 || staff.teamCity) && (
+                                    <div className="md:col-span-2">
+                                        <p className="text-sm text-muted-foreground">Team Address</p>
+                                        <div className="space-y-1">
+                                            {staff.teamAddressLine1 && <p className="text-base">{staff.teamAddressLine1}</p>}
+                                            {staff.teamAddressLine2 && <p className="text-base">{staff.teamAddressLine2}</p>}
+                                            {(staff.teamCity || staff.teamState || staff.teamZipCode) && (
+                                                <p className="text-base">
+                                                    {[staff.teamCity, staff.teamState, staff.teamZipCode].filter(Boolean).join(', ')}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Team Members (only for TEAM role or COMPANY type staff) */}
+                    {(staff.staffRole === StaffRole.TEAM || staff.staffType === StaffType.COMPANY) && staff.teamMembers && staff.teamMembers.length > 0 && (
                         <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
                             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Team Members</h3>
                             <div className="space-y-3">
                                 {staff.teamMembers.map((member) => (
                                     <div key={member.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-md">
-                                        <div>
+                                        <div className="space-y-1">
                                             <p className="font-medium">{member.firstName} {member.lastName}</p>
                                             <p className="text-sm text-muted-foreground">{member.email}</p>
+                                            {member.phone && (
+                                                <p className="text-sm text-muted-foreground">{member.phone}</p>
+                                            )}
+                                            {member.services && member.services.length > 0 && (
+                                                <div className="flex gap-1 flex-wrap">
+                                                    {member.services.map((s) => (
+                                                        <Badge key={s.serviceId} variant="outline" className="text-xs">
+                                                            {s.service.title}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex gap-2">
-                                            <Badge variant="secondary">
-                                                {member.staffType === 'CONTRACTOR' ? 'Contractor' : 'Employee'}
-                                            </Badge>
                                             <Badge variant={member.accountStatus === 'ACTIVE' ? 'success' : 'warning'}>
                                                 {member.accountStatus}
                                             </Badge>
@@ -253,17 +316,38 @@ export function ViewStaffModal({
                         </div>
                     )}
 
-                    {/* Company Details (only for EMPLOYEE and CONTRACTOR when linked to a company) */}
-                    {(staff.staffType === StaffType.EMPLOYEE || staff.staffType === StaffType.CONTRACTOR) && staff.company && (
-                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Company Details</h3>
-                            <div className="p-3 bg-muted/30 rounded-md">
-                                <div className="flex items-center justify-between">
+                    {/* Team/Company Details (for staff members linked to a team) */}
+                    {staff.company && (
+                        <div className="bg-blue-50/50 border border-blue-200 p-5 rounded-lg mb-6">
+                            <h3 className="text-lg font-semibold border-b border-blue-200 pb-2 mb-4">Team Information</h3>
+                            <div className="space-y-3">
+                                {staff.company.teamEntityName && (
                                     <div>
-                                        <p className="font-medium">{staff.company.firstName} {staff.company.lastName}</p>
-                                        <p className="text-sm text-muted-foreground">Company ID: {staff.company.staffId}</p>
+                                        <p className="text-sm text-muted-foreground">Team Name</p>
+                                        <p className="text-base font-medium">{staff.company.teamEntityName}</p>
                                     </div>
-                                    <Badge variant="default">Company</Badge>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Team Lead</p>
+                                        <p className="text-base">{staff.company.firstName} {staff.company.lastName}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Team ID</p>
+                                        <p className="text-base">{staff.company.staffId}</p>
+                                    </div>
+                                    {staff.company.teamEmail && (
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Team Email</p>
+                                            <p className="text-base">{staff.company.teamEmail}</p>
+                                        </div>
+                                    )}
+                                    {staff.company.teamPhone && (
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Team Phone</p>
+                                            <p className="text-base">{staff.company.teamPhone}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -271,7 +355,7 @@ export function ViewStaffModal({
 
                     {/* Row 3: Admin Information (full width, conditional) */}
                     {hasAdminInfo && (
-                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg lg:max-w-2xl">
+                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg lg:max-w-2xl mb-6">
                             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Admin Information</h3>
                             <div className="space-y-3">
                                 {staff.staffRating !== 'NA' && (
@@ -295,6 +379,82 @@ export function ViewStaffModal({
                             </div>
                         </div>
                     )}
+
+                    {/* Custom Fields Section */}
+                    {hasCustomFields && (
+                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Custom Fields</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {staff.customField1 && (
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Custom Field 1</p>
+                                        <p className="text-base">{staff.customField1}</p>
+                                    </div>
+                                )}
+                                {staff.customField2 && (
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Custom Field 2</p>
+                                        <p className="text-base">{staff.customField2}</p>
+                                    </div>
+                                )}
+                                {staff.customField3 && (
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Custom Field 3</p>
+                                        <p className="text-base">{staff.customField3}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Documents Section */}
+                    {hasDocuments && (
+                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Documents</h3>
+                            <div className="space-y-2">
+                                {documents.map((doc, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center justify-between gap-2 p-3 bg-muted/30 border border-border/30 rounded-lg"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium truncate">{doc.name}</p>
+                                                {doc.size && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {doc.size < 1024
+                                                            ? `${doc.size} B`
+                                                            : doc.size < 1024 * 1024
+                                                                ? `${(doc.size / 1024).toFixed(1)} KB`
+                                                                : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`
+                                                        }
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0"
+                                            onClick={() => window.open(doc.url, '_blank')}
+                                        >
+                                            <Download className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tax Details Section (Read-only) */}
+                    <div className="mb-6">
+                        <TaxDetailsView
+                            staffId={staff.id}
+                            taxDetails={staff.taxDetails ?? null}
+                        />
+                    </div>
                 </DialogContent>
 
                 {/* Action Buttons */}

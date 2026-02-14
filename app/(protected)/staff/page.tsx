@@ -19,7 +19,8 @@ import { Pagination } from '@/components/common/pagination';
 import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc as api } from '@/lib/client/trpc';
 import type { CreateStaffInput, UpdateStaffInput } from '@/lib/schemas/staff.schema';
-import { useState, useEffect } from 'react';
+import type { UpsertStaffTaxDetailsInput } from '@/lib/schemas/staff-tax-details.schema';
+import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { useTerminology } from '@/lib/hooks/use-terminology';
@@ -141,17 +142,45 @@ export default function StaffPage() {
         },
     });
 
-    const createMutation = api.staff.create.useMutation({
+    // Ref to hold pending tax data during staff creation
+    const pendingTaxDataRef = useRef<Record<string, unknown> | null>(null);
+
+    const taxDetailsUpsertMutation = api.staffTaxDetails.upsert.useMutation({
         onSuccess: () => {
+            toast({
+                title: 'Tax details saved',
+                description: 'Tax details saved alongside new staff record',
+            });
+        },
+        onError: (error) => {
+            toast({
+                title: 'Warning',
+                description: `Staff created but failed to save tax details: ${error.message}`,
+                variant: 'error',
+            });
+        },
+    });
+
+    const createMutation = api.staff.create.useMutation({
+        onSuccess: (newStaff) => {
             toast({
                 title: 'Success',
                 description: `${terminology.staff.singular} created successfully. An invitation email has been sent.`,
             });
+            // Save tax details if any were filled during creation
+            if (pendingTaxDataRef.current && newStaff?.id) {
+                taxDetailsUpsertMutation.mutate({
+                    staffId: newStaff.id,
+                    ...pendingTaxDataRef.current,
+                } as UpsertStaffTaxDetailsInput);
+                pendingTaxDataRef.current = null;
+            }
             setModals((prev) => ({ ...prev, form: false }));
             setSelectedStaff(null);
             refetch();
         },
         onError: (error) => {
+            pendingTaxDataRef.current = null;
             toast({
                 title: 'Error',
                 description: error.message || `Failed to create ${terminology.staff.lower}`,
@@ -297,7 +326,7 @@ export default function StaffPage() {
     const clearSelection = () => setSelectedIds(new Set());
 
     // Get selected staff for bulk operations
-    const selectedStaffList = (data?.data ?? []).filter((s) => selectedIds.has(s.id));
+    const selectedStaffList = ((data?.data ?? []) as StaffWithRelations[]).filter((s) => selectedIds.has(s.id));
 
     const handleBulkEditSelected = () => {
         if (selectedIds.size === 0) return;
@@ -331,14 +360,15 @@ export default function StaffPage() {
         setModals((prev) => ({ ...prev, form: false, view: true }));
     };
 
-    const handleFormSubmit = (formData: CreateStaffInput | Omit<UpdateStaffInput, 'id'>) => {
+    const handleFormSubmit = (formData: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => {
         if (selectedStaff) {
             updateMutation.mutate({
                 id: selectedStaff.id,
                 ...formData,
             } as UpdateStaffInput);
         } else {
-            // Create staff and send invitation email
+            // Store tax data for saving after successful creation
+            pendingTaxDataRef.current = taxData ?? null;
             createMutation.mutate(formData as CreateStaffInput);
         }
     };
@@ -355,7 +385,7 @@ export default function StaffPage() {
 
     const handleResendInvitation = (staffId: string) => {
         // Find staff by ID to get their name for the confirmation dialog
-        const staff = data?.data?.find((s) => s.id === staffId);
+        const staff = data?.data?.find((s) => s.id === staffId) as StaffWithRelations | undefined;
         if (staff) {
             setStaffToResend(staff);
             setIsResendConfirmOpen(true);
@@ -370,7 +400,7 @@ export default function StaffPage() {
 
     const handleDisableStaff = (staffId: string) => {
         // Find staff by ID to get their name for the confirmation dialog
-        const staff = data?.data?.find((s) => s.id === staffId) || selectedStaff;
+        const staff = (data?.data?.find((s) => s.id === staffId) || selectedStaff) as StaffWithRelations | undefined;
         if (staff) {
             setStaffToDisable(staff);
             setIsDisableConfirmOpen(true);
@@ -394,12 +424,15 @@ export default function StaffPage() {
         ACTIVE: 'Active',
         PENDING: 'Pending',
         DISABLED: 'Disabled',
+        TERMINATED: 'Terminated',
+        ARCHIVED: 'Archived',
     };
 
     const TYPE_LABELS: Record<StaffType, string> = {
         COMPANY: 'Company',
         EMPLOYEE: 'Employee',
         CONTRACTOR: 'Contractor',
+        FREELANCE: 'Freelance',
     };
 
     const SKILL_LABELS: Record<SkillLevel, string> = {
@@ -582,7 +615,7 @@ export default function StaffPage() {
                     ) : (
                         <>
                             <StaffTable
-                                staff={data?.data ?? []}
+                                staff={(data?.data ?? []) as StaffWithRelations[]}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
                                 onAssign={(staff) => setAssigningStaff(staff)}

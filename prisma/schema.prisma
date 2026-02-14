@@ -483,6 +483,7 @@ model Staff {
   staffId                      String                       @unique
   accountStatus                AccountStatus                @default(PENDING)
   staffType                    StaffType                    @default(EMPLOYEE)
+  staffRole                    StaffRole                    @default(INDIVIDUAL)
   firstName                    String
   lastName                     String
   phone                        String                       @default("")
@@ -509,12 +510,33 @@ model Staff {
   createdBy                    String
   createdAt                    DateTime                     @default(now()) @db.Timestamp(6)
   updatedAt                    DateTime                     @updatedAt @db.Timestamp(6)
+
+  // Custom fields
+  customField1                 String?
+  customField2                 String?
+  customField3                 String?
+
+  // Documents (JSON array of {name, url, type?, size?})
+  documents                    Json?
+
+  // Team Details (only when staffRole = TEAM)
+  teamEntityName               String?
+  teamEmail                    String?
+  teamPhone                    String?
+  teamAddressLine1             String?
+  teamAddressLine2             String?
+  teamCity                     String?
+  teamState                    String?
+  teamZipCode                  String?
+
+  // Relations
   callTimeInvitations          CallTimeInvitation[]
   company                      Staff?                       @relation("staffTostaff", fields: [companyId], references: [id])
   teamMembers                  Staff[]                      @relation("staffTostaff")
   users_staff_createdByTousers User                         @relation("staff_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
   users_staff_userIdTousers    User?                        @relation("staff_userIdTousers", fields: [userId], references: [id])
   services                     StaffServiceAssignment[]
+  taxDetails                   StaffTaxDetails?
 
   @@index([accountStatus])
   @@index([availabilityStatus])
@@ -522,6 +544,7 @@ model Staff {
   @@index([createdBy])
   @@index([email])
   @@index([staffId])
+  @@index([staffRole])
   @@map("staff")
 }
 
@@ -537,6 +560,42 @@ model StaffServiceAssignment {
   @@index([serviceId])
   @@index([staffId])
   @@map("staff_service_assignments")
+}
+
+model StaffTaxDetails {
+  id                      String            @id @default(uuid()) @db.Uuid
+  staffId                 String            @unique @db.Uuid
+
+  // Tax collection preferences
+  collectTaxDetails       Boolean           @default(false)
+  trackFor1099            Boolean           @default(false)
+
+  // Business info
+  businessStructure       BusinessStructure @default(INDIVIDUAL)
+  businessName            String?
+
+  // Tax identifiers (sensitive)
+  ssn                     String?
+  ein                     String?
+
+  // ID verification documents
+  identificationFrontUrl  String?
+  identificationBackUrl   String?
+
+  // Electronic consent
+  electronic1099Consent   Boolean           @default(false)
+  signatureUrl            String?
+  consentDate             DateTime?         @db.Timestamp(6)
+
+  // Audit
+  createdAt               DateTime          @default(now()) @db.Timestamp(6)
+  updatedAt               DateTime          @updatedAt @db.Timestamp(6)
+
+  // Relation
+  staff                   Staff             @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@map("staff_tax_details")
 }
 
 model User {
@@ -588,6 +647,8 @@ enum AccountStatus {
   ACTIVE
   DISABLED
   PENDING
+  TERMINATED
+  ARCHIVED
 }
 
 enum AvailabilityStatus {
@@ -709,12 +770,27 @@ enum StaffRating {
   A
   B
   C
+  D
 }
 
 enum StaffType {
   EMPLOYEE
   CONTRACTOR
   COMPANY
+  FREELANCE
+}
+
+enum StaffRole {
+  INDIVIDUAL
+  TEAM
+}
+
+enum BusinessStructure {
+  INDIVIDUAL
+  LLC
+  CORPORATION
+  PARTNERSHIP
+  OTHER
 }
 
 enum UserRole {

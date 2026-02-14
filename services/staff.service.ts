@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, AccountStatus, StaffType, SkillLevel, StaffRating, AvailabilityStatus, UserRole } from "@prisma/client";
+import { PrismaClient, Prisma, AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus, UserRole } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { randomBytes } from "crypto";
 import { hashPassword } from "better-auth/crypto";
@@ -48,6 +48,7 @@ export class StaffService {
         staffId: true,
         accountStatus: true,
         staffType: true,
+        staffRole: true,
         firstName: true,
         lastName: true,
         phone: true,
@@ -74,6 +75,21 @@ export class StaffService {
         createdBy: true,
         createdAt: true,
         updatedAt: true,
+        // Custom fields
+        customField1: true,
+        customField2: true,
+        customField3: true,
+        // Documents
+        documents: true,
+        // Team Details (for TEAM role)
+        teamEntityName: true,
+        teamEmail: true,
+        teamPhone: true,
+        teamAddressLine1: true,
+        teamAddressLine2: true,
+        teamCity: true,
+        teamState: true,
+        teamZipCode: true,
         services: {
             select: {
                 id: true,
@@ -98,9 +114,12 @@ export class StaffService {
                 staffId: true,
                 firstName: true,
                 lastName: true,
+                teamEntityName: true,
+                teamEmail: true,
+                teamPhone: true,
             },
         },
-        // Team members for COMPANY type staff
+        // Team members for TEAM role staff
         teamMembers: {
             select: {
                 id: true,
@@ -108,8 +127,40 @@ export class StaffService {
                 firstName: true,
                 lastName: true,
                 email: true,
+                phone: true,
                 staffType: true,
                 accountStatus: true,
+                services: {
+                    select: {
+                        serviceId: true,
+                        service: {
+                            select: {
+                                id: true,
+                                title: true,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        // Tax details (1:1 relation)
+        taxDetails: {
+            select: {
+                id: true,
+                staffId: true,
+                collectTaxDetails: true,
+                trackFor1099: true,
+                businessStructure: true,
+                businessName: true,
+                // Note: SSN and EIN are not included here for security
+                // Use dedicated masked endpoints to retrieve them
+                identificationFrontUrl: true,
+                identificationBackUrl: true,
+                electronic1099Consent: true,
+                signatureUrl: true,
+                consentDate: true,
+                createdAt: true,
+                updatedAt: true,
             },
         },
     } as const;
@@ -160,10 +211,12 @@ export class StaffService {
         const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
         try {
+            const { documents, ...restStaffData } = staffData;
             const staff = await this.prisma.staff.create({
                 data: {
                     staffId,
-                    ...staffData,
+                    ...restStaffData,
+                    documents: documents as Prisma.InputJsonValue ?? Prisma.JsonNull,
                     accountStatus: AccountStatus.PENDING, // Always start as pending
                     invitationToken,
                     invitationExpiresAt,
@@ -177,8 +230,8 @@ export class StaffService {
                 select: this.staffSelect,
             });
 
-            // If staff type is COMPANY and team members were provided, create them
-            if (staffData.staffType === StaffType.COMPANY && teamMembers && teamMembers.length > 0) {
+            // If staff role is TEAM and team members were provided, create them
+            if (staffData.staffRole === StaffRole.TEAM && teamMembers && teamMembers.length > 0) {
                 const terminology = await this.settingsService.getTerminology();
 
                 for (const member of teamMembers) {
@@ -200,20 +253,19 @@ export class StaffService {
                         data: {
                             staffId: memberStaffId,
                             firstName: member.firstName,
-                            lastName: member.lastName,
+                            lastName: member.lastName ?? '',
                             email: member.email,
-                            staffType: member.staffType === 'CONTRACTOR' ? StaffType.CONTRACTOR : StaffType.EMPLOYEE,
+                            phone: member.phone ?? '',
+                            staffType: StaffType.EMPLOYEE, // Team members default to EMPLOYEE
                             accountStatus: AccountStatus.PENDING,
                             companyId: staff.id, // Link to the parent company
                             invitationToken: memberInvitationToken,
                             invitationExpiresAt: memberInvitationExpiresAt,
                             createdBy: createdByUserId,
-                            // Copy services from parent company
-                            services: {
-                                create: serviceIds.map((serviceId) => ({
-                                    serviceId,
-                                })),
-                            },
+                            // Service assignments from team member input (multiple)
+                            services: member.serviceIds && member.serviceIds.length > 0 ? {
+                                create: member.serviceIds.map((serviceId) => ({ serviceId })),
+                            } : undefined,
                         },
                     });
                 }
@@ -807,11 +859,18 @@ export class StaffService {
         id: string,
         data: Omit<UpdateStaffInput, "id">
     ): Promise<StaffSelect> {
-        // Type the teamMembers properly
-        type TeamMemberInput = { email: string; firstName: string; lastName: string; staffType: 'CONTRACTOR' | 'EMPLOYEE' };
-        const { serviceIds, teamMembers, ...updateData } = data as Omit<UpdateStaffInput, "id"> & {
+        // Type the teamMembers to match frontend TeamMemberInput structure
+        type TeamMemberInput = {
+            email: string;
+            firstName: string;
+            lastName?: string;
+            phone?: string;
+            serviceIds?: string[];
+        };
+        const { serviceIds, teamMembers, companyId, ...updateData } = data as Omit<UpdateStaffInput, "id"> & {
             serviceIds?: string[];
             teamMembers?: TeamMemberInput[];
+            companyId?: string | null;
         };
 
         // Check if staff exists and get current team members
@@ -836,10 +895,18 @@ export class StaffService {
         }
 
         try {
+            const { documents, ...restUpdateData } = updateData as typeof updateData & { documents?: unknown };
             const staff = await this.prisma.staff.update({
                 where: { id },
                 data: {
-                    ...updateData,
+                    ...restUpdateData,
+                    ...(documents !== undefined && {
+                        documents: documents as Prisma.InputJsonValue ?? Prisma.JsonNull,
+                    }),
+                    // Update company relation if provided
+                    ...(companyId !== undefined && {
+                        company: companyId ? { connect: { id: companyId } } : { disconnect: true },
+                    }),
                     // Update services if provided
                     ...(serviceIds !== undefined && {
                         services: {
@@ -853,8 +920,12 @@ export class StaffService {
                 select: this.staffSelect,
             });
 
-            // Handle team members for COMPANY type staff
-            if (existing.staffType === StaffType.COMPANY && teamMembers !== undefined) {
+            // Handle team members for TEAM role staff
+            // Check both existing role OR if the role is being updated to TEAM
+            const staffRoleIsTeam = existing.staffRole === StaffRole.TEAM ||
+                (updateData as { staffRole?: StaffRole }).staffRole === StaffRole.TEAM;
+
+            if (staffRoleIsTeam && teamMembers !== undefined) {
                 const terminology = await this.settingsService.getTerminology();
                 const existingEmails = new Set(existing.teamMembers.map(tm => tm.email));
                 const incomingEmails = new Set(teamMembers.map(tm => tm.email));
@@ -896,22 +967,28 @@ export class StaffService {
                         const memberInvitationToken = this.generateInvitationToken();
                         const memberInvitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+                        // Use member's serviceIds if provided, otherwise use parent's serviceIds
+                        const memberServiceIds = member.serviceIds && member.serviceIds.length > 0
+                            ? member.serviceIds
+                            : serviceIds;
+
                         await this.prisma.staff.create({
                             data: {
                                 staffId: memberStaffId,
                                 firstName: member.firstName,
-                                lastName: member.lastName,
+                                lastName: member.lastName || '',
                                 email: member.email,
-                                staffType: member.staffType === 'CONTRACTOR' ? StaffType.CONTRACTOR : StaffType.EMPLOYEE,
+                                phone: member.phone || '',
+                                staffType: StaffType.EMPLOYEE, // Team members default to EMPLOYEE
                                 accountStatus: AccountStatus.PENDING,
                                 companyId: id,
                                 invitationToken: memberInvitationToken,
                                 invitationExpiresAt: memberInvitationExpiresAt,
                                 createdBy: existing.createdBy,
-                                // Copy services from parent company if available
-                                ...(serviceIds && serviceIds.length > 0 && {
+                                // Assign services to team member
+                                ...(memberServiceIds && memberServiceIds.length > 0 && {
                                     services: {
-                                        create: serviceIds.map((serviceId) => ({
+                                        create: memberServiceIds.map((serviceId) => ({
                                             serviceId,
                                         })),
                                     },
@@ -1077,7 +1154,7 @@ export class StaffService {
         // Check if staff exists
         const staff = await this.prisma.staff.findUnique({
             where: { id },
-            select: { id: true, firstName: true, lastName: true, staffType: true, teamMembers: true },
+            select: { id: true, firstName: true, lastName: true, staffType: true, staffRole: true, teamMembers: true },
         });
 
         if (!staff) {
@@ -1087,8 +1164,8 @@ export class StaffService {
             });
         }
 
-        // Check if this is a company with team members
-        if (staff.staffType === "COMPANY" && staff.teamMembers && staff.teamMembers.length > 0) {
+        // Check if this is a team with team members
+        if (staff.staffRole === "TEAM" && staff.teamMembers && staff.teamMembers.length > 0) {
             throw new TRPCError({
                 code: "BAD_REQUEST",
                 message:
@@ -1139,10 +1216,11 @@ export class StaffService {
                     firstName: true,
                     lastName: true,
                     staffType: true,
+                    staffRole: true,
                     accountStatus: true,
                     _count: {
                         select: {
-                            teamMembers: true, // Count of team members assigned to this company
+                            teamMembers: true, // Count of team members assigned to this team
                         },
                     },
                 },
@@ -1165,12 +1243,12 @@ export class StaffService {
                     continue;
                 }
 
-                // Check if company with assigned team members
-                if (staff.staffType === "COMPANY" && staff._count.teamMembers > 0) {
+                // Check if team with assigned team members
+                if (staff.staffRole === "TEAM" && staff._count.teamMembers > 0) {
                     failed.push({
                         id: staff.id,
                         staffId: staff.staffId,
-                        reason: `Company has ${staff._count.teamMembers} assigned team member(s)`,
+                        reason: `Team has ${staff._count.teamMembers} assigned team member(s)`,
                     });
                     continue;
                 }
@@ -1245,9 +1323,10 @@ export class StaffService {
                     firstName: true,
                     lastName: true,
                     staffType: true,
+                    staffRole: true,
                     _count: {
                         select: {
-                            teamMembers: true, // Count of team members assigned to this company
+                            teamMembers: true, // Count of team members assigned to this team
                         },
                     },
                 },
@@ -1259,12 +1338,12 @@ export class StaffService {
 
             // Validate each staff member
             for (const staff of staffMembers) {
-                // Check if company with assigned team members
-                if (staff.staffType === "COMPANY" && staff._count.teamMembers > 0) {
+                // Check if team with assigned team members
+                if (staff.staffRole === "TEAM" && staff._count.teamMembers > 0) {
                     failed.push({
                         id: staff.id,
                         staffId: staff.staffId,
-                        reason: `Company has ${staff._count.teamMembers} assigned team member(s). Reassign or remove them first.`,
+                        reason: `Team has ${staff._count.teamMembers} assigned team member(s). Reassign or remove them first.`,
                     });
                     continue;
                 }

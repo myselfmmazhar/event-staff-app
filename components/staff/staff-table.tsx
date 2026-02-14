@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Edit2Icon, Trash2Icon, CalendarIcon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
-import { AvailabilityStatus, AccountStatus, StaffType, SkillLevel, StaffRating } from '@prisma/client';
+import { AvailabilityStatus, AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating } from '@prisma/client';
 import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 
@@ -14,6 +14,7 @@ export type StaffWithRelations = {
     staffId: string;
     accountStatus: AccountStatus;
     staffType: StaffType;
+    staffRole: StaffRole;
     firstName: string;
     lastName: string;
     email: string;
@@ -40,17 +41,53 @@ export type StaffWithRelations = {
     createdBy: string;
     createdAt: Date | string;
     updatedAt: Date | string;
+    // Custom fields
+    customField1: string | null;
+    customField2: string | null;
+    customField3: string | null;
+    // Documents
+    documents: Array<{ name: string; url: string; type?: string; size?: number }> | null;
+    // Team Details (for TEAM role)
+    teamEntityName: string | null;
+    teamEmail: string | null;
+    teamPhone: string | null;
+    teamAddressLine1: string | null;
+    teamAddressLine2: string | null;
+    teamCity: string | null;
+    teamState: string | null;
+    teamZipCode: string | null;
     services?: Array<{ service: { id: string; title: string } }>;
-    company: { id: string; staffId: string; firstName: string; lastName: string } | null;
+    company: { id: string; staffId: string; firstName: string; lastName: string; teamEntityName: string | null; teamEmail: string | null; teamPhone: string | null } | null;
     teamMembers?: Array<{
         id: string;
         staffId: string;
         firstName: string;
         lastName: string;
         email: string;
+        phone: string;
         staffType: StaffType;
         accountStatus: AccountStatus;
+        services?: Array<{
+            serviceId: string;
+            service: { id: string; title: string };
+        }>;
     }>;
+    // Tax details (optional 1:1 relation)
+    taxDetails?: {
+        id: string;
+        staffId: string;
+        collectTaxDetails: boolean;
+        trackFor1099: boolean;
+        businessStructure: string;
+        businessName: string | null;
+        identificationFrontUrl: string | null;
+        identificationBackUrl: string | null;
+        electronic1099Consent: boolean;
+        signatureUrl: string | null;
+        consentDate: Date | string | null;
+        createdAt: Date | string;
+        updatedAt: Date | string;
+    } | null;
 };
 
 interface StaffTableProps {
@@ -110,20 +147,15 @@ export function StaffTable({ staff, onEdit, onDelete, onAssign, selectedIds, onS
     };
 
     const getStatusBadge = (status: string) => {
-        const variants: Record<string, 'default' | 'secondary' | 'danger'> = {
+        const variants: Record<string, 'default' | 'secondary' | 'danger' | 'warning'> = {
             ACTIVE: 'default',
             PENDING: 'secondary',
             DISABLED: 'danger',
-        };
-        // Map 'danger' to 'danger' as per Badge component definition
-        const variantMap: Record<string, 'default' | 'secondary' | 'danger'> = {
-            default: 'default',
-            secondary: 'secondary',
-            danger: 'danger',
+            TERMINATED: 'danger',
+            ARCHIVED: 'warning',
         };
 
-        const variantKey = variants[status] || 'secondary';
-        const badgeVariant = variantMap[variantKey];
+        const badgeVariant = variants[status] || 'secondary';
 
         return (
             <Badge variant={badgeVariant} asSpan>
@@ -137,11 +169,13 @@ export function StaffTable({ staff, onEdit, onDelete, onAssign, selectedIds, onS
             COMPANY: 'Company',
             CONTRACTOR: 'Contractor',
             EMPLOYEE: 'Employee',
+            FREELANCE: 'Freelance',
         };
         const variants: Record<StaffType, 'default' | 'secondary'> = {
             COMPANY: 'default',
             CONTRACTOR: 'default',
             EMPLOYEE: 'secondary',
+            FREELANCE: 'default',
         };
         return (
             <Badge variant={variants[type]} asSpan>

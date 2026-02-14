@@ -27,7 +27,7 @@ const SKILL_LEVELS: Array<{ value: SkillLevel; label: string }> = [
 const RATE_TYPES: Array<{ value: RateType; label: string }> = RATE_TYPE_OPTIONS;
 
 // Staff rating options for form (string literals for browser compatibility)
-const staffRatingValues = ['NA', 'A', 'B', 'C'] as const;
+const staffRatingValues = ['NA', 'A', 'B', 'C', 'D'] as const;
 
 // Form schema for UI (handles TBD/UBD checkboxes)
 export const assignmentFieldsSchema = z

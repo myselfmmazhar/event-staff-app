@@ -84,6 +84,7 @@ export type StaffSelect = Prisma.StaffGetPayload<{
     staffId: true;
     accountStatus: true;
     staffType: true;
+    staffRole: true;
     firstName: true;
     lastName: true;
     phone: true;
@@ -110,6 +111,21 @@ export type StaffSelect = Prisma.StaffGetPayload<{
     createdBy: true;
     createdAt: true;
     updatedAt: true;
+    // Custom fields
+    customField1: true;
+    customField2: true;
+    customField3: true;
+    // Documents
+    documents: true;
+    // Team Details (for TEAM role)
+    teamEntityName: true;
+    teamEmail: true;
+    teamPhone: true;
+    teamAddressLine1: true;
+    teamAddressLine2: true;
+    teamCity: true;
+    teamState: true;
+    teamZipCode: true;
     services: {
       select: {
         id: true;
@@ -134,6 +150,51 @@ export type StaffSelect = Prisma.StaffGetPayload<{
         staffId: true;
         firstName: true;
         lastName: true;
+        teamEntityName: true;
+        teamEmail: true;
+        teamPhone: true;
+      };
+    };
+    // Team members (for TEAM role)
+    teamMembers: {
+      select: {
+        id: true;
+        staffId: true;
+        firstName: true;
+        lastName: true;
+        email: true;
+        phone: true;
+        staffType: true;
+        accountStatus: true;
+        services: {
+          select: {
+            serviceId: true;
+            service: {
+              select: {
+                id: true;
+                title: true;
+              };
+            };
+          };
+        };
+      };
+    };
+    // Tax details (1:1 relation)
+    taxDetails: {
+      select: {
+        id: true;
+        staffId: true;
+        collectTaxDetails: true;
+        trackFor1099: true;
+        businessStructure: true;
+        businessName: true;
+        identificationFrontUrl: true;
+        identificationBackUrl: true;
+        electronic1099Consent: true;
+        signatureUrl: true;
+        consentDate: true;
+        createdAt: true;
+        updatedAt: true;
       };
     };
   };
