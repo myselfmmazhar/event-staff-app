@@ -153,9 +153,11 @@ const baseFields = {
         .optional()
         .nullable(),
     teamEmail: z
-        .string()
-        .email({ message: FieldErrors.email.invalid })
-        .transform((val) => val?.trim().toLowerCase())
+        .union([
+            z.string().email({ message: FieldErrors.email.invalid }),
+            z.literal(''),
+        ])
+        .transform((val) => (!val ? null : val.trim().toLowerCase()))
         .optional()
         .nullable(),
     teamPhone: z

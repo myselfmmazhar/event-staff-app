@@ -4,6 +4,37 @@ import { BusinessStructure } from "@prisma/client";
 /**
  * StaffTaxDetails Zod Schemas for validation
  */
+/**
+ * Helper: transform empty/whitespace-only strings to null
+ */
+const emptyToNull = (val: string | undefined | null) => {
+    if (val == null) return null;
+    return val.trim() === '' ? null : val.trim();
+};
+
+/**
+ * Helper: URL field that accepts empty strings (→ null), null, undefined, and valid URLs.
+ * Accepts null/undefined at input stage and transforms empty strings to null.
+ */
+const optionalUrlField = (message = "Invalid URL format") =>
+    z.union([z.string().url(message), z.literal(''), z.null(), z.undefined()])
+        .transform((val) => (!val ? null : val === '' ? null : val))
+        .optional()
+        .nullable();
+
+/**
+ * Helper: string field that accepts data URIs, null, undefined, or any non-empty string (→ null if empty)
+ * Used for signatureUrl which receives data:image/png;base64,... from the signature pad
+ */
+const optionalStringField = () =>
+    z.union([z.string(), z.null(), z.undefined()])
+        .transform((val) => {
+            if (val == null) return null;
+            return val.trim() === '' ? null : val.trim();
+        })
+        .optional()
+        .nullable();
+
 export class StaffTaxDetailsSchema {
     /**
      * Create/Update Tax Details Schema
@@ -21,7 +52,7 @@ export class StaffTaxDetailsSchema {
         businessName: z
             .string()
             .max(200, "Business name must be 200 characters or less")
-            .transform((val) => val?.trim())
+            .transform(emptyToNull)
             .optional()
             .nullable(),
 
@@ -29,35 +60,24 @@ export class StaffTaxDetailsSchema {
         ssn: z
             .string()
             .max(11, "SSN must be 11 characters or less") // Format: XXX-XX-XXXX
-            .transform((val) => val?.trim())
+            .transform(emptyToNull)
             .optional()
             .nullable(),
         ein: z
             .string()
             .max(10, "EIN must be 10 characters or less") // Format: XX-XXXXXXX
-            .transform((val) => val?.trim())
+            .transform(emptyToNull)
             .optional()
             .nullable(),
 
         // ID verification documents
-        identificationFrontUrl: z
-            .string()
-            .url("Invalid URL format")
-            .optional()
-            .nullable(),
-        identificationBackUrl: z
-            .string()
-            .url("Invalid URL format")
-            .optional()
-            .nullable(),
+        identificationFrontUrl: optionalUrlField(),
+        identificationBackUrl: optionalUrlField(),
 
         // Electronic consent
         electronic1099Consent: z.boolean().default(false),
-        signatureUrl: z
-            .string()
-            .url("Invalid URL format")
-            .optional()
-            .nullable(),
+        // signatureUrl accepts data URIs (data:image/png;base64,...) from signature pad
+        signatureUrl: optionalStringField(),
         consentDate: z.date().optional().nullable(),
     });
 
@@ -89,7 +109,7 @@ export class StaffTaxDetailsSchema {
         businessName: z
             .string()
             .max(200, "Business name must be 200 characters or less")
-            .transform((val) => val?.trim())
+            .transform(emptyToNull)
             .optional()
             .nullable(),
 
@@ -97,35 +117,24 @@ export class StaffTaxDetailsSchema {
         ssn: z
             .string()
             .max(11, "SSN must be 11 characters or less")
-            .transform((val) => val?.trim())
+            .transform(emptyToNull)
             .optional()
             .nullable(),
         ein: z
             .string()
             .max(10, "EIN must be 10 characters or less")
-            .transform((val) => val?.trim())
+            .transform(emptyToNull)
             .optional()
             .nullable(),
 
         // ID verification documents
-        identificationFrontUrl: z
-            .string()
-            .url("Invalid URL format")
-            .optional()
-            .nullable(),
-        identificationBackUrl: z
-            .string()
-            .url("Invalid URL format")
-            .optional()
-            .nullable(),
+        identificationFrontUrl: optionalUrlField(),
+        identificationBackUrl: optionalUrlField(),
 
         // Electronic consent
         electronic1099Consent: z.boolean().optional(),
-        signatureUrl: z
-            .string()
-            .url("Invalid URL format")
-            .optional()
-            .nullable(),
+        // signatureUrl accepts data URIs (data:image/png;base64,...) from signature pad
+        signatureUrl: optionalStringField(),
         consentDate: z.date().optional().nullable(),
     });
 }

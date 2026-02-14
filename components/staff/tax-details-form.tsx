@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,13 +54,20 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
 }, ref) {
     const utils = trpc.useUtils();
 
+    // Fetch full tax details (including SSN/EIN) when editing
+    const { data: fetchedTaxDetails } = trpc.staffTaxDetails.getByStaffId.useQuery(
+        { staffId: staffId! },
+        { enabled: !!staffId }
+    );
+
     const {
         register,
         handleSubmit,
-        formState: { errors, isSubmitting },
+        formState: { errors, isSubmitting, isDirty },
         control,
         watch,
         setValue,
+        reset,
     } = useForm<TaxDetailsFormInput>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -70,13 +77,33 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
             businessName: initialData?.businessName ?? '',
             ssn: initialData?.ssn ?? '',
             ein: initialData?.ein ?? '',
-            identificationFrontUrl: initialData?.identificationFrontUrl ?? '',
-            identificationBackUrl: initialData?.identificationBackUrl ?? '',
+            identificationFrontUrl: initialData?.identificationFrontUrl ?? null,
+            identificationBackUrl: initialData?.identificationBackUrl ?? null,
             electronic1099Consent: initialData?.electronic1099Consent ?? false,
-            signatureUrl: initialData?.signatureUrl ?? '',
+            signatureUrl: initialData?.signatureUrl ?? null,
             consentDate: initialData?.consentDate ? new Date(initialData.consentDate) : null,
         },
     });
+
+    // When full tax details load (with SSN/EIN), reset the form with complete data
+    // Only reset if the form hasn't been modified by the user (isDirty = false)
+    useEffect(() => {
+        if (fetchedTaxDetails && !isDirty) {
+            reset({
+                collectTaxDetails: fetchedTaxDetails.collectTaxDetails ?? false,
+                trackFor1099: fetchedTaxDetails.trackFor1099 ?? false,
+                businessStructure: (fetchedTaxDetails.businessStructure as BusinessStructure) ?? BusinessStructure.INDIVIDUAL,
+                businessName: fetchedTaxDetails.businessName ?? '',
+                ssn: fetchedTaxDetails.ssn ?? '',
+                ein: fetchedTaxDetails.ein ?? '',
+                identificationFrontUrl: fetchedTaxDetails.identificationFrontUrl ?? null,
+                identificationBackUrl: fetchedTaxDetails.identificationBackUrl ?? null,
+                electronic1099Consent: fetchedTaxDetails.electronic1099Consent ?? false,
+                signatureUrl: fetchedTaxDetails.signatureUrl ?? null,
+                consentDate: fetchedTaxDetails.consentDate ? new Date(fetchedTaxDetails.consentDate) : null,
+            });
+        }
+    }, [fetchedTaxDetails, reset, isDirty]);
 
     const collectTaxDetails = watch('collectTaxDetails');
     const businessStructure = watch('businessStructure');
@@ -177,7 +204,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
 
     const handleIdRemove = useCallback((side: 'front' | 'back') => {
         const fieldName = side === 'front' ? 'identificationFrontUrl' : 'identificationBackUrl';
-        setValue(fieldName, '', { shouldValidate: true });
+        setValue(fieldName, null, { shouldValidate: true });
     }, [setValue]);
 
     return (
@@ -586,11 +613,24 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                         {/* Consent Date */}
                         <div className="mt-4">
                             <Label htmlFor="consentDate">Consent Date</Label>
-                            <Input
-                                id="consentDate"
-                                type="date"
-                                {...register('consentDate', { valueAsDate: true })}
-                                disabled={isSubmitting || upsertMutation.isPending}
+                            <Controller
+                                name="consentDate"
+                                control={control}
+                                render={({ field }) => (
+                                    <Input
+                                        id="consentDate"
+                                        type="date"
+                                        value={field.value instanceof Date && !isNaN(field.value.getTime())
+                                            ? field.value.toISOString().split('T')[0]
+                                            : ''
+                                        }
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            field.onChange(val ? new Date(val + 'T00:00:00') : null);
+                                        }}
+                                        disabled={isSubmitting || upsertMutation.isPending}
+                                    />
+                                )}
                             />
                         </div>
                     </div>

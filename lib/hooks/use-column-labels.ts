@@ -20,14 +20,11 @@ export function useColumnLabels(page: string, defaults: Record<string, string>) 
     const pages = allLabels?.pages as unknown as Record<string, Record<string, unknown>> | undefined;
     const pageLabels = pages?.[page];
 
-    // Debug logging
-    console.log(`[useColumnLabels] page: ${page}, pageLabels:`, pageLabels);
 
     if (pageLabels) {
         // Column labels are stored in nested object structure: { columns: { clientId: "value" } }
         const columnsData = pageLabels.columns as Record<string, unknown> | undefined;
 
-        console.log(`[useColumnLabels] columnsData:`, columnsData);
 
         Object.keys(defaults).forEach((key) => {
             const nestedValue = columnsData?.[key];
@@ -39,7 +36,6 @@ export function useColumnLabels(page: string, defaults: Record<string, string>) 
 
             if (rawValue) {
                 labels[key] = interpolateLabel(rawValue, terminology);
-                console.log(`[useColumnLabels] Found label for ${key}: "${rawValue}" -> "${labels[key]}"`);
             } else {
                 labels[key] = interpolateLabel(labels[key] ?? defaults[key] ?? '', terminology);
             }
