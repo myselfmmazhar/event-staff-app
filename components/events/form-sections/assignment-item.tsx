@@ -84,6 +84,26 @@ export function AssignmentItem({
               <div className="text-xs text-muted-foreground">
                 {isProduct ? 'Product' : 'Service'}
               </div>
+              {/* Show start/end date & time for service assignments */}
+              {!isProduct && serviceAssignment && (serviceAssignment.startDate || serviceAssignment.endDate) && (
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {serviceAssignment.startDate && (
+                    <span>
+                      {serviceAssignment.startDateUBD ? 'UBD' : serviceAssignment.startDate}
+                      {serviceAssignment.startTime && !serviceAssignment.startTimeTBD && ` ${serviceAssignment.startTime}`}
+                      {serviceAssignment.startTimeTBD && ' (TBD)'}
+                    </span>
+                  )}
+                  {serviceAssignment.startDate && serviceAssignment.endDate && ' → '}
+                  {serviceAssignment.endDate && (
+                    <span>
+                      {serviceAssignment.endDateUBD ? 'UBD' : serviceAssignment.endDate}
+                      {serviceAssignment.endTime && !serviceAssignment.endTimeTBD && ` ${serviceAssignment.endTime}`}
+                      {serviceAssignment.endTimeTBD && ' (TBD)'}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Quantity */}
