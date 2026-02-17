@@ -167,7 +167,13 @@ export function Breadcrumbs() {
 
     const firstSegment = segments[0];
 
-    // Time Manager routes (dynamic based on terminology - tasks or events)
+    // Time Manager route (fixed /timesheet)
+    if (firstSegment === 'timesheet') {
+      hierarchy.push({ label: 'Time Manager' });
+      return hierarchy;
+    }
+
+    // Legacy: Time Manager routes (dynamic based on terminology - tasks or events)
     if (firstSegment && isEventRoute(firstSegment)) {
       const secondSegment = segments[1];
       if (secondSegment === 'timesheet') {
@@ -220,8 +226,12 @@ export function Breadcrumbs() {
     const firstSegment = segments[0];
     const secondSegment = segments[1];
 
-    // Check Time Pod routes FIRST (timesheet under event route, and finance)
-    // This must come before Task Pod check since both use event route
+    // Check Time Pod routes FIRST (timesheet, and finance)
+    // Direct /timesheet route
+    if (firstSegment === 'timesheet') {
+      return getTimePodHierarchy(segments, isCreate);
+    }
+    // Legacy: timesheet under event route
     if (firstSegment && isEventRoute(firstSegment) && secondSegment === 'timesheet') {
       return getTimePodHierarchy(segments, isCreate);
     }
