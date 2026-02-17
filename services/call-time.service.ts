@@ -973,6 +973,17 @@ export class CallTimeService {
               venueName: true,
               city: true,
               state: true,
+              poNumber: true,
+              startDate: true,
+              startTime: true,
+              endDate: true,
+              endTime: true,
+              client: {
+                select: {
+                  id: true,
+                  businessName: true,
+                },
+              },
             },
           },
           invitations: {
