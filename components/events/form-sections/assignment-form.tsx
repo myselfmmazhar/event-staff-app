@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { SearchIcon, PlusIcon, ChevronDownIcon } from '@/components/ui/icons';
-import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/client/trpc';
 import { assignmentFormSchema, type AssignmentFormInput } from '@/lib/schemas/assignment.schema';
 import {
@@ -286,7 +285,7 @@ export function AssignmentForm({
   };
 
   return (
-    <div>
+    <div className="relative pb-20">
       {/* Form Content */}
       <div className="space-y-6">
       {/* Assignment Type */}
@@ -923,10 +922,9 @@ export function AssignmentForm({
 
       </div>
 
-      {/* Save Options */}
-      <div className="border-t pt-4 mt-4">
-        <Label className="text-sm font-medium mb-3 block">Save options</Label>
-        <div className="flex flex-wrap gap-2">
+      {/* Fixed Bottom Save Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg p-4 z-50">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <Button
             type="button"
             variant="default"

@@ -169,18 +169,30 @@ export function AssignmentsSection({
             onEdit={handleEditAssignment}
             onDelete={handleDeleteAssignment}
             disabled={disabled || showForm}
+            editingId={editingAssignment?.id}
+            renderEditForm={(assignment) => (
+              <>
+                <h4 className="text-base font-medium mb-4">Edit Assignment</h4>
+                <AssignmentForm
+                  assignment={assignment}
+                  onSave={handleSaveAssignment}
+                  onCancel={handleCancelForm}
+                  onCreateService={() => setShowCreateService(true)}
+                  onCreateProduct={() => setShowCreateProduct(true)}
+                  disabled={disabled}
+                />
+              </>
+            )}
           />
         )}
 
-        {/* Assignment Form */}
-        {showForm && (
+        {/* Assignment Form - only for NEW assignments (not editing) */}
+        {showForm && !editingAssignment && (
           <div className="border border-border rounded-lg p-4 bg-background">
-            <h4 className="text-base font-medium mb-4">
-              {editingAssignment ? 'Edit Assignment' : 'Assignment Details'}
-            </h4>
+            <h4 className="text-base font-medium mb-4">Assignment Details</h4>
             <AssignmentForm
-              assignment={editingAssignment}
-              defaultType={editingAssignment ? undefined : defaultType}
+              assignment={null}
+              defaultType={defaultType}
               onSave={handleSaveAssignment}
               onCancel={handleCancelForm}
               onCreateService={() => setShowCreateService(true)}

@@ -2,13 +2,17 @@
 
 import { Accordion } from '@/components/ui/accordion';
 import { AssignmentItem } from './assignment-item';
-import type { Assignment } from '@/lib/types/assignment.types';
+import type { Assignment, AssignmentSaveAction } from '@/lib/types/assignment.types';
 
 interface AssignmentListProps {
   assignments: Assignment[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   disabled?: boolean;
+  /** ID of the assignment currently being edited (for inline form) */
+  editingId?: string | null;
+  /** Render prop for inline edit form */
+  renderEditForm?: (assignment: Assignment) => React.ReactNode;
 }
 
 export function AssignmentList({
@@ -16,6 +20,8 @@ export function AssignmentList({
   onEdit,
   onDelete,
   disabled = false,
+  editingId,
+  renderEditForm,
 }: AssignmentListProps) {
   if (assignments.length === 0) {
     return (
@@ -54,13 +60,20 @@ export function AssignmentList({
     <div className="space-y-4">
       <Accordion type="multiple" className="space-y-2">
         {assignments.map((assignment) => (
-          <AssignmentItem
-            key={assignment.id}
-            assignment={assignment}
-            onEdit={() => onEdit(assignment.id)}
-            onDelete={() => onDelete(assignment.id)}
-            disabled={disabled}
-          />
+          <div key={assignment.id}>
+            <AssignmentItem
+              assignment={assignment}
+              onEdit={() => onEdit(assignment.id)}
+              onDelete={() => onDelete(assignment.id)}
+              disabled={disabled || editingId === assignment.id}
+            />
+            {/* Inline edit form - renders right below the item being edited */}
+            {editingId === assignment.id && renderEditForm && (
+              <div className="mt-2 border border-primary/30 rounded-lg p-4 bg-background shadow-sm">
+                {renderEditForm(assignment)}
+              </div>
+            )}
+          </div>
         ))}
       </Accordion>
 
