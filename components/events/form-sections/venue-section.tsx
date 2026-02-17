@@ -17,54 +17,57 @@ export function VenueSection({
     <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Location Information</h3>
       <div className="space-y-4">
-        {/* Address Autocomplete */}
-        <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
-          <AddressAutocomplete
-            label="Search Address (Optional)"
-            placeholder="Type to search for an address..."
-            onSelect={(addressData) => {
-              setValue('address', addressData.address);
-              setValue('city', addressData.city);
-              setValue('state', addressData.state);
-              setValue('zipCode', addressData.zipCode);
-              setValue('latitude', addressData.latitude);
-              setValue('longitude', addressData.longitude);
-            }}
-          />
-          <p className="text-xs text-muted-foreground mt-2">
-            Start typing to search for an address, or fill in the fields below manually
-          </p>
+        {/* Row 1: Search Address + Location Name */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
+            <AddressAutocomplete
+              label="Search Address (Optional)"
+              placeholder="Type to search for an address..."
+              onSelect={(addressData) => {
+                setValue('address', addressData.address);
+                setValue('city', addressData.city);
+                setValue('state', addressData.state);
+                setValue('zipCode', addressData.zipCode);
+                setValue('latitude', addressData.latitude);
+                setValue('longitude', addressData.longitude);
+              }}
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Start typing to search for an address, or fill in the fields below manually
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="venueName" required>Location Name</Label>
+            <Input
+              id="venueName"
+              {...register('venueName')}
+              error={!!errors.venueName}
+              disabled={disabled}
+              placeholder="Convention Center"
+            />
+            {errors.venueName && (
+              <p className="text-sm text-destructive mt-1">{errors.venueName.message}</p>
+            )}
+          </div>
         </div>
 
-        <div>
-          <Label htmlFor="venueName" required>Location Name</Label>
-          <Input
-            id="venueName"
-            {...register('venueName')}
-            error={!!errors.venueName}
-            disabled={disabled}
-            placeholder="Convention Center"
-          />
-          {errors.venueName && (
-            <p className="text-sm text-destructive mt-1">{errors.venueName.message}</p>
-          )}
-        </div>
+        {/* Row 2: Address + City + State + ZIP Code */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-1">
+            <Label htmlFor="address" required>Address</Label>
+            <Input
+              id="address"
+              {...register('address')}
+              error={!!errors.address}
+              disabled={disabled}
+              placeholder="123 Main Street"
+            />
+            {errors.address && (
+              <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
+            )}
+          </div>
 
-        <div>
-          <Label htmlFor="address" required>Address</Label>
-          <Input
-            id="address"
-            {...register('address')}
-            error={!!errors.address}
-            disabled={disabled}
-            placeholder="123 Main Street"
-          />
-          {errors.address && (
-            <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label htmlFor="city" required>City</Label>
             <Input
