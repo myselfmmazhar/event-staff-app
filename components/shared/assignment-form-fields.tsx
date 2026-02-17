@@ -162,6 +162,22 @@ export function AssignmentFormFields({
     setValue('billRateType', payRateType);
   }, [payRateType, setValue]);
 
+  // Sync end date with start date
+  const startDate = watch('startDate');
+  useEffect(() => {
+    if (startDate && !startDateUBD) {
+      setValue('endDate', startDate);
+    }
+  }, [startDate, startDateUBD, setValue]);
+
+  // Sync end time with start time
+  const startTime = watch('startTime');
+  useEffect(() => {
+    if (startTime && !startTimeTBD) {
+      setValue('endTime', startTime);
+    }
+  }, [startTime, startTimeTBD, setValue]);
+
   // Handle service selection
   const handleServiceSelect = (service: ServiceOption) => {
     setSelectedService(service);
@@ -394,7 +410,7 @@ export function AssignmentFormFields({
                   disabled={disabled}
                   className="accent-primary h-3 w-3"
                 />
-                <span className="text-xs text-muted-foreground">UBD</span>
+                <span className="text-xs text-muted-foreground">TBD</span>
               </label>
             </div>
             <Input
@@ -460,7 +476,7 @@ export function AssignmentFormFields({
                   disabled={disabled}
                   className="accent-primary h-3 w-3"
                 />
-                <span className="text-xs text-muted-foreground">UBD</span>
+                <span className="text-xs text-muted-foreground">TBD</span>
               </label>
             </div>
             <Input

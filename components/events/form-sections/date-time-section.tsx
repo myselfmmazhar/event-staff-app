@@ -36,7 +36,8 @@ export function DateTimeSection({
               type="date"
               {...register('startDate', {
                 onChange: (e) => {
-                  if (!endDateUBD) {
+                  // Always sync end date to start date when start date changes
+                  if (!endDateUBD && e.target.value) {
                     setValue('endDate', e.target.value);
                   }
                 },
@@ -56,7 +57,7 @@ export function DateTimeSection({
                 disabled={disabled}
                 className="rounded border-input"
               />
-              <span className="text-sm">UBD</span>
+              <span className="text-sm">TBD</span>
             </label>
           </div>
           {errors.startDate && (
@@ -70,7 +71,14 @@ export function DateTimeSection({
             <Input
               id="startTime"
               type="time"
-              {...register('startTime')}
+              {...register('startTime', {
+                onChange: (e) => {
+                  // Always sync end time to start time when start time changes
+                  if (!endTimeTBD && e.target.value) {
+                    setValue('endTime', e.target.value);
+                  }
+                },
+              })}
               error={!!errors.startTime}
               disabled={disabled || startTimeTBD}
               className="flex-1"
@@ -116,7 +124,7 @@ export function DateTimeSection({
                 disabled={disabled}
                 className="rounded border-input"
               />
-              <span className="text-sm">UBD</span>
+              <span className="text-sm">TBD</span>
             </label>
           </div>
           {errors.endDate && (

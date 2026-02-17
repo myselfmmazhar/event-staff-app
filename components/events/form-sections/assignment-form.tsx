@@ -211,10 +211,18 @@ export function AssignmentForm({
 
   // Auto-set end date to match start date when start date changes (for SERVICE assignments)
   useEffect(() => {
-    if (assignmentType === 'SERVICE' && startDate) {
+    if (assignmentType === 'SERVICE' && startDate && !endDateUBD) {
       setValue('endDate', startDate);
     }
-  }, [assignmentType, startDate, setValue]);
+  }, [assignmentType, startDate, endDateUBD, setValue]);
+
+  // Auto-set end time to match start time when start time changes (for SERVICE assignments)
+  const startTime = watch('startTime');
+  useEffect(() => {
+    if (assignmentType === 'SERVICE' && startTime && !endTimeTBD) {
+      setValue('endTime', startTime);
+    }
+  }, [assignmentType, startTime, endTimeTBD, setValue]);
 
   // Format price for display
   const formatPrice = (price: number | null) => {
@@ -578,7 +586,7 @@ export function AssignmentForm({
                     disabled={disabled}
                     className="accent-primary h-3 w-3"
                   />
-                  <span className="text-xs text-muted-foreground">UBD</span>
+                  <span className="text-xs text-muted-foreground">TBD</span>
                 </label>
               </div>
               <Input
@@ -628,7 +636,7 @@ export function AssignmentForm({
                     disabled={disabled}
                     className="accent-primary h-3 w-3"
                   />
-                  <span className="text-xs text-muted-foreground">UBD</span>
+                  <span className="text-xs text-muted-foreground">TBD</span>
                 </label>
               </div>
               <Input
