@@ -12,8 +12,7 @@ import { EventStatus } from '@prisma/client';
 
 const STATUS_OPTIONS: Array<{ value: EventStatus; label: string }> = [
   { value: 'DRAFT', label: 'Draft' },
-  { value: 'PUBLISHED', label: 'Published' },
-  { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'CANCELLED', label: 'Cancelled' },

@@ -198,16 +198,18 @@ export function AssignmentItem({
                 className="w-20 h-7 text-sm ml-4"
               />
             ) : (
-              <Badge
-                variant="secondary"
-                className={cn(
-                  "ml-4",
-                  onQuickUpdate && !disabled && "cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                )}
-                onClick={handleQtyClick}
-              >
-                Qty: {assignment.quantity}
-              </Badge>
+              <span onClick={handleQtyClick}>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "ml-4",
+                    onQuickUpdate && !disabled && "cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                  )}
+                  asSpan
+                >
+                  Qty: {assignment.quantity}
+                </Badge>
+              </span>
             )}
 
             {/* Price - Click to edit */}

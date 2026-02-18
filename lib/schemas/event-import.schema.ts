@@ -25,11 +25,10 @@ const REQUEST_METHOD_LABELS: Record<string, RequestMethod> = {
 };
 
 // Valid status values for import
-const STATUS_VALUES = ["DRAFT", "PUBLISHED", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
+const STATUS_VALUES = ["DRAFT", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
 const STATUS_LABELS: Record<string, EventStatus> = {
   draft: "DRAFT",
-  published: "PUBLISHED",
-  confirmed: "CONFIRMED",
+  assigned: "ASSIGNED",
   "in progress": "IN_PROGRESS",
   in_progress: "IN_PROGRESS",
   inprogress: "IN_PROGRESS",

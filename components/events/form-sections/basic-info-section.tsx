@@ -11,8 +11,7 @@ import type { BasicInfoSectionProps } from './types';
 
 const STATUSES: Array<{ value: EventStatus; label: string }> = [
   { value: EventStatus.DRAFT, label: 'Draft' },
-  { value: EventStatus.PUBLISHED, label: 'Published' },
-  { value: EventStatus.CONFIRMED, label: 'Confirmed' },
+  { value: EventStatus.ASSIGNED, label: 'Assigned' },
   { value: EventStatus.IN_PROGRESS, label: 'In Progress' },
   { value: EventStatus.COMPLETED, label: 'Completed' },
   { value: EventStatus.CANCELLED, label: 'Cancelled' },

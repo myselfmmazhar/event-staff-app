@@ -15,6 +15,7 @@ import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument, Custo
 import { EventStatus, RequestMethod, AmountType } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState, useCallback } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon, EyeIcon, UploadIcon, FileTextIcon, FileSpreadsheetIcon } from '@/components/ui/icons';
@@ -261,6 +262,10 @@ export function EventFormModal({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
 
+  // Save as template state
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+
   // Save action state (for Save & Close vs Save & New)
   const [pendingSaveAction, setPendingSaveAction] = useState<SaveAction>('close');
 
@@ -286,6 +291,18 @@ export function EventFormModal({
     { enabled: isEdit && !!event?.id }
   );
   const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
+
+  // Save as template mutation
+  const createTemplateMutation = trpc.eventTemplate.create.useMutation({
+    onSuccess: () => {
+      toast({ title: 'Template saved successfully', type: 'success' });
+      utils.eventTemplate.getForSelection.invalidate();
+      utils.eventTemplate.getAll.invalidate();
+    },
+    onError: (error) => {
+      toast({ title: `Failed to save template: ${error.message}`, type: 'error' });
+    },
+  });
 
   // Client map for batch validation
   const clientMap = new Map<string, string>();
@@ -547,6 +564,8 @@ export function EventFormModal({
       setBatchFile(null);
       setBatchStep('upload');
       setBatchValidationResults([]);
+      setSaveAsTemplate(false);
+      setTemplateName('');
     }
   }, [open]);
 
@@ -561,6 +580,8 @@ export function EventFormModal({
       setSelectedTemplateId('');
       setAssignments([]);
       setPendingSaveAction('close');
+      setSaveAsTemplate(false);
+      setTemplateName('');
     }
   }, [resetKey, event, reset]);
 
@@ -799,6 +820,43 @@ export function EventFormModal({
         console.log('[EventFormModal] Calling onSubmit...');
         onSubmit(finalData, attachments, pendingSaveAction);
         console.log('[EventFormModal] onSubmit called successfully');
+      }
+
+      // Save as template if requested
+      if (saveAsTemplate && templateName.trim()) {
+        createTemplateMutation.mutate({
+          name: templateName.trim(),
+          title: data.title || undefined,
+          eventDescription: (data as any).description || undefined,
+          requirements: (data as any).requirements || undefined,
+          privateComments: (data as any).privateComments || undefined,
+          clientId: (data as any).clientId || undefined,
+          venueName: (data as any).venueName || undefined,
+          address: (data as any).address || undefined,
+          city: (data as any).city || undefined,
+          state: (data as any).state || undefined,
+          zipCode: (data as any).zipCode || undefined,
+          latitude: (data as any).latitude || undefined,
+          longitude: (data as any).longitude || undefined,
+          startDate: normalizedData.startDate ?? undefined,
+          startTime: normalizedData.startTime || undefined,
+          endDate: normalizedData.endDate ?? undefined,
+          endTime: normalizedData.endTime || undefined,
+          timezone: (data as any).timezone || undefined,
+          fileLinks: (data as any).fileLinks || undefined,
+          requestMethod: (data as any).requestMethod || undefined,
+          requestorName: (data as any).requestorName || undefined,
+          requestorPhone: (data as any).requestorPhone || undefined,
+          requestorEmail: (data as any).requestorEmail || undefined,
+          poNumber: (data as any).poNumber || undefined,
+          preEventInstructions: (data as any).preEventInstructions || undefined,
+          eventDocuments: (data as any).eventDocuments || undefined,
+          customFields: (data as any).customFields || undefined,
+          meetingPoint: (data as any).meetingPoint || undefined,
+          onsitePocName: (data as any).onsitePocName || undefined,
+          onsitePocPhone: (data as any).onsitePocPhone || undefined,
+          onsitePocEmail: (data as any).onsitePocEmail || undefined,
+        });
       }
     } catch (error) {
       console.error('[EventFormModal] Form validation error:', error);
@@ -1059,6 +1117,36 @@ export function EventFormModal({
             </>
           )}
         </DialogContent>
+
+        {/* Save as Template section — above the footer buttons */}
+        {(isEdit || entryType === 'single') && (
+          <div className="px-6 py-3 border-t border-border bg-muted/30">
+            <div className="flex items-center gap-3">
+              <label
+                htmlFor="save-as-template"
+                className="flex items-center gap-2 cursor-pointer select-none"
+              >
+                <Checkbox
+                  id="save-as-template"
+                  checked={saveAsTemplate}
+                  onChange={(e) => setSaveAsTemplate(e.target.checked)}
+                  disabled={isSubmitting}
+                />
+                <span className="text-sm font-medium text-foreground">Save as Template</span>
+              </label>
+              {saveAsTemplate && (
+                <Input
+                  placeholder="Enter template name..."
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  className="max-w-xs h-8 text-sm"
+                  disabled={isSubmitting}
+                  autoFocus
+                />
+              )}
+            </div>
+          </div>
+        )}
 
         <DialogFooter>
           {isEdit && onViewDetails && (

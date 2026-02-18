@@ -96,7 +96,6 @@ function formatStatus(status: EventStatus): string {
  */
 function getStatusColor(status: EventStatus): 'primary' | 'success' | 'warning' {
   switch (status) {
-    case 'CONFIRMED':
     case 'COMPLETED':
       return 'success';
     case 'DRAFT':
