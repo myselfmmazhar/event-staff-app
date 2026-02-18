@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { EditIcon, TrashIcon, CubeIcon, WrenchScrewdriverIcon } from '@/components/ui/icons';
 import { cn } from '@/lib/utils';
@@ -18,6 +20,8 @@ interface AssignmentItemProps {
   assignment: Assignment;
   onEdit: () => void;
   onDelete: () => void;
+  /** Quick update for quantity and price without opening full form */
+  onQuickUpdate?: (updates: { quantity?: number; customPrice?: number | null }) => void;
   disabled?: boolean;
 }
 
@@ -25,11 +29,35 @@ export function AssignmentItem({
   assignment,
   onEdit,
   onDelete,
+  onQuickUpdate,
   disabled = false,
 }: AssignmentItemProps) {
   const isProduct = assignment.type === 'PRODUCT';
   const productAssignment = isProduct ? (assignment as ProductAssignment) : null;
   const serviceAssignment = !isProduct ? (assignment as ServiceAssignment) : null;
+
+  // Quick edit state
+  const [editingQty, setEditingQty] = useState(false);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [tempQty, setTempQty] = useState(assignment.quantity);
+  const [tempPrice, setTempPrice] = useState<string>('');
+  const qtyInputRef = useRef<HTMLInputElement>(null);
+  const priceInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingQty && qtyInputRef.current) {
+      qtyInputRef.current.focus();
+      qtyInputRef.current.select();
+    }
+  }, [editingQty]);
+
+  useEffect(() => {
+    if (editingPrice && priceInputRef.current) {
+      priceInputRef.current.focus();
+      priceInputRef.current.select();
+    }
+  }, [editingPrice]);
 
   // Get display title
   const title = isProduct
@@ -61,6 +89,55 @@ export function AssignmentItem({
     return COST_UNIT_TYPE_LABELS[unitType as CostUnitType] || unitType;
   };
 
+  // Handle quantity quick edit
+  const handleQtyClick = (e: React.MouseEvent) => {
+    if (disabled || !onQuickUpdate) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setTempQty(assignment.quantity);
+    setEditingQty(true);
+  };
+
+  const handleQtySave = () => {
+    if (tempQty !== assignment.quantity && tempQty >= 1) {
+      onQuickUpdate?.({ quantity: tempQty });
+    }
+    setEditingQty(false);
+  };
+
+  const handleQtyKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleQtySave();
+    } else if (e.key === 'Escape') {
+      setEditingQty(false);
+    }
+  };
+
+  // Handle price quick edit
+  const handlePriceClick = (e: React.MouseEvent) => {
+    if (disabled || !onQuickUpdate) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setTempPrice(price !== null && price !== undefined ? Number(price).toFixed(2) : '');
+    setEditingPrice(true);
+  };
+
+  const handlePriceSave = () => {
+    const newPrice = tempPrice === '' ? null : parseFloat(tempPrice);
+    if (newPrice !== assignment.customPrice) {
+      onQuickUpdate?.({ customPrice: newPrice });
+    }
+    setEditingPrice(false);
+  };
+
+  const handlePriceKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handlePriceSave();
+    } else if (e.key === 'Escape') {
+      setEditingPrice(false);
+    }
+  };
+
   return (
     <AccordionItem value={assignment.id} className="border rounded-lg mb-2">
       <div className="flex items-center justify-between pr-2">
@@ -84,37 +161,83 @@ export function AssignmentItem({
               <div className="text-xs text-muted-foreground">
                 {isProduct ? 'Product' : 'Service'}
               </div>
-              {/* Show start/end date & time for service assignments */}
-              {!isProduct && serviceAssignment && (serviceAssignment.startDate || serviceAssignment.endDate) && (
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {serviceAssignment.startDate && (
-                    <span>
-                      {serviceAssignment.startDateUBD ? 'UBD' : serviceAssignment.startDate}
-                      {serviceAssignment.startTime && !serviceAssignment.startTimeTBD && ` ${serviceAssignment.startTime}`}
-                      {serviceAssignment.startTimeTBD && ' (TBD)'}
-                    </span>
-                  )}
-                  {serviceAssignment.startDate && serviceAssignment.endDate && ' → '}
-                  {serviceAssignment.endDate && (
-                    <span>
-                      {serviceAssignment.endDateUBD ? 'UBD' : serviceAssignment.endDate}
-                      {serviceAssignment.endTime && !serviceAssignment.endTimeTBD && ` ${serviceAssignment.endTime}`}
-                      {serviceAssignment.endTimeTBD && ' (TBD)'}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
 
-            {/* Quantity */}
-            <Badge variant="secondary" className="ml-2">
-              Qty: {assignment.quantity}
-            </Badge>
+            {/* Date & Time - for service assignments */}
+            {!isProduct && serviceAssignment && (serviceAssignment.startDate || serviceAssignment.endDate) && (
+              <div className="text-sm text-muted-foreground ml-4">
+                {serviceAssignment.startDate && (
+                  <span>
+                    {serviceAssignment.startDateUBD ? 'UBD' : serviceAssignment.startDate}
+                    {serviceAssignment.startTime && !serviceAssignment.startTimeTBD && ` ${serviceAssignment.startTime}`}
+                    {serviceAssignment.startTimeTBD && ' (TBD)'}
+                  </span>
+                )}
+                {serviceAssignment.startDate && serviceAssignment.endDate && ' → '}
+                {serviceAssignment.endDate && (
+                  <span>
+                    {serviceAssignment.endDateUBD ? 'UBD' : serviceAssignment.endDate}
+                    {serviceAssignment.endTime && !serviceAssignment.endTimeTBD && ` ${serviceAssignment.endTime}`}
+                    {serviceAssignment.endTimeTBD && ' (TBD)'}
+                  </span>
+                )}
+              </div>
+            )}
 
-            {/* Price */}
-            <span className="text-sm font-medium ml-auto mr-4">
-              {formatPrice(lineTotal)}
-            </span>
+            {/* Quantity - Click to edit */}
+            {editingQty ? (
+              <Input
+                ref={qtyInputRef}
+                type="number"
+                min={1}
+                value={tempQty}
+                onChange={(e) => setTempQty(parseInt(e.target.value) || 1)}
+                onBlur={handleQtySave}
+                onKeyDown={handleQtyKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                className="w-20 h-7 text-sm ml-4"
+              />
+            ) : (
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "ml-4",
+                  onQuickUpdate && !disabled && "cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                )}
+                onClick={handleQtyClick}
+              >
+                Qty: {assignment.quantity}
+              </Badge>
+            )}
+
+            {/* Price - Click to edit */}
+            {editingPrice ? (
+              <div className="ml-auto mr-4 flex items-center">
+                <span className="text-sm mr-1">$</span>
+                <Input
+                  ref={priceInputRef}
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={tempPrice}
+                  onChange={(e) => setTempPrice(e.target.value)}
+                  onBlur={handlePriceSave}
+                  onKeyDown={handlePriceKeyDown}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-24 h-7 text-sm"
+                />
+              </div>
+            ) : (
+              <span
+                className={cn(
+                  "text-sm font-medium ml-auto mr-4",
+                  onQuickUpdate && !disabled && "cursor-pointer hover:text-primary"
+                )}
+                onClick={handlePriceClick}
+              >
+                {formatPrice(price)}
+              </span>
+            )}
           </div>
         </AccordionTrigger>
 

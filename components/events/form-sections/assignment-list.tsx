@@ -8,6 +8,8 @@ interface AssignmentListProps {
   assignments: Assignment[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Quick update handler for inline edits (qty, price) */
+  onQuickUpdate?: (id: string, updates: { quantity?: number; customPrice?: number | null }) => void;
   disabled?: boolean;
   /** ID of the assignment currently being edited (for inline form) */
   editingId?: string | null;
@@ -19,6 +21,7 @@ export function AssignmentList({
   assignments,
   onEdit,
   onDelete,
+  onQuickUpdate,
   disabled = false,
   editingId,
   renderEditForm,
@@ -65,6 +68,7 @@ export function AssignmentList({
               assignment={assignment}
               onEdit={() => onEdit(assignment.id)}
               onDelete={() => onDelete(assignment.id)}
+              onQuickUpdate={onQuickUpdate ? (updates) => onQuickUpdate(assignment.id, updates) : undefined}
               disabled={disabled || editingId === assignment.id}
             />
             {/* Inline edit form - renders right below the item being edited */}

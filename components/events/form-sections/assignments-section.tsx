@@ -137,6 +137,15 @@ export function AssignmentsSection({
     });
   };
 
+  // Handle quick update (inline edit for qty/price)
+  const handleQuickUpdate = (id: string, updates: { quantity?: number; customPrice?: number | null }) => {
+    const updatedAssignments = assignments.map((a) => {
+      if (a.id !== id) return a;
+      return { ...a, ...updates };
+    });
+    onAssignmentsChange(updatedAssignments);
+  };
+
   // Handle cancel form
   const handleCancelForm = () => {
     setShowForm(false);
@@ -168,6 +177,7 @@ export function AssignmentsSection({
             assignments={assignments}
             onEdit={handleEditAssignment}
             onDelete={handleDeleteAssignment}
+            onQuickUpdate={handleQuickUpdate}
             disabled={disabled || showForm}
             editingId={editingAssignment?.id}
             renderEditForm={(assignment) => (
