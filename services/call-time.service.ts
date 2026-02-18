@@ -5,6 +5,7 @@ import {
   Prisma,
   RateType,
   StaffRating,
+  EventStatus,
 } from '@prisma/client';
 import { TRPCError } from '@trpc/server';
 import type {
@@ -493,6 +494,19 @@ export class CallTimeService {
           }
         );
       }
+    }
+
+    // Update event status to ASSIGNED if currently DRAFT
+    const event = await this.prisma.event.findUnique({
+      where: { id: callTime.eventId },
+      select: { status: true },
+    });
+
+    if (event && event.status === EventStatus.DRAFT) {
+      await this.prisma.event.update({
+        where: { id: callTime.eventId },
+        data: { status: EventStatus.ASSIGNED },
+      });
     }
 
     return {
@@ -1091,7 +1105,36 @@ export class CallTimeService {
       });
     }
 
-    // Use transaction to ensure atomicity
+    // If no assignments, just delete existing and return
+    if (input.assignments.length === 0) {
+      await this.prisma.callTime.deleteMany({
+        where: { eventId: input.eventId },
+      });
+      return [];
+    }
+
+    // OPTIMIZATION: Batch fetch all services BEFORE the transaction
+    const serviceIds = [...new Set(input.assignments.map(a => a.serviceId))];
+    const services = await this.prisma.service.findMany({
+      where: { id: { in: serviceIds } },
+    });
+    const serviceMap = new Map(services.map(s => [s.id, s]));
+
+    // Validate all services exist
+    for (const serviceId of serviceIds) {
+      if (!serviceMap.has(serviceId)) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: `Service not found: ${serviceId}`,
+        });
+      }
+    }
+
+    // OPTIMIZATION: Generate all CallTime IDs BEFORE the transaction
+    // This avoids N*2 queries inside the transaction
+    const callTimeIds = await this.generateBatchCallTimeIds(input.assignments.length);
+
+    // Use transaction with increased timeout for atomicity
     return await this.prisma.$transaction(async (tx) => {
       // Delete existing CallTimes for this event
       // Note: This will cascade delete CallTimeInvitations as well
@@ -1099,28 +1142,10 @@ export class CallTimeService {
         where: { eventId: input.eventId },
       });
 
-      // If no assignments, we're done
-      if (input.assignments.length === 0) {
-        return [];
-      }
-
-      // Create new CallTimes from assignments
-      const createdCallTimes = [];
-
-      for (const assignment of input.assignments) {
-        // Get service details for default rates
-        const service = await tx.service.findUnique({
-          where: { id: assignment.serviceId },
-        });
-
-        if (!service) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: `Service not found: ${assignment.serviceId}`,
-          });
-        }
-
-        const callTimeId = await generateCallTimeId(tx as PrismaClient);
+      // Prepare all call time data
+      const callTimeDataList = input.assignments.map((assignment, index) => {
+        const service = serviceMap.get(assignment.serviceId)!;
+        const callTimeId = callTimeIds[index]!;
 
         // Parse dates - use event dates as fallback
         const startDate = assignment.startDate
@@ -1130,10 +1155,9 @@ export class CallTimeService {
           ? new Date(assignment.endDate)
           : event.endDate;
 
-        // Determine rates - use explicit payRate/billRate if provided, otherwise derive from customCost/customPrice or service defaults
+        // Determine rates
         const payRate = assignment.payRate ?? assignment.customCost ?? Number(service.cost) ?? 0;
         const billRate = assignment.billRate ?? assignment.customPrice ?? Number(service.price) ?? 0;
-        // Use explicit rateType if provided, otherwise derive from service costUnitType
         const rateType = assignment.rateType ?? this.mapCostUnitToRateType(service.costUnitType);
 
         // Map rating required
@@ -1141,38 +1165,83 @@ export class CallTimeService {
           ? null
           : assignment.ratingRequired as StaffRating;
 
-        const callTime = await tx.callTime.create({
-          data: {
-            callTimeId,
-            eventId: input.eventId,
-            serviceId: assignment.serviceId,
-            numberOfStaffRequired: assignment.quantity,
-            skillLevel: this.mapExperienceToSkillLevel(assignment.experienceRequired),
-            startDate,
-            startTime: assignment.startTime,
-            endDate,
-            endTime: assignment.endTime,
-            payRate,
-            payRateType: rateType,
-            billRate,
-            billRateType: rateType,
-            customCost: assignment.customCost,
-            customPrice: assignment.customPrice,
-            ratingRequired,
-            approveOvertime: assignment.approveOvertime,
-            commission: assignment.commission,
-            notes: assignment.notes,
-          },
-          include: {
-            service: true,
-          },
-        });
+        return {
+          callTimeId,
+          eventId: input.eventId,
+          serviceId: assignment.serviceId,
+          numberOfStaffRequired: assignment.quantity,
+          skillLevel: this.mapExperienceToSkillLevel(assignment.experienceRequired),
+          startDate,
+          startTime: assignment.startTime,
+          endDate,
+          endTime: assignment.endTime,
+          payRate,
+          payRateType: rateType,
+          billRate,
+          billRateType: rateType,
+          customCost: assignment.customCost,
+          customPrice: assignment.customPrice,
+          ratingRequired,
+          approveOvertime: assignment.approveOvertime,
+          commission: assignment.commission,
+          notes: assignment.notes,
+        };
+      });
 
+      // Create all call times (sequential to maintain order, but minimal queries now)
+      const createdCallTimes = [];
+      for (const data of callTimeDataList) {
+        const callTime = await tx.callTime.create({
+          data,
+          include: { service: true },
+        });
         createdCallTimes.push(callTime);
       }
 
       return createdCallTimes;
+    }, {
+      timeout: 15000, // Increase timeout to 15 seconds for bulk operations
     });
+  }
+
+  /**
+   * Generate multiple unique CallTime IDs efficiently
+   * Fetches last ID once and generates sequential IDs
+   */
+  private async generateBatchCallTimeIds(count: number): Promise<string[]> {
+    const year = new Date().getFullYear();
+    const prefix = `CT-${year}`;
+
+    // Find the last CallTime ID for the current year
+    const lastCallTime = await this.prisma.callTime.findFirst({
+      where: {
+        callTimeId: { startsWith: prefix },
+      },
+      orderBy: {
+        callTimeId: 'desc',
+      },
+      select: {
+        callTimeId: true,
+      },
+    });
+
+    let nextNumber = 1;
+    if (lastCallTime?.callTimeId) {
+      const parts = lastCallTime.callTimeId.split('-');
+      const lastPart = parts[parts.length - 1];
+      const lastNumber = lastPart ? parseInt(lastPart, 10) : NaN;
+      if (!isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1;
+      }
+    }
+
+    // Generate sequential IDs
+    const ids: string[] = [];
+    for (let i = 0; i < count; i++) {
+      ids.push(`${prefix}-${String(nextNumber + i).padStart(3, '0')}`);
+    }
+
+    return ids;
   }
 
   /**

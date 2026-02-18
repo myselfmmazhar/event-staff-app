@@ -8,10 +8,9 @@ export const EVENT_STATUS_COLORS: Record<
   'default' | 'info' | 'success' | 'primary' | 'purple' | 'danger'
 > = {
   DRAFT: 'default',
-  PUBLISHED: 'info',
-  CONFIRMED: 'success',
+  ASSIGNED: 'info',
   IN_PROGRESS: 'primary',
-  COMPLETED: 'purple',
+  COMPLETED: 'success',
   CANCELLED: 'danger',
 };
 
@@ -20,8 +19,7 @@ export const EVENT_STATUS_COLORS: Record<
  */
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   DRAFT: 'Draft',
-  PUBLISHED: 'Published',
-  CONFIRMED: 'Confirmed',
+  ASSIGNED: 'Assigned',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',

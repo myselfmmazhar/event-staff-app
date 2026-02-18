@@ -20,10 +20,9 @@ interface CalendarTimedEventProps {
 
 const STATUS_COLORS: Record<EventStatus, string> = {
   DRAFT: 'bg-muted hover:bg-muted/80 border-muted-foreground/30',
-  PUBLISHED: 'bg-info/20 hover:bg-info/30 border-info/50 text-info',
-  CONFIRMED: 'bg-success/20 hover:bg-success/30 border-success/50 text-success',
+  ASSIGNED: 'bg-info/20 hover:bg-info/30 border-info/50 text-info',
   IN_PROGRESS: 'bg-primary/20 hover:bg-primary/30 border-primary/50 text-primary',
-  COMPLETED: 'bg-purple-500/20 hover:bg-purple-500/30 border-purple-500/50 text-purple-700',
+  COMPLETED: 'bg-success/20 hover:bg-success/30 border-success/50 text-success',
   CANCELLED: 'bg-destructive/20 hover:bg-destructive/30 border-destructive/50 text-destructive',
 };
 

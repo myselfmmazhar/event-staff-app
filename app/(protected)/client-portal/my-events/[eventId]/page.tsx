@@ -49,16 +49,16 @@ export default function ClientEventDetailPage() {
 
     const getStatusBadgeVariant = (status: string) => {
         switch (status) {
-            case 'CONFIRMED':
-                return 'success';
-            case 'PENDING':
+            case 'ASSIGNED':
+                return 'info';
+            case 'IN_PROGRESS':
                 return 'warning';
             case 'DRAFT':
                 return 'secondary';
             case 'CANCELLED':
                 return 'destructive';
             case 'COMPLETED':
-                return 'default';
+                return 'success';
             default:
                 return 'secondary';
         }

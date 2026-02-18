@@ -17,10 +17,9 @@ interface EventMarkerProps {
  */
 const STATUS_COLORS: Record<EventStatus, { fill: string; bg: string; ring: string }> = {
   DRAFT: { fill: "#6b7280", bg: "bg-gray-500", ring: "ring-gray-400" },
-  PUBLISHED: { fill: "#3b82f6", bg: "bg-blue-500", ring: "ring-blue-400" },
-  CONFIRMED: { fill: "#10b981", bg: "bg-emerald-500", ring: "ring-emerald-400" },
+  ASSIGNED: { fill: "#3b82f6", bg: "bg-blue-500", ring: "ring-blue-400" },
   IN_PROGRESS: { fill: "#f59e0b", bg: "bg-amber-500", ring: "ring-amber-400" },
-  COMPLETED: { fill: "#8b5cf6", bg: "bg-violet-500", ring: "ring-violet-400" },
+  COMPLETED: { fill: "#10b981", bg: "bg-emerald-500", ring: "ring-emerald-400" },
   CANCELLED: { fill: "#ef4444", bg: "bg-red-500", ring: "ring-red-400" },
 };
 

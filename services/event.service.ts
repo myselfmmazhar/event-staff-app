@@ -25,8 +25,7 @@ export interface EventStats {
   upcoming: number; // Events starting in next 30 days
   byStatus: {
     DRAFT: number;
-    PUBLISHED: number;
-    CONFIRMED: number;
+    ASSIGNED: number;
     IN_PROGRESS: number;
     COMPLETED: number;
     CANCELLED: number;
@@ -852,8 +851,7 @@ export class EventService {
       }),
       Promise.all([
         this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.DRAFT } }),
-        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.PUBLISHED } }),
-        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.CONFIRMED } }),
+        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.ASSIGNED } }),
         this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.IN_PROGRESS } }),
         this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.COMPLETED } }),
         this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.CANCELLED } }),
@@ -865,11 +863,10 @@ export class EventService {
       upcoming,
       byStatus: {
         DRAFT: byStatus[0],
-        PUBLISHED: byStatus[1],
-        CONFIRMED: byStatus[2],
-        IN_PROGRESS: byStatus[3],
-        COMPLETED: byStatus[4],
-        CANCELLED: byStatus[5],
+        ASSIGNED: byStatus[1],
+        IN_PROGRESS: byStatus[2],
+        COMPLETED: byStatus[3],
+        CANCELLED: byStatus[4],
       },
     };
   }
@@ -1021,14 +1018,18 @@ export class EventService {
     if (event.isArchived) {
       return await this.prisma.event.findUniqueOrThrow({
         where: { id },
-        select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true },
+        select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true, status: true },
       });
     }
 
     return await this.prisma.event.update({
       where: { id },
-      data: { isArchived: true, archivedAt: new Date() },
-      select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true },
+      data: {
+        isArchived: true,
+        archivedAt: new Date(),
+        status: EventStatus.CANCELLED,
+      },
+      select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true, status: true },
     });
   }
 
@@ -1039,7 +1040,11 @@ export class EventService {
         createdBy: userId,
         isArchived: false,
       },
-      data: { isArchived: true, archivedAt: new Date() },
+      data: {
+        isArchived: true,
+        archivedAt: new Date(),
+        status: EventStatus.CANCELLED,
+      },
     });
 
     return { count: result.count };
@@ -1050,28 +1055,117 @@ export class EventService {
     if (!event.isArchived) {
       return await this.prisma.event.findUniqueOrThrow({
         where: { id },
-        select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true },
+        select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true, status: true },
       });
     }
 
+    // Determine the appropriate status based on criteria
+    const newStatus = await this.determineEventStatus(id);
+
     return await this.prisma.event.update({
       where: { id },
-      data: { isArchived: false, archivedAt: null },
-      select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true },
+      data: {
+        isArchived: false,
+        archivedAt: null,
+        status: newStatus,
+      },
+      select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true, status: true },
     });
   }
 
+  /**
+   * Determine the appropriate event status based on criteria:
+   * - COMPLETED: End date/time has passed
+   * - IN_PROGRESS: Currently between start and end date/time
+   * - ASSIGNED: Has invitations sent
+   * - DRAFT: Default (no invitations sent)
+   */
+  private async determineEventStatus(eventId: string): Promise<EventStatus> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        startDate: true,
+        startTime: true,
+        endDate: true,
+        endTime: true,
+        callTimes: {
+          select: {
+            invitations: {
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!event) {
+      return EventStatus.DRAFT;
+    }
+
+    const now = new Date();
+
+    // Build start and end DateTime
+    const startDateTime = this.buildDateTime(event.startDate, event.startTime);
+    const endDateTime = this.buildDateTime(event.endDate, event.endTime);
+
+    // Check if event has ended
+    if (endDateTime && now > endDateTime) {
+      return EventStatus.COMPLETED;
+    }
+
+    // Check if event is in progress
+    if (startDateTime && now >= startDateTime && (!endDateTime || now <= endDateTime)) {
+      return EventStatus.IN_PROGRESS;
+    }
+
+    // Check if invitations have been sent
+    const hasInvitations = event.callTimes.some(ct => ct.invitations.length > 0);
+    if (hasInvitations) {
+      return EventStatus.ASSIGNED;
+    }
+
+    return EventStatus.DRAFT;
+  }
+
+  /**
+   * Build a Date object from date and time strings
+   */
+  private buildDateTime(date: Date | null, time: string | null): Date | null {
+    if (!date) return null;
+    const dateTime = new Date(date);
+    if (time) {
+      const [hours, minutes] = time.split(':').map(Number);
+      dateTime.setHours(hours || 0, minutes || 0, 0, 0);
+    }
+    return dateTime;
+  }
+
   async restoreMany(ids: string[], userId: string): Promise<{ count: number }> {
-    const result = await this.prisma.event.updateMany({
+    // For bulk restore, we need to determine status for each event individually
+    const events = await this.prisma.event.findMany({
       where: {
         id: { in: ids },
         createdBy: userId,
         isArchived: true,
       },
-      data: { isArchived: false, archivedAt: null },
+      select: { id: true },
     });
 
-    return { count: result.count };
+    let restoredCount = 0;
+    for (const event of events) {
+      const newStatus = await this.determineEventStatus(event.id);
+      await this.prisma.event.update({
+        where: { id: event.id },
+        data: {
+          isArchived: false,
+          archivedAt: null,
+          status: newStatus,
+        },
+      });
+      restoredCount++;
+    }
+
+    return { count: restoredCount };
   }
 
   async findAllArchived(query: QueryEventsInput, userId: string): Promise<PaginatedEvents> {
@@ -1438,5 +1532,90 @@ export class EventService {
         message: `Failed to update ${terminology.event.lowerPlural}`,
       });
     }
+  }
+
+  /**
+   * Update event statuses based on current time (for cron job)
+   * - ASSIGNED → IN_PROGRESS: when start datetime is reached
+   * - IN_PROGRESS → COMPLETED: when end datetime has passed
+   * Returns counts of updated events
+   */
+  async updateStatusesBasedOnTime(): Promise<{
+    toInProgress: number;
+    toCompleted: number;
+  }> {
+    const now = new Date();
+
+    // Find events that should be IN_PROGRESS (start time reached, currently ASSIGNED)
+    const eventsToStartQuery = await this.prisma.event.findMany({
+      where: {
+        status: EventStatus.ASSIGNED,
+        isArchived: false,
+        startDate: { not: null },
+      },
+      select: {
+        id: true,
+        startDate: true,
+        startTime: true,
+      },
+    });
+
+    // Filter events where start datetime has been reached
+    const eventsToStart = eventsToStartQuery.filter((event) => {
+      const startDateTime = this.buildDateTime(event.startDate, event.startTime);
+      return startDateTime && now >= startDateTime;
+    });
+
+    // Update to IN_PROGRESS
+    let toInProgress = 0;
+    if (eventsToStart.length > 0) {
+      const result = await this.prisma.event.updateMany({
+        where: {
+          id: { in: eventsToStart.map((e) => e.id) },
+        },
+        data: {
+          status: EventStatus.IN_PROGRESS,
+          updatedAt: now,
+        },
+      });
+      toInProgress = result.count;
+    }
+
+    // Find events that should be COMPLETED (end time passed, currently IN_PROGRESS)
+    const eventsToCompleteQuery = await this.prisma.event.findMany({
+      where: {
+        status: EventStatus.IN_PROGRESS,
+        isArchived: false,
+        endDate: { not: null },
+      },
+      select: {
+        id: true,
+        endDate: true,
+        endTime: true,
+      },
+    });
+
+    // Filter events where end datetime has passed
+    const eventsToComplete = eventsToCompleteQuery.filter((event) => {
+      const endDateTime = this.buildDateTime(event.endDate, event.endTime);
+      return endDateTime && now > endDateTime;
+    });
+
+    // Update to COMPLETED
+    let toCompleted = 0;
+    if (eventsToComplete.length > 0) {
+      const result = await this.prisma.event.updateMany({
+        where: {
+          id: { in: eventsToComplete.map((e) => e.id) },
+        },
+        data: {
+          status: EventStatus.COMPLETED,
+          updatedAt: now,
+        },
+      });
+      toCompleted = result.count;
+    }
+
+    return { toInProgress, toCompleted };
   }
 }

@@ -9,8 +9,7 @@ interface EventStats {
   upcoming: number;
   byStatus: {
     DRAFT: number;
-    PUBLISHED: number;
-    CONFIRMED: number;
+    ASSIGNED: number;
     IN_PROGRESS: number;
     COMPLETED: number;
     CANCELLED: number;
