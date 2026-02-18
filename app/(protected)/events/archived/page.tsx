@@ -257,8 +257,7 @@ export default function ArchivedEventsPage() {
 
   const STATUS_LABELS: Record<EventStatus, string> = {
     DRAFT: 'Draft',
-    PUBLISHED: 'Published',
-    CONFIRMED: 'Confirmed',
+    ASSIGNED: 'Assigned',
     IN_PROGRESS: 'In Progress',
     COMPLETED: 'Completed',
     CANCELLED: 'Cancelled',

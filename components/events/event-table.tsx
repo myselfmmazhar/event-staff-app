@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EditIcon, ArchiveBoxIcon, UsersIcon } from '@/components/ui/icons';
+import { EditIcon, ArchiveBoxIcon, UsersIcon, ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
 import { CallTimeInvitationStatus, EventStatus } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
@@ -69,6 +70,22 @@ export function EventTable({
 }: EventTableProps) {
   const router = useRouter();
   const { terminology } = useTerminology();
+
+  // Track which rows have expanded assignment columns
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleRowExpanded = (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(eventId)) {
+        newSet.delete(eventId);
+      } else {
+        newSet.add(eventId);
+      }
+      return newSet;
+    });
+  };
 
   // Get column labels from saved configuration
   const columnLabels = useColumnLabels('events', {
@@ -295,8 +312,10 @@ export function EventTable({
           return <span className="text-muted-foreground/50 italic">—</span>;
         }
 
-        const visible = openAssignments.slice(0, 3);
-        const remaining = openAssignments.length - visible.length;
+        const isExpanded = expandedRows.has(event.id);
+        const visible = isExpanded ? openAssignments : openAssignments.slice(0, 3);
+        const remaining = openAssignments.length - 3;
+        const hasMore = remaining > 0;
 
         return (
           <div className="space-y-0.5">
@@ -319,8 +338,24 @@ export function EventTable({
                 </div>
               );
             })}
-            {remaining > 0 && (
-              <div className="text-xs opacity-75">+{remaining} more</div>
+            {hasMore && (
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs opacity-75 hover:opacity-100 hover:text-primary transition-all cursor-pointer"
+                onClick={(e) => toggleRowExpanded(event.id, e)}
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUpIcon className="h-3 w-3" />
+                    Show less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDownIcon className="h-3 w-3" />
+                    +{remaining} more
+                  </>
+                )}
+              </button>
             )}
           </div>
         );
@@ -336,8 +371,10 @@ export function EventTable({
           return <span className="text-muted-foreground/50 italic">—</span>;
         }
 
-        const visible = closedAssignments.slice(0, 3);
-        const remaining = closedAssignments.length - visible.length;
+        const isExpanded = expandedRows.has(event.id);
+        const visible = isExpanded ? closedAssignments : closedAssignments.slice(0, 3);
+        const remaining = closedAssignments.length - 3;
+        const hasMore = remaining > 0;
 
         return (
           <div className="space-y-0.5">
@@ -360,8 +397,24 @@ export function EventTable({
                 </div>
               );
             })}
-            {remaining > 0 && (
-              <div className="text-xs opacity-75">+{remaining} more</div>
+            {hasMore && (
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs opacity-75 hover:opacity-100 hover:text-primary transition-all cursor-pointer"
+                onClick={(e) => toggleRowExpanded(event.id, e)}
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUpIcon className="h-3 w-3" />
+                    Show less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDownIcon className="h-3 w-3" />
+                    +{remaining} more
+                  </>
+                )}
+              </button>
             )}
           </div>
         );

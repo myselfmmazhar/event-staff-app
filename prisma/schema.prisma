@@ -677,8 +677,7 @@ enum EmailTemplateType {
 
 enum EventStatus {
   DRAFT
-  PUBLISHED
-  CONFIRMED
+  ASSIGNED
   IN_PROGRESS
   COMPLETED
   CANCELLED

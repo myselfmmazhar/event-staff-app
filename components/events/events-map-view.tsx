@@ -15,10 +15,9 @@ import { AlertCircle, ChevronDown, ChevronUp, MapPin, Map } from "lucide-react";
  */
 const STATUS_LEGEND: { status: EventStatus; label: string; color: string }[] = [
   { status: EventStatus.DRAFT, label: "Draft", color: "#6b7280" },
-  { status: EventStatus.PUBLISHED, label: "Published", color: "#3b82f6" },
-  { status: EventStatus.CONFIRMED, label: "Confirmed", color: "#10b981" },
+  { status: EventStatus.ASSIGNED, label: "Assigned", color: "#3b82f6" },
   { status: EventStatus.IN_PROGRESS, label: "In Progress", color: "#f59e0b" },
-  { status: EventStatus.COMPLETED, label: "Completed", color: "#8b5cf6" },
+  { status: EventStatus.COMPLETED, label: "Completed", color: "#10b981" },
   { status: EventStatus.CANCELLED, label: "Cancelled", color: "#ef4444" },
 ];
 
