@@ -94,9 +94,9 @@ export function EventTable({
     startDate: 'Date',
     title: 'Title',
     client: 'Client',
-    venue: 'Venue',
-    openAssignments: 'Open Assignments',
-    closedAssignments: 'Accepted Assignments',
+    venue: 'Location',
+    openAssignments: 'Open',
+    closedAssignments: 'Accepted',
     progress: 'Progress',
   });
 
@@ -147,7 +147,7 @@ export function EventTable({
     // Closed assignments = accepted >= required (fully staffed)
     const closedAssignments = allGroups.filter((g) => g.accepted >= g.required);
 
-    const lines = allGroups.map((g) => `${g.required} ${g.serviceName}: ${g.accepted}/${g.required} Accepted`);
+    const lines = allGroups.map((g) => `${g.serviceName}: ${g.accepted}/${g.required} Accepted`);
 
     return { lines, openAssignments, closedAssignments, totalRequired, totalAccepted, totalConfirmed };
   };
@@ -318,24 +318,27 @@ export function EventTable({
         const hasMore = remaining > 0;
 
         return (
-          <div className="space-y-0.5">
+          <div className="flex flex-wrap gap-1">
             {visible.map((item, idx) => {
-              const line = `${item.required} ${item.serviceName}: ${item.accepted}/${item.required}`;
+              const line = `${item.serviceName}: ${item.accepted}/${item.required}`;
               const url = item.serviceId
                 ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
                 : `/assignments?eventId=${event.id}`;
               return (
-                <div
+                <Badge
                   key={idx}
-                  className="truncate cursor-pointer hover:text-primary transition-colors"
-                  title={`${line} - Click to view`}
-                  onClick={(e) => {
+                  variant="warning"
+                  size="sm"
+                  asSpan
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     router.push(url);
                   }}
+                  title={`${line} - Click to view`}
                 >
                   {line}
-                </div>
+                </Badge>
               );
             })}
             {hasMore && (
@@ -377,24 +380,27 @@ export function EventTable({
         const hasMore = remaining > 0;
 
         return (
-          <div className="space-y-0.5">
+          <div className="flex flex-wrap gap-1">
             {visible.map((item, idx) => {
-              const line = `${item.required} ${item.serviceName}: ${item.accepted}/${item.required}`;
+              const line = `${item.serviceName}: ${item.accepted}/${item.required}`;
               const url = item.serviceId
                 ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
                 : `/assignments?eventId=${event.id}`;
               return (
-                <div
+                <Badge
                   key={idx}
-                  className="truncate cursor-pointer hover:text-primary transition-colors"
-                  title={`${line} - Click to view`}
-                  onClick={(e) => {
+                  variant="success"
+                  size="sm"
+                  asSpan
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     router.push(url);
                   }}
+                  title={`${line} - Click to view`}
                 >
                   {line}
-                </div>
+                </Badge>
               );
             })}
             {hasMore && (
@@ -431,7 +437,6 @@ export function EventTable({
           return <span className="text-muted-foreground/50 italic">—</span>;
         }
 
-        const summary = `${totalAccepted} of ${totalRequired} Assignments`;
         const statusLabel =
           totalAccepted === 0 ? `Needs ${terminology.staff.lower}` : totalConfirmed >= totalRequired ? 'Filled' : 'Accepted';
         const statusVariant: 'warning' | 'success' | 'info' =
@@ -439,14 +444,13 @@ export function EventTable({
 
         return (
           <div
-            className="space-y-1 cursor-pointer hover:text-primary transition-colors"
+            className="cursor-pointer hover:text-primary transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               router.push('/assignments');
             }}
             title="View in Assignment Manager"
           >
-            <div className="text-sm text-muted-foreground">{summary}</div>
             <Badge variant={statusVariant} size="sm" asSpan>
               {statusLabel}
             </Badge>

@@ -30,21 +30,22 @@ export function BasicInfoSection({
     <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Basic Information</h3>
       <div className="space-y-4">
-        <div>
-          <Label htmlFor="title" required>Title</Label>
-          <Input
-            id="title"
-            {...register('title')}
-            error={!!errors.title}
-            disabled={disabled}
-            placeholder={`${terminology.event.singular} title`}
-          />
-          {errors.title && (
-            <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
-          )}
-        </div>
+        {/* Row 1: Title, Client, Status */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="title" required>Title</Label>
+            <Input
+              id="title"
+              {...register('title')}
+              error={!!errors.title}
+              disabled={disabled}
+              placeholder={`${terminology.event.singular} title`}
+            />
+            {errors.title && (
+              <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
+            )}
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="clientId">Client</Label>
             <Controller
@@ -105,32 +106,35 @@ export function BasicInfoSection({
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            {...register('description')}
-            disabled={disabled}
-            rows={3}
-            placeholder={`${terminology.event.singular} description`}
-          />
-          {errors.description && (
-            <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
-          )}
-        </div>
+        {/* Row 2: Description, Requirements */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              {...register('description')}
+              disabled={disabled}
+              rows={3}
+              placeholder={`${terminology.event.singular} description`}
+            />
+            {errors.description && (
+              <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
+            )}
+          </div>
 
-        <div>
-          <Label htmlFor="requirements">Requirements</Label>
-          <Textarea
-            id="requirements"
-            {...register('requirements')}
-            disabled={disabled}
-            rows={3}
-            placeholder="e.g., Business casual attire, Steel-toed boots required, Must have valid driver's license"
-          />
-          {errors.requirements && (
-            <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
-          )}
+          <div>
+            <Label htmlFor="requirements">Requirements</Label>
+            <Textarea
+              id="requirements"
+              {...register('requirements')}
+              disabled={disabled}
+              rows={3}
+              placeholder="e.g., Business casual attire, Steel-toed boots required, Must have valid driver's license"
+            />
+            {errors.requirements && (
+              <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

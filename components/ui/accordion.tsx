@@ -173,6 +173,41 @@ export function AccordionHeader({ children, action, className }: AccordionHeader
   );
 }
 
+/**
+ * AccordionArrow renders just the chevron toggle button.
+ * Use this when you want a custom row layout where only the arrow expands/collapses.
+ */
+interface AccordionArrowProps {
+  className?: string;
+}
+
+export function AccordionArrow({ className }: AccordionArrowProps) {
+  const { toggleItem } = useAccordionContext();
+  const { value, isOpen } = useAccordionItemContext();
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        toggleItem(value);
+      }}
+      className={cn(
+        'p-1 rounded hover:bg-muted/50 transition-colors shrink-0',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        className
+      )}
+    >
+      <ChevronDownIcon
+        className={cn(
+          'h-4 w-4 text-muted-foreground transition-transform duration-200',
+          isOpen && 'rotate-180'
+        )}
+      />
+    </button>
+  );
+}
+
 interface AccordionContentProps {
   children: ReactNode;
   className?: string;

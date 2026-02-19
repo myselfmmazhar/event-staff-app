@@ -137,11 +137,23 @@ export function AssignmentsSection({
     });
   };
 
-  // Handle quick update (inline edit for qty)
-  const handleQuickUpdate = (id: string, updates: { quantity?: number }) => {
+  // Handle quick update (inline edit for qty, cost, and price)
+  const handleQuickUpdate = (id: string, updates: { quantity?: number; price?: number; cost?: number }) => {
     const updatedAssignments = assignments.map((a) => {
       if (a.id !== id) return a;
-      return { ...a, ...updates };
+
+      const baseUpdates: Record<string, any> = {};
+      if (updates.quantity !== undefined) {
+        baseUpdates.quantity = updates.quantity;
+      }
+      if (updates.price !== undefined && a.type === 'SERVICE') {
+        baseUpdates.billRate = updates.price;
+      }
+      if (updates.cost !== undefined && a.type === 'SERVICE') {
+        baseUpdates.payRate = updates.cost;
+      }
+
+      return { ...a, ...baseUpdates } as Assignment;
     });
     onAssignmentsChange(updatedAssignments);
   };

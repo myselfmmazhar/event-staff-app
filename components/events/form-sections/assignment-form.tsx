@@ -125,9 +125,44 @@ export function AssignmentForm({
       },
   });
 
-  const { register, control, watch, setValue, handleSubmit, formState: { errors }, trigger } = form;
+  const { register, control, watch, setValue, handleSubmit, formState: { errors }, trigger, reset } = form;
   const assignmentType = watch('type');
   const startDate = watch('startDate');
+
+  // Reset form when assignment prop changes (e.g. after quick-edit)
+  useEffect(() => {
+    if (assignment) {
+      reset({
+        type: assignment.type,
+        productId: assignment.type === 'PRODUCT' ? assignment.productId : undefined,
+        serviceId: assignment.type === 'SERVICE' ? assignment.serviceId : undefined,
+        quantity: assignment.quantity,
+        commission: assignment.commission,
+        description: assignment.type === 'PRODUCT' ? assignment.description : undefined,
+        instructions: assignment.type === 'PRODUCT' ? assignment.instructions : undefined,
+        startDate: assignment.type === 'SERVICE' ? assignment.startDate : undefined,
+        startTime: assignment.type === 'SERVICE' ? assignment.startTime : undefined,
+        endDate: assignment.type === 'SERVICE' ? assignment.endDate : undefined,
+        endTime: assignment.type === 'SERVICE' ? assignment.endTime : undefined,
+        experienceRequired: assignment.type === 'SERVICE' ? assignment.experienceRequired : 'ANY',
+        ratingRequired: assignment.type === 'SERVICE' ? assignment.ratingRequired : 'ANY',
+        approveOvertime: assignment.type === 'SERVICE' ? assignment.approveOvertime : false,
+        payRate: assignment.type === 'SERVICE' ? assignment.payRate : null,
+        billRate: assignment.type === 'SERVICE' ? assignment.billRate : null,
+        rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
+        notes: assignment.type === 'SERVICE' ? assignment.notes : null,
+      });
+      // Sync local state
+      if (assignment.type === 'SERVICE') {
+        setStartDateUBD(assignment.startDateUBD ?? false);
+        setStartTimeTBD(assignment.startTimeTBD ?? false);
+        setEndDateUBD(assignment.endDateUBD ?? false);
+        setEndTimeTBD(assignment.endTimeTBD ?? false);
+      }
+      setSelectedProduct(assignment.type === 'PRODUCT' ? assignment.product : null);
+      setSelectedService(assignment.type === 'SERVICE' ? assignment.service : null);
+    }
+  }, [assignment, reset]);
 
   // Filter products based on search
   const filteredProducts = useMemo(() => {

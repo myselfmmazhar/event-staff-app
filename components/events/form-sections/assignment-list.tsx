@@ -9,7 +9,7 @@ interface AssignmentListProps {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   /** Quick update handler for inline edits (qty, price) */
-  onQuickUpdate?: (id: string, updates: { quantity?: number }) => void;
+  onQuickUpdate?: (id: string, updates: { quantity?: number; price?: number; cost?: number }) => void;
   disabled?: boolean;
   /** ID of the assignment currently being edited (for inline form) */
   editingId?: string | null;
