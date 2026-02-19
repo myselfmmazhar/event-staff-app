@@ -39,8 +39,8 @@ interface CallTime {
   payRateType: RateType;
   billRate: number | { toNumber: () => number };
   billRateType: RateType;
-  customCost: number | { toNumber: () => number } | null;
-  customPrice: number | { toNumber: () => number } | null;
+  customCost: number | { toNumber: () => number } | null; // kept for backward compat with DB
+  customPrice: number | { toNumber: () => number } | null; // kept for backward compat with DB
   approveOvertime: boolean;
   commission: boolean;
   notes: string | null;
@@ -125,8 +125,6 @@ export function CallTimeFormModal({
         payRateType: callTime.payRateType,
         billRate: billRateValue,
         billRateType: callTime.billRateType,
-        customCost: customCostValue,
-        customPrice: customPriceValue,
         approveOvertime: callTime.approveOvertime,
         commission: callTime.commission,
         notes: callTime.notes || '',
@@ -154,8 +152,6 @@ export function CallTimeFormModal({
         payRateType: RateType.PER_HOUR,
         billRate: 0,
         billRateType: RateType.PER_HOUR,
-        customCost: null,
-        customPrice: null,
         approveOvertime: false,
         commission: false,
         notes: '',

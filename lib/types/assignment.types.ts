@@ -51,12 +51,6 @@ export interface BaseAssignment {
   type: AssignmentType;
   /** Quantity needed */
   quantity: number;
-  /** Custom cost override (null = use base cost from product/service) */
-  customCost: number | null;
-  /** Custom price override (null = use base price from product/service) */
-  customPrice: number | null;
-  /** Cost/price unit type label */
-  costUnitType: string | null;
   /** Whether commission applies to this assignment */
   commission: boolean;
 }
@@ -130,9 +124,6 @@ export interface AssignmentFormData {
   productId?: string;
   serviceId?: string;
   quantity: number;
-  customCost: number | null;
-  customPrice: number | null;
-  costUnitType: string | null;
   commission: boolean;
   // Product-specific
   description?: string | null;

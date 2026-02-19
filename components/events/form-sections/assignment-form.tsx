@@ -14,8 +14,6 @@ import { trpc } from '@/lib/client/trpc';
 import { assignmentFormSchema, type AssignmentFormInput } from '@/lib/schemas/assignment.schema';
 import {
   ASSIGNMENT_TYPE_OPTIONS,
-  COST_UNIT_TYPE_OPTIONS,
-  PRICE_UNIT_TYPE_OPTIONS,
   EXPERIENCE_REQUIREMENT_OPTIONS,
   STAFF_RATING_OPTIONS,
   RATE_TYPE_OPTIONS,
@@ -94,43 +92,37 @@ export function AssignmentForm({
     resolver: zodResolver(assignmentFormSchema) as any,
     defaultValues: assignment
       ? {
-          type: assignment.type,
-          productId: assignment.type === 'PRODUCT' ? assignment.productId : undefined,
-          serviceId: assignment.type === 'SERVICE' ? assignment.serviceId : undefined,
-          quantity: assignment.quantity,
-          customCost: assignment.customCost,
-          customPrice: assignment.customPrice,
-          costUnitType: assignment.costUnitType,
-          commission: assignment.commission,
-          description: assignment.type === 'PRODUCT' ? assignment.description : undefined,
-          instructions: assignment.type === 'PRODUCT' ? assignment.instructions : undefined,
-          startDate: assignment.type === 'SERVICE' ? assignment.startDate : undefined,
-          startTime: assignment.type === 'SERVICE' ? assignment.startTime : undefined,
-          endDate: assignment.type === 'SERVICE' ? assignment.endDate : undefined,
-          endTime: assignment.type === 'SERVICE' ? assignment.endTime : undefined,
-          experienceRequired: assignment.type === 'SERVICE' ? assignment.experienceRequired : 'ANY',
-          ratingRequired: assignment.type === 'SERVICE' ? assignment.ratingRequired : 'ANY',
-          approveOvertime: assignment.type === 'SERVICE' ? assignment.approveOvertime : false,
-          payRate: assignment.type === 'SERVICE' ? assignment.payRate : null,
-          billRate: assignment.type === 'SERVICE' ? assignment.billRate : null,
-          rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
-          notes: assignment.type === 'SERVICE' ? assignment.notes : null,
-        }
+        type: assignment.type,
+        productId: assignment.type === 'PRODUCT' ? assignment.productId : undefined,
+        serviceId: assignment.type === 'SERVICE' ? assignment.serviceId : undefined,
+        quantity: assignment.quantity,
+        commission: assignment.commission,
+        description: assignment.type === 'PRODUCT' ? assignment.description : undefined,
+        instructions: assignment.type === 'PRODUCT' ? assignment.instructions : undefined,
+        startDate: assignment.type === 'SERVICE' ? assignment.startDate : undefined,
+        startTime: assignment.type === 'SERVICE' ? assignment.startTime : undefined,
+        endDate: assignment.type === 'SERVICE' ? assignment.endDate : undefined,
+        endTime: assignment.type === 'SERVICE' ? assignment.endTime : undefined,
+        experienceRequired: assignment.type === 'SERVICE' ? assignment.experienceRequired : 'ANY',
+        ratingRequired: assignment.type === 'SERVICE' ? assignment.ratingRequired : 'ANY',
+        approveOvertime: assignment.type === 'SERVICE' ? assignment.approveOvertime : false,
+        payRate: assignment.type === 'SERVICE' ? assignment.payRate : null,
+        billRate: assignment.type === 'SERVICE' ? assignment.billRate : null,
+        rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
+        notes: assignment.type === 'SERVICE' ? assignment.notes : null,
+      }
       : {
-          type: defaultType,
-          quantity: 1,
-          customCost: null,
-          customPrice: null,
-          costUnitType: null,
-          commission: false,
-          experienceRequired: 'ANY',
-          ratingRequired: 'ANY',
-          approveOvertime: false,
-          payRate: null,
-          billRate: null,
-          rateType: null,
-          notes: null,
-        },
+        type: defaultType,
+        quantity: 1,
+        commission: false,
+        experienceRequired: 'ANY',
+        ratingRequired: 'ANY',
+        approveOvertime: false,
+        payRate: null,
+        billRate: null,
+        rateType: null,
+        notes: null,
+      },
   });
 
   const { register, control, watch, setValue, handleSubmit, formState: { errors }, trigger } = form;
@@ -166,9 +158,6 @@ export function AssignmentForm({
   const handleProductSelect = (product: ProductItem) => {
     setSelectedProduct(product);
     setValue('productId', product.id);
-    setValue('customCost', product.cost);
-    setValue('customPrice', product.price);
-    setValue('costUnitType', product.priceUnitType || 'UNIT');
     setValue('description', product.description || '');
     setProductSelectorOpen(false);
     setProductSearch('');
@@ -178,9 +167,6 @@ export function AssignmentForm({
   const handleServiceSelect = (service: ServiceItem) => {
     setSelectedService(service);
     setValue('serviceId', service.id);
-    setValue('customCost', service.cost);
-    setValue('customPrice', service.price);
-    setValue('costUnitType', service.costUnitType || 'ASSIGNMENT');
     // Auto-fill pay/bill rates from service cost/price
     setValue('payRate', service.cost);
     setValue('billRate', service.price);
@@ -244,9 +230,6 @@ export function AssignmentForm({
           productId: data.productId!,
           product: selectedProduct,
           quantity: data.quantity,
-          customCost: data.customCost ?? null,
-          customPrice: data.customPrice ?? null,
-          costUnitType: data.costUnitType ?? null,
           commission: data.commission,
           description: data.description ?? null,
           instructions: data.instructions ?? null,
@@ -259,9 +242,6 @@ export function AssignmentForm({
           serviceId: data.serviceId!,
           service: selectedService,
           quantity: data.quantity,
-          customCost: data.customCost ?? null,
-          customPrice: data.customPrice ?? null,
-          costUnitType: data.costUnitType ?? null,
           commission: data.commission,
           startDate: startDateUBD ? null : (data.startDate ?? null),
           startDateUBD,
@@ -288,586 +268,23 @@ export function AssignmentForm({
     <div className="relative pb-20">
       {/* Form Content */}
       <div className="space-y-6">
-      {/* Assignment Type */}
-      <div>
-        <Label className="text-sm font-medium mb-2 block">Assignment Type</Label>
-        <Controller
-          name="type"
-          control={control}
-          render={({ field }) => (
-            <Select
-              value={field.value}
-              onValueChange={field.onChange}
-              disabled={disabled}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select type..." />
-              </SelectTrigger>
-              <SelectContent>
-                {ASSIGNMENT_TYPE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </div>
-
-      {/* Product Selection (when type is PRODUCT) */}
-      {assignmentType === 'PRODUCT' && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_120px] gap-4 items-end">
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Select Product</Label>
-              <Popover open={productSelectorOpen} onOpenChange={setProductSelectorOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-between"
-                    disabled={disabled}
-                  >
-                    {selectedProduct ? selectedProduct.title : 'Add new or type saved selection'}
-                    <ChevronDownIcon className="h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="start">
-                  <div className="p-2 border-b">
-                    <div className="relative">
-                      <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search products..."
-                        value={productSearch}
-                        onChange={(e) => setProductSearch(e.target.value)}
-                        className="pl-8 h-9"
-                      />
-                    </div>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    {productsQuery.isLoading ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-                    ) : filteredProducts.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">
-                        {productSearch ? 'No products found' : 'No products available'}
-                      </div>
-                    ) : (
-                      <div className="py-1">
-                        {filteredProducts.map((product) => (
-                          <button
-                            key={product.id}
-                            type="button"
-                            className="w-full flex items-start gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors"
-                            onClick={() => handleProductSelect(product)}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm truncate">{product.title}</div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {product.productId}
-                                {product.category && ` • ${product.category}`}
-                              </div>
-                            </div>
-                            {product.cost !== null && (
-                              <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                                {formatPrice(product.cost)}
-                              </div>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {onCreateProduct && (
-                    <div className="border-t p-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start gap-2"
-                        onClick={() => {
-                          onCreateProduct();
-                          setProductSelectorOpen(false);
-                        }}
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                        Create New Product
-                      </Button>
-                    </div>
-                  )}
-                </PopoverContent>
-              </Popover>
-              {errors.productId && (
-                <p className="text-sm text-destructive mt-1">{errors.productId.message}</p>
-              )}
-            </div>
-
-            {onCreateProduct && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onCreateProduct}
-                disabled={disabled}
-                className="gap-1"
-              >
-                <PlusIcon className="h-4 w-4" />
-                Create New
-              </Button>
-            )}
-
-            <div>
-              <Label htmlFor="quantity" className="text-sm font-medium mb-2 block">Qty Needed</Label>
-              <Input
-                id="quantity"
-                type="number"
-                min={1}
-                {...register('quantity', { valueAsNumber: true })}
-                disabled={disabled}
-              />
-            </div>
-          </div>
-
-          {/* Product Description */}
-          <div>
-            <Label htmlFor="description" className="text-sm font-medium mb-2 block">Product Description</Label>
-            <Textarea
-              id="description"
-              {...register('description')}
-              disabled={disabled}
-              placeholder="Prefilled based on saved product, but can be overridden"
-              rows={2}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Prefilled based on saved product, but can be override on individual case basis
-            </p>
-          </div>
-
-          {/* Instructions */}
-          <div>
-            <Label htmlFor="instructions" className="text-sm font-medium mb-2 block">Instructions</Label>
-            <Textarea
-              id="instructions"
-              {...register('instructions')}
-              disabled={disabled}
-              placeholder="Special instructions for this product..."
-              rows={2}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Service Selection (when type is SERVICE) */}
-      {assignmentType === 'SERVICE' && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_120px] gap-4 items-end">
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Select Service</Label>
-              <Popover open={serviceSelectorOpen} onOpenChange={setServiceSelectorOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-between"
-                    disabled={disabled}
-                  >
-                    {selectedService ? selectedService.title : 'Add new or type saved selection'}
-                    <ChevronDownIcon className="h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="start">
-                  <div className="p-2 border-b">
-                    <div className="relative">
-                      <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search services..."
-                        value={serviceSearch}
-                        onChange={(e) => setServiceSearch(e.target.value)}
-                        className="pl-8 h-9"
-                      />
-                    </div>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    {servicesQuery.isLoading ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-                    ) : filteredServices.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">
-                        {serviceSearch ? 'No services found' : 'No services available'}
-                      </div>
-                    ) : (
-                      <div className="py-1">
-                        {filteredServices.map((service) => (
-                          <button
-                            key={service.id}
-                            type="button"
-                            className="w-full flex items-start gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors"
-                            onClick={() => handleServiceSelect(service)}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm truncate">{service.title}</div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {service.serviceId}
-                              </div>
-                            </div>
-                            {service.cost !== null && (
-                              <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                                {formatPrice(service.cost)}
-                              </div>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {onCreateService && (
-                    <div className="border-t p-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start gap-2"
-                        onClick={() => {
-                          onCreateService();
-                          setServiceSelectorOpen(false);
-                        }}
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                        Create New Service
-                      </Button>
-                    </div>
-                  )}
-                </PopoverContent>
-              </Popover>
-              {errors.serviceId && (
-                <p className="text-sm text-destructive mt-1">{errors.serviceId.message}</p>
-              )}
-            </div>
-
-            {onCreateService && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onCreateService}
-                disabled={disabled}
-                className="gap-1"
-              >
-                <PlusIcon className="h-4 w-4" />
-                Create New
-              </Button>
-            )}
-
-            <div>
-              <Label htmlFor="quantity" className="text-sm font-medium mb-2 block">Qty Needed</Label>
-              <Input
-                id="quantity"
-                type="number"
-                min={1}
-                {...register('quantity', { valueAsNumber: true })}
-                disabled={disabled}
-              />
-            </div>
-          </div>
-
-          {/* Date & Time Fields */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="startDate" className="text-sm font-medium">Start Date</Label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={startDateUBD}
-                    onChange={(e) => {
-                      setStartDateUBD(e.target.checked);
-                      if (e.target.checked) setValue('startDate', '');
-                    }}
-                    disabled={disabled}
-                    className="accent-primary h-3 w-3"
-                  />
-                  <span className="text-xs text-muted-foreground">TBD</span>
-                </label>
-              </div>
-              <Input
-                id="startDate"
-                type="date"
-                {...register('startDate')}
-                disabled={disabled || startDateUBD}
-                className={startDateUBD ? 'opacity-50' : ''}
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="startTime" className="text-sm font-medium">Start Time</Label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={startTimeTBD}
-                    onChange={(e) => {
-                      setStartTimeTBD(e.target.checked);
-                      if (e.target.checked) setValue('startTime', '');
-                    }}
-                    disabled={disabled}
-                    className="accent-primary h-3 w-3"
-                  />
-                  <span className="text-xs text-muted-foreground">TBD</span>
-                </label>
-              </div>
-              <Input
-                id="startTime"
-                type="time"
-                {...register('startTime')}
-                disabled={disabled || startTimeTBD}
-                className={startTimeTBD ? 'opacity-50' : ''}
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={endDateUBD}
-                    onChange={(e) => {
-                      setEndDateUBD(e.target.checked);
-                      if (e.target.checked) setValue('endDate', '');
-                    }}
-                    disabled={disabled}
-                    className="accent-primary h-3 w-3"
-                  />
-                  <span className="text-xs text-muted-foreground">TBD</span>
-                </label>
-              </div>
-              <Input
-                id="endDate"
-                type="date"
-                {...register('endDate')}
-                disabled={disabled || endDateUBD}
-                className={endDateUBD ? 'opacity-50' : ''}
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="endTime" className="text-sm font-medium">End Time</Label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={endTimeTBD}
-                    onChange={(e) => {
-                      setEndTimeTBD(e.target.checked);
-                      if (e.target.checked) setValue('endTime', '');
-                    }}
-                    disabled={disabled}
-                    className="accent-primary h-3 w-3"
-                  />
-                  <span className="text-xs text-muted-foreground">TBD</span>
-                </label>
-              </div>
-              <Input
-                id="endTime"
-                type="time"
-                {...register('endTime')}
-                disabled={disabled || endTimeTBD}
-                className={endTimeTBD ? 'opacity-50' : ''}
-              />
-            </div>
-          </div>
-
-          {/* Experience & Rating */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Experience</Label>
-              <Controller
-                name="experienceRequired"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={disabled}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Any" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EXPERIENCE_REQUIREMENT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Rating</Label>
-              <Controller
-                name="ratingRequired"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={disabled}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Any" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STAFF_RATING_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Approve Overtime?</Label>
-              <div className="flex items-center gap-4 h-10">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="approveOvertime"
-                    checked={watch('approveOvertime') === true}
-                    onChange={() => setValue('approveOvertime', true)}
-                    disabled={disabled}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">Yes</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="approveOvertime"
-                    checked={watch('approveOvertime') === false}
-                    onChange={() => setValue('approveOvertime', false)}
-                    disabled={disabled}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">No</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Cost, Price, Rate Type */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="payRate" className="text-sm font-medium mb-2 block">Cost</Label>
-              <Input
-                id="payRate"
-                type="number"
-                step="0.01"
-                min={0}
-                {...register('payRate', { valueAsNumber: true })}
-                disabled={disabled}
-                placeholder="0.00"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Cost paid to staff
-              </p>
-            </div>
-            <div>
-              <Label htmlFor="billRate" className="text-sm font-medium mb-2 block">Price</Label>
-              <Input
-                id="billRate"
-                type="number"
-                step="0.01"
-                min={0}
-                {...register('billRate', { valueAsNumber: true })}
-                disabled={disabled}
-                placeholder="0.00"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Price billed to client
-              </p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
-              <Controller
-                name="rateType"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value || ''}
-                    onValueChange={field.onChange}
-                    disabled={disabled}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select rate type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {RATE_TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          </div>
-
-        </>
-      )}
-
-      {/* Cost, Price, Unit Type - Common for both */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Assignment Type */}
         <div>
-          <Label htmlFor="customCost" className="text-sm font-medium mb-2 block">
-            {assignmentType === 'SERVICE' ? 'Estimated Cost' : 'Cost'}
-          </Label>
-          <Input
-            id="customCost"
-            type="number"
-            step="0.01"
-            min={0}
-            {...register('customCost', { valueAsNumber: true })}
-            disabled={disabled}
-            placeholder="0.00"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Prefilled based on saved {assignmentType === 'SERVICE' ? 'service' : 'product'}, but can be override on individual case basis
-          </p>
-        </div>
-        <div>
-          <Label htmlFor="customPrice" className="text-sm font-medium mb-2 block">
-            {assignmentType === 'SERVICE' ? 'Estimated Price' : 'Price'}
-          </Label>
-          <Input
-            id="customPrice"
-            type="number"
-            step="0.01"
-            min={0}
-            {...register('customPrice', { valueAsNumber: true })}
-            disabled={disabled}
-            placeholder="0.00"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Prefilled based on saved {assignmentType === 'SERVICE' ? 'service' : 'product'}, but can be override on individual case basis
-          </p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium mb-2 block">Cost/Price Unit Type</Label>
+          <Label className="text-sm font-medium mb-2 block">Assignment Type</Label>
           <Controller
-            name="costUnitType"
+            name="type"
             control={control}
             render={({ field }) => (
               <Select
-                value={field.value || ''}
+                value={field.value}
                 onValueChange={field.onChange}
                 disabled={disabled}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select unit type" />
+                  <SelectValue placeholder="Select type..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {(assignmentType === 'SERVICE' ? COST_UNIT_TYPE_OPTIONS : PRICE_UNIT_TYPE_OPTIONS).map((opt) => (
+                  {ASSIGNMENT_TYPE_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>
@@ -877,48 +294,552 @@ export function AssignmentForm({
             )}
           />
         </div>
-        <div>
-          <Label className="text-sm font-medium mb-2 block">Commission?</Label>
-          <div className="flex items-center gap-4 h-10">
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="commission"
-                checked={watch('commission') === true}
-                onChange={() => setValue('commission', true)}
+
+        {/* Product Selection (when type is PRODUCT) */}
+        {assignmentType === 'PRODUCT' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_120px] gap-4 items-end">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Select Product</Label>
+                <Popover open={productSelectorOpen} onOpenChange={setProductSelectorOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-between"
+                      disabled={disabled}
+                    >
+                      {selectedProduct ? selectedProduct.title : 'Add new or type saved selection'}
+                      <ChevronDownIcon className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-0" align="start">
+                    <div className="p-2 border-b">
+                      <div className="relative">
+                        <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search products..."
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          className="pl-8 h-9"
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {productsQuery.isLoading ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                      ) : filteredProducts.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          {productSearch ? 'No products found' : 'No products available'}
+                        </div>
+                      ) : (
+                        <div className="py-1">
+                          {filteredProducts.map((product) => (
+                            <button
+                              key={product.id}
+                              type="button"
+                              className="w-full flex items-start gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                              onClick={() => handleProductSelect(product)}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm truncate">{product.title}</div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {product.productId}
+                                  {product.category && ` • ${product.category}`}
+                                </div>
+                              </div>
+                              {product.cost !== null && (
+                                <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                                  {formatPrice(product.cost)}
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {onCreateProduct && (
+                      <div className="border-t p-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start gap-2"
+                          onClick={() => {
+                            onCreateProduct();
+                            setProductSelectorOpen(false);
+                          }}
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                          Create New Product
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+                {errors.productId && (
+                  <p className="text-sm text-destructive mt-1">{errors.productId.message}</p>
+                )}
+              </div>
+
+              {onCreateProduct && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onCreateProduct}
+                  disabled={disabled}
+                  className="gap-1"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Create New
+                </Button>
+              )}
+
+              <div>
+                <Label htmlFor="quantity" className="text-sm font-medium mb-2 block">Qty Needed</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min={1}
+                  {...register('quantity', { valueAsNumber: true })}
+                  disabled={disabled}
+                />
+              </div>
+            </div>
+
+            {/* Product Description */}
+            <div>
+              <Label htmlFor="description" className="text-sm font-medium mb-2 block">Product Description</Label>
+              <Textarea
+                id="description"
+                {...register('description')}
                 disabled={disabled}
-                className="accent-primary"
+                placeholder="Prefilled based on saved product, but can be overridden"
+                rows={2}
               />
-              <span className="text-sm">Yes</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="commission"
-                checked={watch('commission') === false}
-                onChange={() => setValue('commission', false)}
+              <p className="text-xs text-muted-foreground mt-1">
+                Prefilled based on saved product, but can be override on individual case basis
+              </p>
+            </div>
+
+            {/* Instructions */}
+            <div>
+              <Label htmlFor="instructions" className="text-sm font-medium mb-2 block">Instructions</Label>
+              <Textarea
+                id="instructions"
+                {...register('instructions')}
                 disabled={disabled}
-                className="accent-primary"
+                placeholder="Special instructions for this product..."
+                rows={2}
               />
-              <span className="text-sm">No</span>
-            </label>
+            </div>
+          </>
+        )}
+
+        {/* Service Selection (when type is SERVICE) */}
+        {assignmentType === 'SERVICE' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_120px] gap-4 items-end">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Select Service</Label>
+                <Popover open={serviceSelectorOpen} onOpenChange={setServiceSelectorOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-between"
+                      disabled={disabled}
+                    >
+                      {selectedService ? selectedService.title : 'Add new or type saved selection'}
+                      <ChevronDownIcon className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-0" align="start">
+                    <div className="p-2 border-b">
+                      <div className="relative">
+                        <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search services..."
+                          value={serviceSearch}
+                          onChange={(e) => setServiceSearch(e.target.value)}
+                          className="pl-8 h-9"
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {servicesQuery.isLoading ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                      ) : filteredServices.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          {serviceSearch ? 'No services found' : 'No services available'}
+                        </div>
+                      ) : (
+                        <div className="py-1">
+                          {filteredServices.map((service) => (
+                            <button
+                              key={service.id}
+                              type="button"
+                              className="w-full flex items-start gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                              onClick={() => handleServiceSelect(service)}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm truncate">{service.title}</div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {service.serviceId}
+                                </div>
+                              </div>
+                              {service.cost !== null && (
+                                <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                                  {formatPrice(service.cost)}
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {onCreateService && (
+                      <div className="border-t p-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start gap-2"
+                          onClick={() => {
+                            onCreateService();
+                            setServiceSelectorOpen(false);
+                          }}
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                          Create New Service
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+                {errors.serviceId && (
+                  <p className="text-sm text-destructive mt-1">{errors.serviceId.message}</p>
+                )}
+              </div>
+
+              {onCreateService && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onCreateService}
+                  disabled={disabled}
+                  className="gap-1"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Create New
+                </Button>
+              )}
+
+              <div>
+                <Label htmlFor="quantity" className="text-sm font-medium mb-2 block">Qty Needed</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min={1}
+                  {...register('quantity', { valueAsNumber: true })}
+                  disabled={disabled}
+                />
+              </div>
+            </div>
+
+            {/* Date & Time Fields */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="startDate" className="text-sm font-medium">Start Date</Label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={startDateUBD}
+                      onChange={(e) => {
+                        setStartDateUBD(e.target.checked);
+                        if (e.target.checked) setValue('startDate', '');
+                      }}
+                      disabled={disabled}
+                      className="accent-primary h-3 w-3"
+                    />
+                    <span className="text-xs text-muted-foreground">TBD</span>
+                  </label>
+                </div>
+                <Input
+                  id="startDate"
+                  type="date"
+                  {...register('startDate')}
+                  disabled={disabled || startDateUBD}
+                  className={startDateUBD ? 'opacity-50' : ''}
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="startTime" className="text-sm font-medium">Start Time</Label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={startTimeTBD}
+                      onChange={(e) => {
+                        setStartTimeTBD(e.target.checked);
+                        if (e.target.checked) setValue('startTime', '');
+                      }}
+                      disabled={disabled}
+                      className="accent-primary h-3 w-3"
+                    />
+                    <span className="text-xs text-muted-foreground">TBD</span>
+                  </label>
+                </div>
+                <Input
+                  id="startTime"
+                  type="time"
+                  {...register('startTime')}
+                  disabled={disabled || startTimeTBD}
+                  className={startTimeTBD ? 'opacity-50' : ''}
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={endDateUBD}
+                      onChange={(e) => {
+                        setEndDateUBD(e.target.checked);
+                        if (e.target.checked) setValue('endDate', '');
+                      }}
+                      disabled={disabled}
+                      className="accent-primary h-3 w-3"
+                    />
+                    <span className="text-xs text-muted-foreground">TBD</span>
+                  </label>
+                </div>
+                <Input
+                  id="endDate"
+                  type="date"
+                  {...register('endDate')}
+                  disabled={disabled || endDateUBD}
+                  className={endDateUBD ? 'opacity-50' : ''}
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="endTime" className="text-sm font-medium">End Time</Label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={endTimeTBD}
+                      onChange={(e) => {
+                        setEndTimeTBD(e.target.checked);
+                        if (e.target.checked) setValue('endTime', '');
+                      }}
+                      disabled={disabled}
+                      className="accent-primary h-3 w-3"
+                    />
+                    <span className="text-xs text-muted-foreground">TBD</span>
+                  </label>
+                </div>
+                <Input
+                  id="endTime"
+                  type="time"
+                  {...register('endTime')}
+                  disabled={disabled || endTimeTBD}
+                  className={endTimeTBD ? 'opacity-50' : ''}
+                />
+              </div>
+            </div>
+
+            {/* Experience & Rating */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Experience</Label>
+                <Controller
+                  name="experienceRequired"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={disabled}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EXPERIENCE_REQUIREMENT_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Rating</Label>
+                <Controller
+                  name="ratingRequired"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={disabled}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STAFF_RATING_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Approve Overtime?</Label>
+                <div className="flex items-center gap-4 h-10">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="approveOvertime"
+                      checked={watch('approveOvertime') === true}
+                      onChange={() => setValue('approveOvertime', true)}
+                      disabled={disabled}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">Yes</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="approveOvertime"
+                      checked={watch('approveOvertime') === false}
+                      onChange={() => setValue('approveOvertime', false)}
+                      disabled={disabled}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">No</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Cost, Price, Rate Type */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="payRate" className="text-sm font-medium mb-2 block">Cost</Label>
+                <Input
+                  id="payRate"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  {...register('payRate', { valueAsNumber: true })}
+                  disabled={disabled}
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Cost paid to staff
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="billRate" className="text-sm font-medium mb-2 block">Price</Label>
+                <Input
+                  id="billRate"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  {...register('billRate', { valueAsNumber: true })}
+                  disabled={disabled}
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Price billed to client
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
+                <Controller
+                  name="rateType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || ''}
+                      onValueChange={field.onChange}
+                      disabled={disabled}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select rate type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RATE_TYPE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+
+          </>
+        )}
+
+        {/* Commission - Common for both */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Commission?</Label>
+            <div className="flex items-center gap-4 h-10">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="commission"
+                  checked={watch('commission') === true}
+                  onChange={() => setValue('commission', true)}
+                  disabled={disabled}
+                  className="accent-primary"
+                />
+                <span className="text-sm">Yes</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="commission"
+                  checked={watch('commission') === false}
+                  onChange={() => setValue('commission', false)}
+                  disabled={disabled}
+                  className="accent-primary"
+                />
+                <span className="text-sm">No</span>
+              </label>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Notes - Service only, at end */}
-      {assignmentType === 'SERVICE' && (
-        <div>
-          <Label htmlFor="notes" className="text-sm font-medium mb-2 block">Notes</Label>
-          <Textarea
-            id="notes"
-            {...register('notes')}
-            disabled={disabled}
-            placeholder="Internal notes for this assignment..."
-            rows={3}
-          />
-        </div>
-      )}
+        {/* Notes - Service only, at end */}
+        {assignmentType === 'SERVICE' && (
+          <div>
+            <Label htmlFor="notes" className="text-sm font-medium mb-2 block">Notes</Label>
+            <Textarea
+              id="notes"
+              {...register('notes')}
+              disabled={disabled}
+              placeholder="Internal notes for this assignment..."
+              rows={3}
+            />
+          </div>
+        )}
 
       </div>
 

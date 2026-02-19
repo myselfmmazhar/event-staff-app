@@ -48,8 +48,6 @@ export const assignmentFieldsSchema = z
     payRateType: z.nativeEnum(RateType),
     billRate: z.coerce.number().min(0, 'Bill rate must be non-negative'),
     billRateType: z.nativeEnum(RateType),
-    customCost: z.coerce.number().min(0).optional().nullable(),
-    customPrice: z.coerce.number().min(0).optional().nullable(),
     approveOvertime: z.boolean().default(false),
     commission: z.boolean().default(false),
     notes: z.string().optional(),
@@ -152,7 +150,7 @@ export function AssignmentFormFields({
     const searchLower = serviceSearch.toLowerCase();
     return services.filter(
       (s) => s.title.toLowerCase().includes(searchLower) ||
-             (s.serviceId && s.serviceId.toLowerCase().includes(searchLower))
+        (s.serviceId && s.serviceId.toLowerCase().includes(searchLower))
     );
   }, [services, serviceSearch]);
 
@@ -608,70 +606,8 @@ export function AssignmentFormFields({
             </div>
           </div>
 
-          {/* Estimated Cost/Price, Unit Type, Commission */}
+          {/* Commission */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="customCost" className="text-sm font-medium mb-2 block">
-                Estimated Cost
-              </Label>
-              <Input
-                id="customCost"
-                type="number"
-                step="0.01"
-                min={0}
-                {...register('customCost')}
-                disabled={disabled}
-                placeholder="0.00"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Prefilled from service, can override
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="customPrice" className="text-sm font-medium mb-2 block">
-                Estimated Price
-              </Label>
-              <Input
-                id="customPrice"
-                type="number"
-                step="0.01"
-                min={0}
-                {...register('customPrice')}
-                disabled={disabled}
-                placeholder="0.00"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Prefilled from service, can override
-              </p>
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Cost/Price Unit Type</Label>
-              <Controller
-                name="payRateType"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={disabled}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select unit type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {RATE_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-
             <div>
               <Label className="text-sm font-medium mb-2 block">Commission?</Label>
               <div className="flex items-center gap-4 h-10">
@@ -744,8 +680,6 @@ export function getDefaultAssignmentValues(today?: string): AssignmentFieldsInpu
     payRateType: RateType.PER_HOUR,
     billRate: 0,
     billRateType: RateType.PER_HOUR,
-    customCost: null,
-    customPrice: null,
     approveOvertime: false,
     commission: false,
     notes: '',

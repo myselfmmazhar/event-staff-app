@@ -137,8 +137,8 @@ export function AssignmentsSection({
     });
   };
 
-  // Handle quick update (inline edit for qty/price)
-  const handleQuickUpdate = (id: string, updates: { quantity?: number; customPrice?: number | null }) => {
+  // Handle quick update (inline edit for qty)
+  const handleQuickUpdate = (id: string, updates: { quantity?: number }) => {
     const updatedAssignments = assignments.map((a) => {
       if (a.id !== id) return a;
       return { ...a, ...updates };

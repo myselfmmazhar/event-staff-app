@@ -9,7 +9,7 @@ interface AssignmentListProps {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   /** Quick update handler for inline edits (qty, price) */
-  onQuickUpdate?: (id: string, updates: { quantity?: number; customPrice?: number | null }) => void;
+  onQuickUpdate?: (id: string, updates: { quantity?: number }) => void;
   disabled?: boolean;
   /** ID of the assignment currently being edited (for inline form) */
   editingId?: string | null;
@@ -37,11 +37,12 @@ export function AssignmentList({
   // Calculate totals
   const totals = assignments.reduce(
     (acc, assignment) => {
-      const price =
-        assignment.customPrice ??
-        (assignment.type === 'PRODUCT'
-          ? assignment.product?.price
-          : assignment.service?.price);
+      let price: number | null | undefined = null;
+      if (assignment.type === 'PRODUCT') {
+        price = assignment.product?.price;
+      } else {
+        price = assignment.billRate ?? assignment.service?.price;
+      }
       const lineTotal = price !== null && price !== undefined
         ? Number(price) * assignment.quantity
         : 0;

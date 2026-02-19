@@ -8,20 +8,18 @@ import { AccordionItem, AccordionTrigger, AccordionContent } from '@/components/
 import { EditIcon, TrashIcon, CubeIcon, WrenchScrewdriverIcon } from '@/components/ui/icons';
 import { cn } from '@/lib/utils';
 import {
-  COST_UNIT_TYPE_LABELS,
-  PRICE_UNIT_TYPE_LABELS,
   EXPERIENCE_REQUIREMENT_LABELS,
   STAFF_RATING_LABELS,
 } from '@/lib/constants/enums';
 import type { Assignment, ProductAssignment, ServiceAssignment } from '@/lib/types/assignment.types';
-import type { CostUnitType, PriceUnitType, ExperienceRequirement, StaffRating } from '@prisma/client';
+import type { ExperienceRequirement, StaffRating } from '@prisma/client';
 
 interface AssignmentItemProps {
   assignment: Assignment;
   onEdit: () => void;
   onDelete: () => void;
-  /** Quick update for quantity and price without opening full form */
-  onQuickUpdate?: (updates: { quantity?: number; customPrice?: number | null }) => void;
+  /** Quick update for quantity without opening full form */
+  onQuickUpdate?: (updates: { quantity?: number }) => void;
   disabled?: boolean;
 }
 
@@ -38,11 +36,8 @@ export function AssignmentItem({
 
   // Quick edit state
   const [editingQty, setEditingQty] = useState(false);
-  const [editingPrice, setEditingPrice] = useState(false);
   const [tempQty, setTempQty] = useState(assignment.quantity);
-  const [tempPrice, setTempPrice] = useState<string>('');
   const qtyInputRef = useRef<HTMLInputElement>(null);
-  const priceInputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when editing starts
   useEffect(() => {
@@ -52,22 +47,16 @@ export function AssignmentItem({
     }
   }, [editingQty]);
 
-  useEffect(() => {
-    if (editingPrice && priceInputRef.current) {
-      priceInputRef.current.focus();
-      priceInputRef.current.select();
-    }
-  }, [editingPrice]);
 
   // Get display title
   const title = isProduct
     ? productAssignment?.product?.title || 'Product'
     : serviceAssignment?.service?.title || 'Service';
 
-  // Get display price
-  const price = assignment.customPrice ?? (
-    isProduct ? productAssignment?.product?.price : serviceAssignment?.service?.price
-  );
+  // Get display price - use payRate/billRate for services, product.price for products
+  const price = isProduct
+    ? productAssignment?.product?.price
+    : serviceAssignment?.billRate ?? serviceAssignment?.service?.price;
 
   // Calculate line total
   const lineTotal = price !== null && price !== undefined
@@ -80,14 +69,6 @@ export function AssignmentItem({
     return `$${Number(value).toFixed(2)}`;
   };
 
-  // Get unit type label
-  const getUnitTypeLabel = (unitType: string | null) => {
-    if (!unitType) return '-';
-    if (isProduct) {
-      return PRICE_UNIT_TYPE_LABELS[unitType as PriceUnitType] || unitType;
-    }
-    return COST_UNIT_TYPE_LABELS[unitType as CostUnitType] || unitType;
-  };
 
   // Handle quantity quick edit
   const handleQtyClick = (e: React.MouseEvent) => {
@@ -113,30 +94,6 @@ export function AssignmentItem({
     }
   };
 
-  // Handle price quick edit
-  const handlePriceClick = (e: React.MouseEvent) => {
-    if (disabled || !onQuickUpdate) return;
-    e.stopPropagation();
-    e.preventDefault();
-    setTempPrice(price !== null && price !== undefined ? Number(price).toFixed(2) : '');
-    setEditingPrice(true);
-  };
-
-  const handlePriceSave = () => {
-    const newPrice = tempPrice === '' ? null : parseFloat(tempPrice);
-    if (newPrice !== assignment.customPrice) {
-      onQuickUpdate?.({ customPrice: newPrice });
-    }
-    setEditingPrice(false);
-  };
-
-  const handlePriceKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handlePriceSave();
-    } else if (e.key === 'Escape') {
-      setEditingPrice(false);
-    }
-  };
 
   return (
     <AccordionItem value={assignment.id} className="border rounded-lg mb-2">
@@ -212,34 +169,12 @@ export function AssignmentItem({
               </span>
             )}
 
-            {/* Price - Click to edit */}
-            {editingPrice ? (
-              <div className="ml-auto mr-4 flex items-center">
-                <span className="text-sm mr-1">$</span>
-                <Input
-                  ref={priceInputRef}
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  value={tempPrice}
-                  onChange={(e) => setTempPrice(e.target.value)}
-                  onBlur={handlePriceSave}
-                  onKeyDown={handlePriceKeyDown}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-24 h-7 text-sm"
-                />
-              </div>
-            ) : (
-              <span
-                className={cn(
-                  "text-sm font-medium ml-auto mr-4",
-                  onQuickUpdate && !disabled && "cursor-pointer hover:text-primary"
-                )}
-                onClick={handlePriceClick}
-              >
-                {formatPrice(price)}
-              </span>
-            )}
+            {/* Price (display only) */}
+            <span
+              className="text-sm font-medium ml-auto mr-4"
+            >
+              {formatPrice(price)}
+            </span>
           </div>
         </AccordionTrigger>
 
@@ -276,24 +211,6 @@ export function AssignmentItem({
 
       <AccordionContent className="px-4 pb-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          {/* Cost */}
-          <div>
-            <div className="text-muted-foreground text-xs mb-1">Cost</div>
-            <div className="font-medium">{formatPrice(assignment.customCost)}</div>
-          </div>
-
-          {/* Price */}
-          <div>
-            <div className="text-muted-foreground text-xs mb-1">Price</div>
-            <div className="font-medium">{formatPrice(assignment.customPrice)}</div>
-          </div>
-
-          {/* Unit Type */}
-          <div>
-            <div className="text-muted-foreground text-xs mb-1">Unit Type</div>
-            <div className="font-medium">{getUnitTypeLabel(assignment.costUnitType)}</div>
-          </div>
-
           {/* Commission */}
           <div>
             <div className="text-muted-foreground text-xs mb-1">Commission</div>

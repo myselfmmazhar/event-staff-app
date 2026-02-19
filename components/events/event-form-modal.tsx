@@ -195,8 +195,6 @@ type SaveAction = 'close' | 'new';
 type CallTimeAssignment = {
   serviceId: string;
   quantity: number;
-  customCost?: number | null;
-  customPrice?: number | null;
   startDate?: string | null;
   startTime?: string | null;
   endDate?: string | null;
@@ -219,7 +217,7 @@ interface EventFormModalProps {
     data: CreateEventInput | Omit<UpdateEventInput, 'id'>,
     attachments?: {
       callTimes: CallTimeAssignment[];
-      products: Array<{ productId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
+      products: Array<{ productId: string; quantity: number; notes?: string | null }>;
     },
     saveAction?: SaveAction
   ) => void;
@@ -621,9 +619,6 @@ export function EventFormModal({
             isActive: ct.service.isActive,
           } : null,
           quantity: ct.numberOfStaffRequired,
-          customCost: ct.customCost ? Number(ct.customCost) : null,
-          customPrice: ct.customPrice ? Number(ct.customPrice) : null,
-          costUnitType: ct.service?.costUnitType || null,
           commission: ct.commission ?? false,
           startDate: formatDate(ct.startDate),
           startTime: ct.startTime ?? null,
@@ -667,9 +662,6 @@ export function EventFormModal({
             isActive: p.product.isActive,
           },
           quantity: p.quantity,
-          customCost: p.customPrice ? Number(p.customPrice) : null,
-          customPrice: p.customPrice ? Number(p.customPrice) : null,
-          costUnitType: p.product.priceUnitType || null,
           commission: extendedData.commission ?? false,
           description: extendedData.description ?? p.product.description ?? null,
           instructions: extendedData.instructions ?? null,
@@ -771,8 +763,6 @@ export function EventFormModal({
       callTimes: serviceAssignments.map((s) => ({
         serviceId: s.serviceId,
         quantity: s.quantity,
-        customCost: s.customCost,
-        customPrice: s.customPrice,
         startDate: s.startDate,
         startTime: s.startTime,
         endDate: s.endDate,
@@ -796,7 +786,6 @@ export function EventFormModal({
         return {
           productId: p.productId,
           quantity: p.quantity,
-          customPrice: p.customPrice,
           notes: JSON.stringify(extendedData),
         };
       }),
