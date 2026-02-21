@@ -105,23 +105,18 @@ export function EventTable({
 
     const groups = new Map<
       string,
-      { serviceId: string | null; serviceName: string; required: number; accepted: number }
+      { serviceId: string | null; serviceName: string; required: number; accepted: number; open: number }
     >();
 
     let totalRequired = 0;
     let totalAccepted = 0;
-    let totalConfirmed = 0;
 
     for (const callTime of callTimes) {
       const required = callTime.numberOfStaffRequired ?? 0;
       const accepted = callTime.invitations.filter((inv) => inv.status === 'ACCEPTED').length;
-      const confirmed = callTime.invitations.filter(
-        (inv) => inv.status === 'ACCEPTED' && inv.isConfirmed
-      ).length;
 
       totalRequired += required;
       totalAccepted += accepted;
-      totalConfirmed += confirmed;
 
       const serviceId = callTime.service?.id ?? null;
       const key = serviceId ?? callTime.service?.title ?? callTime.id;
@@ -129,12 +124,14 @@ export function EventTable({
       if (existing) {
         existing.required += required;
         existing.accepted += accepted;
+        existing.open = existing.required - existing.accepted;
       } else {
         groups.set(key, {
           serviceId,
           serviceName: callTime.service?.title ?? 'Unknown',
           required,
           accepted,
+          open: required - accepted,
         });
       }
     }
@@ -142,14 +139,12 @@ export function EventTable({
     const allGroups = Array.from(groups.values())
       .sort((a, b) => b.required - a.required || a.serviceName.localeCompare(b.serviceName));
 
-    // Open assignments = accepted < required (needs more staff)
-    const openAssignments = allGroups.filter((g) => g.accepted < g.required);
-    // Closed assignments = accepted >= required (fully staffed)
-    const closedAssignments = allGroups.filter((g) => g.accepted >= g.required);
+    // Open assignments = groups that still have unfilled positions
+    const openAssignments = allGroups.filter((g) => g.open > 0);
+    // Accepted assignments = groups that have any accepted staff
+    const acceptedAssignments = allGroups.filter((g) => g.accepted > 0);
 
-    const lines = allGroups.map((g) => `${g.serviceName}: ${g.accepted}/${g.required} Accepted`);
-
-    return { lines, openAssignments, closedAssignments, totalRequired, totalAccepted, totalConfirmed };
+    return { openAssignments, acceptedAssignments, totalRequired, totalAccepted };
   };
 
   // Selection handlers
@@ -320,7 +315,7 @@ export function EventTable({
         return (
           <div className="flex flex-wrap gap-1">
             {visible.map((item, idx) => {
-              const line = `${item.serviceName}: ${item.accepted}/${item.required}`;
+              const line = `${item.serviceName}: ${item.open} of ${item.required}`;
               const url = item.serviceId
                 ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
                 : `/assignments?eventId=${event.id}`;
@@ -369,20 +364,20 @@ export function EventTable({
       label: columnLabels.closedAssignments,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (event) => {
-        const { closedAssignments } = getAssignmentSummary(event);
-        if (closedAssignments.length === 0) {
+        const { acceptedAssignments } = getAssignmentSummary(event);
+        if (acceptedAssignments.length === 0) {
           return <span className="text-muted-foreground/50 italic">—</span>;
         }
 
         const isExpanded = expandedRows.has(event.id);
-        const visible = isExpanded ? closedAssignments : closedAssignments.slice(0, 3);
-        const remaining = closedAssignments.length - 3;
+        const visible = isExpanded ? acceptedAssignments : acceptedAssignments.slice(0, 3);
+        const remaining = acceptedAssignments.length - 3;
         const hasMore = remaining > 0;
 
         return (
           <div className="flex flex-wrap gap-1">
             {visible.map((item, idx) => {
-              const line = `${item.serviceName}: ${item.accepted}/${item.required}`;
+              const line = `${item.serviceName}: ${item.accepted} of ${item.required}`;
               const url = item.serviceId
                 ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
                 : `/assignments?eventId=${event.id}`;
@@ -431,29 +426,57 @@ export function EventTable({
       label: columnLabels.progress,
       className: 'py-4 px-4 whitespace-nowrap',
       render: (event) => {
-        const { totalRequired, totalAccepted, totalConfirmed } = getAssignmentSummary(event);
+        const { totalRequired, totalAccepted } = getAssignmentSummary(event);
 
         if (totalRequired === 0) {
           return <span className="text-muted-foreground/50 italic">—</span>;
         }
 
-        const statusLabel =
-          totalAccepted === 0 ? `Needs ${terminology.staff.lower}` : totalConfirmed >= totalRequired ? 'Filled' : 'Accepted';
-        const statusVariant: 'warning' | 'success' | 'info' =
-          totalAccepted === 0 ? 'warning' : totalConfirmed >= totalRequired ? 'success' : 'info';
+        const percent = Math.round((totalAccepted / totalRequired) * 100);
+
+        let statusLabel: string;
+        let barColor: string;
+        let barBg: string;
+        let textColor: string;
+
+        if (totalAccepted === 0) {
+          statusLabel = 'Open';
+          barColor = 'bg-red-500';
+          barBg = 'bg-gray-200 dark:bg-gray-700';
+          textColor = 'text-red-600 dark:text-red-400';
+        } else if (totalAccepted >= totalRequired) {
+          statusLabel = 'Accepted';
+          barColor = 'bg-green-500';
+          barBg = 'bg-gray-200 dark:bg-gray-700';
+          textColor = 'text-green-600 dark:text-green-400';
+        } else {
+          statusLabel = 'Pending';
+          barColor = 'bg-yellow-500';
+          barBg = 'bg-gray-200 dark:bg-gray-700';
+          textColor = 'text-yellow-600 dark:text-yellow-400';
+        }
 
         return (
           <div
-            className="cursor-pointer hover:text-primary transition-colors"
+            className="cursor-pointer hover:opacity-80 transition-opacity min-w-[100px]"
             onClick={(e) => {
               e.stopPropagation();
-              router.push('/assignments');
+              router.push(`/assignments?eventId=${event.id}`);
             }}
-            title="View in Assignment Manager"
+            title={`${statusLabel} — ${totalAccepted} of ${totalRequired} accepted`}
           >
-            <Badge variant={statusVariant} size="sm" asSpan>
+            <div className={`text-xs font-medium mb-1 ${textColor}`}>
               {statusLabel}
-            </Badge>
+            </div>
+            <div
+              className="w-full h-2 rounded-full overflow-hidden"
+              style={{ backgroundColor: '#e5e7eb' }}
+            >
+              <div
+                className={`h-full rounded-full ${barColor} transition-all duration-300`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
           </div>
         );
       },
@@ -490,14 +513,19 @@ export function EventTable({
         <div className="flex items-center gap-2">
           <span className="font-medium">Progress:</span>
           {(() => {
-            const { totalRequired, totalAccepted, totalConfirmed } = getAssignmentSummary(event);
+            const { totalRequired, totalAccepted } = getAssignmentSummary(event);
             if (totalRequired === 0) return <span className="italic opacity-50">—</span>;
-            const label = `${totalAccepted}/${totalRequired} Accepted`;
-            const status = totalAccepted === 0 ? 'Needs staff' : totalConfirmed >= totalRequired ? 'Filled' : 'Accepted';
+            const percent = Math.round((totalAccepted / totalRequired) * 100);
+            const status = totalAccepted === 0 ? 'Open' : totalAccepted >= totalRequired ? 'Accepted' : 'Pending';
+            const barColor = totalAccepted === 0 ? 'bg-red-500' : totalAccepted >= totalRequired ? 'bg-green-500' : 'bg-yellow-500';
+            const barBg = totalAccepted === 0 ? 'bg-red-100' : totalAccepted >= totalRequired ? 'bg-green-100' : 'bg-yellow-100';
             return (
-              <span className="truncate" title={`${label} • ${status}`}>
-                {label} • {status}
-              </span>
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-xs font-medium">{status}</span>
+                <div className={`flex-1 h-2 rounded-full ${barBg} overflow-hidden`}>
+                  <div className={`h-full rounded-full ${barColor}`} style={{ width: `${percent}%` }} />
+                </div>
+              </div>
             );
           })()}
         </div>

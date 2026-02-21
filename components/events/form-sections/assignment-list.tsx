@@ -8,8 +8,8 @@ interface AssignmentListProps {
   assignments: Assignment[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
-  /** Quick update handler for inline edits (qty, price) */
-  onQuickUpdate?: (id: string, updates: { quantity?: number; price?: number; cost?: number }) => void;
+  /** Quick update handler for inline edits (qty, price, dates) */
+  onQuickUpdate?: (id: string, updates: { quantity?: number; price?: number; cost?: number; startDate?: string | null; startTime?: string | null; endDate?: string | null; endTime?: string | null }) => void;
   disabled?: boolean;
   /** ID of the assignment currently being edited (for inline form) */
   editingId?: string | null;
