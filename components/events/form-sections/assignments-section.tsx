@@ -137,8 +137,8 @@ export function AssignmentsSection({
     });
   };
 
-  // Handle quick update (inline edit for qty, cost, and price)
-  const handleQuickUpdate = (id: string, updates: { quantity?: number; price?: number; cost?: number }) => {
+  // Handle quick update (inline edit for qty, cost, price, and dates)
+  const handleQuickUpdate = (id: string, updates: { quantity?: number; price?: number; cost?: number; startDate?: string | null; startTime?: string | null; endDate?: string | null; endTime?: string | null }) => {
     const updatedAssignments = assignments.map((a) => {
       if (a.id !== id) return a;
 
@@ -151,6 +151,12 @@ export function AssignmentsSection({
       }
       if (updates.cost !== undefined && a.type === 'SERVICE') {
         baseUpdates.payRate = updates.cost;
+      }
+      if (a.type === 'SERVICE') {
+        if (updates.startDate !== undefined) baseUpdates.startDate = updates.startDate;
+        if (updates.startTime !== undefined) baseUpdates.startTime = updates.startTime;
+        if (updates.endDate !== undefined) baseUpdates.endDate = updates.endDate;
+        if (updates.endTime !== undefined) baseUpdates.endTime = updates.endTime;
       }
 
       return { ...a, ...baseUpdates } as Assignment;

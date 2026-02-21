@@ -18,8 +18,8 @@ interface AssignmentItemProps {
   assignment: Assignment;
   onEdit: () => void;
   onDelete: () => void;
-  /** Quick update for quantity without opening full form */
-  onQuickUpdate?: (updates: { quantity?: number; price?: number; cost?: number }) => void;
+  /** Quick update for quantity, price, cost, or dates without opening full form */
+  onQuickUpdate?: (updates: { quantity?: number; price?: number; cost?: number; startDate?: string | null; startTime?: string | null; endDate?: string | null; endTime?: string | null }) => void;
   disabled?: boolean;
 }
 
@@ -45,6 +45,14 @@ export function AssignmentItem({
   const [tempCost, setTempCost] = useState(0);
   const costInputRef = useRef<HTMLInputElement>(null);
 
+  // Date quick edit state
+  const [editingDate, setEditingDate] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState(serviceAssignment?.startDate || '');
+  const [tempStartTime, setTempStartTime] = useState(serviceAssignment?.startTime || '');
+  const [tempEndDate, setTempEndDate] = useState(serviceAssignment?.endDate || '');
+  const [tempEndTime, setTempEndTime] = useState(serviceAssignment?.endTime || '');
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
   // Focus input when editing starts
   useEffect(() => {
     if (editingQty && qtyInputRef.current) {
@@ -66,6 +74,12 @@ export function AssignmentItem({
       costInputRef.current.select();
     }
   }, [editingCost]);
+
+  useEffect(() => {
+    if (editingDate && dateInputRef.current) {
+      dateInputRef.current.focus();
+    }
+  }, [editingDate]);
 
 
   // Get display title
@@ -169,6 +183,36 @@ export function AssignmentItem({
     }
   };
 
+  // Handle date quick edit
+  const handleDateClick = (e: React.MouseEvent) => {
+    if (disabled || !onQuickUpdate || isProduct) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setTempStartDate(serviceAssignment?.startDate || '');
+    setTempStartTime(serviceAssignment?.startTime || '');
+    setTempEndDate(serviceAssignment?.endDate || '');
+    setTempEndTime(serviceAssignment?.endTime || '');
+    setEditingDate(true);
+  };
+
+  const handleDateSave = () => {
+    onQuickUpdate?.({
+      startDate: tempStartDate || null,
+      startTime: tempStartTime || null,
+      endDate: tempEndDate || null,
+      endTime: tempEndTime || null,
+    });
+    setEditingDate(false);
+  };
+
+  const handleDateKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleDateSave();
+    } else if (e.key === 'Escape') {
+      setEditingDate(false);
+    }
+  };
+
 
   return (
     <AccordionItem value={assignment.id} className="border rounded-lg mb-2">
@@ -191,25 +235,93 @@ export function AssignmentItem({
           </div>
         </div>
 
-        {/* Date & Time - for service assignments (display only) */}
-        {!isProduct && serviceAssignment && (serviceAssignment.startDate || serviceAssignment.endDate) && (
-          <div className="text-xs text-muted-foreground hidden md:block whitespace-nowrap">
-            {serviceAssignment.startDate && (
-              <span>
-                {serviceAssignment.startDateUBD ? 'UBD' : serviceAssignment.startDate}
-                {serviceAssignment.startTime && !serviceAssignment.startTimeTBD && ` ${serviceAssignment.startTime}`}
-                {serviceAssignment.startTimeTBD && ' (TBD)'}
-              </span>
-            )}
-            {serviceAssignment.startDate && serviceAssignment.endDate && ' → '}
-            {serviceAssignment.endDate && (
-              <span>
-                {serviceAssignment.endDateUBD ? 'UBD' : serviceAssignment.endDate}
-                {serviceAssignment.endTime && !serviceAssignment.endTimeTBD && ` ${serviceAssignment.endTime}`}
-                {serviceAssignment.endTimeTBD && ' (TBD)'}
-              </span>
-            )}
-          </div>
+        {/* Date & Time - for service assignments (click to edit) */}
+        {!isProduct && serviceAssignment && (
+          editingDate ? (
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <Input
+                ref={dateInputRef}
+                type="date"
+                value={tempStartDate}
+                onChange={(e) => { setTempStartDate(e.target.value); setTempEndDate(e.target.value); }}
+                onKeyDown={handleDateKeyDown}
+                className="w-[130px] h-7 text-xs"
+              />
+              <Input
+                type="time"
+                value={tempStartTime}
+                onChange={(e) => { setTempStartTime(e.target.value); setTempEndTime(e.target.value); }}
+                onKeyDown={handleDateKeyDown}
+                className="w-[100px] h-7 text-xs"
+              />
+              <span className="text-xs text-muted-foreground">→</span>
+              <Input
+                type="date"
+                value={tempEndDate}
+                onChange={(e) => setTempEndDate(e.target.value)}
+                onKeyDown={handleDateKeyDown}
+                className="w-[130px] h-7 text-xs"
+              />
+              <Input
+                type="time"
+                value={tempEndTime}
+                onChange={(e) => setTempEndTime(e.target.value)}
+                onKeyDown={handleDateKeyDown}
+                className="w-[100px] h-7 text-xs"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={(e) => { e.stopPropagation(); handleDateSave(); }}
+              >
+                ✓
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={(e) => { e.stopPropagation(); setEditingDate(false); }}
+              >
+                ✕
+              </Button>
+            </div>
+          ) : (serviceAssignment.startDate || serviceAssignment.endDate) ? (
+            <div
+              className={cn(
+                'text-xs text-muted-foreground hidden md:block whitespace-nowrap',
+                onQuickUpdate && !disabled && 'cursor-pointer hover:text-primary'
+              )}
+              onClick={handleDateClick}
+              title="Click to edit dates"
+            >
+              {serviceAssignment.startDate && (
+                <span>
+                  {serviceAssignment.startDateUBD ? 'UBD' : serviceAssignment.startDate}
+                  {serviceAssignment.startTime && !serviceAssignment.startTimeTBD && ` ${serviceAssignment.startTime}`}
+                  {serviceAssignment.startTimeTBD && ' (TBD)'}
+                </span>
+              )}
+              {serviceAssignment.startDate && serviceAssignment.endDate && ' → '}
+              {serviceAssignment.endDate && (
+                <span>
+                  {serviceAssignment.endDateUBD ? 'UBD' : serviceAssignment.endDate}
+                  {serviceAssignment.endTime && !serviceAssignment.endTimeTBD && ` ${serviceAssignment.endTime}`}
+                  {serviceAssignment.endTimeTBD && ' (TBD)'}
+                </span>
+              )}
+            </div>
+          ) : onQuickUpdate && !disabled ? (
+            <span
+              className="text-xs text-muted-foreground/50 italic hidden md:block cursor-pointer hover:text-primary"
+              onClick={handleDateClick}
+              title="Click to add dates"
+            >
+              + Add dates
+            </span>
+          ) : null
         )}
 
         {/* Quantity - Click to edit */}

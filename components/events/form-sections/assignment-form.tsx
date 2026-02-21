@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -132,6 +132,8 @@ export function AssignmentForm({
   // Reset form when assignment prop changes (e.g. after quick-edit)
   useEffect(() => {
     if (assignment) {
+      // Temporarily mark as initial mount to prevent auto-sync from overwriting
+      isInitialMount.current = true;
       reset({
         type: assignment.type,
         productId: assignment.type === 'PRODUCT' ? assignment.productId : undefined,
@@ -152,6 +154,8 @@ export function AssignmentForm({
         rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
         notes: assignment.type === 'SERVICE' ? assignment.notes : null,
       });
+      // Re-enable auto-sync after reset completes
+      setTimeout(() => { isInitialMount.current = false; }, 0);
       // Sync local state
       if (assignment.type === 'SERVICE') {
         setStartDateUBD(assignment.startDateUBD ?? false);
@@ -229,16 +233,28 @@ export function AssignmentForm({
     }
   }, [assignmentType, setValue]);
 
-  // Auto-set end date to match start date when start date changes (for SERVICE assignments)
+  // Track initial mount to prevent auto-sync from overwriting loaded values
+  const isInitialMount = useRef(true);
   useEffect(() => {
+    // After the first render cycle completes, mark initial mount as done
+    const timer = setTimeout(() => { isInitialMount.current = false; }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-set end date to match start date when start date changes (for SERVICE assignments)
+  // Skip on initial mount to preserve loaded endDate from assignment data
+  useEffect(() => {
+    if (isInitialMount.current) return;
     if (assignmentType === 'SERVICE' && startDate && !endDateUBD) {
       setValue('endDate', startDate);
     }
   }, [assignmentType, startDate, endDateUBD, setValue]);
 
   // Auto-set end time to match start time when start time changes (for SERVICE assignments)
+  // Skip on initial mount to preserve loaded endTime from assignment data
   const startTime = watch('startTime');
   useEffect(() => {
+    if (isInitialMount.current) return;
     if (assignmentType === 'SERVICE' && startTime && !endTimeTBD) {
       setValue('endTime', startTime);
     }
