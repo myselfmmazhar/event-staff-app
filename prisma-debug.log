@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-02-22T16:14:38.996Z",
+  "data": {
+    "name": "Mailtrap",
+    "host": "sandbox.smtp.mailtrap.io",
+    "port": 2525,
+    "user": "f62f5d63b1e56d",
+    "pass": "c97ef17c8207bb",
+    "from": "qkhan9661@gmail.com",
+    "isDefault": true
+  },
+  "prismaKeys": [
+    "constructor",
+    "account",
+    "callTimeInvitation",
+    "callTime",
+    "client",
+    "clientLocation",
+    "emailBrandingSettings",
+    "emailTemplate",
+    "event",
+    "eventTemplate",
+    "service",
+    "product",
+    "eventProduct",
+    "notificationPreference",
+    "notification",
+    "organizationSettings",
+    "smtpConfiguration",
+    "messagingConfiguration",
+    "communicationLog",
+    "session",
+    "smsTemplate",
+    "staff",
+    "staffServiceAssignment",
+    "staffTaxDetails",
+    "user",
+    "verification",
+    "invoice",
+    "invoiceItem",
+    "estimate",
+    "estimateItem"
+  ]
+}
+---
