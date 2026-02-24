@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  turbopack: {},
+  serverExternalPackages: ['jspdf', 'fflate'],
   // Webpack configuration for Mapbox GL compatibility
   webpack: (config) => {
     // Mapbox GL requires these settings

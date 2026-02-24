@@ -168,7 +168,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
         });
 
         // Export to PDF
-        exportUpcomingEventsToPDF(events);
+        await exportUpcomingEventsToPDF(events);
 
         // Show success toast
         toast({
