@@ -185,7 +185,7 @@ function renderEventCard(pdf: PDFDocument, event: UpcomingEvent, isFirstEvent: b
  * @param events - Array of upcoming events
  * @throws Error if export fails
  */
-export function exportUpcomingEventsToPDF(events: UpcomingEvent[]): void {
+export async function exportUpcomingEventsToPDF(events: UpcomingEvent[]): Promise<void> {
   try {
     // Handle empty data
     if (events.length === 0) {
@@ -193,7 +193,7 @@ export function exportUpcomingEventsToPDF(events: UpcomingEvent[]): void {
     }
 
     // Create PDF document
-    const pdf = new PDFDocument();
+    const pdf = await PDFDocument.create();
 
     // Add document header on first page
     pdf.addDocumentHeader('Upcoming Events Report', true);

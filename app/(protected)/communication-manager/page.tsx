@@ -329,7 +329,7 @@ export default function CommunicationManagerPage() {
                                         <p className="text-[10px] text-muted-foreground/60 mt-1">Direct messages will appear here</p>
                                     </div>
                                 ) : (
-                                    conversations?.map((conv) => (
+                                    conversations?.map((conv: any) => (
                                         <button
                                             key={conv.id}
                                             onClick={() => setSelectedRecipient(conv.recipient)}
@@ -459,7 +459,7 @@ export default function CommunicationManagerPage() {
                                         </div>
                                         <Button
                                             variant="outline"
-                                            size="icon"
+                                            size="sm"
                                             className="h-10 w-10 bg-muted/40 border-none hover:bg-muted"
                                             onClick={() => refetchLogs()}
                                         >
@@ -566,7 +566,7 @@ export default function CommunicationManagerPage() {
                                                                 <>
                                                                     <Button
                                                                         variant="ghost"
-                                                                        size="icon"
+                                                                        size="sm"
                                                                         className="h-8 w-8 text-primary hover:bg-primary/20 rounded-full"
                                                                         title="Restore"
                                                                         onClick={(e) => { e.stopPropagation(); restoreLogsMutation.mutate({ ids: [log.id] }); }}
@@ -575,7 +575,7 @@ export default function CommunicationManagerPage() {
                                                                     </Button>
                                                                     <Button
                                                                         variant="ghost"
-                                                                        size="icon"
+                                                                        size="sm"
                                                                         className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full"
                                                                         title="Delete Permanently"
                                                                         onClick={(e) => { e.stopPropagation(); deleteLogsPermanentlyMutation.mutate({ ids: [log.id] }); }}
@@ -586,7 +586,7 @@ export default function CommunicationManagerPage() {
                                                             ) : (
                                                                 <Button
                                                                     variant="ghost"
-                                                                    size="icon"
+                                                                    size="sm"
                                                                     className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
                                                                     title="Move to Trash"
                                                                     onClick={(e) => { e.stopPropagation(); trashLogsMutation.mutate({ ids: [log.id] }); }}
@@ -686,7 +686,7 @@ export default function CommunicationManagerPage() {
                                             <p className="text-sm text-muted-foreground max-w-xs mx-auto">This conversation is protected. Start typing below to send a message via Bird.</p>
                                         </div>
                                     ) : (
-                                        chatHistory?.map((msg, idx) => (
+                                        chatHistory?.map((msg: any, idx: number) => (
                                             <div
                                                 key={msg.id}
                                                 className={`flex ${msg.status === 'SENT' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}

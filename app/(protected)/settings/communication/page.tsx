@@ -241,7 +241,7 @@ export default function CommunicationSettingsPage() {
                                 </Button>
                             </Card>
                         ) : (
-                            smtpConfigs?.map((config) => (
+                            smtpConfigs?.map((config: any) => (
                                 <Card key={config.id} className={config.isDefault ? "border-primary/50 shadow-md ring-1 ring-primary/20" : ""}>
                                     <CardHeader className="pb-3">
                                         <div className="flex justify-between items-start">
@@ -254,12 +254,12 @@ export default function CommunicationSettingsPage() {
                                                 )}
                                             </div>
                                             <div className="flex gap-1">
-                                                <Button variant="ghost" size="icon" onClick={() => handleEditSmtp(config)}>
+                                                <Button variant="ghost" size="sm" onClick={() => handleEditSmtp(config)}>
                                                     <Edit2 className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
+                                                    size="sm"
                                                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                     onClick={() => { if (confirm("Are you sure?")) deleteSmtpMutation.mutate({ id: config.id }); }}
                                                 >
@@ -315,7 +315,7 @@ export default function CommunicationSettingsPage() {
                                 </Button>
                             </Card>
                         ) : (
-                            messagingConfigs?.map((config) => (
+                            messagingConfigs?.map((config: any) => (
                                 <Card key={config.id} className={config.isDefault ? "border-primary/50 shadow-md ring-1 ring-primary/20" : ""}>
                                     <CardHeader className="pb-3">
                                         <div className="flex justify-between items-start">
@@ -328,12 +328,12 @@ export default function CommunicationSettingsPage() {
                                                 )}
                                             </div>
                                             <div className="flex gap-1">
-                                                <Button variant="ghost" size="icon" onClick={() => handleEditMessaging(config)}>
+                                                <Button variant="ghost" size="sm" onClick={() => handleEditMessaging(config)}>
                                                     <Edit2 className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
+                                                    size="sm"
                                                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                     onClick={() => { if (confirm("Are you sure?")) deleteMessagingMutation.mutate({ id: config.id }); }}
                                                 >
