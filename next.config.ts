@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+// Restarting to pick up Prisma changes - 2026-02-24T14:42:00Z
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
