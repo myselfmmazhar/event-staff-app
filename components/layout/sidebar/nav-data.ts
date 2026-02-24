@@ -18,6 +18,8 @@ import {
   CurrencyDollarIcon,
   DocumentTextIcon,
   BanknotesIcon,
+  ChatBubbleLeftRightIcon,
+  EnvelopeIcon,
 } from '@/components/ui/icons';
 import {
   getStaffRoute,
@@ -175,6 +177,23 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
         },
       ],
     },
+    {
+      label: 'Communication Manager',
+      icon: ChatBubbleLeftRightIcon,
+      requiresAdmin: true,
+      subItems: [
+        {
+          label: 'Email',
+          href: '/communication-manager?tab=email',
+          icon: EnvelopeIcon,
+        },
+        {
+          label: 'Messages',
+          href: '/communication-manager?tab=messages',
+          icon: ChatBubbleLeftRightIcon,
+        },
+      ],
+    },
     // Settings Section (at bottom)
     {
       label: 'Settings',
@@ -195,6 +214,11 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           label: 'Notifications',
           href: '/settings/notifications',
           icon: BellIcon,
+        },
+        {
+          label: 'Communication',
+          href: '/settings/communication',
+          icon: EnvelopeIcon,
         },
       ],
     },
