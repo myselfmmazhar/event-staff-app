@@ -450,7 +450,71 @@ model OrganizationSettings {
   companyTagline    String?
   companyWebsite    String?
   companyTimezone   String   @default("UTC")
+
   @@map("organization_settings")
+}
+
+model SmtpConfiguration {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   // e.g. "Mailtrap", "Gmail"
+  host      String
+  port      Int
+  user      String
+  pass      String
+  from      String
+  security  String   @default("TLS") // NONE, TLS, SSL
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("smtp_configurations")
+}
+
+model MessagingConfiguration {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   // e.g. "Bird Primary", "Bird Backup"
+  provider    String   @default("BIRD")
+  apiKey      String
+  workspaceId String?
+  channelId   String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("messaging_configurations")
+}
+
+enum MessageType {
+  EMAIL
+  SMS
+  MESSAGE
+}
+
+enum MessageStatus {
+  SENT
+  FAILED
+  PENDING
+}
+
+model CommunicationLog {
+  id          String        @id @default(uuid()) @db.Uuid
+  type        MessageType
+  recipient   String
+  subject     String?
+  content     String
+  status      MessageStatus @default(PENDING)
+  error       String?
+  senderId    String
+  isTrashed   Boolean       @default(false)
+  createdAt   DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime      @updatedAt @db.Timestamp(6)
+
+  sender      User          @relation(fields: [senderId], references: [id])
+
+  @@index([senderId])
+  @@index([type])
+  @@index([status])
+  @@map("communication_logs")
 }
 
 model Session {
@@ -629,6 +693,7 @@ model User {
   estimatesCreated                 Estimate[]                @relation("estimates_created")
   staff_staff_createdByTousers     Staff[]                   @relation("staff_createdByTousers")
   staff_staff_userIdTousers        Staff?                    @relation("staff_userIdTousers")
+  communicationLogs                CommunicationLog[]
   @@map("users")
 }
 

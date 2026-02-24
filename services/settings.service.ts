@@ -367,7 +367,7 @@ export class SettingsService {
                     companyAddress: true,
                     companyTimezone: true,
                 },
-            });
+            }) as any;
 
             return {
                 companyName: settings?.companyName || null,
@@ -423,5 +423,188 @@ export class SettingsService {
                 cause: error,
             });
         }
+    }
+
+    /**
+     * Get communication settings (deprecated single fields)
+     */
+    async getCommunicationSettings() {
+        return {}; // Bird fields removed, now using messaging configurations
+    }
+
+    /**
+     * Update communication settings (deprecated single fields)
+     */
+    async updateCommunicationSettings() {
+        return {};
+    }
+
+    // ========================================================================
+    // SMTP CONFIGURATION METHODS
+    // ========================================================================
+
+    async listSmtpConfigs() {
+        return await (this.prisma as any).smtpConfiguration.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async createSmtpConfig(data: {
+        name: string;
+        host: string;
+        port: number;
+        user: string;
+        pass: string;
+        from: string;
+        security?: string;
+        isDefault?: boolean;
+    }) {
+        try {
+            const fs = require('fs');
+            const prismaAny = this.prisma as any;
+
+            if (!prismaAny.smtpConfiguration) {
+                const errorMsg = "Prisma model 'smtpConfiguration' is not available. This usually means the Prisma Client is stale. Please restart the dev server.";
+                fs.appendFileSync('prisma-debug.log', `CRITICAL ERROR at ${new Date().toISOString()}: ${errorMsg}\nKeys found: ${Object.keys(prismaAny).filter((k: string) => !k.startsWith('_')).join(', ')}\n---\n`);
+                throw new Error(errorMsg);
+            }
+
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                data,
+                prismaKeys: Object.keys(this.prisma).filter(k => !k.startsWith('_') && !k.startsWith('$'))
+            };
+            fs.appendFileSync('prisma-debug.log', JSON.stringify(debugInfo, null, 2) + "\n---\n");
+
+            if (data.isDefault) {
+                await prismaAny.smtpConfiguration.updateMany({
+                    where: { isDefault: true },
+                    data: { isDefault: false }
+                });
+            }
+
+            return await prismaAny.smtpConfiguration.create({
+                data
+            });
+        } catch (error: any) {
+            const fs = require('fs');
+            fs.appendFileSync('prisma-debug.log', `ERROR at ${new Date().toISOString()}: ${error.message}\n${error.stack}\n---\n`);
+            console.error("Error creating SMTP config:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: `Failed to create SMTP configuration: ${error.message}`,
+                cause: error
+            });
+        }
+    }
+
+    async updateSmtpConfig(id: string, data: {
+        name?: string;
+        host?: string;
+        port?: number;
+        user?: string;
+        pass?: string;
+        from?: string;
+        security?: string;
+        isDefault?: boolean;
+    }) {
+        if (data.isDefault) {
+            await (this.prisma as any).smtpConfiguration.updateMany({
+                where: { isDefault: true, NOT: { id } },
+                data: { isDefault: false }
+            });
+        }
+
+        return await (this.prisma as any).smtpConfiguration.update({
+            where: { id },
+            data
+        });
+    }
+
+    async deleteSmtpConfig(id: string) {
+        return await (this.prisma as any).smtpConfiguration.delete({
+            where: { id }
+        });
+    }
+
+    async setDefaultSmtpConfig(id: string) {
+        await this.prisma.smtpConfiguration.updateMany({
+            where: { isDefault: true },
+            data: { isDefault: false }
+        });
+
+        return await this.prisma.smtpConfiguration.update({
+            where: { id },
+            data: { isDefault: true }
+        });
+    }
+
+    // ========================================================================
+    // MESSAGING CONFIGURATION METHODS
+    // ========================================================================
+
+    async listMessagingConfigs() {
+        return await (this.prisma as any).messagingConfiguration.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async createMessagingConfig(data: {
+        name: string;
+        provider: string;
+        apiKey: string;
+        workspaceId?: string;
+        channelId?: string;
+        isDefault?: boolean;
+    }) {
+        if (data.isDefault) {
+            await (this.prisma as any).messagingConfiguration.updateMany({
+                where: { isDefault: true },
+                data: { isDefault: false }
+            });
+        }
+
+        return await (this.prisma as any).messagingConfiguration.create({
+            data
+        });
+    }
+
+    async updateMessagingConfig(id: string, data: {
+        name?: string;
+        provider?: string;
+        apiKey?: string;
+        workspaceId?: string;
+        channelId?: string;
+        isDefault?: boolean;
+    }) {
+        if (data.isDefault) {
+            await (this.prisma as any).messagingConfiguration.updateMany({
+                where: { isDefault: true, NOT: { id } },
+                data: { isDefault: false }
+            });
+        }
+
+        return await (this.prisma as any).messagingConfiguration.update({
+            where: { id },
+            data
+        });
+    }
+
+    async deleteMessagingConfig(id: string) {
+        return await (this.prisma as any).messagingConfiguration.delete({
+            where: { id }
+        });
+    }
+
+    async setDefaultMessagingConfig(id: string) {
+        await (this.prisma as any).messagingConfiguration.updateMany({
+            where: { isDefault: true },
+            data: { isDefault: false }
+        });
+
+        return await (this.prisma as any).messagingConfiguration.update({
+            where: { id },
+            data: { isDefault: true }
+        });
     }
 }
