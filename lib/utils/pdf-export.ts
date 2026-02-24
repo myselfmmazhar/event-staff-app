@@ -8,7 +8,14 @@
  * - Clean, professional appearance suitable for business reports
  */
 
-import { jsPDF } from 'jspdf';
+import type { jsPDF } from 'jspdf';
+
+/**
+ * Dynamically import jsPDF to avoid SSR bundling issues with fflate
+ */
+async function getJsPDF(): Promise<typeof import('jspdf')> {
+  return await import('jspdf');
+}
 
 /**
  * Simplified professional color palette
@@ -45,12 +52,8 @@ export class PDFDocument {
   private totalPages: number = 0;
   private currentPage: number = 1;
 
-  constructor() {
-    this.doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
+  private constructor(doc: jsPDF) {
+    this.doc = doc;
 
     this.pageWidth = this.doc.internal.pageSize.getWidth();
     this.pageHeight = this.doc.internal.pageSize.getHeight();
@@ -63,6 +66,16 @@ export class PDFDocument {
 
     this.contentWidth = this.pageWidth - this.marginLeft - this.marginRight;
     this.currentY = this.marginTop;
+  }
+
+  static async create(): Promise<PDFDocument> {
+    const { jsPDF } = await getJsPDF();
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+    return new PDFDocument(doc);
   }
 
   /**
