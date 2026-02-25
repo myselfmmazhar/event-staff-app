@@ -90,10 +90,13 @@ export class ClientService {
     try {
       const clientId = await generateClientId(this.prisma);
 
+      // Strip UI-only fields that don't exist in the Prisma schema
+      const { sameAsContact, ...clientData } = data;
+
       const client = await this.prisma.client.create({
         data: {
           clientId,
-          ...data,
+          ...clientData,
           createdBy: createdByUserId,
         },
         select: this.clientSelect,
@@ -664,10 +667,13 @@ export class ClientService {
         }
       }
 
+      // Strip UI-only fields before updating
+      const { sameAsContact: _sameAsContact, ...updateData } = data as Record<string, unknown>;
+
       // Update the client
       const updatedClient = await this.prisma.client.update({
         where: { id },
-        data: data,
+        data: updateData,
         select: this.clientSelect,
       });
 
