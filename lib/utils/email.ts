@@ -6,7 +6,8 @@ export async function sendEmail(
     to: string,
     subject: string,
     content: string,
-    configId?: string
+    configId?: string,
+    attachments?: { filename: string; path: string }[]
 ) {
     // 1. Get SMTP configuration
     let config;
@@ -47,7 +48,8 @@ export async function sendEmail(
             minVersion: 'TLSv1.2'
         },
         // Force STARTTLS if on port 587 and not using SSL
-        requireTLS: config.port === 587 && config.security !== 'SSL'
+        requireTLS: config.port === 587 && config.security !== 'SSL',
+        family: 4 // Force IPv4 to avoid ENETUNREACH on IPv6
     } as any);
 
     // 3. Send mail
@@ -57,6 +59,7 @@ export async function sendEmail(
         subject,
         html: content,
         text: content.replace(/<[^>]*>?/gm, ''),
+        attachments,
     });
 
     return info;
