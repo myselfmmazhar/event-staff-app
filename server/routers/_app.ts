@@ -18,6 +18,7 @@ import { eventAttachmentRouter } from "./event-attachment.router";
 import { invoiceRouter } from "./invoice.router";
 import { estimateRouter } from "./estimate.router";
 import { communicationRouter } from "./communication.router";
+import { contactRouter } from "./contact.router";
 
 /**
  * Main application router
@@ -43,6 +44,7 @@ export const appRouter = router({
   invoices: invoiceRouter,
   estimates: estimateRouter,
   communication: communicationRouter,
+  contacts: contactRouter,
 });
 
 export type AppRouter = typeof appRouter;

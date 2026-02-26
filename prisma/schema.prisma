@@ -487,6 +487,7 @@ model MessagingConfiguration {
 enum MessageType {
   EMAIL
   SMS
+  WHATSAPP
   MESSAGE
 }
 
@@ -505,11 +506,11 @@ model CommunicationLog {
   status      MessageStatus @default(PENDING)
   error       String?
   senderId    String
+  metadata    Json?
+  fileLinks   Json?
   isTrashed   Boolean       @default(false)
   createdAt   DateTime      @default(now()) @db.Timestamp(6)
   updatedAt   DateTime      @updatedAt @db.Timestamp(6)
-  fileLinks   Json?
-  metadata    Json?
 
   sender      User          @relation(fields: [senderId], references: [id])
 
@@ -519,29 +520,6 @@ model CommunicationLog {
   @@map("communication_logs")
 }
 
-model Contact {
-  id                   String    @id @default(uuid()) @db.Uuid
-  contactId            String    @unique
-  firstName            String
-  lastName             String
-  email                String
-  phone                String
-  ricsSurveyAccount    Boolean?  @default(false)
-  createdBy            String
-  createdAt            DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt            DateTime  @updatedAt @db.Timestamp(6)
-  contactSource        String?
-  contactType          String?
-  correspondingAddress String?
-  dateOfBirth          DateTime? @db.Date
-  transactionType      String?
-
-  createdByUser        User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-
-  @@index([createdBy])
-  @@index([email])
-  @@map("contacts")
-}
 
 model Session {
   id        String   @id
@@ -720,8 +698,33 @@ model User {
   staff_staff_createdByTousers     Staff[]                   @relation("staff_createdByTousers")
   staff_staff_userIdTousers        Staff?                    @relation("staff_userIdTousers")
   communicationLogs                CommunicationLog[]
-  contacts                         Contact[]
+  contacts                         Contact[]                 @relation("contacts_created")
   @@map("users")
+}
+
+model Contact {
+  id                   String    @id @default(uuid()) @db.Uuid
+  contactId            String    @unique // e.g. CON-2026-001
+  firstName            String
+  lastName             String
+  email                String
+  phone                String
+  dateOfBirth          DateTime? @db.Date
+  transactionType      String?
+  ricsSurveyAccount    Boolean?  @default(false)
+  correspondingAddress String?
+  contactSource        String?
+  contactType          String?
+  
+  createdBy            String
+  createdAt            DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime  @updatedAt @db.Timestamp(6)
+
+  createdByUser        User      @relation("contacts_created", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([createdBy])
+  @@map("contacts")
 }
 
 model Verification {

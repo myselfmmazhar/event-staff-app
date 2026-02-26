@@ -371,3 +371,13 @@
 .event-popup .mapboxgl-popup-content {
   overflow: visible !important;
 }
+/* Utility to hide scrollbars */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+}

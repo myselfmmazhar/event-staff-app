@@ -4,6 +4,7 @@ import { prisma } from "@/lib/server/prisma";
 import { getOptionalAuth } from "@/lib/server/auth-utils";
 import { UserRole, hasRole } from "@/lib/server/auth-utils";
 import { ClientService } from "@/services/client.service";
+import { ContactService } from "@/services/contact.service";
 import superjson from "superjson";
 import type { Session } from "@/lib/server/auth";
 import type { SessionUser } from "@/lib/types/auth.types";
@@ -22,6 +23,7 @@ export async function createContext(opts?: FetchCreateContextFnOptions) {
     userId: session?.user?.id || null,
     userRole: (session?.user as SessionUser | undefined)?.role || null,
     clientService: new ClientService(prisma),
+    contactService: new ContactService(prisma),
   };
 }
 
