@@ -87,6 +87,9 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
+  // Reset key for Save & New (incremented to trigger form reset)
+  const [clientFormResetKey, setClientFormResetKey] = useState(0);
+
   // Rehydrate filters from localStorage on mount, then apply URL params if present
   useEffect(() => {
     useClientsFilters.persist.rehydrate();
@@ -242,7 +245,7 @@ export default function ClientsPage() {
     setModals((prev) => ({ ...prev, form: false, view: true }));
   };
 
-  const handleFormSubmit = async (formData: CreateClientInputWithLocations | Omit<UpdateClientInput, 'id'>) => {
+  const handleFormSubmit = async (formData: CreateClientInputWithLocations | Omit<UpdateClientInput, 'id'>, saveAction?: 'close' | 'new') => {
     if (selectedClient) {
       // Update existing client
       updateMutation.mutate({
@@ -275,7 +278,14 @@ export default function ClientsPage() {
               );
             }
           }
-          setModals((prev) => ({ ...prev, form: false }));
+
+          if (saveAction === 'new') {
+            // Keep modal open and reset form
+            setClientFormResetKey((prev) => prev + 1);
+          } else {
+            // Close modal (default)
+            setModals((prev) => ({ ...prev, form: false }));
+          }
           refetch();
           refetchExport();
         },
@@ -499,12 +509,14 @@ export default function ClientsPage() {
           setModals((prev) => ({ ...prev, form: false }));
           setSelectedClient(null);
           setBackendErrors([]);
+          setClientFormResetKey(0);
         }}
         onSubmit={handleFormSubmit}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
         backendErrors={backendErrors}
         onLocationsChange={() => refetch()}
         onViewDetails={handleViewFromEdit}
+        resetKey={clientFormResetKey}
       />
 
       <ViewClientModal

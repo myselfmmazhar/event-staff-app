@@ -135,8 +135,11 @@ export class EventSchema {
         .optional(),
 
       // Date and Time (nullable for UBD support)
-      // Note: z.null() must come first, otherwise z.coerce.date(null) produces epoch date
-      startDate: z.union([z.null(), z.coerce.date()]).optional(),
+      // Preprocess empty strings to null so the union validates correctly
+      startDate: z.preprocess(
+        (val) => (val === '' || val === undefined ? null : val),
+        z.union([z.null(), z.coerce.date()])
+      ).optional(),
       startTime: z
         .string()
         .refine(
@@ -144,7 +147,10 @@ export class EventSchema {
           { message: "Start time must be in HH:MM format or TBD" }
         )
         .optional(),
-      endDate: z.union([z.null(), z.coerce.date()]).optional(),
+      endDate: z.preprocess(
+        (val) => (val === '' || val === undefined ? null : val),
+        z.union([z.null(), z.coerce.date()])
+      ).optional(),
       endTime: z
         .string()
         .refine(
@@ -349,8 +355,11 @@ export class EventSchema {
         .optional(),
 
       // Date and Time (nullable for UBD support)
-      // Note: z.null() must come first, otherwise z.coerce.date(null) produces epoch date
-      startDate: z.union([z.null(), z.coerce.date()]).optional(),
+      // Preprocess empty strings to null so the union validates correctly
+      startDate: z.preprocess(
+        (val) => (val === '' || val === undefined ? null : val),
+        z.union([z.null(), z.coerce.date()])
+      ).optional(),
       startTime: z
         .string()
         .refine(
@@ -358,7 +367,10 @@ export class EventSchema {
           { message: "Start time must be in HH:MM format or TBD" }
         )
         .optional(),
-      endDate: z.union([z.null(), z.coerce.date()]).optional(),
+      endDate: z.preprocess(
+        (val) => (val === '' || val === undefined ? null : val),
+        z.union([z.null(), z.coerce.date()])
+      ).optional(),
       endTime: z
         .string()
         .refine(

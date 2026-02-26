@@ -94,6 +94,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 type FormFieldName = keyof FormData;
+type SaveAction = 'close' | 'new';
 
 export interface CreateClientInputWithLocations extends CreateClientInput {
   pendingLocations?: TemporaryLocation[];
@@ -103,11 +104,13 @@ interface ClientFormModalProps {
   client: Client | null;
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateClientInputWithLocations | Omit<UpdateClientInput, 'id'>) => void;
+  onSubmit: (data: CreateClientInputWithLocations | Omit<UpdateClientInput, 'id'>, saveAction?: SaveAction) => void;
   isSubmitting: boolean;
   backendErrors?: Array<{ field: string; message: string }>;
   onLocationsChange?: () => void;
   onViewDetails?: () => void;
+  /** Increment this key to reset the form for a new entry (used with Save & New) */
+  resetKey?: number;
 }
 
 export function ClientFormModal({
@@ -119,9 +122,13 @@ export function ClientFormModal({
   backendErrors = [],
   onLocationsChange,
   onViewDetails,
+  resetKey = 0,
 }: ClientFormModalProps) {
   const isEdit = !!client;
   const [tempLocations, setTempLocations] = useState<TemporaryLocation[]>([]);
+
+  // Save action state (for Save & Close vs Save & New)
+  const [pendingSaveAction, setPendingSaveAction] = useState<SaveAction>('close');
 
   const {
     register,
@@ -241,11 +248,51 @@ export function ClientFormModal({
   const handleFormSubmit = (data: FormData) => {
     if (!isEdit && tempLocations.length > 0) {
       // Include pending locations for create mode
-      onSubmit({ ...data, pendingLocations: tempLocations });
+      onSubmit({ ...data, pendingLocations: tempLocations }, pendingSaveAction);
     } else {
-      onSubmit(data);
+      onSubmit(data, pendingSaveAction);
     }
   };
+
+  const handleSaveAndClose = () => {
+    setPendingSaveAction('close');
+  };
+
+  const handleSaveAndNew = () => {
+    setPendingSaveAction('new');
+  };
+
+  // Default form values
+  const getDefaultValues = () => ({
+    businessName: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    cellPhone: '',
+    businessPhone: '',
+    details: '',
+    requirements: '',
+    businessAddress: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    ccEmail: '',
+    billingFirstName: '',
+    billingLastName: '',
+    billingEmail: '',
+    billingPhone: '',
+    sameAsContact: false,
+    hasLoginAccess: false,
+  });
+
+  // Reset form when resetKey changes (triggered by Save & New)
+  useEffect(() => {
+    if (resetKey > 0 && !client) {
+      reset(getDefaultValues());
+      setTempLocations([]);
+      setPendingSaveAction('close');
+    }
+  }, [resetKey, client, reset]);
 
   return (
     <Dialog open={open} onClose={onClose} fullScreen>
@@ -659,10 +706,24 @@ export function ClientFormModal({
             </Button>
           )}
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Cancel
+            Close
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : isEdit ? 'Update Client' : 'Create Client'}
+          {!isEdit && (
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={isSubmitting}
+              onClick={handleSaveAndNew}
+            >
+              {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+            </Button>
+          )}
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            onClick={handleSaveAndClose}
+          >
+            {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? 'Update Client' : 'Save & Close'}
           </Button>
         </DialogFooter>
       </form>
