@@ -413,7 +413,7 @@ export default function CommunicationSettingsPage() {
             </Tabs>
 
             {/* SMTP Config Modal */}
-            <Dialog open={isSmtpModalOpen} onOpenChange={(open) => { if (!open) setIsSmtpModalOpen(false); }}>
+            <Dialog open={isSmtpModalOpen} onClose={() => setIsSmtpModalOpen(false)}>
                 <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none shadow-2xl">
                     <form onSubmit={handleSmtpSubmit}>
                         <div className="p-8 space-y-6">

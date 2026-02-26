@@ -86,7 +86,7 @@ export function ContactFormModal({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onClose}>
+        <Dialog open={open} onClose={onClose}>
             <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto p-0 border-none rounded-3xl shadow-2xl bg-white">
                 <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col">
                     <DialogHeader className="p-8 pb-4">

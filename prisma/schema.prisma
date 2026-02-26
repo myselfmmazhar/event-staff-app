@@ -487,6 +487,7 @@ model MessagingConfiguration {
 enum MessageType {
   EMAIL
   SMS
+  WHATSAPP
   MESSAGE
 }
 
