@@ -177,6 +177,7 @@ export const communicationRouter = router({
         .input(z.object({
             to: z.string(),
             content: z.string(),
+            type: z.enum(['SMS', 'WHATSAPP', 'MESSAGE']).default('MESSAGE'),
             configId: z.string().uuid().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
@@ -192,7 +193,7 @@ export const communicationRouter = router({
 
                 // Log the success
                 await communicationService.logMessage({
-                    type: 'MESSAGE',
+                    type: input.type,
                     recipient: input.to,
                     content: input.content,
                     status: 'SENT',
@@ -205,7 +206,7 @@ export const communicationRouter = router({
 
                 // Log the failure
                 await communicationService.logMessage({
-                    type: 'MESSAGE',
+                    type: input.type,
                     recipient: input.to,
                     content: input.content,
                     status: 'FAILED',

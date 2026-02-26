@@ -49,6 +49,7 @@ import {
     SendHorizontal,
     User,
     AlertCircle,
+    List,
 } from 'lucide-react';
 import { MessageType, MessageStatus, Contact } from '@prisma/client';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -952,7 +953,7 @@ export default function CommunicationManagerPage() {
                                                                 <div className="h-10 w-[1px] bg-white/20" />
                                                                 <Button
                                                                     className="h-10 w-10 p-0 rounded-r-xl rounded-l-none border-l border-white/10"
-                                                                    variant="primary"
+                                                                    variant="default"
                                                                     onClick={() => refetchContactLogs()}
                                                                 >
                                                                     <History className="h-4 w-4" />
@@ -1547,7 +1548,7 @@ export default function CommunicationManagerPage() {
             </div>
 
             {/* Compose Modal / Slide-over (Styled as Modal for now) */}
-            <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
+            <Dialog open={isComposeOpen} onClose={() => setIsComposeOpen(false)}>
                 <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none shadow-2xl rounded-[32px]">
                     <DialogHeader className="bg-primary/5 py-6 px-8 flex flex-row items-center gap-4">
                         <div className="p-3 bg-primary/20 text-primary rounded-2xl">
