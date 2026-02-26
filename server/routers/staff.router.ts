@@ -49,13 +49,15 @@ export const staffRouter = router({
             // Get terminology for email
             const terminology = await settingsService.getTerminology();
 
-            // Send invitation email
-            await emailService.sendStaffInvitation(
-                result.staff.email,
-                result.staff.firstName,
-                result.invitationToken,
-                terminology.staff.singular
-            );
+            // Send invitation emails
+            for (const invitation of result.invitations) {
+                await emailService.sendStaffInvitation(
+                    invitation.email,
+                    invitation.firstName,
+                    invitation.token,
+                    terminology.staff.singular
+                );
+            }
 
             return result.staff;
         }),

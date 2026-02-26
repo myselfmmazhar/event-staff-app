@@ -90,6 +90,7 @@ export default function CommunicationSettingsPage() {
     // SMTP Form State
     const [isSmtpModalOpen, setIsSmtpModalOpen] = useState(false);
     const [editingSmtpId, setEditingSmtpId] = useState<string | null>(null);
+    const [smtpProvider, setSmtpProvider] = useState<string>('');
     const [smtpForm, setSmtpForm] = useState({
         name: '',
         host: '',
@@ -117,6 +118,7 @@ export default function CommunicationSettingsPage() {
     const [showBirdKey, setShowBirdKey] = useState(false);
 
     const resetSmtpForm = () => {
+        setSmtpProvider('');
         setSmtpForm({
             name: '',
             host: '',
@@ -155,9 +157,47 @@ export default function CommunicationSettingsPage() {
             security: config.security || 'TLS',
             isDefault: config.isDefault
         });
+
+        // Detect provider for UI
+        if (config.host?.includes('gmail.com')) setSmtpProvider('GMAIL');
+        else if (config.host?.includes('yahoo.com')) setSmtpProvider('YAHOO');
+        else if (config.host?.includes('sendgrid.net')) setSmtpProvider('SENDGRID');
+        else setSmtpProvider('OTHER');
+
         setEditingSmtpId(config.id);
         setIsSmtpModalOpen(true);
     };
+
+    // Keep SMTP static values updated based on provider
+    useEffect(() => {
+        if (!isSmtpModalOpen) return;
+
+        if (smtpProvider === 'GMAIL') {
+            setSmtpForm(prev => ({
+                ...prev,
+                name: prev.name === '' || prev.name === 'Yahoo Mail' || prev.name === 'Sendgrid' ? 'Gmail' : prev.name,
+                host: 'smtp.gmail.com',
+                port: 587,
+                security: 'TLS'
+            }));
+        } else if (smtpProvider === 'YAHOO') {
+            setSmtpForm(prev => ({
+                ...prev,
+                name: prev.name === '' || prev.name === 'Gmail' || prev.name === 'Sendgrid' ? 'Yahoo Mail' : prev.name,
+                host: 'smtp.mail.yahoo.com',
+                port: 587,
+                security: 'TLS'
+            }));
+        } else if (smtpProvider === 'SENDGRID') {
+            setSmtpForm(prev => ({
+                ...prev,
+                name: prev.name === '' || prev.name === 'Gmail' || prev.name === 'Yahoo Mail' ? 'Sendgrid' : prev.name,
+                host: 'smtp.sendgrid.net',
+                port: 587,
+                security: 'TLS'
+            }));
+        }
+    }, [smtpProvider, isSmtpModalOpen]);
 
     const handleEditMessaging = (config: any) => {
         setMessagingForm({
@@ -373,124 +413,206 @@ export default function CommunicationSettingsPage() {
             </Tabs>
 
             {/* SMTP Config Modal */}
-            <Dialog open={isSmtpModalOpen} onClose={() => setIsSmtpModalOpen(false)}>
-                <DialogHeader>
-                    <DialogTitle>{editingSmtpId ? 'Edit SMTP Configuration' : 'Add SMTP Configuration'}</DialogTitle>
-                    <DialogDescription>
-                        Enter details for your email provider (Gmail, Mailtrap, AWS SES, etc.)
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSmtpSubmit}>
-                    <DialogContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="smtp-name">Setting Name</Label>
-                            <Input
-                                id="smtp-name"
-                                placeholder="e.g. Mailtrap Sandbox"
-                                value={smtpForm.name}
-                                onChange={e => setSmtpForm({ ...smtpForm, name: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="host">SMTP Host</Label>
-                                <Input
-                                    id="host"
-                                    placeholder="smtp.mailtrap.io"
-                                    value={smtpForm.host}
-                                    onChange={e => setSmtpForm({ ...smtpForm, host: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="port">Port</Label>
-                                <Input
-                                    id="port"
-                                    type="number"
-                                    placeholder="587"
-                                    value={smtpForm.port}
-                                    onChange={e => setSmtpForm({ ...smtpForm, port: parseInt(e.target.value) || 587 })}
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="user">Username</Label>
-                                <Input
-                                    id="user"
-                                    value={smtpForm.user}
-                                    onChange={e => setSmtpForm({ ...smtpForm, user: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="pass">Password</Label>
-                                <div className="relative">
-                                    <Input
-                                        id="pass"
-                                        type={showSmtpPass ? "text" : "password"}
-                                        value={smtpForm.pass}
-                                        onChange={e => setSmtpForm({ ...smtpForm, pass: e.target.value })}
-                                        required
-                                        className="pr-10"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowSmtpPass(!showSmtpPass)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                        {showSmtpPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                    </button>
+            <Dialog open={isSmtpModalOpen} onOpenChange={(open) => { if (!open) setIsSmtpModalOpen(false); }}>
+                <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none shadow-2xl">
+                    <form onSubmit={handleSmtpSubmit}>
+                        <div className="p-8 space-y-6">
+                            <div className="flex items-start justify-between">
+                                <div className="space-y-1">
+                                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+                                        <Mail className="h-6 w-6" />
+                                    </div>
+                                    <DialogTitle className="text-2xl font-bold tracking-tight">
+                                        {editingSmtpId ? 'Edit email service' : 'Add your own email service'}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-muted-foreground text-sm">
+                                        Configure your SMTP provider like Outlook, Gsuite, Sendgrid, etc
+                                    </DialogDescription>
                                 </div>
                             </div>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">SMTP Provider <span className="text-destructive">*</span></Label>
+                                    <Select value={smtpProvider} onValueChange={setSmtpProvider}>
+                                        <SelectTrigger className="h-12 rounded-xl focus:ring-primary/20">
+                                            <SelectValue placeholder="Select Provider" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="GMAIL">Gmail</SelectItem>
+                                            <SelectItem value="YAHOO">Yahoo Mail</SelectItem>
+                                            <SelectItem value="SENDGRID">Sendgrid</SelectItem>
+                                            <SelectItem value="OTHER">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {smtpProvider && (
+                                    <>
+                                        {smtpProvider === 'OTHER' && (
+                                            <>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="smtp-name">Provider Name <span className="text-destructive">*</span></Label>
+                                                    <Input
+                                                        id="smtp-name"
+                                                        placeholder="Provider Name"
+                                                        className="h-12 rounded-xl"
+                                                        value={smtpForm.name}
+                                                        onChange={e => setSmtpForm({ ...smtpForm, name: e.target.value })}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="host">SMTP Server <span className="text-destructive">*</span></Label>
+                                                        <Input
+                                                            id="host"
+                                                            placeholder="smtp.gmail.com"
+                                                            className="h-12 rounded-xl"
+                                                            value={smtpForm.host}
+                                                            onChange={e => setSmtpForm({ ...smtpForm, host: e.target.value })}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="port">SMTP Port Number <span className="text-destructive">*</span></Label>
+                                                        <Input
+                                                            id="port"
+                                                            type="number"
+                                                            placeholder="587"
+                                                            className="h-12 rounded-xl"
+                                                            value={smtpForm.port}
+                                                            onChange={e => setSmtpForm({ ...smtpForm, port: parseInt(e.target.value) || 587 })}
+                                                            required
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {smtpProvider === 'SENDGRID' && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="user">Username</Label>
+                                                <Input
+                                                    id="user"
+                                                    placeholder="Username"
+                                                    className="h-12 rounded-xl"
+                                                    value={smtpForm.user}
+                                                    onChange={e => setSmtpForm({ ...smtpForm, user: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="from">Email <span className="text-destructive">*</span></Label>
+                                            <Input
+                                                id="from"
+                                                placeholder="Email"
+                                                className="h-12 rounded-xl"
+                                                value={smtpForm.from}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    if (smtpProvider === 'GMAIL' || smtpProvider === 'YAHOO') {
+                                                        setSmtpForm(prev => ({ ...prev, from: val, user: val }));
+                                                    } else {
+                                                        setSmtpForm(prev => ({ ...prev, from: val }));
+                                                    }
+                                                }}
+                                                required
+                                            />
+                                        </div>
+
+                                        {smtpProvider === 'OTHER' && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="user">Username</Label>
+                                                <Input
+                                                    id="user"
+                                                    placeholder="Username"
+                                                    className="h-12 rounded-xl"
+                                                    value={smtpForm.user}
+                                                    onChange={e => setSmtpForm({ ...smtpForm, user: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="pass">Password <span className="text-destructive">*</span></Label>
+                                                {smtpProvider === 'GMAIL' && (
+                                                    <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline font-medium">
+                                                        How to create app password
+                                                    </a>
+                                                )}
+                                            </div>
+                                            <div className="relative">
+                                                <Input
+                                                    id="pass"
+                                                    type={showSmtpPass ? "text" : "password"}
+                                                    placeholder="Password"
+                                                    className="h-12 rounded-xl pr-10"
+                                                    value={smtpForm.pass}
+                                                    onChange={e => setSmtpForm({ ...smtpForm, pass: e.target.value })}
+                                                    required
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowSmtpPass(!showSmtpPass)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                                >
+                                                    {showSmtpPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {smtpProvider === 'OTHER' && (
+                                            <div className="space-y-2">
+                                                <Label>Security Protocol</Label>
+                                                <Select
+                                                    value={smtpForm.security}
+                                                    onValueChange={value => setSmtpForm({ ...smtpForm, security: value })}
+                                                >
+                                                    <SelectTrigger className="h-12 rounded-xl">
+                                                        <SelectValue placeholder="Select Security" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="NONE">None (Insecure)</SelectItem>
+                                                        <SelectItem value="TLS">STARTTLS (Port 587)</SelectItem>
+                                                        <SelectItem value="SSL">SSL/TLS (Port 465)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-2 pt-2">
+                                            <input
+                                                type="checkbox"
+                                                id="smtp-isDefault"
+                                                checked={smtpForm.isDefault}
+                                                onChange={e => setSmtpForm({ ...smtpForm, isDefault: e.target.checked })}
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                            />
+                                            <Label htmlFor="smtp-isDefault" className="cursor-pointer text-sm">Set as default configuration</Label>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="from">Sender Email (From)</Label>
-                            <Input
-                                id="from"
-                                placeholder="noreply@yourcompany.com"
-                                value={smtpForm.from}
-                                onChange={e => setSmtpForm({ ...smtpForm, from: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Security Protocol</Label>
-                            <Select
-                                value={smtpForm.security}
-                                onValueChange={value => setSmtpForm({ ...smtpForm, security: value })}
+
+                        <div className="bg-muted/30 p-6 flex justify-end gap-3">
+                            <Button type="button" variant="outline" className="h-11 px-6 rounded-xl font-semibold" onClick={() => setIsSmtpModalOpen(false)}>Cancel</Button>
+                            <Button
+                                type="submit"
+                                disabled={createSmtpMutation.isPending || updateSmtpMutation.isPending || !smtpProvider}
+                                className="h-11 px-8 rounded-xl font-bold"
                             >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Security" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="NONE">None (Insecure)</SelectItem>
-                                    <SelectItem value="TLS">STARTTLS (Port 587)</SelectItem>
-                                    <SelectItem value="SSL">SSL/TLS (Port 465)</SelectItem>
-                                </SelectContent>
-                            </Select>
+                                {(createSmtpMutation.isPending || updateSmtpMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save
+                            </Button>
                         </div>
-                        <div className="flex items-center gap-2 pt-2">
-                            <input
-                                type="checkbox"
-                                id="smtp-isDefault"
-                                checked={smtpForm.isDefault}
-                                onChange={e => setSmtpForm({ ...smtpForm, isDefault: e.target.checked })}
-                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <Label htmlFor="smtp-isDefault" className="cursor-pointer">Set as default configuration</Label>
-                        </div>
-                    </DialogContent>
-                    <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={() => setIsSmtpModalOpen(false)}>Cancel</Button>
-                        <Button type="submit" disabled={createSmtpMutation.isPending || updateSmtpMutation.isPending}>
-                            {(createSmtpMutation.isPending || updateSmtpMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {editingSmtpId ? 'Update Configuration' : 'Save Configuration'}
-                        </Button>
-                    </DialogFooter>
-                </form>
+                    </form>
+                </DialogContent>
             </Dialog>
 
             {/* Messaging Config Modal */}

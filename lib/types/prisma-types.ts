@@ -384,6 +384,30 @@ export type ServiceSelect = Prisma.ServiceGetPayload<{
 }>;
 
 /**
+ * Contact Select Type
+ * Used by ContactService for all query return types
+ */
+export type ContactSelect = Prisma.ContactGetPayload<{
+  select: {
+    id: true;
+    contactId: true;
+    firstName: true;
+    lastName: true;
+    email: true;
+    phone: true;
+    dateOfBirth: true;
+    transactionType: true;
+    ricsSurveyAccount: true;
+    correspondingAddress: true;
+    contactSource: true;
+    contactType: true;
+    createdBy: true;
+    createdAt: true;
+    updatedAt: true;
+  };
+}>;
+
+/**
  * Product Select Type
  * Used by ProductService for all query return types
  */

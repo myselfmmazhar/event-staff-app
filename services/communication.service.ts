@@ -15,6 +15,7 @@ export class CommunicationService {
         status: MessageStatus;
         error?: string;
         senderId: string;
+        fileLinks?: { name: string; url: string; size?: number; type?: string }[];
     }) {
         return await (this.prisma as any).communicationLog.create({
             data: {
@@ -25,6 +26,7 @@ export class CommunicationService {
                 status: data.status,
                 error: data.error,
                 senderId: data.senderId,
+                fileLinks: data.fileLinks ? JSON.parse(JSON.stringify(data.fileLinks)) : undefined,
             },
         });
     }

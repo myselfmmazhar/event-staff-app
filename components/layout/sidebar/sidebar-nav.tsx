@@ -50,8 +50,10 @@ export function SidebarNav({ user, onMobileClose, isMobile, sidebarState }: Side
   const navItems = useMemo(() => getNavItems(terminology), [terminology]);
   const visibleNavItems = useMemo(() => filterNavItems(navItems, user), [navItems, user]);
 
-  // Separate Settings from other items (Settings rendered separately by parent)
-  const mainItems = visibleNavItems.filter(item => item.label !== 'Settings');
+  // Separate Settings and Communication Manager from other items (rendered separately by parent)
+  const mainItems = visibleNavItems.filter(item =>
+    item.label !== 'Settings' && item.label !== 'Communication Manager'
+  );
 
   return (
     <nav className="flex-1 min-h-0 overflow-y-auto space-y-1 px-3 py-4">
@@ -73,18 +75,31 @@ export function SidebarSettings({ user, onMobileClose, isMobile, sidebarState }:
 
   const navItems = useMemo(() => getNavItems(terminology), [terminology]);
   const visibleNavItems = useMemo(() => filterNavItems(navItems, user), [navItems, user]);
+
+  // Find Admin/Settings items
+  const communicationItem = visibleNavItems.find(item => item.label === 'Communication Manager');
   const settingsItem = visibleNavItems.find(item => item.label === 'Settings');
 
-  if (!settingsItem) return null;
+  if (!communicationItem && !settingsItem) return null;
 
   return (
-    <div className="px-3 pb-4">
-      <NavItem
-        item={settingsItem}
-        onMobileClose={onMobileClose}
-        isMobile={isMobile}
-        sidebarState={sidebarState}
-      />
+    <div className="px-3 pb-4 space-y-1">
+      {communicationItem && (
+        <NavItem
+          item={communicationItem}
+          onMobileClose={onMobileClose}
+          isMobile={isMobile}
+          sidebarState={sidebarState}
+        />
+      )}
+      {settingsItem && (
+        <NavItem
+          item={settingsItem}
+          onMobileClose={onMobileClose}
+          isMobile={isMobile}
+          sidebarState={sidebarState}
+        />
+      )}
     </div>
   );
 }
