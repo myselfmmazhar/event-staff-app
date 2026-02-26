@@ -196,7 +196,7 @@ export class StaffService {
     async create(
         data: CreateStaffInput,
         createdByUserId: string
-    ): Promise<{ staff: StaffSelect; invitationToken: string }> {
+    ): Promise<{ staff: StaffSelect; invitations: Array<{ email: string; firstName: string; token: string }> }> {
         // Extract serviceIds and teamMembers from data - these should not be passed to Prisma directly
         // teamMembers is for COMPANY type staff and would be processed separately if needed
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -209,6 +209,10 @@ export class StaffService {
         // Generate invitation token for email
         const invitationToken = this.generateInvitationToken();
         const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+        const invitations: Array<{ email: string; firstName: string; token: string }> = [
+            { email: staffData.email, firstName: staffData.firstName, token: invitationToken }
+        ];
 
         try {
             const { documents, ...restStaffData } = staffData;
@@ -268,6 +272,12 @@ export class StaffService {
                             } : undefined,
                         },
                     });
+
+                    invitations.push({
+                        email: member.email,
+                        firstName: member.firstName,
+                        token: memberInvitationToken
+                    });
                 }
 
                 // Refetch the company staff to include the newly created team members
@@ -277,11 +287,11 @@ export class StaffService {
                 });
 
                 if (updatedStaff) {
-                    return { staff: updatedStaff, invitationToken };
+                    return { staff: updatedStaff, invitations };
                 }
             }
 
-            return { staff, invitationToken };
+            return { staff, invitations };
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 if (error.code === "P2002") {

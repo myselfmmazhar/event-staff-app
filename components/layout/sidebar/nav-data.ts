@@ -179,20 +179,9 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
     },
     {
       label: 'Communication Manager',
+      href: '/communication-manager?tab=contacts',
       icon: ChatBubbleLeftRightIcon,
       requiresAdmin: true,
-      subItems: [
-        {
-          label: 'Email',
-          href: '/communication-manager?tab=email',
-          icon: EnvelopeIcon,
-        },
-        {
-          label: 'Messages',
-          href: '/communication-manager?tab=messages',
-          icon: ChatBubbleLeftRightIcon,
-        },
-      ],
     },
     // Settings Section (at bottom)
     {

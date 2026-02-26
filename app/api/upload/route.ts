@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Valid bucket names for file uploads
-type BucketName = 'profile-photos' | 'event-documents' | 'staff-documents';
+type BucketName = 'profile-photos' | 'event-documents' | 'staff-documents' | 'email-attachments';
 
-const VALID_BUCKETS: BucketName[] = ['profile-photos', 'event-documents', 'staff-documents'];
+const VALID_BUCKETS: BucketName[] = ['profile-photos', 'event-documents', 'staff-documents', 'email-attachments'];
 
 export async function POST(request: NextRequest) {
     try {
