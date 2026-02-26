@@ -74,6 +74,12 @@ export const communicationRouter = router({
             subject: z.string(),
             content: z.string(),
             configId: z.string().uuid().optional(),
+            fileLinks: z.array(z.object({
+                name: z.string(),
+                url: z.string(),
+                size: z.number().optional(),
+                type: z.string().optional(),
+            })).optional(),
         }))
         .mutation(async ({ ctx, input }) => {
             const communicationService = new CommunicationService(ctx.prisma);
@@ -95,6 +101,7 @@ export const communicationRouter = router({
                     content: input.content,
                     status: 'SENT',
                     senderId: ctx.userId as string,
+                    fileLinks: input.fileLinks,
                 });
 
                 return { success: true };
@@ -110,6 +117,7 @@ export const communicationRouter = router({
                     status: 'FAILED',
                     error: error instanceof Error ? error.message : String(error),
                     senderId: ctx.userId as string,
+                    fileLinks: input.fileLinks,
                 });
 
                 throw new Error(error instanceof Error ? error.message : "Failed to send email");
@@ -169,6 +177,7 @@ export const communicationRouter = router({
         .input(z.object({
             to: z.string(),
             content: z.string(),
+            type: z.enum(['SMS', 'WHATSAPP', 'MESSAGE']).default('MESSAGE'),
             configId: z.string().uuid().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
@@ -184,7 +193,7 @@ export const communicationRouter = router({
 
                 // Log the success
                 await communicationService.logMessage({
-                    type: 'MESSAGE',
+                    type: input.type,
                     recipient: input.to,
                     content: input.content,
                     status: 'SENT',
@@ -197,7 +206,7 @@ export const communicationRouter = router({
 
                 // Log the failure
                 await communicationService.logMessage({
-                    type: 'MESSAGE',
+                    type: input.type,
                     recipient: input.to,
                     content: input.content,
                     status: 'FAILED',

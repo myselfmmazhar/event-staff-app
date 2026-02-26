@@ -62,43 +62,22 @@ export class EmailService {
    * Send email using configured provider
    */
   private async sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; error?: string }> {
-    if (!this.isEnabled()) {
-      // Log invitation URL to console for development
-      console.log('\n📧 EMAIL WOULD BE SENT:');
-      console.log(`   To: ${to}`);
-      console.log(`   Subject: ${subject}`);
-      console.log('   (Configure SMTP or Resend to send actual emails)\n');
-      return { success: true };
-    }
-
     try {
-      if (this.provider === 'smtp' && this.smtpTransport) {
-        await this.smtpTransport.sendMail({
-          from: this.fromEmail,
-          to,
-          subject,
-          html,
-        });
-        return { success: true };
-      }
-
-      if (this.provider === 'resend' && this.resend) {
-        const { error } = await this.resend.emails.send({
-          from: this.fromEmail,
-          to,
-          subject,
-          html,
-        });
-
-        if (error) {
-          return { success: false, error: error.message };
-        }
-        return { success: true };
-      }
-
-      return { success: false, error: 'No email provider available' };
+      const { sendEmail: utilsSendEmail } = await import('@/lib/utils/email');
+      await utilsSendEmail(prisma, to, subject, html);
+      return { success: true };
     } catch (error) {
       console.error('Error sending email:', error);
+
+      // Fallback to basic logging if enabled
+      if (!this.isEnabled()) {
+        console.log('\n📧 EMAIL WOULD BE SENT:');
+        console.log(`   To: ${to}`);
+        console.log(`   Subject: ${subject}`);
+        console.log('   (Configure SMTP or Resend to send actual emails)\n');
+        return { success: true };
+      }
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to send email',
