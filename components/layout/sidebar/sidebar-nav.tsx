@@ -70,36 +70,46 @@ export function SidebarNav({ user, onMobileClose, isMobile, sidebarState }: Side
   );
 }
 
+export function SidebarCommunication({ user, onMobileClose, isMobile, sidebarState }: SidebarNavProps) {
+  const { terminology } = useTerminology();
+
+  const navItems = useMemo(() => getNavItems(terminology), [terminology]);
+  const visibleNavItems = useMemo(() => filterNavItems(navItems, user), [navItems, user]);
+
+  const communicationItem = visibleNavItems.find(item => item.label === 'Communication Manager');
+
+  if (!communicationItem) return null;
+
+  return (
+    <div className="px-3 pb-2 space-y-1">
+      <NavItem
+        item={communicationItem}
+        onMobileClose={onMobileClose}
+        isMobile={isMobile}
+        sidebarState={sidebarState}
+      />
+    </div>
+  );
+}
+
 export function SidebarSettings({ user, onMobileClose, isMobile, sidebarState }: SidebarNavProps) {
   const { terminology } = useTerminology();
 
   const navItems = useMemo(() => getNavItems(terminology), [terminology]);
   const visibleNavItems = useMemo(() => filterNavItems(navItems, user), [navItems, user]);
 
-  // Find Admin/Settings items
-  const communicationItem = visibleNavItems.find(item => item.label === 'Communication Manager');
   const settingsItem = visibleNavItems.find(item => item.label === 'Settings');
 
-  if (!communicationItem && !settingsItem) return null;
+  if (!settingsItem) return null;
 
   return (
     <div className="px-3 pb-4 space-y-1">
-      {communicationItem && (
-        <NavItem
-          item={communicationItem}
-          onMobileClose={onMobileClose}
-          isMobile={isMobile}
-          sidebarState={sidebarState}
-        />
-      )}
-      {settingsItem && (
-        <NavItem
-          item={settingsItem}
-          onMobileClose={onMobileClose}
-          isMobile={isMobile}
-          sidebarState={sidebarState}
-        />
-      )}
+      <NavItem
+        item={settingsItem}
+        onMobileClose={onMobileClose}
+        isMobile={isMobile}
+        sidebarState={sidebarState}
+      />
     </div>
   );
 }

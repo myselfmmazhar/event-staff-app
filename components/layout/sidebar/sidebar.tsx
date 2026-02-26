@@ -5,7 +5,7 @@ import { useSession } from '@/lib/client/auth';
 import { trpc } from '@/lib/client/trpc';
 import type { SessionUser } from '@/lib/types/auth.types';
 import { SidebarHeader } from './sidebar-header';
-import { SidebarNav, SidebarSettings } from './sidebar-nav';
+import { SidebarNav, SidebarCommunication, SidebarSettings } from './sidebar-nav';
 import { SidebarUserSection } from './sidebar-user-section';
 import { useSidebarState } from './use-sidebar-state';
 import type { SidebarProps } from './types';
@@ -34,7 +34,15 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
         sidebarState={sidebarState}
       />
 
-      {/* User Profile Section - Above Settings */}
+      {/* Communication Manager - Above User Profile */}
+      <SidebarCommunication
+        user={user}
+        onMobileClose={onClose}
+        isMobile={isMobile}
+        sidebarState={sidebarState}
+      />
+
+      {/* User Profile Section */}
       {user && (
         <SidebarUserSection
           user={user}
