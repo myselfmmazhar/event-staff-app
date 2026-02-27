@@ -259,4 +259,32 @@ export const settingsRouter = router({
             const settingsService = new SettingsService(ctx.prisma);
             return await settingsService.setDefaultMessagingConfig(input.id);
         }),
+    // ========== Mailgun Configuration ==========
+
+    getMailgunDomains: adminProcedure
+        .input(z.object({ apiKey: z.string() }))
+        .mutation(async ({ input }) => {
+            try {
+                // Determine if it's a private key or public key (Mailgun uses 'api' as username for private)
+                const b64 = Buffer.from(`api:${input.apiKey}`).toString('base64');
+                const response = await fetch('https://api.mailgun.net/v3/domains', {
+                    headers: {
+                        'Authorization': `Basic ${b64}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.message || 'Failed to fetch domains from Mailgun. Check your API key.');
+                }
+
+                const data = await response.json();
+                return data.items.map((item: any) => item.name);
+            } catch (error: any) {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: error.message || 'Could not validate Mailgun API key',
+                });
+            }
+        }),
 });

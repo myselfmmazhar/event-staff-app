@@ -141,7 +141,7 @@ export class ClientSchema {
    */
   static create = z.object({
     ...baseFields,
-    hasLoginAccess: z.boolean().optional().default(false),
+    hasLoginAccess: z.boolean().optional().default(true),
   });
 
   /**
