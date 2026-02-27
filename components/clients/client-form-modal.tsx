@@ -159,7 +159,7 @@ export function ClientFormModal({
       billingEmail: '',
       billingPhone: '',
       sameAsContact: false,
-      hasLoginAccess: false,
+      hasLoginAccess: true,
     },
   });
 
@@ -227,7 +227,7 @@ export function ClientFormModal({
         billingEmail: '',
         billingPhone: '',
         sameAsContact: false,
-        hasLoginAccess: false,
+        hasLoginAccess: true,
       });
       setTempLocations([]);
     }
@@ -282,7 +282,7 @@ export function ClientFormModal({
     billingEmail: '',
     billingPhone: '',
     sameAsContact: false,
-    hasLoginAccess: false,
+    hasLoginAccess: true,
   });
 
   // Reset form when resetKey changes (triggered by Save & New)
