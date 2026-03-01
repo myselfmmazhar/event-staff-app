@@ -2,7 +2,8 @@
 
 import { Accordion } from '@/components/ui/accordion';
 import { AssignmentItem } from './assignment-item';
-import type { Assignment, AssignmentSaveAction } from '@/lib/types/assignment.types';
+import { getAssignmentTotals } from '@/lib/utils/assignment-calculations';
+import type { Assignment } from '@/lib/types/assignment.types';
 
 interface AssignmentListProps {
   assignments: Assignment[];
@@ -13,6 +14,8 @@ interface AssignmentListProps {
   disabled?: boolean;
   /** ID of the assignment currently being edited (for inline form) */
   editingId?: string | null;
+  /** Live preview assignment from form (overrides stored assignment for display) */
+  livePreviewAssignment?: Assignment | null;
   /** Render prop for inline edit form */
   renderEditForm?: (assignment: Assignment) => React.ReactNode;
 }
@@ -24,6 +27,7 @@ export function AssignmentList({
   onQuickUpdate,
   disabled = false,
   editingId,
+  livePreviewAssignment,
   renderEditForm,
 }: AssignmentListProps) {
   if (assignments.length === 0) {
@@ -34,39 +38,52 @@ export function AssignmentList({
     );
   }
 
-  // Calculate totals
+  // Use live preview assignment if editing, otherwise use stored assignment
+  const getDisplayAssignment = (assignment: Assignment): Assignment => {
+    if (livePreviewAssignment && assignment.id === editingId) {
+      return livePreviewAssignment;
+    }
+    return assignment;
+  };
+
+  // Calculate totals using shared utility (using live preview when available)
   const totals = assignments.reduce(
     (acc, assignment) => {
-      let price: number | null | undefined = null;
-      if (assignment.type === 'PRODUCT') {
-        price = assignment.product?.price;
-      } else {
-        price = assignment.billRate ?? assignment.service?.price;
-      }
-      const lineTotal = price !== null && price !== undefined
-        ? Number(price) * assignment.quantity
-        : 0;
+      const displayAssignment = getDisplayAssignment(assignment);
+      const { totalPrice, totalCost } = getAssignmentTotals(displayAssignment);
+      const lineTotalPrice = totalPrice ?? 0;
+      const lineTotalCost = totalCost ?? 0;
 
-      if (assignment.type === 'PRODUCT') {
-        acc.productsTotal += lineTotal;
+      if (displayAssignment.type === 'PRODUCT') {
+        acc.productsTotalPrice += lineTotalPrice;
+        acc.productsTotalCost += lineTotalCost;
         acc.productsCount++;
       } else {
-        acc.servicesTotal += lineTotal;
+        acc.servicesTotalPrice += lineTotalPrice;
+        acc.servicesTotalCost += lineTotalCost;
         acc.servicesCount++;
       }
-      acc.grandTotal += lineTotal;
+      acc.grandTotalPrice += lineTotalPrice;
+      acc.grandTotalCost += lineTotalCost;
       return acc;
     },
-    { productsTotal: 0, servicesTotal: 0, grandTotal: 0, productsCount: 0, servicesCount: 0 }
+    {
+      productsTotalPrice: 0, productsTotalCost: 0,
+      servicesTotalPrice: 0, servicesTotalCost: 0,
+      grandTotalPrice: 0, grandTotalCost: 0,
+      productsCount: 0, servicesCount: 0
+    }
   );
 
   return (
     <div className="space-y-4">
       <Accordion type="multiple" className="space-y-2">
-        {assignments.map((assignment) => (
+        {assignments.map((assignment) => {
+          const displayAssignment = getDisplayAssignment(assignment);
+          return (
           <div key={assignment.id}>
             <AssignmentItem
-              assignment={assignment}
+              assignment={displayAssignment}
               onEdit={() => onEdit(assignment.id)}
               onDelete={() => onDelete(assignment.id)}
               onQuickUpdate={onQuickUpdate ? (updates) => onQuickUpdate(assignment.id, updates) : undefined}
@@ -79,7 +96,8 @@ export function AssignmentList({
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </Accordion>
 
       {/* Totals Summary */}
@@ -89,7 +107,12 @@ export function AssignmentList({
             <span className="text-muted-foreground">
               Services ({totals.servicesCount})
             </span>
-            <span className="font-medium">${totals.servicesTotal.toFixed(2)}</span>
+            <div className="text-right">
+              <span className="font-medium">${totals.servicesTotalPrice.toFixed(2)}</span>
+              <span className="text-xs text-muted-foreground ml-2">
+                Cost: ${totals.servicesTotalCost.toFixed(2)}
+              </span>
+            </div>
           </div>
         )}
         {totals.productsCount > 0 && (
@@ -97,12 +120,22 @@ export function AssignmentList({
             <span className="text-muted-foreground">
               Products ({totals.productsCount})
             </span>
-            <span className="font-medium">${totals.productsTotal.toFixed(2)}</span>
+            <div className="text-right">
+              <span className="font-medium">${totals.productsTotalPrice.toFixed(2)}</span>
+              <span className="text-xs text-muted-foreground ml-2">
+                Cost: ${totals.productsTotalCost.toFixed(2)}
+              </span>
+            </div>
           </div>
         )}
         <div className="flex justify-between text-base font-semibold border-t pt-2">
           <span>Grand Total</span>
-          <span>${totals.grandTotal.toFixed(2)}</span>
+          <div className="text-right">
+            <span>${totals.grandTotalPrice.toFixed(2)}</span>
+            <span className="text-xs text-muted-foreground font-normal ml-2">
+              Cost: ${totals.grandTotalCost.toFixed(2)}
+            </span>
+          </div>
         </div>
       </div>
     </div>
