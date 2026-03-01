@@ -801,6 +801,10 @@ enum NotificationType {
   SHIFT_REMINDER
   STAFF_INVITATION
   GENERAL
+  // Event status change notifications
+  EVENT_FULLY_STAFFED
+  EVENT_STARTED
+  EVENT_COMPLETED
 }
 
 enum RateType {

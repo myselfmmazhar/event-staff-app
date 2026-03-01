@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EventStatus } from '@prisma/client';
 import { cn } from '@/lib/utils';
 import type { BasicInfoSectionProps } from './types';
+import { ClientSelectWithCreate } from './client-select-with-create';
 
 const STATUSES: Array<{ value: EventStatus; label: string }> = [
   { value: EventStatus.DRAFT, label: 'Draft' },
@@ -25,6 +26,7 @@ export function BasicInfoSection({
   className,
   clients,
   terminology,
+  onClientCreated,
 }: BasicInfoSectionProps) {
   return (
     <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
@@ -48,28 +50,11 @@ export function BasicInfoSection({
 
           <div>
             <Label htmlFor="clientId">Client</Label>
-            <Controller
-              name="clientId"
+            <ClientSelectWithCreate
               control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value || 'none'}
-                  onValueChange={(val) => field.onChange(val === 'none' ? null : val)}
-                  disabled={disabled}
-                >
-                  <SelectTrigger id="clientId">
-                    <SelectValue placeholder="Not applicable" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Not applicable</SelectItem>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.businessName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              clients={clients}
+              disabled={disabled}
+              onClientCreated={onClientCreated}
             />
             {errors.clientId && (
               <p className="text-sm text-destructive mt-1">{errors.clientId.message}</p>

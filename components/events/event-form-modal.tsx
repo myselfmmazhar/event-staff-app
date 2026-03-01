@@ -880,11 +880,18 @@ export function EventFormModal({
     }
   };
 
+  // Wrapper to ensure form submission doesn't bubble and is properly isolated
+  const onFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleSubmit(handleFormSubmit, handleFormError)(e);
+  };
+
   const clients = clientsData?.data || [];
 
   return (
     <Dialog open={open} onClose={onClose} fullScreen>
-      <form onSubmit={handleSubmit(handleFormSubmit, handleFormError)} className="h-full flex flex-col">
+      <form onSubmit={onFormSubmit} className="h-full flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>
@@ -1101,6 +1108,7 @@ export function EventFormModal({
                 setEndTimeTBD={setEndTimeTBD}
                 assignments={assignments}
                 onAssignmentsChange={setAssignments}
+                onClientCreated={(clientId) => setValue('clientId', clientId)}
                 disabled={isSubmitting}
               />
             </>

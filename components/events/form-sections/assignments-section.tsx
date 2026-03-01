@@ -11,7 +11,7 @@ import { ServiceFormModal } from '@/components/catalog/services/service-form-mod
 import { ProductFormModal } from '@/components/catalog/products/product-form-modal';
 import { useToast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
-import type { Assignment, AssignmentSaveAction, ServiceItem, ProductItem } from '@/lib/types/assignment.types';
+import type { Assignment, AssignmentSaveAction } from '@/lib/types/assignment.types';
 
 interface AssignmentsSectionProps {
   assignments: Assignment[];
@@ -34,6 +34,10 @@ export function AssignmentsSection({
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [showCreateService, setShowCreateService] = useState(false);
   const [showCreateProduct, setShowCreateProduct] = useState(false);
+  // For "Save & Repeat" - holds template assignment to prefill form
+  const [repeatAssignment, setRepeatAssignment] = useState<Assignment | null>(null);
+  // For live preview - holds current form values while editing
+  const [livePreviewAssignment, setLivePreviewAssignment] = useState<Assignment | null>(null);
 
   // For SSR safety
   useEffect(() => {
@@ -98,17 +102,22 @@ export function AssignmentsSection({
       case 'close':
         setShowForm(false);
         setEditingAssignment(null);
+        setRepeatAssignment(null);
+        setLivePreviewAssignment(null);
         break;
       case 'new':
         setEditingAssignment(null);
+        setRepeatAssignment(null);
+        setLivePreviewAssignment(null);
         // Keep form open with fresh data (component will reset)
         setShowForm(false);
         setTimeout(() => setShowForm(true), 0);
         break;
       case 'repeat':
-        // Keep form open with same data for duplication
+        // Keep form open with same data for duplication (new ID will be generated on next save)
         setEditingAssignment(null);
-        // Keep the form populated with the same values
+        setRepeatAssignment({ ...assignment, id: crypto.randomUUID() });
+        setLivePreviewAssignment(null);
         break;
     }
 
@@ -168,6 +177,8 @@ export function AssignmentsSection({
   const handleCancelForm = () => {
     setShowForm(false);
     setEditingAssignment(null);
+    setRepeatAssignment(null);
+    setLivePreviewAssignment(null);
   };
 
   // Handle add new service assignment
@@ -198,6 +209,7 @@ export function AssignmentsSection({
             onQuickUpdate={handleQuickUpdate}
             disabled={disabled || showForm}
             editingId={editingAssignment?.id}
+            livePreviewAssignment={livePreviewAssignment}
             renderEditForm={(assignment) => (
               <>
                 <h4 className="text-base font-medium mb-4">Edit Assignment</h4>
@@ -205,6 +217,7 @@ export function AssignmentsSection({
                   assignment={assignment}
                   onSave={handleSaveAssignment}
                   onCancel={handleCancelForm}
+                  onLiveChange={setLivePreviewAssignment}
                   onCreateService={() => setShowCreateService(true)}
                   onCreateProduct={() => setShowCreateProduct(true)}
                   disabled={disabled}
@@ -219,7 +232,7 @@ export function AssignmentsSection({
           <div className="border border-border rounded-lg p-4 bg-background">
             <h4 className="text-base font-medium mb-4">Assignment Details</h4>
             <AssignmentForm
-              assignment={null}
+              assignment={repeatAssignment}
               defaultType={defaultType}
               onSave={handleSaveAssignment}
               onCancel={handleCancelForm}

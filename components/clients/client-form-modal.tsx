@@ -254,6 +254,13 @@ export function ClientFormModal({
     }
   };
 
+  // Wrapper to ensure form submission doesn't bubble to parent forms
+  const onFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleSubmit(handleFormSubmit)(e);
+  };
+
   const handleSaveAndClose = () => {
     setPendingSaveAction('close');
   };
@@ -296,7 +303,7 @@ export function ClientFormModal({
 
   return (
     <Dialog open={open} onClose={onClose} fullScreen>
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
+      <form onSubmit={onFormSubmit} className="h-full flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>{isEdit ? 'Edit Client' : 'Add New Client'}</DialogTitle>

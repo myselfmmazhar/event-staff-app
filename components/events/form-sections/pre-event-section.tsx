@@ -14,8 +14,8 @@ export function PreEventSection({
   const staffTerm = useStaffTerm();
 
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
-      <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Pre-{terminology.event.singular} Instructions</h3>
+    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg h-fit', className)}>
+      <h3 className="text-lg font-semibold border-b border-border pb-2 mb-3">Pre-{terminology.event.singular} Instructions</h3>
       <Textarea
         id="preEventInstructions"
         {...register('preEventInstructions')}
