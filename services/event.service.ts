@@ -10,6 +10,7 @@ import type {
 import { SettingsService } from "./settings.service";
 import { generateEventId } from "@/lib/utils/id-generator";
 import { getNotificationTriggerService } from "@/services/notification-trigger.service";
+import { checkAndUpdateEventStatus, checkAndUpdateMultipleEventStatuses } from "@/lib/utils/event-status-checker";
 import type { EventSelect, PaginatedResponse } from "@/lib/types/prisma-types";
 
 // Re-export types from schema for backwards compatibility
@@ -359,8 +360,20 @@ export class EventService {
       this.prisma.event.count({ where }),
     ]);
 
+    // Trigger-based status update: check and update statuses for listed events
+    const eventIds = data.map((e) => e.id);
+    const updatedStatuses = await checkAndUpdateMultipleEventStatuses(this.prisma, eventIds);
+
+    // Apply updated statuses to data (only if any were updated)
+    const dataWithUpdatedStatus = updatedStatuses.size > 0
+      ? data.map((e) => ({
+          ...e,
+          status: updatedStatuses.get(e.id) ?? e.status,
+        }))
+      : data;
+
     return {
-      data,
+      data: dataWithUpdatedStatus,
       meta: {
         total,
         page,
@@ -492,6 +505,13 @@ export class EventService {
         code: "NOT_FOUND",
         message: `${terminology.event.singular} with ID ${id} not found or you don't have permission to access it`,
       });
+    }
+
+    // Trigger-based status update: check if status needs updating based on current time
+    const statusResult = await checkAndUpdateEventStatus(this.prisma, id);
+    if (statusResult.updated && statusResult.newStatus) {
+      // Return updated status in the event object
+      return { ...event, status: statusResult.newStatus };
     }
 
     return event;
