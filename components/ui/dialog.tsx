@@ -1,7 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { cn } from '@/lib/utils';
+
+// Track open dialogs to handle stacking properly
+const openDialogs: Set<string> = new Set();
 
 interface DialogProps {
   open: boolean;
@@ -13,10 +16,29 @@ interface DialogProps {
 
 export function Dialog({ open, onClose, children, className, fullScreen }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogId = useId();
+
+  useEffect(() => {
+    if (open) {
+      openDialogs.add(dialogId);
+    } else {
+      openDialogs.delete(dialogId);
+    }
+    return () => {
+      openDialogs.delete(dialogId);
+    };
+  }, [open, dialogId]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        // Only close the topmost (most recently opened) dialog
+        const dialogsArray = Array.from(openDialogs);
+        if (dialogsArray[dialogsArray.length - 1] === dialogId) {
+          e.stopPropagation();
+          onClose();
+        }
+      }
     };
 
     if (open) {
@@ -26,23 +48,37 @@ export function Dialog({ open, onClose, children, className, fullScreen }: Dialo
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
+      // Only restore scroll if no other dialogs are open
+      if (openDialogs.size === 0) {
+        document.body.style.overflow = 'unset';
+      }
     };
-  }, [open, onClose]);
+  }, [open, onClose, dialogId]);
 
   if (!open) return null;
 
+  // Calculate z-index based on dialog stack position
+  const stackIndex = Array.from(openDialogs).indexOf(dialogId);
+  const zIndex = 50 + (stackIndex * 10);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      className="fixed inset-0 flex items-center justify-center"
+      style={{ zIndex }}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
       />
 
       {/* Dialog */}
       <div
         ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
         className={cn(
           'relative bg-card shadow-xl',
           'animate-in fade-in-0 zoom-in-95',

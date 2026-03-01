@@ -21,25 +21,38 @@ export async function GET(request: NextRequest) {
     timestamp: new Date().toISOString(),
   });
 
-  // Verify cron secret for security
+  // Verify cron secret for security (required in production)
   const cronSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get("authorization");
-  const cronHeader = request.headers.get("x-cron-secret");
+  const isDev = process.env.NODE_ENV === "development";
 
-  // Allow Vercel's internal cron calls (they use Authorization: Bearer <CRON_SECRET>)
-  // Or custom x-cron-secret header for manual/external calls
-  const providedSecret =
-    authHeader?.replace("Bearer ", "") || cronHeader;
-
-  if (cronSecret && providedSecret !== cronSecret) {
-    console.warn("[CRON] Unauthorized access attempt", {
-      hasAuthHeader: !!authHeader,
-      hasCronHeader: !!cronHeader,
-    });
+  if (!cronSecret && !isDev) {
+    console.error("[CRON] CRON_SECRET environment variable is not configured");
     return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
+      { error: "Server misconfiguration" },
+      { status: 500 }
     );
+  }
+
+  // Skip auth check in development if no secret is configured
+  if (cronSecret) {
+    const authHeader = request.headers.get("authorization");
+    const cronHeader = request.headers.get("x-cron-secret");
+
+    // Allow Vercel's internal cron calls (they use Authorization: Bearer <CRON_SECRET>)
+    // Or custom x-cron-secret header for manual/external calls
+    const providedSecret =
+      authHeader?.replace("Bearer ", "") || cronHeader;
+
+    if (providedSecret !== cronSecret) {
+      console.warn("[CRON] Unauthorized access attempt", {
+        hasAuthHeader: !!authHeader,
+        hasCronHeader: !!cronHeader,
+      });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
   }
 
   try {

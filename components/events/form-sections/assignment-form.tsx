@@ -35,6 +35,8 @@ interface AssignmentFormProps {
   onSave: (assignment: Assignment, action: AssignmentSaveAction) => void;
   /** Called when form is cancelled */
   onCancel: () => void;
+  /** Called on each form change for live preview (optional) */
+  onLiveChange?: (assignment: Assignment) => void;
   /** Opens modal to create new service */
   onCreateService?: () => void;
   /** Opens modal to create new product */
@@ -48,6 +50,7 @@ export function AssignmentForm({
   defaultType = 'SERVICE',
   onSave,
   onCancel,
+  onLiveChange,
   onCreateService,
   onCreateProduct,
   disabled = false,
@@ -259,6 +262,59 @@ export function AssignmentForm({
       setValue('endTime', startTime);
     }
   }, [assignmentType, startTime, endTimeTBD, setValue]);
+
+  // Live change sync - notify parent of form changes for live preview
+  // Use subscription to avoid infinite re-render loop
+  useEffect(() => {
+    if (!onLiveChange || !assignment) return;
+
+    const subscription = watch((data) => {
+      if (isInitialMount.current) return;
+
+      const id = assignment.id;
+
+      if (data.type === 'PRODUCT') {
+        const liveAssignment: Assignment = {
+          id,
+          type: 'PRODUCT',
+          productId: data.productId!,
+          product: selectedProduct,
+          quantity: data.quantity ?? 1,
+          commission: data.commission ?? false,
+          description: data.description ?? null,
+          instructions: data.instructions ?? null,
+        };
+        onLiveChange(liveAssignment);
+      } else {
+        const liveAssignment: Assignment = {
+          id,
+          type: 'SERVICE',
+          serviceId: data.serviceId!,
+          service: selectedService,
+          quantity: data.quantity ?? 1,
+          commission: data.commission ?? false,
+          startDate: startDateUBD ? null : (data.startDate ?? null),
+          startDateUBD,
+          startTime: startTimeTBD ? null : (data.startTime ?? null),
+          startTimeTBD,
+          endDate: endDateUBD ? null : (data.endDate ?? null),
+          endDateUBD,
+          endTime: endTimeTBD ? null : (data.endTime ?? null),
+          endTimeTBD,
+          experienceRequired: data.experienceRequired || 'ANY',
+          ratingRequired: data.ratingRequired || 'ANY',
+          approveOvertime: data.approveOvertime || false,
+          payRate: data.payRate ?? null,
+          billRate: data.billRate ?? null,
+          rateType: data.rateType ?? null,
+          notes: data.notes ?? null,
+        };
+        onLiveChange(liveAssignment);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch, onLiveChange, assignment, selectedProduct, selectedService, startDateUBD, startTimeTBD, endDateUBD, endTimeTBD]);
 
   // Format price for display
   const formatPrice = (price: number | null) => {
@@ -799,7 +855,7 @@ export function AssignmentForm({
                   placeholder="0.00"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Cost paid to staff
+                  Cost paid to Talent
                 </p>
               </div>
               <div>
