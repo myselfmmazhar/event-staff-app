@@ -244,18 +244,6 @@ export class EventSchema {
       // Billing & Rate Settings
       estimate: z.boolean().optional(),
       taskRateType: z.nativeEnum(AmountType).optional(),
-      commission: z.boolean().optional(),
-      commissionAmount: z
-        .number()
-        .min(0, "Commission amount must be positive")
-        .optional(),
-      commissionAmountType: z.nativeEnum(AmountType).optional(),
-      approveForOvertime: z.boolean().optional(),
-      overtimeRate: z
-        .number()
-        .min(0, "Overtime rate must be positive")
-        .optional(),
-      overtimeRateType: z.nativeEnum(AmountType).optional(),
     })
     .refine(
       (data) => {
@@ -465,20 +453,6 @@ export class EventSchema {
       // Billing & Rate Settings
       estimate: z.boolean().optional().nullable(),
       taskRateType: z.nativeEnum(AmountType).optional().nullable(),
-      commission: z.boolean().optional().nullable(),
-      commissionAmount: z
-        .number()
-        .min(0, "Commission amount must be positive")
-        .optional()
-        .nullable(),
-      commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
-      approveForOvertime: z.boolean().optional().nullable(),
-      overtimeRate: z
-        .number()
-        .min(0, "Overtime rate must be positive")
-        .optional()
-        .nullable(),
-      overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
     })
     .refine(
       (data) => {

@@ -322,7 +322,11 @@ export function CallTimeDetailModal({
             customCost: callTime.customCost,
             customPrice: callTime.customPrice,
             approveOvertime: callTime.approveOvertime ?? false,
+            overtimeRate: callTime.overtimeRate ?? null,
+            overtimeRateType: callTime.overtimeRateType ?? null,
             commission: callTime.commission ?? false,
+            commissionAmount: callTime.commissionAmount ?? null,
+            commissionAmountType: callTime.commissionAmountType ?? null,
             notes: callTime.notes,
           }}
           eventId={callTime.event.id}

@@ -356,16 +356,6 @@ export class StaffSchema {
                 { message: FieldErrors.phone.invalid }
             )
             .transform((val) => val.trim()),
-        dateOfBirth: z
-            .date()
-            .refine(
-                (date) => {
-                    const eighteenYearsAgo = new Date();
-                    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
-                    return date <= eighteenYearsAgo;
-                },
-                { message: "Must be at least 18 years old" }
-            ),
         streetAddress: z
             .string()
             .min(1, "Street address is required")

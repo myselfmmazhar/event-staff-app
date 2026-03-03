@@ -58,7 +58,7 @@ export function StaffInviteModal({
             email: '',
             firstName: '',
             lastName: '',
-            staffType: StaffType.EMPLOYEE,
+            staffType: StaffType.CONTRACTOR,
             serviceIds: [],
         },
     });

@@ -15,7 +15,7 @@ import {
   type UpdateCallTimeInput,
 } from '@/lib/schemas/call-time.schema';
 import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
-import { SkillLevel, RateType, StaffRating } from '@prisma/client';
+import { SkillLevel, RateType, StaffRating, AmountType } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
 import {
   AssignmentFormFields,
@@ -42,7 +42,11 @@ interface CallTime {
   customCost: number | { toNumber: () => number } | null; // kept for backward compat with DB
   customPrice: number | { toNumber: () => number } | null; // kept for backward compat with DB
   approveOvertime: boolean;
+  overtimeRate: number | { toNumber: () => number } | null;
+  overtimeRateType: AmountType | null;
   commission: boolean;
+  commissionAmount: number | { toNumber: () => number } | null;
+  commissionAmountType: AmountType | null;
   notes: string | null;
 }
 
@@ -126,7 +130,11 @@ export function CallTimeFormModal({
         billRate: billRateValue,
         billRateType: callTime.billRateType,
         approveOvertime: callTime.approveOvertime,
+        overtimeRate: toNumber(callTime.overtimeRate) ?? null,
+        overtimeRateType: callTime.overtimeRateType ?? null,
         commission: callTime.commission,
+        commissionAmount: toNumber(callTime.commissionAmount) ?? null,
+        commissionAmountType: callTime.commissionAmountType ?? null,
         notes: callTime.notes || '',
       });
       setStartDateUBD(startDateIsUBD);
@@ -153,7 +161,11 @@ export function CallTimeFormModal({
         billRate: 0,
         billRateType: RateType.PER_HOUR,
         approveOvertime: false,
+        overtimeRate: null,
+        overtimeRateType: null,
         commission: false,
+        commissionAmount: null,
+        commissionAmountType: null,
         notes: '',
       });
       setStartDateUBD(false);
@@ -201,6 +213,13 @@ export function CallTimeFormModal({
       billRate: data.billRate,
       billRateType: data.billRateType,
       notes: data.notes || undefined,
+      // Commission & Overtime details
+      approveOvertime: data.approveOvertime ?? false,
+      overtimeRate: data.overtimeRate ?? undefined,
+      overtimeRateType: data.overtimeRateType ?? undefined,
+      commission: data.commission ?? false,
+      commissionAmount: data.commissionAmount ?? undefined,
+      commissionAmountType: data.commissionAmountType ?? undefined,
     };
 
     onSubmit(submitData as CreateCallTimeInput | Omit<UpdateCallTimeInput, 'id'>);
