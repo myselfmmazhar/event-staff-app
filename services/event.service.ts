@@ -119,12 +119,6 @@ export class EventService {
         // Billing & Rate Settings
         estimate: data.estimate ?? null,
         taskRateType: data.taskRateType ?? null,
-        commission: data.commission ?? null,
-        commissionAmount: data.commissionAmount ?? null,
-        commissionAmountType: data.commissionAmountType ?? null,
-        approveForOvertime: data.approveForOvertime ?? null,
-        overtimeRate: data.overtimeRate ?? null,
-        overtimeRateType: data.overtimeRateType ?? null,
         createdBy: userId,
       };
 
@@ -311,6 +305,13 @@ export class EventService {
                   id: true,
                   status: true,
                   isConfirmed: true,
+                  staff: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
                 },
               },
             },
@@ -367,9 +368,9 @@ export class EventService {
     // Apply updated statuses to data (only if any were updated)
     const dataWithUpdatedStatus = updatedStatuses.size > 0
       ? data.map((e) => ({
-          ...e,
-          status: updatedStatuses.get(e.id) ?? e.status,
-        }))
+        ...e,
+        status: updatedStatuses.get(e.id) ?? e.status,
+      }))
       : data;
 
     return {
@@ -428,7 +429,7 @@ export class EventService {
         poNumber: true,
         preEventInstructions: true,
         eventDocuments: true,
-          customFields: true,
+        customFields: true,
         meetingPoint: true,
         onsitePocName: true,
         onsitePocPhone: true,
@@ -579,15 +580,8 @@ export class EventService {
       if (data.onsitePocName !== undefined) sanitizedData.onsitePocName = data.onsitePocName?.trim() || null;
       if (data.onsitePocPhone !== undefined) sanitizedData.onsitePocPhone = data.onsitePocPhone?.trim() || null;
       if (data.onsitePocEmail !== undefined) sanitizedData.onsitePocEmail = data.onsitePocEmail?.trim() || null;
-      // Billing & Rate Settings
       if (data.estimate !== undefined) sanitizedData.estimate = data.estimate ?? null;
       if (data.taskRateType !== undefined) sanitizedData.taskRateType = data.taskRateType ?? null;
-      if (data.commission !== undefined) sanitizedData.commission = data.commission ?? null;
-      if (data.commissionAmount !== undefined) sanitizedData.commissionAmount = data.commissionAmount ?? null;
-      if (data.commissionAmountType !== undefined) sanitizedData.commissionAmountType = data.commissionAmountType ?? null;
-      if (data.approveForOvertime !== undefined) sanitizedData.approveForOvertime = data.approveForOvertime ?? null;
-      if (data.overtimeRate !== undefined) sanitizedData.overtimeRate = data.overtimeRate ?? null;
-      if (data.overtimeRateType !== undefined) sanitizedData.overtimeRateType = data.overtimeRateType ?? null;
 
       // Update the event
       const updatedEvent = await this.prisma.event.update({
@@ -769,7 +763,7 @@ export class EventService {
         poNumber: true,
         preEventInstructions: true,
         eventDocuments: true,
-          customFields: true,
+        customFields: true,
         meetingPoint: true,
         onsitePocName: true,
         onsitePocPhone: true,
@@ -1024,7 +1018,7 @@ export class EventService {
         overtimeRateType: true,
         fileLinks: true,
         eventDocuments: true,
-          customFields: true,
+        customFields: true,
         createdAt: true,
       },
       orderBy: { startDate: 'desc' },

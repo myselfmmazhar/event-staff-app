@@ -183,8 +183,9 @@ export function AssignmentItem({
 
         {/* Cost - always editable */}
         {onQuickUpdate && !disabled ? (
-          <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
-            <span className="text-xs text-muted-foreground mr-0.5">$</span>
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Cost:</span>
+            <span className="text-xs text-muted-foreground">$</span>
             <Input
               type="number"
               step="0.01"
@@ -203,8 +204,9 @@ export function AssignmentItem({
 
         {/* Price - always editable */}
         {onQuickUpdate && !disabled ? (
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <span className="text-sm font-medium mr-0.5">$</span>
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Price:</span>
+            <span className="text-sm font-medium">$</span>
             <Input
               type="number"
               step="0.01"
