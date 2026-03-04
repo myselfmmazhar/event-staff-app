@@ -38,7 +38,7 @@ import { TaxDetailsForm, type TaxDetailsFormRef } from './tax-details-form';
 // Helper to get default form values
 const getDefaultFormValues = () => ({
     accountStatus: AccountStatus.PENDING,
-    staffType: StaffType.EMPLOYEE,
+    staffType: StaffType.CONTRACTOR,
     staffRole: StaffRole.INDIVIDUAL,
     firstName: '',
     lastName: '',

@@ -10,6 +10,7 @@ import type {
 import { SettingsService } from "./settings.service";
 import { generateEventId } from "@/lib/utils/id-generator";
 import { getNotificationTriggerService } from "@/services/notification-trigger.service";
+import { checkAndUpdateEventStatus, checkAndUpdateMultipleEventStatuses } from "@/lib/utils/event-status-checker";
 import type { EventSelect, PaginatedResponse } from "@/lib/types/prisma-types";
 
 // Re-export types from schema for backwards compatibility
@@ -118,12 +119,6 @@ export class EventService {
         // Billing & Rate Settings
         estimate: data.estimate ?? null,
         taskRateType: data.taskRateType ?? null,
-        commission: data.commission ?? null,
-        commissionAmount: data.commissionAmount ?? null,
-        commissionAmountType: data.commissionAmountType ?? null,
-        approveForOvertime: data.approveForOvertime ?? null,
-        overtimeRate: data.overtimeRate ?? null,
-        overtimeRateType: data.overtimeRateType ?? null,
         createdBy: userId,
       };
 
@@ -310,6 +305,13 @@ export class EventService {
                   id: true,
                   status: true,
                   isConfirmed: true,
+                  staff: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
                 },
               },
             },
@@ -359,8 +361,20 @@ export class EventService {
       this.prisma.event.count({ where }),
     ]);
 
+    // Trigger-based status update: check and update statuses for listed events
+    const eventIds = data.map((e) => e.id);
+    const updatedStatuses = await checkAndUpdateMultipleEventStatuses(this.prisma, eventIds);
+
+    // Apply updated statuses to data (only if any were updated)
+    const dataWithUpdatedStatus = updatedStatuses.size > 0
+      ? data.map((e) => ({
+        ...e,
+        status: updatedStatuses.get(e.id) ?? e.status,
+      }))
+      : data;
+
     return {
-      data,
+      data: dataWithUpdatedStatus,
       meta: {
         total,
         page,
@@ -415,7 +429,7 @@ export class EventService {
         poNumber: true,
         preEventInstructions: true,
         eventDocuments: true,
-          customFields: true,
+        customFields: true,
         meetingPoint: true,
         onsitePocName: true,
         onsitePocPhone: true,
@@ -494,6 +508,13 @@ export class EventService {
       });
     }
 
+    // Trigger-based status update: check if status needs updating based on current time
+    const statusResult = await checkAndUpdateEventStatus(this.prisma, id);
+    if (statusResult.updated && statusResult.newStatus) {
+      // Return updated status in the event object
+      return { ...event, status: statusResult.newStatus };
+    }
+
     return event;
   }
 
@@ -559,15 +580,8 @@ export class EventService {
       if (data.onsitePocName !== undefined) sanitizedData.onsitePocName = data.onsitePocName?.trim() || null;
       if (data.onsitePocPhone !== undefined) sanitizedData.onsitePocPhone = data.onsitePocPhone?.trim() || null;
       if (data.onsitePocEmail !== undefined) sanitizedData.onsitePocEmail = data.onsitePocEmail?.trim() || null;
-      // Billing & Rate Settings
       if (data.estimate !== undefined) sanitizedData.estimate = data.estimate ?? null;
       if (data.taskRateType !== undefined) sanitizedData.taskRateType = data.taskRateType ?? null;
-      if (data.commission !== undefined) sanitizedData.commission = data.commission ?? null;
-      if (data.commissionAmount !== undefined) sanitizedData.commissionAmount = data.commissionAmount ?? null;
-      if (data.commissionAmountType !== undefined) sanitizedData.commissionAmountType = data.commissionAmountType ?? null;
-      if (data.approveForOvertime !== undefined) sanitizedData.approveForOvertime = data.approveForOvertime ?? null;
-      if (data.overtimeRate !== undefined) sanitizedData.overtimeRate = data.overtimeRate ?? null;
-      if (data.overtimeRateType !== undefined) sanitizedData.overtimeRateType = data.overtimeRateType ?? null;
 
       // Update the event
       const updatedEvent = await this.prisma.event.update({
@@ -749,7 +763,7 @@ export class EventService {
         poNumber: true,
         preEventInstructions: true,
         eventDocuments: true,
-          customFields: true,
+        customFields: true,
         meetingPoint: true,
         onsitePocName: true,
         onsitePocPhone: true,
@@ -1004,7 +1018,7 @@ export class EventService {
         overtimeRateType: true,
         fileLinks: true,
         eventDocuments: true,
-          customFields: true,
+        customFields: true,
         createdAt: true,
       },
       orderBy: { startDate: 'desc' },
@@ -1077,8 +1091,8 @@ export class EventService {
    * Determine the appropriate event status based on criteria:
    * - COMPLETED: End date/time has passed
    * - IN_PROGRESS: Currently between start and end date/time
-   * - ASSIGNED: Has invitations sent
-   * - DRAFT: Default (no invitations sent)
+   * - ASSIGNED: All required talent positions are filled
+   * - DRAFT: Default (not all positions filled)
    */
   private async determineEventStatus(eventId: string): Promise<EventStatus> {
     const event = await this.prisma.event.findUnique({
@@ -1088,9 +1102,15 @@ export class EventService {
         startTime: true,
         endDate: true,
         endTime: true,
+        timezone: true,
         callTimes: {
           select: {
+            numberOfStaffRequired: true,
             invitations: {
+              where: {
+                status: 'ACCEPTED',
+                isConfirmed: true,
+              },
               select: { id: true },
             },
           },
@@ -1104,9 +1124,9 @@ export class EventService {
 
     const now = new Date();
 
-    // Build start and end DateTime
-    const startDateTime = this.buildDateTime(event.startDate, event.startTime);
-    const endDateTime = this.buildDateTime(event.endDate, event.endTime);
+    // Build start and end DateTime with timezone
+    const startDateTime = this.buildDateTime(event.startDate, event.startTime, event.timezone);
+    const endDateTime = this.buildDateTime(event.endDate, event.endTime, event.timezone);
 
     // Check if event has ended
     if (endDateTime && now > endDateTime) {
@@ -1118,9 +1138,14 @@ export class EventService {
       return EventStatus.IN_PROGRESS;
     }
 
-    // Check if invitations have been sent
-    const hasInvitations = event.callTimes.some(ct => ct.invitations.length > 0);
-    if (hasInvitations) {
+    // Check if all positions are filled (event is fully staffed)
+    const isFullyStaffed =
+      event.callTimes.length > 0 &&
+      event.callTimes.every(
+        (ct) => ct.invitations.length >= ct.numberOfStaffRequired
+      );
+
+    if (isFullyStaffed) {
       return EventStatus.ASSIGNED;
     }
 
@@ -1128,16 +1153,78 @@ export class EventService {
   }
 
   /**
-   * Build a Date object from date and time strings
+   * Build a Date object from date, time, and timezone strings
+   * Returns a UTC Date that represents the correct moment in time for the given timezone
    */
-  private buildDateTime(date: Date | null, time: string | null): Date | null {
+  private buildDateTime(
+    date: Date | null,
+    time: string | null,
+    timezone?: string | null
+  ): Date | null {
     if (!date) return null;
-    const dateTime = new Date(date);
+
+    // Extract year, month, day from the date
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+
+    // Parse time or default to midnight
+    let hours = 0;
+    let minutes = 0;
     if (time) {
-      const [hours, minutes] = time.split(':').map(Number);
-      dateTime.setHours(hours || 0, minutes || 0, 0, 0);
+      const [h, m] = time.split(':').map(Number);
+      hours = h || 0;
+      minutes = m || 0;
     }
-    return dateTime;
+
+    // If no timezone provided, create date in local time
+    if (!timezone) {
+      return new Date(year, month, day, hours, minutes, 0, 0);
+    }
+
+    // Create a date string in ISO format and parse it in the given timezone
+    // Format: YYYY-MM-DDTHH:mm:ss
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+
+    try {
+      // Use Intl.DateTimeFormat to get the timezone offset
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+
+      // Create a date assuming the input is in the specified timezone
+      // We need to find what UTC time corresponds to this local time in the given timezone
+      const localDate = new Date(dateStr);
+
+      // Get the parts in the target timezone for a reference point
+      const parts = formatter.formatToParts(localDate);
+      const getPart = (type: string) => parts.find(p => p.type === type)?.value || '0';
+
+      // Calculate offset by comparing local interpretation vs timezone interpretation
+      const tzDate = new Date(
+        parseInt(getPart('year')),
+        parseInt(getPart('month')) - 1,
+        parseInt(getPart('day')),
+        parseInt(getPart('hour')),
+        parseInt(getPart('minute')),
+        parseInt(getPart('second'))
+      );
+
+      const offsetMs = localDate.getTime() - tzDate.getTime();
+
+      // Adjust the date by the offset to get the correct UTC time
+      return new Date(localDate.getTime() + offsetMs);
+    } catch {
+      // If timezone is invalid, fall back to local time
+      return new Date(year, month, day, hours, minutes, 0, 0);
+    }
   }
 
   async restoreMany(ids: string[], userId: string): Promise<{ count: number }> {
@@ -1538,13 +1625,14 @@ export class EventService {
    * Update event statuses based on current time (for cron job)
    * - ASSIGNED → IN_PROGRESS: when start datetime is reached
    * - IN_PROGRESS → COMPLETED: when end datetime has passed
-   * Returns counts of updated events
+   * Returns counts of updated events and sends notifications
    */
   async updateStatusesBasedOnTime(): Promise<{
     toInProgress: number;
     toCompleted: number;
   }> {
     const now = new Date();
+    const triggerService = getNotificationTriggerService(this.prisma);
 
     // Find events that should be IN_PROGRESS (start time reached, currently ASSIGNED)
     const eventsToStartQuery = await this.prisma.event.findMany({
@@ -1555,18 +1643,21 @@ export class EventService {
       },
       select: {
         id: true,
+        title: true,
+        createdBy: true,
         startDate: true,
         startTime: true,
+        timezone: true,
       },
     });
 
     // Filter events where start datetime has been reached
     const eventsToStart = eventsToStartQuery.filter((event) => {
-      const startDateTime = this.buildDateTime(event.startDate, event.startTime);
+      const startDateTime = this.buildDateTime(event.startDate, event.startTime, event.timezone);
       return startDateTime && now >= startDateTime;
     });
 
-    // Update to IN_PROGRESS
+    // Update to IN_PROGRESS and send notifications
     let toInProgress = 0;
     if (eventsToStart.length > 0) {
       const result = await this.prisma.event.updateMany({
@@ -1579,6 +1670,14 @@ export class EventService {
         },
       });
       toInProgress = result.count;
+
+      // Send notifications for each started event
+      for (const event of eventsToStart) {
+        await triggerService.onEventStarted(event.id, {
+          eventTitle: event.title,
+          createdBy: event.createdBy,
+        });
+      }
     }
 
     // Find events that should be COMPLETED (end time passed, currently IN_PROGRESS)
@@ -1590,18 +1689,21 @@ export class EventService {
       },
       select: {
         id: true,
+        title: true,
+        createdBy: true,
         endDate: true,
         endTime: true,
+        timezone: true,
       },
     });
 
     // Filter events where end datetime has passed
     const eventsToComplete = eventsToCompleteQuery.filter((event) => {
-      const endDateTime = this.buildDateTime(event.endDate, event.endTime);
+      const endDateTime = this.buildDateTime(event.endDate, event.endTime, event.timezone);
       return endDateTime && now > endDateTime;
     });
 
-    // Update to COMPLETED
+    // Update to COMPLETED and send notifications
     let toCompleted = 0;
     if (eventsToComplete.length > 0) {
       const result = await this.prisma.event.updateMany({
@@ -1614,6 +1716,14 @@ export class EventService {
         },
       });
       toCompleted = result.count;
+
+      // Send notifications for each completed event
+      for (const event of eventsToComplete) {
+        await triggerService.onEventCompleted(event.id, {
+          eventTitle: event.title,
+          createdBy: event.createdBy,
+        });
+      }
     }
 
     return { toInProgress, toCompleted };

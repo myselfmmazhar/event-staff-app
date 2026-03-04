@@ -78,6 +78,12 @@ export class CallTimeService {
         payRateType: data.payRateType,
         billRate: data.billRate,
         billRateType: data.billRateType,
+        approveOvertime: data.approveOvertime ?? false,
+        overtimeRate: data.overtimeRate ?? null,
+        overtimeRateType: data.overtimeRateType ?? null,
+        commission: data.commission ?? false,
+        commissionAmount: data.commissionAmount ?? null,
+        commissionAmountType: data.commissionAmountType ?? null,
         notes: data.notes,
         eventId: data.eventId,
       },
@@ -301,7 +307,12 @@ export class CallTimeService {
       });
     }
 
+    const eventId = callTime.event.id;
     await this.prisma.callTime.delete({ where: { id } });
+
+    // Update event status after removing a call time (may affect fully staffed state)
+    await this.updateEventStatusBasedOnStaffing(eventId);
+
     return { success: true, message: 'Call time deleted successfully' };
   }
 
@@ -538,19 +549,6 @@ export class CallTimeService {
       }
     }
 
-    // Update event status to ASSIGNED if currently DRAFT
-    const event = await this.prisma.event.findUnique({
-      where: { id: callTime.eventId },
-      select: { status: true },
-    });
-
-    if (event && event.status === EventStatus.DRAFT) {
-      await this.prisma.event.update({
-        where: { id: callTime.eventId },
-        data: { status: EventStatus.ASSIGNED },
-      });
-    }
-
     return {
       sent: invitations.length,
       invitations,
@@ -656,6 +654,11 @@ export class CallTimeService {
         );
       }
 
+      // Update event status if all positions are now filled
+      if (hasAvailableSlot) {
+        await this.updateEventStatusBasedOnStaffing(invitation.callTime.eventId);
+      }
+
       return updated;
     } else {
       // Decline
@@ -758,7 +761,7 @@ export class CallTimeService {
     const invitation = await this.prisma.callTimeInvitation.findUnique({
       where: { id: invitationId },
       include: {
-        callTime: { include: { event: { select: { createdBy: true } } } },
+        callTime: { include: { event: { select: { id: true, createdBy: true } } } },
       },
     });
 
@@ -769,13 +772,22 @@ export class CallTimeService {
       });
     }
 
-    return await this.prisma.callTimeInvitation.update({
+    const wasConfirmed = invitation.status === 'ACCEPTED' && invitation.isConfirmed;
+
+    const updated = await this.prisma.callTimeInvitation.update({
       where: { id: invitationId },
-      data: { status: 'CANCELLED' },
+      data: { status: 'CANCELLED', isConfirmed: false },
       include: {
         staff: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    // If a confirmed staff was cancelled, check if event is still fully staffed
+    if (wasConfirmed) {
+      await this.updateEventStatusBasedOnStaffing(invitation.callTime.event.id);
+    }
+
+    return updated;
   }
 
   /**
@@ -1225,7 +1237,11 @@ export class CallTimeService {
           customPrice: assignment.customPrice,
           ratingRequired,
           approveOvertime: assignment.approveOvertime,
+          overtimeRate: assignment.overtimeRate ?? null,
+          overtimeRateType: assignment.overtimeRateType ?? null,
           commission: assignment.commission,
+          commissionAmount: assignment.commissionAmount ?? null,
+          commissionAmountType: assignment.commissionAmountType ?? null,
           notes: assignment.notes,
         };
       });
@@ -1323,5 +1339,93 @@ export class CallTimeService {
     });
 
     return callTimes;
+  }
+
+  /**
+   * Check if all call times for an event are fully staffed
+   * Returns true if every call time has confirmedCount >= numberOfStaffRequired
+   */
+  async isEventFullyStaffed(eventId: string): Promise<boolean> {
+    const callTimes = await this.prisma.callTime.findMany({
+      where: { eventId },
+      select: {
+        id: true,
+        numberOfStaffRequired: true,
+        invitations: {
+          where: {
+            status: 'ACCEPTED',
+            isConfirmed: true,
+          },
+          select: { id: true },
+        },
+      },
+    });
+
+    // If no call times exist, event is not fully staffed
+    if (callTimes.length === 0) {
+      return false;
+    }
+
+    // Check if all call times have required staff filled
+    return callTimes.every(
+      (ct) => ct.invitations.length >= ct.numberOfStaffRequired
+    );
+  }
+
+  /**
+   * Update event status based on staffing:
+   * - ASSIGNED: All positions filled
+   * - DRAFT: Not all positions filled (revert if needed)
+   * Also triggers appropriate notifications
+   */
+  async updateEventStatusBasedOnStaffing(eventId: string): Promise<void> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        status: true,
+        title: true,
+        createdBy: true,
+      },
+    });
+
+    if (!event) return;
+
+    // Don't change status if event is IN_PROGRESS, COMPLETED, or CANCELLED
+    if (
+      event.status === EventStatus.IN_PROGRESS ||
+      event.status === EventStatus.COMPLETED ||
+      event.status === EventStatus.CANCELLED
+    ) {
+      return;
+    }
+
+    const isFullyStaffed = await this.isEventFullyStaffed(eventId);
+    const triggerService = getNotificationTriggerService(this.prisma);
+
+    if (isFullyStaffed && event.status === EventStatus.DRAFT) {
+      // Update status to ASSIGNED
+      await this.prisma.event.update({
+        where: { id: eventId },
+        data: { status: EventStatus.ASSIGNED },
+      });
+
+      // Notify event creator that event is fully staffed
+      await triggerService.onEventFullyStaffed(eventId, {
+        eventTitle: event.title,
+        createdBy: event.createdBy,
+      });
+    } else if (!isFullyStaffed && event.status === EventStatus.ASSIGNED) {
+      // Update status back to DRAFT
+      await this.prisma.event.update({
+        where: { id: eventId },
+        data: { status: EventStatus.DRAFT },
+      });
+
+      // Notify event creator that event needs staff
+      await triggerService.onEventUnderstaffed(eventId, {
+        eventTitle: event.title,
+        createdBy: event.createdBy,
+      });
+    }
   }
 }

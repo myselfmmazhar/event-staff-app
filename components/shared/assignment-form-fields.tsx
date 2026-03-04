@@ -11,8 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { SearchIcon, ChevronDownIcon, PlusIcon } from '@/components/ui/icons';
-import { SkillLevel, RateType, StaffRating } from '@prisma/client';
-import { STAFF_RATING_OPTIONS, RATE_TYPE_OPTIONS } from '@/lib/constants/enums';
+import { SkillLevel, RateType, StaffRating, AmountType } from '@prisma/client';
+import { STAFF_RATING_OPTIONS, RATE_TYPE_OPTIONS, AMOUNT_TYPE_OPTIONS } from '@/lib/constants/enums';
 import { trpc } from '@/lib/client/trpc';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 
@@ -49,7 +49,11 @@ export const assignmentFieldsSchema = z
     billRate: z.coerce.number().min(0, 'Bill rate must be non-negative'),
     billRateType: z.nativeEnum(RateType),
     approveOvertime: z.boolean().default(false),
+    overtimeRate: z.coerce.number().min(0).optional().nullable(),
+    overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
     commission: z.boolean().default(false),
+    commissionAmount: z.coerce.number().min(0).optional().nullable(),
+    commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
     notes: z.string().optional(),
   })
   .refine((data) => data.payRateType === data.billRateType, {
@@ -306,7 +310,7 @@ export function AssignmentFormFields({
             </div>
           </div>
 
-          {/* Experience, Rating, Approve Overtime */}
+          {/* Experience & Rating */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <Label className="text-sm font-medium mb-2 block">Experience</Label>
@@ -358,39 +362,15 @@ export function AssignmentFormFields({
                 )}
               />
             </div>
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Approve Overtime?</Label>
-              <div className="flex items-center gap-4 h-10">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={watch('approveOvertime') === true}
-                    onChange={() => setValue('approveOvertime', true)}
-                    disabled={disabled}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">Yes</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={watch('approveOvertime') === false}
-                    onChange={() => setValue('approveOvertime', false)}
-                    disabled={disabled}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">No</span>
-                </label>
-              </div>
-            </div>
           </div>
+
         </div>
       </div>
 
       {/* Date & Time Section */}
       <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
         <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-          Date & Time
+          Date &amp; Time
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
@@ -530,7 +510,7 @@ export function AssignmentFormFields({
       {/* Cost & Price Section */}
       <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
         <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-          Cost & Price
+          Cost &amp; Price
         </h3>
         <div className="space-y-4">
           {/* Cost, Price, Rate Type in 3 columns */}
@@ -625,7 +605,11 @@ export function AssignmentFormFields({
                   <input
                     type="radio"
                     checked={watch('commission') === false}
-                    onChange={() => setValue('commission', false)}
+                    onChange={() => {
+                      setValue('commission', false);
+                      setValue('commissionAmount', null);
+                      setValue('commissionAmountType', null);
+                    }}
                     disabled={disabled}
                     className="accent-primary"
                   />
@@ -633,6 +617,119 @@ export function AssignmentFormFields({
                 </label>
               </div>
             </div>
+            {watch('commission') && (
+              <>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    {...register('commissionAmount')}
+                    disabled={disabled}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Amount Type</Label>
+                  <Controller
+                    name="commissionAmountType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(val) => field.onChange(val || null)}
+                        disabled={disabled}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AMOUNT_TYPE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Approve Overtime */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Approve Overtime?</Label>
+              <div className="flex items-center gap-4 h-10">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={watch('approveOvertime') === true}
+                    onChange={() => setValue('approveOvertime', true)}
+                    disabled={disabled}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">Yes</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={watch('approveOvertime') === false}
+                    onChange={() => {
+                      setValue('approveOvertime', false);
+                      setValue('overtimeRate', null);
+                      setValue('overtimeRateType', null);
+                    }}
+                    disabled={disabled}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">No</span>
+                </label>
+              </div>
+            </div>
+            {watch('approveOvertime') && (
+              <>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">If Yes, enter rate</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    {...register('overtimeRate')}
+                    disabled={disabled}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
+                  <Controller
+                    name="overtimeRateType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(val) => field.onChange(val || null)}
+                        disabled={disabled}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AMOUNT_TYPE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Hidden field to keep billRateType in sync */}
@@ -681,7 +778,11 @@ export function getDefaultAssignmentValues(today?: string): AssignmentFieldsInpu
     billRate: 0,
     billRateType: RateType.PER_HOUR,
     approveOvertime: false,
+    overtimeRate: null,
+    overtimeRateType: null,
     commission: false,
+    commissionAmount: null,
+    commissionAmountType: null,
     notes: '',
   };
 }

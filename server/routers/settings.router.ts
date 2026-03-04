@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "../trpc";
 import { SettingsService } from "@/services/settings.service";
 import { updateTerminologySchema } from "@/lib/schemas/settings.schema";

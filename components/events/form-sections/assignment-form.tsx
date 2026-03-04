@@ -17,6 +17,7 @@ import {
   EXPERIENCE_REQUIREMENT_OPTIONS,
   STAFF_RATING_OPTIONS,
   RATE_TYPE_OPTIONS,
+  AMOUNT_TYPE_OPTIONS,
 } from '@/lib/constants/enums';
 import { RateType } from '@prisma/client';
 import type {
@@ -35,6 +36,8 @@ interface AssignmentFormProps {
   onSave: (assignment: Assignment, action: AssignmentSaveAction) => void;
   /** Called when form is cancelled */
   onCancel: () => void;
+  /** Called on each form change for live preview (optional) */
+  onLiveChange?: (assignment: Assignment) => void;
   /** Opens modal to create new service */
   onCreateService?: () => void;
   /** Opens modal to create new product */
@@ -48,6 +51,7 @@ export function AssignmentForm({
   defaultType = 'SERVICE',
   onSave,
   onCancel,
+  onLiveChange,
   onCreateService,
   onCreateProduct,
   disabled = false,
@@ -97,6 +101,8 @@ export function AssignmentForm({
         serviceId: assignment.type === 'SERVICE' ? assignment.serviceId : undefined,
         quantity: assignment.quantity,
         commission: assignment.commission,
+        commissionAmount: assignment.commissionAmount ?? null,
+        commissionAmountType: assignment.commissionAmountType ?? null,
         description: assignment.type === 'PRODUCT' ? assignment.description : undefined,
         instructions: assignment.type === 'PRODUCT' ? assignment.instructions : undefined,
         startDate: assignment.type === 'SERVICE' ? assignment.startDate : undefined,
@@ -106,6 +112,8 @@ export function AssignmentForm({
         experienceRequired: assignment.type === 'SERVICE' ? assignment.experienceRequired : 'ANY',
         ratingRequired: assignment.type === 'SERVICE' ? assignment.ratingRequired : 'ANY',
         approveOvertime: assignment.type === 'SERVICE' ? assignment.approveOvertime : false,
+        overtimeRate: assignment.type === 'SERVICE' ? assignment.overtimeRate ?? null : null,
+        overtimeRateType: assignment.type === 'SERVICE' ? assignment.overtimeRateType ?? null : null,
         payRate: assignment.type === 'SERVICE' ? assignment.payRate : null,
         billRate: assignment.type === 'SERVICE' ? assignment.billRate : null,
         rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
@@ -115,9 +123,13 @@ export function AssignmentForm({
         type: defaultType,
         quantity: 1,
         commission: false,
+        commissionAmount: null,
+        commissionAmountType: null,
         experienceRequired: 'ANY',
         ratingRequired: 'ANY',
         approveOvertime: false,
+        overtimeRate: null,
+        overtimeRateType: null,
         payRate: null,
         billRate: null,
         rateType: null,
@@ -140,6 +152,8 @@ export function AssignmentForm({
         serviceId: assignment.type === 'SERVICE' ? assignment.serviceId : undefined,
         quantity: assignment.quantity,
         commission: assignment.commission,
+        commissionAmount: assignment.commissionAmount ?? null,
+        commissionAmountType: assignment.commissionAmountType ?? null,
         description: assignment.type === 'PRODUCT' ? assignment.description : undefined,
         instructions: assignment.type === 'PRODUCT' ? assignment.instructions : undefined,
         startDate: assignment.type === 'SERVICE' ? assignment.startDate : undefined,
@@ -149,6 +163,8 @@ export function AssignmentForm({
         experienceRequired: assignment.type === 'SERVICE' ? assignment.experienceRequired : 'ANY',
         ratingRequired: assignment.type === 'SERVICE' ? assignment.ratingRequired : 'ANY',
         approveOvertime: assignment.type === 'SERVICE' ? assignment.approveOvertime : false,
+        overtimeRate: assignment.type === 'SERVICE' ? assignment.overtimeRate ?? null : null,
+        overtimeRateType: assignment.type === 'SERVICE' ? assignment.overtimeRateType ?? null : null,
         payRate: assignment.type === 'SERVICE' ? assignment.payRate : null,
         billRate: assignment.type === 'SERVICE' ? assignment.billRate : null,
         rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
@@ -260,6 +276,65 @@ export function AssignmentForm({
     }
   }, [assignmentType, startTime, endTimeTBD, setValue]);
 
+  // Live change sync - notify parent of form changes for live preview
+  // Use subscription to avoid infinite re-render loop
+  useEffect(() => {
+    if (!onLiveChange || !assignment) return;
+
+    const subscription = watch((data) => {
+      if (isInitialMount.current) return;
+
+      const id = assignment.id;
+
+      if (data.type === 'PRODUCT') {
+        const liveAssignment: Assignment = {
+          id,
+          type: 'PRODUCT',
+          productId: data.productId!,
+          product: selectedProduct,
+          quantity: data.quantity ?? 1,
+          commission: data.commission ?? false,
+          commissionAmount: data.commissionAmount ?? null,
+          commissionAmountType: data.commissionAmountType ?? null,
+          description: data.description ?? null,
+          instructions: data.instructions ?? null,
+        };
+        onLiveChange(liveAssignment);
+      } else {
+        const liveAssignment: Assignment = {
+          id,
+          type: 'SERVICE',
+          serviceId: data.serviceId!,
+          service: selectedService,
+          quantity: data.quantity ?? 1,
+          commission: data.commission ?? false,
+          commissionAmount: data.commissionAmount ?? null,
+          commissionAmountType: data.commissionAmountType ?? null,
+          startDate: startDateUBD ? null : (data.startDate ?? null),
+          startDateUBD,
+          startTime: startTimeTBD ? null : (data.startTime ?? null),
+          startTimeTBD,
+          endDate: endDateUBD ? null : (data.endDate ?? null),
+          endDateUBD,
+          endTime: endTimeTBD ? null : (data.endTime ?? null),
+          endTimeTBD,
+          experienceRequired: data.experienceRequired || 'ANY',
+          ratingRequired: data.ratingRequired || 'ANY',
+          approveOvertime: data.approveOvertime || false,
+          overtimeRate: data.overtimeRate ?? null,
+          overtimeRateType: data.overtimeRateType ?? null,
+          payRate: data.payRate ?? null,
+          billRate: data.billRate ?? null,
+          rateType: data.rateType ?? null,
+          notes: data.notes ?? null,
+        };
+        onLiveChange(liveAssignment);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch, onLiveChange, assignment, selectedProduct, selectedService, startDateUBD, startTimeTBD, endDateUBD, endTimeTBD]);
+
   // Format price for display
   const formatPrice = (price: number | null) => {
     if (price === null || price === undefined) return '';
@@ -282,6 +357,8 @@ export function AssignmentForm({
           product: selectedProduct,
           quantity: data.quantity,
           commission: data.commission,
+          commissionAmount: data.commissionAmount ?? null,
+          commissionAmountType: data.commissionAmountType ?? null,
           description: data.description ?? null,
           instructions: data.instructions ?? null,
         };
@@ -294,6 +371,8 @@ export function AssignmentForm({
           service: selectedService,
           quantity: data.quantity,
           commission: data.commission,
+          commissionAmount: data.commissionAmount ?? null,
+          commissionAmountType: data.commissionAmountType ?? null,
           startDate: startDateUBD ? null : (data.startDate ?? null),
           startDateUBD,
           startTime: startTimeTBD ? null : (data.startTime ?? null),
@@ -305,6 +384,8 @@ export function AssignmentForm({
           experienceRequired: data.experienceRequired || 'ANY',
           ratingRequired: data.ratingRequired || 'ANY',
           approveOvertime: data.approveOvertime || false,
+          overtimeRate: data.overtimeRate ?? null,
+          overtimeRateType: data.overtimeRateType ?? null,
           payRate: data.payRate ?? null,
           billRate: data.billRate ?? null,
           rateType: data.rateType ?? null,
@@ -316,7 +397,7 @@ export function AssignmentForm({
   };
 
   return (
-    <div className="relative pb-20">
+    <div className="relative">
       {/* Form Content */}
       <div className="space-y-6">
         {/* Assignment Type */}
@@ -756,33 +837,6 @@ export function AssignmentForm({
                   )}
                 />
               </div>
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Approve Overtime?</Label>
-                <div className="flex items-center gap-4 h-10">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="approveOvertime"
-                      checked={watch('approveOvertime') === true}
-                      onChange={() => setValue('approveOvertime', true)}
-                      disabled={disabled}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm">Yes</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="approveOvertime"
-                      checked={watch('approveOvertime') === false}
-                      onChange={() => setValue('approveOvertime', false)}
-                      disabled={disabled}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm">No</span>
-                  </label>
-                </div>
-              </div>
             </div>
 
             {/* Cost, Price, Rate Type */}
@@ -799,7 +853,7 @@ export function AssignmentForm({
                   placeholder="0.00"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Cost paid to staff
+                  Cost paid to Talent
                 </p>
               </div>
               <div>
@@ -848,7 +902,7 @@ export function AssignmentForm({
         )}
 
         {/* Commission - Common for both */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label className="text-sm font-medium mb-2 block">Commission?</Label>
             <div className="flex items-center gap-4 h-10">
@@ -876,7 +930,114 @@ export function AssignmentForm({
               </label>
             </div>
           </div>
+          <div>
+            <Label htmlFor="commissionAmount" className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
+            <Input
+              id="commissionAmount"
+              type="number"
+              step="0.01"
+              min={0}
+              {...register('commissionAmount', { valueAsNumber: true })}
+              disabled={disabled || !watch('commission')}
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Amount Type</Label>
+            <Controller
+              name="commissionAmountType"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value ?? ''}
+                  onValueChange={field.onChange}
+                  disabled={disabled || !watch('commission')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AMOUNT_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
         </div>
+
+        {/* Approve for Overtime - Service only, after Commission */}
+        {assignmentType === 'SERVICE' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Approve for Overtime?</Label>
+              <div className="flex items-center gap-4 h-10">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="approveOvertime"
+                    checked={watch('approveOvertime') === true}
+                    onChange={() => setValue('approveOvertime', true)}
+                    disabled={disabled}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">Yes</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="approveOvertime"
+                    checked={watch('approveOvertime') === false}
+                    onChange={() => setValue('approveOvertime', false)}
+                    disabled={disabled}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">No</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="overtimeRate" className="text-sm font-medium mb-2 block">If Yes, enter rate</Label>
+              <Input
+                id="overtimeRate"
+                type="number"
+                step="0.01"
+                min={0}
+                {...register('overtimeRate', { valueAsNumber: true })}
+                disabled={disabled || !watch('approveOvertime')}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-2 block">OT Type</Label>
+              <Controller
+                name="overtimeRateType"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? ''}
+                    onValueChange={field.onChange}
+                    disabled={disabled || !watch('approveOvertime')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AMOUNT_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Notes - Service only, at end */}
         {assignmentType === 'SERVICE' && (

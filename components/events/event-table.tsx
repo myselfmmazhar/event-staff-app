@@ -12,6 +12,7 @@ import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from '@/lib/constants';
 import { formatDateTime, isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { InvitationSummaryModal } from './invitation-summary-modal';
 
 interface Event {
   id: string;
@@ -38,6 +39,11 @@ interface Event {
       id: string;
       status: CallTimeInvitationStatus;
       isConfirmed: boolean;
+      staff: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      };
     }>;
   }>;
 }
@@ -76,6 +82,9 @@ export function EventTable({
   // Track which rows have expanded assignment columns
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
+  // Track which event's invitation summary modal is open
+  const [summaryEvent, setSummaryEvent] = useState<Event | null>(null);
+
   const toggleRowExpanded = (eventId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setExpandedRows(prev => {
@@ -107,7 +116,7 @@ export function EventTable({
 
     const groups = new Map<
       string,
-      { serviceId: string | null; serviceName: string; required: number; accepted: number; open: number }
+      { serviceId: string | null; serviceName: string; required: number; accepted: number; open: number; invitations: typeof callTimes[0]['invitations'] }
     >();
 
     let totalRequired = 0;
@@ -127,6 +136,7 @@ export function EventTable({
         existing.required += required;
         existing.accepted += accepted;
         existing.open = existing.required - existing.accepted;
+        existing.invitations = [...existing.invitations, ...callTime.invitations];
       } else {
         groups.set(key, {
           serviceId,
@@ -134,6 +144,7 @@ export function EventTable({
           required,
           accepted,
           open: required - accepted,
+          invitations: [...callTime.invitations],
         });
       }
     }
@@ -146,7 +157,13 @@ export function EventTable({
     // Accepted assignments = groups that have any accepted staff
     const acceptedAssignments = allGroups.filter((g) => g.accepted > 0);
 
-    return { openAssignments, acceptedAssignments, totalRequired, totalAccepted };
+    // Invitation stats
+    const allInvitations = callTimes.flatMap((ct) => ct.invitations);
+    const totalSent = allInvitations.length;
+    const totalPending = allInvitations.filter((i) => i.status === 'PENDING').length;
+    const totalDeclined = allInvitations.filter((i) => i.status === 'DECLINED').length;
+
+    return { openAssignments, acceptedAssignments, totalRequired, totalAccepted, totalSent, totalPending, totalDeclined, allGroups };
   };
 
   // Selection handlers
@@ -435,58 +452,34 @@ export function EventTable({
     {
       key: 'progress',
       label: columnLabels.progress,
-      className: 'py-4 px-4 whitespace-nowrap',
+      className: 'py-4 px-4',
       render: (event) => {
-        const { totalRequired, totalAccepted } = getAssignmentSummary(event);
+        const { totalRequired, totalAccepted, totalSent, totalPending, totalDeclined } = getAssignmentSummary(event);
 
         if (totalRequired === 0) {
           return <span className="text-muted-foreground/50 italic">—</span>;
         }
 
-        const percent = Math.round((totalAccepted / totalRequired) * 100);
-
-        let statusLabel: string;
-        let barColor: string;
-        let barBg: string;
-        let textColor: string;
-
-        if (totalAccepted === 0) {
-          statusLabel = 'Open';
-          barColor = 'bg-red-500';
-          barBg = 'bg-gray-200 dark:bg-gray-700';
-          textColor = 'text-red-600 dark:text-red-400';
-        } else if (totalAccepted >= totalRequired) {
-          statusLabel = 'Accepted';
-          barColor = 'bg-green-500';
-          barBg = 'bg-gray-200 dark:bg-gray-700';
-          textColor = 'text-green-600 dark:text-green-400';
-        } else {
-          statusLabel = 'Pending';
-          barColor = 'bg-yellow-500';
-          barBg = 'bg-gray-200 dark:bg-gray-700';
-          textColor = 'text-yellow-600 dark:text-yellow-400';
-        }
-
         return (
           <div
-            className="cursor-pointer hover:opacity-80 transition-opacity min-w-[100px]"
+            className="cursor-pointer hover:opacity-80 transition-opacity"
             onClick={(e) => {
               e.stopPropagation();
-              router.push(`/assignments?eventId=${event.id}`);
+              setSummaryEvent(event);
             }}
-            title={`${statusLabel} — ${totalAccepted} of ${totalRequired} accepted`}
+            title="Click for details"
           >
-            <div className={`text-xs font-medium mb-1 ${textColor}`}>
-              {statusLabel}
-            </div>
-            <div
-              className="w-full h-2 rounded-full overflow-hidden"
-              style={{ backgroundColor: '#e5e7eb' }}
-            >
-              <div
-                className={`h-full rounded-full ${barColor} transition-all duration-300`}
-                style={{ width: `${percent}%` }}
-              />
+            <div className="flex flex-wrap gap-1">
+              {totalAccepted > 0 && (
+                <Badge variant="success" size="sm">{totalAccepted} Accepted</Badge>
+              )}
+              {totalPending > 0 && (
+                <Badge variant="warning" size="sm">{totalPending} Pending</Badge>
+              )}
+              {totalDeclined > 0 && (
+                <Badge variant="danger" size="sm">{totalDeclined} Declined</Badge>
+              )}
+              <Badge variant="default" size="sm">{totalSent} Sent</Badge>
             </div>
           </div>
         );
@@ -582,18 +575,35 @@ export function EventTable({
     </div>
   );
 
+  // Build service groups for the summary modal
+  const summaryServiceGroups = summaryEvent ? getAssignmentSummary(summaryEvent).allGroups.map((g) => ({
+    serviceName: g.serviceName,
+    required: g.required,
+    invitations: g.invitations,
+  })) : [];
+
   return (
-    <DataTable
-      data={events}
-      columns={columns}
-      isLoading={isLoading}
-      sortBy={sortBy}
-      sortOrder={sortOrder}
-      onSort={(field) => onSort(field as SortableField)}
-      emptyMessage={`No ${terminology.event.lowerPlural} found`}
-      emptyDescription="Try adjusting your search or filters"
-      mobileCard={renderMobileCard}
-      getRowKey={(event) => event.id}
-    />
+    <>
+      <DataTable
+        data={events}
+        columns={columns}
+        isLoading={isLoading}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={(field) => onSort(field as SortableField)}
+        emptyMessage={`No ${terminology.event.lowerPlural} found`}
+        emptyDescription="Try adjusting your search or filters"
+        mobileCard={renderMobileCard}
+        getRowKey={(event) => event.id}
+      />
+
+      {/* Invitation Summary Modal */}
+      <InvitationSummaryModal
+        open={!!summaryEvent}
+        onClose={() => setSummaryEvent(null)}
+        eventTitle={summaryEvent?.title ?? ''}
+        serviceGroups={summaryServiceGroups}
+      />
+    </>
   );
 }
