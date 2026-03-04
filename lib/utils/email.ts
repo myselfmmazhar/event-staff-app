@@ -39,7 +39,33 @@ export async function sendEmail(
     }
 
     if (!config) {
-        throw new Error('No SMTP or Mailgun configuration found');
+        // Fallback to environment variables
+        if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+            config = {
+                host: process.env.SMTP_HOST,
+                port: parseInt(process.env.SMTP_PORT || '587'),
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+                from: process.env.EMAIL_FROM || 'noreply@example.com',
+                security: process.env.SMTP_SECURE === 'true' ? 'SSL' : 'TLS'
+            };
+        } else if (process.env.RESEND_API_KEY) {
+            const { Resend } = await import('resend');
+            const resend = new Resend(process.env.RESEND_API_KEY);
+            const from = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+            const { data, error } = await resend.emails.send({
+                from,
+                to,
+                subject,
+                html: content,
+                attachments: attachments?.map(a => ({ filename: a.filename, path: a.path }))
+            });
+
+            if (error) throw new Error(`Resend Error: ${error.message}`);
+            return data;
+        } else {
+            throw new Error('No SMTP or Mailgun configuration found in database OR environment variables');
+        }
     }
 
     // 2. Mailgun API Flow
@@ -49,7 +75,8 @@ export async function sendEmail(
         const b64 = Buffer.from(`api:${apiKey}`).toString('base64');
 
         const formData = new FormData();
-        formData.append('from', `Postmaster <postmaster@${domain}>`);
+        const fromAddress = config.from || `Postmaster <postmaster@${domain}>`;
+        formData.append('from', fromAddress);
         formData.append('to', to);
         formData.append('subject', subject);
         formData.append('html', content);
@@ -57,8 +84,15 @@ export async function sendEmail(
 
         if (attachments && attachments.length > 0) {
             for (const att of attachments) {
-                const fileBuf = fs.readFileSync(att.path);
-                const blob = new Blob([fileBuf]);
+                let fileBuf: Buffer;
+                if (att.path.startsWith('http')) {
+                    const res = await fetch(att.path);
+                    if (!res.ok) throw new Error(`Failed to fetch attachment from ${att.path}`);
+                    fileBuf = Buffer.from(await res.arrayBuffer());
+                } else {
+                    fileBuf = fs.readFileSync(att.path);
+                }
+                const blob = new Blob([new Uint8Array(fileBuf)]);
                 formData.append('attachment', blob, att.filename);
             }
         }
@@ -102,6 +136,14 @@ export async function sendEmail(
         family: 4 // Force IPv4 to avoid ENETUNREACH on IPv6
     } as any);
 
+    // Prepare attachments for Nodemailer (handle URLs)
+    const nodemailerAttachments = attachments ? await Promise.all(attachments.map(async a => {
+        if (a.path.startsWith('http')) {
+            return { filename: a.filename, path: a.path }; // Nodemailer supports URLs directly
+        }
+        return { filename: a.filename, path: a.path };
+    })) : undefined;
+
     // 3. Send mail
     const info = await transporter.sendMail({
         from: config.from || config.user,
@@ -109,7 +151,7 @@ export async function sendEmail(
         subject,
         html: content,
         text: content.replace(/<[^>]*>?/gm, ''),
-        attachments,
+        attachments: nodemailerAttachments,
     });
 
     return info;

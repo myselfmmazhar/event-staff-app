@@ -555,6 +555,7 @@ export class SettingsService {
         apiKey: string;
         workspaceId?: string;
         channelId?: string;
+        from?: string;
         isDefault?: boolean;
     }) {
         if (data.isDefault) {
@@ -575,6 +576,7 @@ export class SettingsService {
         apiKey?: string;
         workspaceId?: string;
         channelId?: string;
+        from?: string;
         isDefault?: boolean;
     }) {
         if (data.isDefault) {

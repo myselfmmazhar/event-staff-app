@@ -11,6 +11,7 @@ interface FileUploadProps {
     maxFiles?: number
     maxSize?: number // in bytes
     accept?: Record<string, string[]>
+    showList?: boolean
 }
 
 export function FileUpload({
@@ -20,17 +21,16 @@ export function FileUpload({
     accept = {
         'image/*': [],
         'application/pdf': [],
-    }
+    },
+    showList = true
 }: FileUploadProps) {
     const [files, setFiles] = React.useState<File[]>([])
 
     const onDrop = React.useCallback((acceptedFiles: File[]) => {
-        setFiles(prev => {
-            const newFiles = [...prev, ...acceptedFiles].slice(0, maxFiles);
-            onFilesChange(newFiles);
-            return newFiles;
-        });
-    }, [maxFiles, onFilesChange])
+        const newFiles = [...files, ...acceptedFiles].slice(0, maxFiles);
+        setFiles(newFiles);
+        onFilesChange(newFiles);
+    }, [files, maxFiles, onFilesChange])
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -40,11 +40,9 @@ export function FileUpload({
     })
 
     const removeFile = (fileToRemove: File) => {
-        setFiles(prev => {
-            const newFiles = prev.filter(f => f !== fileToRemove);
-            onFilesChange(newFiles);
-            return newFiles;
-        });
+        const newFiles = files.filter(f => f !== fileToRemove);
+        setFiles(newFiles);
+        onFilesChange(newFiles);
     }
 
     return (
@@ -65,7 +63,7 @@ export function FileUpload({
                 </p>
             </div>
 
-            {files.length > 0 && (
+            {showList && files.length > 0 && (
                 <div className="grid gap-2">
                     {files.map((file, i) => (
                         <div key={i} className="flex items-center justify-between p-2 border rounded-md bg-background">

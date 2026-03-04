@@ -126,6 +126,7 @@ export default function CommunicationSettingsPage() {
         name: 'Mailgun Sandbox',
         apiKey: '',
         domain: '',
+        from: '',
         isDefault: false
     });
 
@@ -265,6 +266,7 @@ export default function CommunicationSettingsPage() {
                 provider: 'MAILGUN',
                 apiKey: mailgunForm.apiKey,
                 workspaceId: mailgunForm.domain,
+                from: mailgunForm.from,
                 isDefault: mailgunForm.isDefault
             });
         } else {
@@ -273,6 +275,7 @@ export default function CommunicationSettingsPage() {
                 provider: 'MAILGUN',
                 apiKey: mailgunForm.apiKey,
                 workspaceId: mailgunForm.domain,
+                from: mailgunForm.from,
                 isDefault: mailgunForm.isDefault
             });
         }
@@ -284,6 +287,7 @@ export default function CommunicationSettingsPage() {
             name: config.name,
             apiKey: config.apiKey,
             domain: config.workspaceId || '',
+            from: config.from || '',
             isDefault: config.isDefault
         });
         handleFetchDomains(config.apiKey);
@@ -893,32 +897,50 @@ export default function CommunicationSettingsPage() {
                                 </div>
 
                                 {mailgunForm.apiKey && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="mg-domain">Select Domain <span className="text-destructive">*</span></Label>
-                                        <div className="relative">
-                                            <Select
-                                                value={mailgunForm.domain}
-                                                onValueChange={val => setMailgunForm({ ...mailgunForm, domain: val })}
-                                            >
-                                                <SelectTrigger className="h-12 rounded-xl">
-                                                    <SelectValue placeholder={fetchingDomains ? "Fetching..." : "Select Domain"} />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {mailgunDomains.map(d => (
-                                                        <SelectItem key={d} value={d}>{d}</SelectItem>
-                                                    ))}
-                                                    {mailgunDomains.length === 0 && !fetchingDomains && (
-                                                        <div className="p-2 text-xs text-muted-foreground text-center">No domains found</div>
-                                                    )}
-                                                </SelectContent>
-                                            </Select>
-                                            {fetchingDomains && (
-                                                <div className="absolute right-10 top-1/2 -translate-y-1/2">
-                                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                                                </div>
-                                            )}
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="mg-domain">Select Domain <span className="text-destructive">*</span></Label>
+                                            <div className="relative">
+                                                <Select
+                                                    value={mailgunForm.domain}
+                                                    onValueChange={val => setMailgunForm({ ...mailgunForm, domain: val })}
+                                                >
+                                                    <SelectTrigger className="h-12 rounded-xl">
+                                                        <SelectValue placeholder={fetchingDomains ? "Fetching..." : "Select Domain"} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {mailgunDomains.map(d => (
+                                                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                                                        ))}
+                                                        {mailgunDomains.length === 0 && !fetchingDomains && (
+                                                            <div className="p-2 text-xs text-muted-foreground text-center">No domains found</div>
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                                {fetchingDomains && (
+                                                    <div className="absolute right-10 top-1/2 -translate-y-1/2">
+                                                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="mg-from">From Email <span className="text-destructive">*</span></Label>
+                                            <Input
+                                                id="mg-from"
+                                                type="email"
+                                                placeholder="your-email@example.com"
+                                                className="h-12 rounded-xl"
+                                                value={mailgunForm.from}
+                                                onChange={e => setMailgunForm({ ...mailgunForm, from: e.target.value })}
+                                                required
+                                            />
+                                            <p className="text-[10px] text-muted-foreground px-1">
+                                                This email will appear as the sender for outbound messages.
+                                            </p>
+                                        </div>
+                                    </>
                                 )}
 
                                 <div className="flex items-center gap-2 pt-2">

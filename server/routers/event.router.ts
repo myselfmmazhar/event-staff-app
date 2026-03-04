@@ -441,4 +441,54 @@ export const eventRouter = router({
       const eventService = new EventService(ctx.prisma);
       return await eventService.bulkUpdate(input, ctx.userId!);
     }),
+
+  /**
+   * Send Message
+   * Sends an email message and optionally updates event status
+   * Requires: Authentication
+   */
+  sendMessage: protectedProcedure
+    .input(EventSchema.sendMessage)
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+
+      // 1. Update status if provided
+      if (input.statusToUpdate) {
+        await eventService.updateStatus(input.eventId, input.statusToUpdate, ctx.userId!);
+      }
+
+      // 2. Send emails
+      const { sendEmail } = await import('@/lib/utils/email');
+      const results = await Promise.all(
+        input.recipients.map(async (to) => {
+          try {
+            await sendEmail(ctx.prisma, to, input.subject, input.body, undefined, input.attachments);
+            return { email: to, success: true };
+          } catch (error) {
+            console.error(`Failed to send email to ${to}:`, error);
+            return { email: to, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+          }
+        })
+      );
+
+      // 3. Cleanup temporary attachments if they are local
+      if (input.attachments && input.attachments.length > 0) {
+        const fs = await import('fs');
+        input.attachments.forEach(att => {
+          try {
+            // Only delete if it's a local path (starts with D: or / or whatever local format is)
+            // In Windows absolute paths might start with drive letter
+            if (!att.path.startsWith('http')) {
+              if (fs.existsSync(att.path)) {
+                fs.unlinkSync(att.path);
+              }
+            }
+          } catch (err) {
+            console.error('Failed to cleanup attachment:', att.path, err);
+          }
+        });
+      }
+
+      return { results };
+    }),
 });
