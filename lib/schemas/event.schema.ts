@@ -106,6 +106,11 @@ export class EventSchema {
         .min(1, "Address is required")
         .max(300, "Address must be 300 characters or less")
         .transform((val) => val.trim()),
+      addressLine2: z
+        .string()
+        .max(200, "Address Line 2 must be 200 characters or less")
+        .transform((val) => val?.trim())
+        .optional(),
       city: z
         .string()
         .min(1, "City is required")
@@ -310,6 +315,11 @@ export class EventSchema {
         .min(1, "Address is required")
         .max(300, "Address must be 300 characters or less")
         .transform((val) => val.trim())
+        .optional(),
+      addressLine2: z
+        .string()
+        .max(200, "Address Line 2 must be 200 characters or less")
+        .transform((val) => val?.trim())
         .optional(),
       city: z
         .string()

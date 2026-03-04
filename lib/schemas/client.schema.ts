@@ -68,6 +68,11 @@ const baseFields = {
     .max(300, "Business address must be 300 characters or less")
     .transform((val) => val?.trim())
     .optional(),
+  businessAddressLine2: z
+    .string()
+    .max(200, "Address Line 2 must be 200 characters or less")
+    .transform((val) => val?.trim())
+    .optional(),
   city: z
     .string()
     .min(1, "City is required")

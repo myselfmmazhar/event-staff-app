@@ -58,6 +58,7 @@ const formSchema = z.object({
 
   // Business Address
   businessAddress: z.string().max(300).transform(val => val?.trim()).optional(),
+  businessAddressLine2: z.string().max(200).transform(val => val?.trim()).optional(),
   city: z.string().min(1, "City is required").max(100).transform(val => val.trim()),
   state: z.string().min(1, "State is required").max(50).transform(val => val.trim()),
   zipCode: z.string().min(1, "ZIP code is required").max(20).transform(val => val.trim()),
@@ -150,6 +151,7 @@ export function ClientFormModal({
       details: '',
       requirements: '',
       businessAddress: '',
+      businessAddressLine2: '',
       city: '',
       state: '',
       zipCode: '',
@@ -192,6 +194,7 @@ export function ClientFormModal({
         details: client.details || '',
         requirements: client.requirements || '',
         businessAddress: client.businessAddress || '',
+        businessAddressLine2: (client as any).businessAddressLine2 || '',
         city: client.city,
         state: client.state,
         zipCode: client.zipCode,
@@ -218,6 +221,7 @@ export function ClientFormModal({
         details: '',
         requirements: '',
         businessAddress: '',
+        businessAddressLine2: '',
         city: '',
         state: '',
         zipCode: '',
@@ -280,6 +284,7 @@ export function ClientFormModal({
     details: '',
     requirements: '',
     businessAddress: '',
+    businessAddressLine2: '',
     city: '',
     state: '',
     zipCode: '',
@@ -491,18 +496,30 @@ export function ClientFormModal({
                     </p>
                   </div>
 
-                  <div>
-                    <Label htmlFor="businessAddress">Business Address</Label>
-                    <Input
-                      id="businessAddress"
-                      {...register('businessAddress')}
-                      error={!!errors.businessAddress}
-                      disabled={isSubmitting}
-                      placeholder="Business address"
-                    />
-                    {errors.businessAddress && (
-                      <p className="text-sm text-destructive mt-1">{errors.businessAddress.message}</p>
-                    )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="businessAddress">Business Address</Label>
+                      <Input
+                        id="businessAddress"
+                        {...register('businessAddress')}
+                        error={!!errors.businessAddress}
+                        disabled={isSubmitting}
+                        placeholder="Business address"
+                      />
+                      {errors.businessAddress && (
+                        <p className="text-sm text-destructive mt-1">{errors.businessAddress.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="businessAddressLine2">Apt / Suite / Unit</Label>
+                      <Input
+                        id="businessAddressLine2"
+                        {...register('businessAddressLine2')}
+                        disabled={isSubmitting}
+                        placeholder="Suite 200"
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
