@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SkillLevel, RateType, CallTimeInvitationStatus, AmountType } from '@prisma/client';
+import { SkillLevel, RateType, CallTimeInvitationStatus, AmountType, StaffRating, AvailabilityStatus } from '@prisma/client';
 
 // Experience requirement options (matches Prisma ExperienceRequirement enum)
 // Using string literals instead of z.nativeEnum for browser compatibility
@@ -243,6 +243,11 @@ export class CallTimeSchema {
   static staffSearch = z.object({
     callTimeId: z.string().uuid(FieldErrors.callTimeId),
     includeAlreadyInvited: z.boolean().default(false),
+    // Filters
+    maxDistance: z.number().positive().optional(),
+    skillLevels: z.array(z.nativeEnum(SkillLevel)).optional(),
+    ratings: z.array(z.nativeEnum(StaffRating)).optional(),
+    availabilityStatuses: z.array(z.nativeEnum(AvailabilityStatus)).optional(),
     page: z.number().int().min(1).default(1).optional(),
     limit: z.number().int().min(1).max(100).default(20).optional(),
   });
