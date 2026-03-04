@@ -45,6 +45,7 @@ const getDefaultFormValues = () => ({
     email: '',
     phone: '',
     streetAddress: '',
+    aptSuiteUnit: '',
     city: '',
     state: '',
     zipCode: '',
@@ -65,6 +66,7 @@ const getDefaultFormValues = () => ({
     teamEmail: '',
     teamPhone: '',
     teamAddressLine1: '',
+    teamAddressLine2: '',
     teamCity: '',
     teamState: '',
     teamZipCode: '',
@@ -80,6 +82,7 @@ const getFormValuesFromStaff = (staff: StaffWithRelations) => ({
     email: staff.email,
     phone: staff.phone || '',
     streetAddress: staff.streetAddress || '',
+    aptSuiteUnit: staff.aptSuiteUnit || '',
     city: staff.city || '',
     state: staff.state || '',
     zipCode: staff.zipCode || '',
@@ -100,6 +103,7 @@ const getFormValuesFromStaff = (staff: StaffWithRelations) => ({
     teamEmail: staff.teamEmail || '',
     teamPhone: staff.teamPhone || '',
     teamAddressLine1: staff.teamAddressLine1 || '',
+    teamAddressLine2: staff.teamAddressLine2 || '',
     teamCity: staff.teamCity || '',
     teamState: staff.teamState || '',
     teamZipCode: staff.teamZipCode || '',
@@ -126,6 +130,7 @@ interface StaffFormContentProps {
     onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => void;
     isSubmitting: boolean;
     onViewDetails?: () => void;
+    onCreateService?: () => void;
     services: ServiceOption[];
     companies: CompanyOption[];
     terminology: { staff: { singular: string; plural: string; lower: string } };
@@ -137,6 +142,7 @@ function StaffFormContent({
     onSubmit,
     isSubmitting,
     onViewDetails,
+    onCreateService,
     services,
     companies,
     terminology,
@@ -294,6 +300,7 @@ function StaffFormContent({
                     services={filteredServices}
                     serviceSearch={serviceSearch}
                     onServiceSearchChange={setServiceSearch}
+                    onCreateService={onCreateService}
                     className="mb-6"
                 />
 
@@ -418,6 +425,7 @@ export function StaffFormModal({
                     onSubmit={onSubmit}
                     isSubmitting={isSubmitting}
                     onViewDetails={onViewDetails}
+                    onCreateService={() => setShowCreateService(true)}
                     services={services}
                     companies={companies}
                     terminology={terminology}

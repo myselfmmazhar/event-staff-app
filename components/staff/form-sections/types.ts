@@ -86,6 +86,7 @@ export interface ServiceDetailsSectionProps extends StaffFormSectionProps {
   services: ServiceOption[];
   serviceSearch: string;
   onServiceSearchChange: (value: string) => void;
+  onCreateService?: () => void;
 }
 
 /**
@@ -128,4 +129,4 @@ export interface TeamMembersSectionProps {
 /**
  * Props for DocumentsSection
  */
-export interface DocumentsSectionProps extends StaffFormSectionProps {}
+export interface DocumentsSectionProps extends StaffFormSectionProps { }

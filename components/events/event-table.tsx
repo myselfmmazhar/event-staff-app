@@ -343,7 +343,6 @@ export function EventTable({
         return (
           <div className="flex flex-wrap gap-1">
             {visible.map((item, idx) => {
-              const line = `${item.serviceName}: ${item.open} of ${item.required}`;
               const url = item.serviceId
                 ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
                 : `/assignments?eventId=${event.id}`;
@@ -353,14 +352,17 @@ export function EventTable({
                   variant="warning"
                   size="sm"
                   asSpan
-                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                  className="cursor-pointer hover:opacity-80 transition-opacity min-w-[120px] text-center"
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     router.push(url);
                   }}
-                  title={`${line} - Click to view`}
+                  title={`${item.serviceName}: ${item.open} of ${item.required} - Click to view`}
                 >
-                  {line}
+                  <span className="flex flex-col items-center leading-tight">
+                    <span>{item.serviceName}</span>
+                    <span className="text-xs opacity-80">{item.open} of {item.required}</span>
+                  </span>
                 </Badge>
               );
             })}
@@ -405,7 +407,6 @@ export function EventTable({
         return (
           <div className="flex flex-wrap gap-1">
             {visible.map((item, idx) => {
-              const line = `${item.serviceName}: ${item.accepted} of ${item.required}`;
               const url = item.serviceId
                 ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
                 : `/assignments?eventId=${event.id}`;
@@ -415,14 +416,17 @@ export function EventTable({
                   variant="success"
                   size="sm"
                   asSpan
-                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                  className="cursor-pointer hover:opacity-80 transition-opacity min-w-[120px] text-center"
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     router.push(url);
                   }}
-                  title={`${line} - Click to view`}
+                  title={`${item.serviceName}: ${item.accepted} of ${item.required} - Click to view`}
                 >
-                  {line}
+                  <span className="flex flex-col items-center leading-tight">
+                    <span>{item.serviceName}</span>
+                    <span className="text-xs opacity-80">{item.accepted} of {item.required}</span>
+                  </span>
                 </Badge>
               );
             })}

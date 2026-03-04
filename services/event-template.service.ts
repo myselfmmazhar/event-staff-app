@@ -20,6 +20,7 @@ export interface UpdateEventTemplateServiceInput {
   clientId?: string | null;
   venueName?: string | null;
   address?: string | null;
+  addressLine2?: string | null;
   city?: string | null;
   state?: string | null;
   zipCode?: string | null;
@@ -59,6 +60,7 @@ const eventTemplateSelect = {
   clientId: true,
   venueName: true,
   address: true,
+  addressLine2: true,
   city: true,
   state: true,
   zipCode: true,
@@ -139,6 +141,7 @@ export class EventTemplateService {
         clientId: data.clientId && data.clientId !== "" ? data.clientId : null,
         venueName: data.venueName?.trim() || null,
         address: data.address?.trim() || null,
+        addressLine2: data.addressLine2?.trim() || null,
         city: data.city?.trim() || null,
         state: data.state?.trim() || null,
         zipCode: data.zipCode?.trim() || null,
@@ -312,6 +315,8 @@ export class EventTemplateService {
         updateData.venueName = data.venueName?.trim() || null;
       if (data.address !== undefined)
         updateData.address = data.address?.trim() || null;
+      if ((data as any).addressLine2 !== undefined)
+        updateData.addressLine2 = (data as any).addressLine2?.trim() || null;
       if (data.city !== undefined) updateData.city = data.city?.trim() || null;
       if (data.state !== undefined)
         updateData.state = data.state?.trim() || null;
@@ -493,6 +498,7 @@ export class EventTemplateService {
       clientId: data.clientId && data.clientId !== "" ? data.clientId : null,
       venueName: data.venueName?.trim() || null,
       address: data.address?.trim() || null,
+      addressLine2: data.addressLine2?.trim() || null,
       city: data.city?.trim() || null,
       state: data.state?.trim() || null,
       zipCode: data.zipCode?.trim() || null,
