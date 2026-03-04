@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EditIcon, ArchiveBoxIcon, UsersIcon, ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
+import { EditIcon, ArchiveBoxIcon, UsersIcon, ChevronDownIcon, ChevronUpIcon, ChatBubbleLeftRightIcon } from '@/components/ui/icons';
 import { CallTimeInvitationStatus, EventStatus } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
@@ -51,6 +51,7 @@ interface EventTableProps {
   sortOrder?: 'asc' | 'desc';
   onEdit: (event: Event) => void;
   onArchive: (event: Event) => void;
+  onMessage: (event: Event) => void;
   onSort: (field: SortableField) => void;
   // Optional selection props
   selectedIds?: Set<string>;
@@ -64,6 +65,7 @@ export function EventTable({
   sortOrder = 'desc',
   onEdit,
   onArchive,
+  onMessage,
   onSort,
   selectedIds,
   onSelectionChange,
@@ -207,6 +209,15 @@ export function EventTable({
       headerClassName: 'text-left py-3 px-4',
       render: (event) => (
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-0"
+            onClick={() => onMessage(event)}
+            title="Send Message"
+          >
+            <ChatBubbleLeftRightIcon className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -540,6 +551,15 @@ export function EventTable({
         >
           <UsersIcon className="h-4 w-4 mr-1" />
           Staff
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onMessage(event)}
+          className="flex-1"
+        >
+          <ChatBubbleLeftRightIcon className="h-4 w-4 mr-1" />
+          Message
         </Button>
         <Button
           variant="outline"

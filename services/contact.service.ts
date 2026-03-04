@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma, UserRole } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { generateContactId } from "@/lib/utils/id-generator";
 import type { CreateContactInput, UpdateContactInput, QueryContactsInput } from "@/lib/schemas/contact.schema";
@@ -120,8 +120,57 @@ export class ContactService {
                 updatedAt: c.updatedAt,
             }));
             total = count;
+        } else if (filterType === 'TEAM') {
+            const where: Prisma.UserWhereInput = {};
+            if (query.search) {
+                const searchObj = { contains: query.search, mode: "insensitive" as const };
+                where.OR = [
+                    { firstName: searchObj },
+                    { lastName: searchObj },
+                    { email: searchObj },
+                    { phone: searchObj },
+                ];
+            }
 
-            // Mode 2: Staff Manager ONLY
+            const teamRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'];
+            const [users, count] = await Promise.all([
+                this.prisma.user.findMany({
+                    where: {
+                        ...where,
+                        isActive: true,
+                        role: { in: teamRoles }
+                    },
+                    take: limit,
+                    skip,
+                    orderBy: { [sortBy === 'firstName' || sortBy === 'lastName' || sortBy === 'email' ? sortBy : 'createdAt']: sortOrder },
+                }),
+                this.prisma.user.count({
+                    where: {
+                        ...where,
+                        isActive: true,
+                        role: { in: teamRoles }
+                    }
+                }),
+            ]);
+
+            data = users.map(u => ({
+                id: u.id,
+                contactId: u.id.substring(0, 8).toUpperCase(),
+                firstName: u.firstName,
+                lastName: u.lastName,
+                email: u.email,
+                phone: u.phone || 'N/A',
+                dateOfBirth: null,
+                transactionType: u.role,
+                ricsSurveyAccount: false,
+                correspondingAddress: 'Internal Team',
+                contactSource: 'User Management',
+                contactType: 'TEAM',
+                createdBy: 'SYSTEM',
+                createdAt: u.createdAt,
+                updatedAt: u.updatedAt,
+            }));
+            total = count;
         } else if (filterType === 'STAFF') {
             const where: Prisma.StaffWhereInput = {};
             if (createdByUserId) where.createdBy = createdByUserId;
@@ -161,11 +210,10 @@ export class ContactService {
                 updatedAt: s.updatedAt,
             }));
             total = count;
-
-            // Mode 3: Combined View (ALL) or Fallback
         } else {
             const clientWhere: Prisma.ClientWhereInput = {};
             const staffWhere: Prisma.StaffWhereInput = {};
+            const userWhere: Prisma.UserWhereInput = {};
 
             if (createdByUserId) {
                 clientWhere.createdBy = createdByUserId;
@@ -176,13 +224,31 @@ export class ContactService {
                 const searchObj = { contains: query.search, mode: "insensitive" as const };
                 clientWhere.OR = [{ firstName: searchObj }, { lastName: searchObj }, { email: searchObj }, { businessName: searchObj }];
                 staffWhere.OR = [{ firstName: searchObj }, { lastName: searchObj }, { email: searchObj }];
+                userWhere.OR = [{ firstName: searchObj }, { lastName: searchObj }, { email: searchObj }, { phone: searchObj }];
             }
 
-            const [clients, staff, cCount, sCount] = await Promise.all([
+            const teamRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'];
+            const [clients, staff, users, cCount, sCount, uCount] = await Promise.all([
                 this.prisma.client.findMany({ where: clientWhere, take: limit, orderBy: { createdAt: 'desc' } }),
                 this.prisma.staff.findMany({ where: staffWhere, take: limit, orderBy: { createdAt: 'desc' } }),
+                this.prisma.user.findMany({
+                    where: {
+                        ...userWhere,
+                        isActive: true,
+                        role: { in: teamRoles }
+                    },
+                    take: limit,
+                    orderBy: { createdAt: 'desc' }
+                }),
                 this.prisma.client.count({ where: clientWhere }),
                 this.prisma.staff.count({ where: staffWhere }),
+                this.prisma.user.count({
+                    where: {
+                        ...userWhere,
+                        isActive: true,
+                        role: { in: teamRoles }
+                    }
+                }),
             ]);
 
             const merged = [
@@ -207,16 +273,29 @@ export class ContactService {
                     email: s.email,
                     phone: s.phone,
                     transactionType: 'STAFF',
-                    correspondingAddress: 'Staff',
+                    correspondingAddress: 'Talent',
                     contactSource: 'Staff Manager',
                     contactType: 'STAFF',
                     createdAt: s.createdAt,
+                })),
+                ...users.map(u => ({
+                    id: u.id,
+                    contactId: u.id.substring(0, 8).toUpperCase(),
+                    firstName: u.firstName,
+                    lastName: u.lastName,
+                    email: u.email,
+                    phone: u.phone || 'N/A',
+                    transactionType: u.role,
+                    correspondingAddress: 'Team',
+                    contactSource: 'Internal',
+                    contactType: 'TEAM',
+                    createdAt: u.createdAt,
                 }))
             ];
 
             // Sort merged by createdAt desc
             data = merged.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
-            total = cCount + sCount;
+            total = cCount + sCount + uCount;
         }
 
         return {

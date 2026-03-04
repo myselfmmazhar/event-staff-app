@@ -16,6 +16,7 @@ import { EventFormModal } from '@/components/events/event-form-modal';
 import { EventSearch } from '@/components/events/event-search';
 import { EventTable } from '@/components/events/event-table';
 import { PageLabelsModal } from '@/components/common/page-labels-modal';
+import { TaskMessageModal } from '@/components/events/task-message-modal';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -124,6 +125,8 @@ export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
   const [selectedViewEventId, setSelectedViewEventId] = useState<string | null>(null);
   const [archiveTargets, setArchiveTargets] = useState<Array<{ id: string; title: string; eventId: string }>>([]);
+  const [isMessageOpen, setIsMessageOpen] = useState(false);
+  const [messageTarget, setMessageTarget] = useState<EventListItem | null>(null);
 
   // Bulk edit modal state
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
@@ -377,6 +380,14 @@ export default function EventsPage() {
     const eventDetails = getEventDetails(event.id);
     if (eventDetails) {
       handleArchiveEvent(eventDetails);
+    }
+  };
+
+  const handleMessageEventFromTable = (event: EventTableEvent) => {
+    const eventDetails = getEventDetails(event.id);
+    if (eventDetails) {
+      setMessageTarget(eventDetails);
+      setIsMessageOpen(true);
     }
   };
 
@@ -697,6 +708,7 @@ export default function EventsPage() {
               sortOrder={filters.sortOrder}
               onEdit={handleEditEventFromTable}
               onArchive={handleArchiveEventFromTable}
+              onMessage={handleMessageEventFromTable}
               onSort={handleSort}
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
@@ -814,6 +826,16 @@ export default function EventsPage() {
         onClose={() => setIsBulkEditOpen(false)}
         onSubmit={handleBulkEditSubmit}
         isSubmitting={bulkUpdateMutation.isPending}
+      />
+
+      {/* Task Message Modal */}
+      <TaskMessageModal
+        event={messageTarget}
+        open={isMessageOpen}
+        onClose={() => {
+          setIsMessageOpen(false);
+          setMessageTarget(null);
+        }}
       />
     </div>
   );

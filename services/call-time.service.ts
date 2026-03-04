@@ -64,7 +64,7 @@ export class CallTimeService {
 
     const callTimeId = await generateCallTimeId(this.prisma);
 
-    return await this.prisma.callTime.create({
+    const result = await this.prisma.callTime.create({
       data: {
         callTimeId,
         serviceId: data.serviceId,
@@ -83,10 +83,52 @@ export class CallTimeService {
       },
       include: {
         service: true,
-        event: { select: { id: true, eventId: true, title: true } },
+        event: { select: { id: true, eventId: true, title: true, venueName: true, city: true, state: true } },
         _count: { select: { invitations: true } },
       },
     });
+
+    // Notify internal team members (Admins/Managers) about the new task
+    try {
+      console.log('Task created with ID:', result.callTimeId);
+      const { emailService } = await import('@/services/email.service');
+      const teamMembers = await this.prisma.user.findMany({
+        where: {
+          role: { in: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'] },
+          isActive: true,
+        },
+        select: { email: true, firstName: true },
+      });
+
+      console.log(`Found ${teamMembers.length} team members to notify.`);
+
+      for (const member of teamMembers) {
+        if (member.email) {
+          console.log(`Sending email to ${member.email}...`);
+          const emailResult = await emailService.sendCallTimeInvitation(
+            member.email,
+            member.firstName || 'Team Member',
+            {
+              positionName: result.service?.title || 'Staff',
+              eventTitle: result.event.title,
+              eventVenue: result.event.venueName || 'To Be Announced',
+              eventLocation: `${result.event.city || ''}, ${result.event.state || ''}`.trim() || 'TBD',
+              startDate: result.startDate,
+              startTime: result.startTime,
+              endDate: result.endDate,
+              endTime: result.endTime,
+              payRate: Number(result.payRate),
+              payRateType: result.payRateType,
+            }
+          );
+          console.log(`Email result for ${member.email}:`, emailResult);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to send task creation emails to team:', error);
+    }
+
+    return result;
   }
 
   /**
