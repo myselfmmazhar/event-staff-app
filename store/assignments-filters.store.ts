@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type AssignmentTab = 'all' | 'accepted' | 'open';
+export type AssignmentTab = 'all' | 'accepted' | 'open' | 'pending';
 export type AssignmentSortBy = 'startDate' | 'position' | 'event';
 export type SortOrder = 'asc' | 'desc';
 export type QuickFilter = 'all' | 'needsStaff' | 'filled' | 'today' | 'thisWeek';

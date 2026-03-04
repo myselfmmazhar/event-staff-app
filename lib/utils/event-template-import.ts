@@ -398,6 +398,7 @@ export function mapRowToCreateInput(
     clientId: clientId || undefined,
     venueName: nullToUndefined(row.venueName),
     address: nullToUndefined(row.address),
+    addressLine2: undefined,
     city: nullToUndefined(row.city),
     state: nullToUndefined(row.state),
     zipCode: nullToUndefined(row.zipCode),

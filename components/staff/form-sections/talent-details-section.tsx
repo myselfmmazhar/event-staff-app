@@ -98,6 +98,8 @@ export function TalentDetailsSection({
               setValue('city', addressData.city);
               setValue('state', addressData.state);
               setValue('zipCode', addressData.zipCode);
+              setValue('latitude', addressData.latitude);
+              setValue('longitude', addressData.longitude);
             }}
           />
           <p className="text-xs text-muted-foreground mt-2">
@@ -105,20 +107,34 @@ export function TalentDetailsSection({
           </p>
         </div>
 
-        <div>
-          <Label htmlFor="streetAddress">
-            Address
-          </Label>
-          <Input
-            id="streetAddress"
-            {...register('streetAddress')}
-            disabled={disabled}
-            error={!!errors.streetAddress}
-            placeholder="123 Main Street"
-          />
-          {errors.streetAddress && (
-            <p className="text-sm text-destructive mt-1">{String(errors.streetAddress?.message || "")}</p>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="streetAddress">
+              Address
+            </Label>
+            <Input
+              id="streetAddress"
+              {...register('streetAddress')}
+              disabled={disabled}
+              error={!!errors.streetAddress}
+              placeholder="123 Main Street"
+            />
+            {errors.streetAddress && (
+              <p className="text-sm text-destructive mt-1">{String(errors.streetAddress?.message || "")}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="aptSuiteUnit">
+              Apt / Suite / Unit
+            </Label>
+            <Input
+              id="aptSuiteUnit"
+              {...register('aptSuiteUnit')}
+              disabled={disabled}
+              placeholder="Suite 200"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

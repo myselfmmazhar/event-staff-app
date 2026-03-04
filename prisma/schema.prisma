@@ -104,6 +104,7 @@ model Client {
 
   // Business address (renamed from streetAddress, now optional)
   businessAddress                String?
+  businessAddressLine2           String?
   city                           String
   state                          String
   zipCode                        String
@@ -196,6 +197,7 @@ model Event {
   privateComments String?
   venueName       String
   address         String
+  addressLine2    String?
   city            String
   state           String
   zipCode         String
@@ -274,6 +276,7 @@ model EventTemplate {
   // Venue fields
   venueName        String?   @db.VarChar(200)
   address          String?   @db.VarChar(300)
+  addressLine2     String?   @db.VarChar(200)
   city             String?   @db.VarChar(100)
   state            String?   @db.VarChar(50)
   zipCode          String?   @db.VarChar(20)
@@ -582,6 +585,9 @@ model Staff {
   createdBy                    String
   createdAt                    DateTime                     @default(now()) @db.Timestamp(6)
   updatedAt                    DateTime                     @updatedAt @db.Timestamp(6)
+  geocodedAt                   DateTime?                    @db.Timestamp(6)
+  latitude                     Float?
+  longitude                    Float?
 
   // Custom fields
   customField1                 String?
