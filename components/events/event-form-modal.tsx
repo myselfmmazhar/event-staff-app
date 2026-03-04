@@ -52,6 +52,7 @@ const editFormSchema = z.object({
   clientId: z.string().optional(),
   venueName: z.string().min(1, "Venue name is required").max(200).transform(val => val.trim()),
   address: z.string().min(1, "Address is required").max(300).transform(val => val.trim()),
+  addressLine2: z.string().max(200).transform(val => val?.trim()).optional(),
   city: z.string().min(1, "City is required").max(100).transform(val => val.trim()),
   state: z.string().min(1, "State is required").max(50).transform(val => val.trim()),
   zipCode: z.string().min(1, "ZIP code is required").max(20).transform(val => val.trim()),
@@ -133,6 +134,7 @@ interface Event {
   clientId?: string | null;
   venueName: string;
   address: string;
+  addressLine2?: string | null;
   city: string;
   state: string;
   zipCode: string;
@@ -329,6 +331,7 @@ export function EventFormModal({
       clientId: '',
       venueName: '',
       address: '',
+      addressLine2: '',
       city: '',
       state: '',
       zipCode: '',
@@ -384,6 +387,7 @@ export function EventFormModal({
         clientId: event.clientId || '',
         venueName: event.venueName,
         address: event.address,
+        addressLine2: (event as any).addressLine2 || '',
         city: event.city,
         state: event.state,
         zipCode: event.zipCode,
@@ -473,6 +477,7 @@ export function EventFormModal({
         clientId: template.clientId || '',
         venueName: template.venueName || '',
         address: template.address || '',
+        addressLine2: (template as any).addressLine2 || '',
         city: template.city || '',
         state: template.state || '',
         zipCode: template.zipCode || '',

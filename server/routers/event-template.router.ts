@@ -17,6 +17,7 @@ function normalizeTemplate(template: BulkImportInput["templates"][number]): Crea
     clientId: template.clientId ?? undefined,
     venueName: template.venueName ?? undefined,
     address: template.address ?? undefined,
+    addressLine2: (template as any).addressLine2 ?? undefined,
     city: template.city ?? undefined,
     state: template.state ?? undefined,
     zipCode: template.zipCode ?? undefined,

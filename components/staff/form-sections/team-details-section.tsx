@@ -87,20 +87,34 @@ export function TeamDetailsSection({
           </p>
         </div>
 
-        <div>
-          <Label htmlFor="teamAddressLine1" required>
-            Team Address
-          </Label>
-          <Input
-            id="teamAddressLine1"
-            {...register('teamAddressLine1')}
-            disabled={disabled}
-            error={!!errors.teamAddressLine1}
-            placeholder="123 Main Street"
-          />
-          {errors.teamAddressLine1 && (
-            <p className="text-sm text-destructive mt-1">{String(errors.teamAddressLine1?.message || "")}</p>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="teamAddressLine1" required>
+              Team Address
+            </Label>
+            <Input
+              id="teamAddressLine1"
+              {...register('teamAddressLine1')}
+              disabled={disabled}
+              error={!!errors.teamAddressLine1}
+              placeholder="123 Main Street"
+            />
+            {errors.teamAddressLine1 && (
+              <p className="text-sm text-destructive mt-1">{String(errors.teamAddressLine1?.message || "")}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="teamAddressLine2">
+              Apt / Suite / Unit
+            </Label>
+            <Input
+              id="teamAddressLine2"
+              {...register('teamAddressLine2')}
+              disabled={disabled}
+              placeholder="Suite 200"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
