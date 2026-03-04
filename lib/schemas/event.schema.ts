@@ -592,7 +592,7 @@ export class EventSchema {
    */
   static sendMessage = z.object({
     eventId: z.string().uuid("Invalid event ID"),
-    recipients: z.array(z.string().email("Invalid email address")).min(1, "At least one recipient is required"),
+    recipients: z.array(z.string()).min(1, "At least one recipient is required"),
     subject: z.string().min(1, "Subject is required"),
     body: z.string().min(1, "Message body is required"),
     attachments: z.array(z.object({ filename: z.string(), path: z.string() })).optional(),

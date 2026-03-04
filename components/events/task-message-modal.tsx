@@ -13,7 +13,24 @@ import { SendIcon, XIcon, PaperclipIcon, SpinnerIcon } from '@/components/ui/ico
 import { FileUpload } from '@/components/ui/file-upload';
 
 interface TaskMessageModalProps {
-    event: { id: string; title: string; client?: { businessName: string } | null } | null;
+    event: {
+        id: string;
+        title: string;
+        client?: { businessName: string } | null;
+        callTimes?: Array<{
+            invitations: Array<{
+                status: string;
+                isConfirmed: boolean;
+                staff: {
+                    id: string;
+                    firstName: string;
+                    lastName: string;
+                    email: string;
+                    phone: string | null;
+                }
+            }>
+        }>
+    } | null;
     open: boolean;
     onClose: () => void;
 }
@@ -28,6 +45,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
     const [subject, setSubject] = useState('');
     const [body, setBody] = useState('');
     const [selectedStatus, setSelectedStatus] = useState<EventStatus | null>(null);
+    const [commMethod, setCommMethod] = useState<'EMAIL' | 'SMS' | 'WHATSAPP'>('EMAIL');
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -67,6 +85,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
             setRecipients('');
             setSelectedStatus(null);
             setAttachments([]);
+            setCommMethod('EMAIL');
         }
     }, [event, open]);
 
@@ -162,6 +181,29 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                 break;
         }
 
+        if (event.callTimes) {
+            const allInvitations = event.callTimes.flatMap((ct) => ct.invitations);
+            let matchedStaff = [];
+
+            if (type === 'ACCEPTED') {
+                matchedStaff = allInvitations.filter(i => i.status === 'ACCEPTED').map(i => i.staff);
+            } else if (type === 'REJECTED') {
+                matchedStaff = allInvitations.filter(i => i.status === 'DECLINED' || i.status === 'REJECTED').map(i => i.staff);
+            } else if (type === 'COMPLETED') {
+                matchedStaff = allInvitations.map(i => i.staff);
+            }
+
+            const uniqueStaff = Array.from(new Map(matchedStaff.map(s => [s.id, s])).values());
+
+            if (commMethod === 'EMAIL') {
+                const emails = uniqueStaff.map(s => s.email).filter(Boolean);
+                setRecipients(emails.join(', '));
+            } else {
+                const phones = uniqueStaff.map(s => s.phone).filter(Boolean);
+                setRecipients(phones.join(', '));
+            }
+        }
+
         setSubject(newSubject);
         setBody(newBody);
         setSelectedStatus(status);
@@ -176,7 +218,37 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
             <DialogContent className="sm:max-w-[500px]">
                 <div className="space-y-6 py-4">
                     <div className="space-y-2">
-                        <Label className="text-sm font-semibold">1. Select Template & Action</Label>
+                        <Label className="text-sm font-semibold">1. Select Communication Method</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <Button
+                                size="sm"
+                                variant={commMethod === 'SMS' ? "default" : "outline"}
+                                onClick={() => setCommMethod('SMS')}
+                                className={`flex-1 ${commMethod === 'SMS' ? 'bg-primary' : ''}`}
+                            >
+                                SMS
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant={commMethod === 'WHATSAPP' ? "default" : "outline"}
+                                onClick={() => setCommMethod('WHATSAPP')}
+                                className={`flex-1 ${commMethod === 'WHATSAPP' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-green-700 border-green-200 hover:bg-green-50'}`}
+                            >
+                                WhatsApp
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant={commMethod === 'EMAIL' ? "default" : "outline"}
+                                onClick={() => setCommMethod('EMAIL')}
+                                className={`flex-1 ${commMethod === 'EMAIL' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-blue-700 border-blue-200 hover:bg-blue-50'}`}
+                            >
+                                Email
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-sm font-semibold">2. Select Template & Action</Label>
                         <div className="grid grid-cols-3 gap-2">
                             <Button
                                 size="sm"
@@ -206,17 +278,17 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-sm font-semibold">2. Recipients</Label>
+                        <Label className="text-sm font-semibold">3. Recipients</Label>
                         <Input
-                            placeholder="email1@example.com, email2@example.com"
+                            placeholder={commMethod === 'EMAIL' ? "email1@example.com, email2@example.com" : "+1234567890, +0987654321"}
                             value={recipients}
                             onChange={(e) => setRecipients(e.target.value)}
                         />
-                        <p className="text-[10px] text-muted-foreground">Separate multiple emails with commas.</p>
+                        <p className="text-[10px] text-muted-foreground">Separate multiple recipients with commas.</p>
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-sm font-semibold">3. Message Content</Label>
+                        <Label className="text-sm font-semibold">4. Message Content</Label>
                         <div className="space-y-2">
                             <Input
                                 placeholder="Subject"
@@ -234,7 +306,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
 
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                            <Label className="text-sm font-semibold">4. Attachments ({attachments.length})</Label>
+                            <Label className="text-sm font-semibold">5. Attachments ({attachments.length})</Label>
                             {isUploading && <SpinnerIcon className="h-4 w-4 animate-spin text-primary" />}
                         </div>
 

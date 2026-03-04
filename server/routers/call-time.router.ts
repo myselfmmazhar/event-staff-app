@@ -155,11 +155,69 @@ export const callTimeRouter = router({
       const service = new CallTimeService(ctx.prisma);
       const result = await service.respondToInvitation(input, ctx.userId!);
 
-      // Send confirmation or waitlist email
+      // Send confirmation email when staff is confirmed (slot available)
       if (result.status === 'ACCEPTED' && result.isConfirmed) {
-        // Send confirmation email (to be implemented)
+        try {
+          // Fetch staff email (not included in respondToInvitation return)
+          const staffRecord = await ctx.prisma.callTimeInvitation.findUnique({
+            where: { id: input.invitationId },
+            include: {
+              staff: { select: { email: true, firstName: true } },
+              callTime: {
+                include: {
+                  service: { select: { title: true } },
+                  event: { select: { title: true, venueName: true, city: true, state: true } },
+                },
+              },
+            },
+          });
+
+          if (staffRecord) {
+            await emailService.sendCallTimeConfirmation(
+              staffRecord.staff.email,
+              staffRecord.staff.firstName,
+              {
+                positionName: staffRecord.callTime.service?.title || 'Service',
+                eventTitle: staffRecord.callTime.event.title,
+                eventVenue: staffRecord.callTime.event.venueName,
+                eventLocation: `${staffRecord.callTime.event.city}, ${staffRecord.callTime.event.state}`,
+                startDate: staffRecord.callTime.startDate,
+                startTime: staffRecord.callTime.startTime,
+              }
+            );
+          }
+        } catch (error) {
+          console.error('Failed to send confirmation email:', error);
+          // Non-fatal — don't throw, just log
+        }
       } else if (result.status === 'WAITLISTED') {
-        // Send waitlist email (to be implemented)
+        try {
+          const staffRecord = await ctx.prisma.callTimeInvitation.findUnique({
+            where: { id: input.invitationId },
+            include: {
+              staff: { select: { email: true, firstName: true } },
+              callTime: {
+                include: {
+                  service: { select: { title: true } },
+                  event: { select: { title: true } },
+                },
+              },
+            },
+          });
+
+          if (staffRecord) {
+            await emailService.sendCallTimeWaitlisted(
+              staffRecord.staff.email,
+              staffRecord.staff.firstName,
+              {
+                positionName: staffRecord.callTime.service?.title || 'Service',
+                eventTitle: staffRecord.callTime.event.title,
+              }
+            );
+          }
+        } catch (error) {
+          console.error('Failed to send waitlist email:', error);
+        }
       }
 
       return result;
