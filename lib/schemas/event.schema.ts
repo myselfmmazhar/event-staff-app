@@ -612,6 +612,18 @@ export class EventSchema {
   static deleteMany = z.object({
     ids: z.array(z.string().uuid("Invalid event ID")).min(1, "At least one event ID is required"),
   });
+
+  /**
+   * Send Message Schema (for task messaging)
+   */
+  static sendMessage = z.object({
+    eventId: z.string().uuid("Invalid event ID"),
+    recipients: z.array(z.string().email("Invalid email address")).min(1, "At least one recipient is required"),
+    subject: z.string().min(1, "Subject is required"),
+    body: z.string().min(1, "Message body is required"),
+    attachments: z.array(z.object({ filename: z.string(), path: z.string() })).optional(),
+    statusToUpdate: z.nativeEnum(EventStatus).optional(),
+  });
 }
 
 /**
@@ -629,6 +641,7 @@ export type UpdateEventStatusInput = z.infer<typeof EventSchema.updateStatus>;
 export type DateRangeInput = z.infer<typeof EventSchema.dateRange>;
 export type BulkUpdateEventsInput = z.infer<typeof EventSchema.bulkUpdate>;
 export type DeleteManyEventsInput = z.infer<typeof EventSchema.deleteMany>;
+export type SendMessageInput = z.infer<typeof EventSchema.sendMessage>;
 
 /**
  * File link type

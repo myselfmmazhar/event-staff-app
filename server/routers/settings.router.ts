@@ -220,6 +220,7 @@ export const settingsRouter = router({
                 apiKey: z.string(),
                 workspaceId: z.string().optional(),
                 channelId: z.string().optional(),
+                from: z.string().email().optional().nullable(),
                 isDefault: z.boolean().optional(),
             })
         )
@@ -237,6 +238,7 @@ export const settingsRouter = router({
                 apiKey: z.string().optional(),
                 workspaceId: z.string().optional(),
                 channelId: z.string().optional(),
+                from: z.string().email().optional().nullable(),
                 isDefault: z.boolean().optional(),
             })
         )

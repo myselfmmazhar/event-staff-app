@@ -477,6 +477,7 @@ model MessagingConfiguration {
   apiKey      String
   workspaceId String?
   channelId   String?
+  from        String?
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now()) @db.Timestamp(6)
   updatedAt   DateTime @updatedAt @db.Timestamp(6)
