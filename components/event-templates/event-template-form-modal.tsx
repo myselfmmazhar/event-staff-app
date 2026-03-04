@@ -97,6 +97,7 @@ const formSchema = z.object({
   // Venue Information
   venueName: z.string().max(200).optional().transform((val) => val?.trim()),
   address: z.string().max(300).optional().transform((val) => val?.trim()),
+  addressLine2: z.string().max(200).optional().transform((val) => val?.trim()),
   city: z.string().max(100).optional().transform((val) => val?.trim()),
   state: z.string().max(50).optional().transform((val) => val?.trim()),
   zipCode: z.string().max(20).optional().transform((val) => val?.trim()),
@@ -170,6 +171,7 @@ interface EventTemplate {
   // Venue Information
   venueName?: string | null;
   address?: string | null;
+  addressLine2?: string | null;
   city?: string | null;
   state?: string | null;
   zipCode?: string | null;
@@ -339,6 +341,7 @@ export function EventTemplateFormModal({
         // Venue Information
         venueName: template.venueName || '',
         address: template.address || '',
+        addressLine2: template.addressLine2 || '',
         city: template.city || '',
         state: template.state || '',
         zipCode: template.zipCode || '',
@@ -394,6 +397,7 @@ export function EventTemplateFormModal({
         // Venue Information
         venueName: '',
         address: '',
+        addressLine2: '',
         city: '',
         state: '',
         zipCode: '',
@@ -715,18 +719,30 @@ export function EventTemplateFormModal({
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  {...register('address')}
-                  error={!!errors.address}
-                  disabled={isSubmitting}
-                  placeholder="123 Main Street"
-                />
-                {errors.address && (
-                  <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    {...register('address')}
+                    error={!!errors.address}
+                    disabled={isSubmitting}
+                    placeholder="123 Main Street"
+                  />
+                  {errors.address && (
+                    <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="addressLine2">Apt / Suite / Unit</Label>
+                  <Input
+                    id="addressLine2"
+                    {...register('addressLine2')}
+                    disabled={isSubmitting}
+                    placeholder="Suite 200"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

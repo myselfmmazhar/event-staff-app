@@ -52,9 +52,9 @@ export function VenueSection({
           </div>
         </div>
 
-        {/* Row 2: Address + City + State + ZIP Code */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="md:col-span-1">
+        {/* Row 2: Address + Address Line 2 + City + State + ZIP Code */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div>
             <Label htmlFor="address" required>Address</Label>
             <Input
               id="address"
@@ -66,6 +66,16 @@ export function VenueSection({
             {errors.address && (
               <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
             )}
+          </div>
+
+          <div>
+            <Label htmlFor="addressLine2">Apt / Suite / Unit</Label>
+            <Input
+              id="addressLine2"
+              {...register('addressLine2')}
+              disabled={disabled}
+              placeholder="Suite 200"
+            />
           </div>
 
           <div>

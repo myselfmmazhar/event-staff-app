@@ -6,6 +6,7 @@ import { useAssignmentsFilters, type AssignmentTab } from '@/store/assignments-f
 import { trpc } from '@/lib/client/trpc';
 import { AllAssignmentsView } from './all-assignments-view';
 import { AcceptedAssignmentsView } from './accepted-assignments-view';
+import { PendingAssignmentsView } from './pending-assignments-view';
 import { OpenAssignmentsView } from './open-assignments-view';
 import type { AssignmentData } from './assignment-table';
 import type { GroupedAssignment } from '@/lib/utils/call-time-grouping';
@@ -58,6 +59,13 @@ export function AssignmentManagerTabs({
   const acceptedCount = fullData?.data.reduce((acc, assignment) => {
     return acc + assignment.invitations.filter(
       (inv) => inv.status === 'ACCEPTED' && inv.isConfirmed
+    ).length;
+  }, 0) || 0;
+
+  // Count pending invitations
+  const pendingCount = fullData?.data.reduce((acc, assignment) => {
+    return acc + assignment.invitations.filter(
+      (inv) => inv.status === 'PENDING'
     ).length;
   }, 0) || 0;
 
@@ -125,6 +133,14 @@ export function AssignmentManagerTabs({
             </Badge>
           )}
         </TabsTrigger>
+        <TabsTrigger value="pending" className="flex items-center gap-2">
+          Pending
+          {pendingCount > 0 && (
+            <Badge variant="warning" className="ml-1 text-xs">
+              {pendingCount}
+            </Badge>
+          )}
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="all">
@@ -148,6 +164,12 @@ export function AssignmentManagerTabs({
 
       <TabsContent value="open">
         <OpenAssignmentsView />
+      </TabsContent>
+
+      <TabsContent value="pending">
+        <PendingAssignmentsView
+          onViewAssignment={handleManageById}
+        />
       </TabsContent>
     </Tabs>
   );
