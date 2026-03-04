@@ -126,6 +126,7 @@ interface StaffFormContentProps {
     onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => void;
     isSubmitting: boolean;
     onViewDetails?: () => void;
+    onCreateService?: () => void;
     services: ServiceOption[];
     companies: CompanyOption[];
     terminology: { staff: { singular: string; plural: string; lower: string } };
@@ -137,6 +138,7 @@ function StaffFormContent({
     onSubmit,
     isSubmitting,
     onViewDetails,
+    onCreateService,
     services,
     companies,
     terminology,
@@ -294,6 +296,7 @@ function StaffFormContent({
                     services={filteredServices}
                     serviceSearch={serviceSearch}
                     onServiceSearchChange={setServiceSearch}
+                    onCreateService={onCreateService}
                     className="mb-6"
                 />
 
@@ -418,6 +421,7 @@ export function StaffFormModal({
                     onSubmit={onSubmit}
                     isSubmitting={isSubmitting}
                     onViewDetails={onViewDetails}
+                    onCreateService={() => setShowCreateService(true)}
                     services={services}
                     companies={companies}
                     terminology={terminology}

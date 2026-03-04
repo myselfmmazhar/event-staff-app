@@ -24,6 +24,12 @@ interface Staff {
   distanceMiles?: number | null;
   invitationStatus?: string | null;
   invitationConfirmed?: boolean | null;
+  hasConflict?: boolean;
+  conflicts?: Array<{
+    eventTitle: string;
+    startDate: string | Date;
+    endDate: string | Date;
+  }>;
   userId?: string | null;
   hasLoginAccess?: boolean;
   services?: Array<{
@@ -237,9 +243,22 @@ export function StaffSearchTable({
                               Not Registered
                             </Badge>
                           )}
+                          {member.hasConflict && member.conflicts && member.conflicts.length > 0 && (
+                            <Badge
+                              className="bg-orange-100 text-orange-800 border-orange-200 text-xs"
+                              title={`Conflict: ${member.conflicts.map((c) => c.eventTitle).join(', ')}`}
+                            >
+                              ⚠ Conflict
+                            </Badge>
+                          )}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {member.staffId}
+                          {member.hasConflict && member.conflicts && member.conflicts.length > 0 && (
+                            <span className="ml-2 text-orange-600 text-xs">
+                              Assigned to: {member.conflicts.map((c) => c.eventTitle).join(', ')}
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>

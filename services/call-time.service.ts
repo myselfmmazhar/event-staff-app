@@ -350,20 +350,6 @@ export class CallTimeService {
       ...(excludeStaffIds.length > 0 && {
         id: { notIn: excludeStaffIds },
       }),
-      // No conflicting confirmed call times (only when dates are known)
-      ...(callTime.startDate && callTime.endDate ? {
-        callTimeInvitations: {
-          none: {
-            isConfirmed: true,
-            status: 'ACCEPTED',
-            callTime: {
-              startDate: { lte: callTime.endDate as Date },
-              endDate: { gte: callTime.startDate as Date },
-              id: { not: callTime.id },
-            },
-          },
-        },
-      } : {}),
     };
 
     const [staff, total] = await Promise.all([
@@ -389,14 +375,38 @@ export class CallTimeService {
           services: {
             include: { service: { select: { id: true, title: true } } },
           },
-          // Include invitation status for this call time (when showing already invited)
-          ...(input.includeAlreadyInvited && {
-            callTimeInvitations: {
-              where: { callTimeId: input.callTimeId },
-              select: { status: true, isConfirmed: true },
-              take: 1,
+          // Fetch call time invitations for invitation status + conflict detection
+          callTimeInvitations: {
+            where: {
+              OR: [
+                // This call time's invitation (for status display)
+                { callTimeId: input.callTimeId },
+                // Overlapping confirmed assignments (for conflict detection)
+                ...(callTime.startDate && callTime.endDate ? [{
+                  isConfirmed: true,
+                  status: 'ACCEPTED' as const,
+                  callTime: {
+                    startDate: { lte: callTime.endDate as Date },
+                    endDate: { gte: callTime.startDate as Date },
+                    id: { not: callTime.id },
+                  },
+                }] : []),
+              ],
             },
-          }),
+            select: {
+              status: true,
+              isConfirmed: true,
+              callTimeId: true,
+              callTime: {
+                select: {
+                  id: true,
+                  event: { select: { title: true } },
+                  startDate: true,
+                  endDate: true,
+                },
+              },
+            },
+          },
         },
         orderBy: [
           { availabilityStatus: 'asc' },
@@ -424,9 +434,25 @@ export class CallTimeService {
         distanceMiles = Math.round(distanceKm * KM_TO_MILES * 10) / 10; // 1 decimal
       }
 
-      // Extract invitation status
-      const invitations = (s as any).callTimeInvitations as Array<{ status: string; isConfirmed: boolean }> | undefined;
-      const invitation = invitations?.[0] ?? null;
+      // Extract invitation status and conflicts from callTimeInvitations
+      const allInvitations = (s as any).callTimeInvitations as Array<{
+        status: string;
+        isConfirmed: boolean;
+        callTimeId: string;
+        callTime: { id: string; event: { title: string }; startDate: Date; endDate: Date };
+      }> | undefined;
+
+      // Invitation for THIS call time (for status badge)
+      const thisInvitation = allInvitations?.find((inv) => inv.callTimeId === input.callTimeId) ?? null;
+
+      // Conflicts from OTHER overlapping call times (confirmed assignments)
+      const conflicts = (allInvitations || [])
+        .filter((inv) => inv.callTimeId !== input.callTimeId && inv.isConfirmed && inv.status === 'ACCEPTED')
+        .map((inv) => ({
+          eventTitle: inv.callTime.event.title,
+          startDate: inv.callTime.startDate,
+          endDate: inv.callTime.endDate,
+        }));
 
       return {
         id: s.id,
@@ -449,8 +475,10 @@ export class CallTimeService {
           city: callTime.event.city,
           state: callTime.event.state,
         }),
-        invitationStatus: invitation?.status ?? null,
-        invitationConfirmed: invitation?.isConfirmed ?? null,
+        invitationStatus: thisInvitation?.status ?? null,
+        invitationConfirmed: thisInvitation?.isConfirmed ?? null,
+        hasConflict: conflicts.length > 0,
+        conflicts,
       };
     });
 

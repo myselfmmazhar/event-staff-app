@@ -4,6 +4,7 @@ import { Controller } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { PlusIcon } from '@/components/ui/icons';
 import type { ServiceDetailsSectionProps } from './types';
 
 export function ServiceDetailsSection({
@@ -14,6 +15,7 @@ export function ServiceDetailsSection({
   services,
   serviceSearch,
   onServiceSearchChange,
+  onCreateService,
 }: ServiceDetailsSectionProps) {
   return (
     <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
@@ -21,16 +23,29 @@ export function ServiceDetailsSection({
         Service Assignment
       </h3>
       <div className="space-y-4">
-        <div>
-          <Label htmlFor="serviceSearch">Search Services</Label>
-          <Input
-            id="serviceSearch"
-            type="text"
-            value={serviceSearch}
-            onChange={(e) => onServiceSearchChange(e.target.value)}
-            placeholder="Search services..."
-            disabled={disabled}
-          />
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <Label htmlFor="serviceSearch">Search Services</Label>
+            <Input
+              id="serviceSearch"
+              type="text"
+              value={serviceSearch}
+              onChange={(e) => onServiceSearchChange(e.target.value)}
+              placeholder="Search services..."
+              disabled={disabled}
+            />
+          </div>
+          {onCreateService && (
+            <button
+              type="button"
+              onClick={onCreateService}
+              disabled={disabled}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-primary border border-primary/30 rounded-md hover:bg-primary/10 transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              <PlusIcon className="h-4 w-4" />
+              New Service
+            </button>
+          )}
         </div>
 
         <div>
@@ -75,3 +90,4 @@ export function ServiceDetailsSection({
     </div>
   );
 }
+
