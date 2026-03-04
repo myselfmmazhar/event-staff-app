@@ -87,6 +87,7 @@ export class EventService {
         clientId: data.clientId && data.clientId !== '' ? data.clientId : null,
         venueName: data.venueName.trim(),
         address: data.address.trim(),
+        addressLine2: data.addressLine2?.trim() || null,
         city: data.city.trim(),
         state: data.state.trim(),
         zipCode: data.zipCode.trim(),
@@ -135,6 +136,7 @@ export class EventService {
           clientId: true,
           venueName: true,
           address: true,
+          addressLine2: true,
           city: true,
           state: true,
           zipCode: true,
@@ -318,6 +320,7 @@ export class EventService {
           },
           venueName: true,
           address: true,
+          addressLine2: true,
           city: true,
           state: true,
           zipCode: true,
@@ -410,6 +413,7 @@ export class EventService {
         },
         venueName: true,
         address: true,
+        addressLine2: true,
         city: true,
         state: true,
         zipCode: true,
@@ -543,6 +547,7 @@ export class EventService {
       if (data.clientId !== undefined) sanitizedData.clientId = data.clientId && data.clientId !== '' ? data.clientId : null;
       if (data.venueName !== undefined) sanitizedData.venueName = data.venueName.trim();
       if (data.address !== undefined) sanitizedData.address = data.address.trim();
+      if ((data as any).addressLine2 !== undefined) sanitizedData.addressLine2 = (data as any).addressLine2?.trim() || null;
       if (data.city !== undefined) sanitizedData.city = data.city.trim();
       if (data.state !== undefined) sanitizedData.state = data.state.trim();
       if (data.zipCode !== undefined) sanitizedData.zipCode = data.zipCode.trim();
@@ -597,6 +602,7 @@ export class EventService {
           clientId: true,
           venueName: true,
           address: true,
+          addressLine2: true,
           city: true,
           state: true,
           zipCode: true,
@@ -744,6 +750,7 @@ export class EventService {
         privateComments: true,
         venueName: true,
         address: true,
+        addressLine2: true,
         city: true,
         state: true,
         zipCode: true,
@@ -988,6 +995,7 @@ export class EventService {
         },
         venueName: true,
         address: true,
+        addressLine2: true,
         city: true,
         state: true,
         zipCode: true,
@@ -1359,6 +1367,7 @@ export class EventService {
           },
           venueName: true,
           address: true,
+          addressLine2: true,
           city: true,
           state: true,
           zipCode: true,
