@@ -97,6 +97,7 @@ export interface TerminologyConfig {
 export interface BasicInfoSectionProps extends FormSectionProps {
   clients: ClientOption[];
   terminology: TerminologyConfig;
+  onClientCreated?: (clientId: string) => void;
 }
 
 /**

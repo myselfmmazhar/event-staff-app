@@ -184,15 +184,20 @@ export type StaffSelect = Prisma.StaffGetPayload<{
       select: {
         id: true;
         staffId: true;
-        collectTaxDetails: true;
-        trackFor1099: true;
-        businessStructure: true;
+        taxFilledBy: true;
+        taxName: true;
         businessName: true;
-        identificationFrontUrl: true;
-        identificationBackUrl: true;
-        electronic1099Consent: true;
+        businessStructure: true;
+        llcClassification: true;
+        exemptPayeeCode: true;
+        fatcaExemptionCode: true;
+        taxAddress: true;
+        taxCity: true;
+        taxState: true;
+        taxZip: true;
+        accountNumbers: true;
         signatureUrl: true;
-        consentDate: true;
+        certificationDate: true;
         createdAt: true;
         updatedAt: true;
       };
@@ -279,6 +284,13 @@ export type EventSelect = Prisma.EventGetPayload<{
             id: true;
             status: true;
             isConfirmed: true;
+            staff: {
+              select: {
+                id: true;
+                firstName: true;
+                lastName: true;
+              };
+            };
           };
         };
       };

@@ -252,6 +252,127 @@ export class NotificationTriggerService {
         });
     }
 
+    // ==========================================
+    // Event Status Change Notifications
+    // ==========================================
+
+    /**
+     * Trigger: Event becomes fully staffed (DRAFT → ASSIGNED)
+     * Notifies: Event creator
+     */
+    async onEventFullyStaffed(
+        eventId: string,
+        eventDetails: {
+            eventTitle: string;
+            createdBy: string;
+        }
+    ) {
+        await this.notificationService.create({
+            userId: eventDetails.createdBy,
+            type: NotificationType.EVENT_FULLY_STAFFED,
+            priority: NotificationPriority.NORMAL,
+            title: "Event Fully Staffed",
+            message: `All positions for "${eventDetails.eventTitle}" have been filled`,
+            actionUrl: `/events?id=${eventId}`,
+            actionLabel: "View Event",
+            relatedEntityType: "event",
+            relatedEntityId: eventId,
+        });
+    }
+
+    /**
+     * Trigger: Event starts (ASSIGNED → IN_PROGRESS)
+     * Notifies: Event creator + all assigned staff
+     */
+    async onEventStarted(
+        eventId: string,
+        eventDetails: {
+            eventTitle: string;
+            createdBy: string;
+        }
+    ) {
+        // Notify event creator
+        await this.notificationService.create({
+            userId: eventDetails.createdBy,
+            type: NotificationType.EVENT_STARTED,
+            priority: NotificationPriority.NORMAL,
+            title: "Event Started",
+            message: `"${eventDetails.eventTitle}" is now in progress`,
+            actionUrl: `/events?id=${eventId}`,
+            actionLabel: "View Event",
+            relatedEntityType: "event",
+            relatedEntityId: eventId,
+        });
+
+        // Notify assigned staff
+        const assignedStaff = await this.getAssignedStaffUserIds(eventId);
+
+        if (assignedStaff.length > 0) {
+            await this.notificationService.createBulk(assignedStaff, {
+                type: NotificationType.EVENT_STARTED,
+                priority: NotificationPriority.NORMAL,
+                title: "Event Started",
+                message: `"${eventDetails.eventTitle}" is now in progress`,
+                actionUrl: `/my-schedule`,
+                actionLabel: "View Schedule",
+                relatedEntityType: "event",
+                relatedEntityId: eventId,
+            });
+        }
+    }
+
+    /**
+     * Trigger: Event completes (IN_PROGRESS → COMPLETED)
+     * Notifies: Event creator
+     */
+    async onEventCompleted(
+        eventId: string,
+        eventDetails: {
+            eventTitle: string;
+            createdBy: string;
+        }
+    ) {
+        await this.notificationService.create({
+            userId: eventDetails.createdBy,
+            type: NotificationType.EVENT_COMPLETED,
+            priority: NotificationPriority.LOW,
+            title: "Event Completed",
+            message: `"${eventDetails.eventTitle}" has been completed`,
+            actionUrl: `/events?id=${eventId}`,
+            actionLabel: "View Event",
+            relatedEntityType: "event",
+            relatedEntityId: eventId,
+        });
+    }
+
+    /**
+     * Trigger: Event no longer fully staffed (ASSIGNED → DRAFT)
+     * Notifies: Event creator
+     */
+    async onEventUnderstaffed(
+        eventId: string,
+        eventDetails: {
+            eventTitle: string;
+            createdBy: string;
+        }
+    ) {
+        await this.notificationService.create({
+            userId: eventDetails.createdBy,
+            type: NotificationType.EVENT_UPDATE,
+            priority: NotificationPriority.HIGH,
+            title: "Staff Needed",
+            message: `"${eventDetails.eventTitle}" is no longer fully staffed and requires attention`,
+            actionUrl: `/events?id=${eventId}`,
+            actionLabel: "View Event",
+            relatedEntityType: "event",
+            relatedEntityId: eventId,
+        });
+    }
+
+    // ==========================================
+    // Helper Methods
+    // ==========================================
+
     /**
      * Helper: Get user IDs of all staff assigned to a specific call time
      */

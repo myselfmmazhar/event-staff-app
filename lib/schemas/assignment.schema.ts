@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { RateType } from '@prisma/client';
+import { RateType, AmountType } from '@prisma/client';
 
 /**
  * Rate type options (matches Prisma RateType enum)
@@ -35,6 +35,8 @@ export const productAssignmentSchema = z.object({
   productId: z.string().min(1, 'Select a product'),
   quantity: z.number().int().min(1, 'Quantity must be at least 1'),
   commission: z.boolean().default(false),
+  commissionAmount: z.number().min(0).nullable().optional(),
+  commissionAmountType: z.nativeEnum(AmountType).nullable().optional(),
   description: z.string().max(1000, 'Description too long').nullable().optional(),
   instructions: z.string().max(2000, 'Instructions too long').nullable().optional(),
 });
@@ -47,6 +49,8 @@ export const serviceAssignmentSchema = z.object({
   serviceId: z.string().min(1, 'Select a service'),
   quantity: z.number().int().min(1, 'Quantity must be at least 1'),
   commission: z.boolean().default(false),
+  commissionAmount: z.number().min(0).nullable().optional(),
+  commissionAmountType: z.nativeEnum(AmountType).nullable().optional(),
   startDate: z.string().nullable().optional(),
   startTime: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
@@ -54,6 +58,8 @@ export const serviceAssignmentSchema = z.object({
   experienceRequired: experienceRequiredSchema.default('ANY'),
   ratingRequired: ratingRequiredSchema.default('ANY'),
   approveOvertime: z.boolean().default(false),
+  overtimeRate: z.number().min(0).nullable().optional(),
+  overtimeRateType: z.nativeEnum(AmountType).nullable().optional(),
   payRate: z.number().min(0).nullable().optional(),
   billRate: z.number().min(0).nullable().optional(),
   rateType: rateTypeSchema.nullable().optional(),
@@ -77,6 +83,8 @@ export const assignmentFormSchema = z.object({
   serviceId: z.string().optional(),
   quantity: z.number().int().min(1, 'Quantity must be at least 1').default(1),
   commission: z.boolean().default(false),
+  commissionAmount: z.number().min(0).nullable().optional(),
+  commissionAmountType: z.nativeEnum(AmountType).nullable().optional(),
   // Product-specific
   description: z.string().max(1000).nullable().optional(),
   instructions: z.string().max(2000).nullable().optional(),
@@ -88,6 +96,8 @@ export const assignmentFormSchema = z.object({
   experienceRequired: experienceRequiredSchema.default('ANY'),
   ratingRequired: ratingRequiredSchema.default('ANY'),
   approveOvertime: z.boolean().default(false),
+  overtimeRate: z.number().min(0).nullable().optional(),
+  overtimeRateType: z.nativeEnum(AmountType).nullable().optional(),
   payRate: z.number().min(0).nullable().optional(),
   billRate: z.number().min(0).nullable().optional(),
   rateType: rateTypeSchema.nullable().optional(),

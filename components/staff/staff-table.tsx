@@ -76,15 +76,20 @@ export type StaffWithRelations = {
     taxDetails?: {
         id: string;
         staffId: string;
-        collectTaxDetails: boolean;
-        trackFor1099: boolean;
-        businessStructure: string;
+        taxFilledBy: string;
+        taxName: string | null;
         businessName: string | null;
-        identificationFrontUrl: string | null;
-        identificationBackUrl: string | null;
-        electronic1099Consent: boolean;
+        businessStructure: string;
+        llcClassification: string | null;
+        exemptPayeeCode: string | null;
+        fatcaExemptionCode: string | null;
+        taxAddress: string | null;
+        taxCity: string | null;
+        taxState: string | null;
+        taxZip: string | null;
+        accountNumbers: string | null;
         signatureUrl: string | null;
-        consentDate: Date | string | null;
+        certificationDate: Date | string | null;
         createdAt: Date | string;
         updatedAt: Date | string;
     } | null;
