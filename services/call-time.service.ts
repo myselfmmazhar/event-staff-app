@@ -20,6 +20,7 @@ import type {
 } from '@/lib/schemas/call-time.schema';
 import { generateCallTimeId } from '@/lib/utils/id-generator';
 import { getNotificationTriggerService } from '@/services/notification-trigger.service';
+import { calculateDistance } from '@/services/mapbox.service';
 
 // Skill level order for comparison (higher = more skilled)
 const SKILL_LEVEL_ORDER: Record<SkillLevel, number> = {
@@ -176,6 +177,8 @@ export class CallTimeService {
             venueName: true,
             city: true,
             state: true,
+            latitude: true,
+            longitude: true,
           },
         },
         invitations: {
@@ -276,13 +279,18 @@ export class CallTimeService {
 
   /**
    * Search available staff for a call time
+   * Supports filters: distance, skill level, rating, availability status
+   * Returns invitation status when includeAlreadyInvited is true
    */
   async searchAvailableStaff(input: StaffSearchInput, userId: string) {
     const callTime = await this.findOne(input.callTimeId, userId);
 
+    // When distance filter is active, we need to fetch more and post-filter
+    const hasDistanceFilter = input.maxDistance && callTime.event.latitude && callTime.event.longitude;
     const page = input.page ?? 1;
     const limit = input.limit ?? 20;
-    const skip = (page - 1) * limit;
+    const skip = hasDistanceFilter ? 0 : (page - 1) * limit;
+    const take = hasDistanceFilter ? 1000 : limit; // Fetch more for post-query distance filtering
 
     // Build exclusion list if not including already invited
     let excludeStaffIds: string[] = [];
@@ -290,13 +298,18 @@ export class CallTimeService {
       excludeStaffIds = callTime.invitations.map((inv) => inv.staffId);
     }
 
-    // Get skill levels that meet the requirement (>= required)
-    const requiredLevel = SKILL_LEVEL_ORDER[callTime.skillLevel];
-    const eligibleSkillLevels = (
-      Object.entries(SKILL_LEVEL_ORDER) as [SkillLevel, number][]
-    )
-      .filter(([_, level]) => level >= requiredLevel)
-      .map(([name]) => name);
+    // Skill level filter: use provided filter or fall back to >= requirement
+    let skillLevelFilter: SkillLevel[];
+    if (input.skillLevels && input.skillLevels.length > 0) {
+      skillLevelFilter = input.skillLevels;
+    } else {
+      const requiredLevel = SKILL_LEVEL_ORDER[callTime.skillLevel];
+      skillLevelFilter = (
+        Object.entries(SKILL_LEVEL_ORDER) as [SkillLevel, number][]
+      )
+        .filter(([_, level]) => level >= requiredLevel)
+        .map(([name]) => name);
+    }
 
     // Build staff query
     const where: Prisma.StaffWhereInput = {
@@ -306,27 +319,33 @@ export class CallTimeService {
           some: { serviceId: callTime.serviceId },
         },
       }),
-      // Meets skill level requirement
-      skillLevel: { in: eligibleSkillLevels },
+      // Skill level filter
+      skillLevel: { in: skillLevelFilter },
       // Active account
       accountStatus: 'ACTIVE',
-      // Not on time off during call time dates (only when dates are known)
-      ...(callTime.startDate && callTime.endDate ? {
-        NOT: {
-          AND: [
-            { availabilityStatus: 'TIME_OFF' },
-            {
-              OR: [
-                // Time off overlaps with call time
-                {
-                  timeOffStart: { lte: callTime.endDate as Date },
-                  timeOffEnd: { gte: callTime.startDate as Date },
-                },
-              ],
-            },
-          ],
-        },
-      } : {}),
+      // Rating filter
+      ...(input.ratings && input.ratings.length > 0 && {
+        staffRating: { in: input.ratings },
+      }),
+      // Availability filter (user-selected or default TIME_OFF exclusion)
+      ...(input.availabilityStatuses && input.availabilityStatuses.length > 0
+        ? { availabilityStatus: { in: input.availabilityStatuses } }
+        : // Default: exclude TIME_OFF during call time dates
+        (callTime.startDate && callTime.endDate ? {
+          NOT: {
+            AND: [
+              { availabilityStatus: 'TIME_OFF' },
+              {
+                OR: [
+                  {
+                    timeOffStart: { lte: callTime.endDate as Date },
+                    timeOffEnd: { gte: callTime.startDate as Date },
+                  },
+                ],
+              },
+            ],
+          },
+        } : {})),
       // Exclude already invited (if requested)
       ...(excludeStaffIds.length > 0 && {
         id: { notIn: excludeStaffIds },
@@ -338,10 +357,8 @@ export class CallTimeService {
             isConfirmed: true,
             status: 'ACCEPTED',
             callTime: {
-              // Call time conflicts (date overlap)
               startDate: { lte: callTime.endDate as Date },
               endDate: { gte: callTime.startDate as Date },
-              // Exclude current call time
               id: { not: callTime.id },
             },
           },
@@ -361,43 +378,111 @@ export class CallTimeService {
           phone: true,
           skillLevel: true,
           availabilityStatus: true,
+          staffRating: true,
           city: true,
           state: true,
           country: true,
-          userId: true, // Include to show warning for unregistered staff
+          latitude: true,
+          longitude: true,
+          userId: true,
           hasLoginAccess: true,
           services: {
             include: { service: { select: { id: true, title: true } } },
           },
+          // Include invitation status for this call time (when showing already invited)
+          ...(input.includeAlreadyInvited && {
+            callTimeInvitations: {
+              where: { callTimeId: input.callTimeId },
+              select: { status: true, isConfirmed: true },
+              take: 1,
+            },
+          }),
         },
         orderBy: [
-          // Prioritize OPEN_TO_OFFERS
           { availabilityStatus: 'asc' },
-          // Then by skill level (higher first)
           { skillLevel: 'desc' },
           { lastName: 'asc' },
         ],
         skip,
-        take: limit,
+        take,
       }),
       this.prisma.staff.count({ where }),
     ]);
 
-    // Add location match score
-    const scoredStaff = staff.map((s) => ({
-      ...s,
-      locationMatch: this.calculateLocationMatch(s, {
-        city: callTime.event.city,
-        state: callTime.event.state,
-      }),
-    }));
+    // Convert km to miles helper
+    const KM_TO_MILES = 0.621371;
 
-    // Sort by location match, then existing order
-    scoredStaff.sort((a, b) => b.locationMatch - a.locationMatch);
+    // Enrich with distance, location match, and invitation status
+    const eventLat = callTime.event.latitude as number | null;
+    const eventLng = callTime.event.longitude as number | null;
+
+    let enrichedStaff = staff.map((s) => {
+      // Calculate distance in miles if both event and staff have coordinates
+      let distanceMiles: number | null = null;
+      if (eventLat && eventLng && s.latitude && s.longitude) {
+        const distanceKm = calculateDistance(eventLat, eventLng, s.latitude, s.longitude);
+        distanceMiles = Math.round(distanceKm * KM_TO_MILES * 10) / 10; // 1 decimal
+      }
+
+      // Extract invitation status
+      const invitations = (s as any).callTimeInvitations as Array<{ status: string; isConfirmed: boolean }> | undefined;
+      const invitation = invitations?.[0] ?? null;
+
+      return {
+        id: s.id,
+        staffId: s.staffId,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        email: s.email,
+        phone: s.phone,
+        skillLevel: s.skillLevel,
+        availabilityStatus: s.availabilityStatus,
+        staffRating: s.staffRating,
+        city: s.city,
+        state: s.state,
+        country: s.country,
+        userId: s.userId,
+        hasLoginAccess: s.hasLoginAccess,
+        services: s.services,
+        distanceMiles,
+        locationMatch: this.calculateLocationMatch(s, {
+          city: callTime.event.city,
+          state: callTime.event.state,
+        }),
+        invitationStatus: invitation?.status ?? null,
+        invitationConfirmed: invitation?.isConfirmed ?? null,
+      };
+    });
+
+    // Apply distance filter (post-query since it's calculated)
+    if (hasDistanceFilter && input.maxDistance) {
+      enrichedStaff = enrichedStaff.filter((s) => {
+        if (s.distanceMiles === null) return true; // Keep staff without coords (show at bottom)
+        return s.distanceMiles <= input.maxDistance!;
+      });
+    }
+
+    // Sort: distance first if available, then location match
+    enrichedStaff.sort((a, b) => {
+      // Staff with distance come first, then without
+      if (a.distanceMiles !== null && b.distanceMiles !== null) {
+        return a.distanceMiles - b.distanceMiles;
+      }
+      if (a.distanceMiles !== null && b.distanceMiles === null) return -1;
+      if (a.distanceMiles === null && b.distanceMiles !== null) return 1;
+      // Fall back to location match
+      return b.locationMatch - a.locationMatch;
+    });
+
+    // Apply pagination for distance-filtered results
+    const paginatedTotal = hasDistanceFilter ? enrichedStaff.length : total;
+    const paginatedData = hasDistanceFilter
+      ? enrichedStaff.slice((page - 1) * limit, page * limit)
+      : enrichedStaff;
 
     return {
-      data: scoredStaff,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      data: paginatedData,
+      meta: { total: paginatedTotal, page, limit, totalPages: Math.ceil(paginatedTotal / limit) },
     };
   }
 

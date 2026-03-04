@@ -98,6 +98,8 @@ export function TalentDetailsSection({
               setValue('city', addressData.city);
               setValue('state', addressData.state);
               setValue('zipCode', addressData.zipCode);
+              setValue('latitude', addressData.latitude);
+              setValue('longitude', addressData.longitude);
             }}
           />
           <p className="text-xs text-muted-foreground mt-2">

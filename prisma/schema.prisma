@@ -582,6 +582,9 @@ model Staff {
   createdBy                    String
   createdAt                    DateTime                     @default(now()) @db.Timestamp(6)
   updatedAt                    DateTime                     @updatedAt @db.Timestamp(6)
+  geocodedAt                   DateTime?                    @db.Timestamp(6)
+  latitude                     Float?
+  longitude                    Float?
 
   // Custom fields
   customField1                 String?

@@ -12,14 +12,43 @@ import { Badge } from '@/components/ui/badge';
 import { StaffSearchTable } from '@/components/call-times/staff-search-table';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
-import { CloseIcon, SendIcon } from '@/components/ui/icons';
+import { CloseIcon, SendIcon, FilterIcon, XIcon } from '@/components/ui/icons';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
+import { SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
 
 interface FindTalentModalProps {
   callTimeId: string | null;
   open: boolean;
   onClose: () => void;
 }
+
+const DISTANCE_OPTIONS = [
+  { value: '', label: 'Any Distance' },
+  { value: '10', label: 'Within 10 mi' },
+  { value: '25', label: 'Within 25 mi' },
+  { value: '50', label: 'Within 50 mi' },
+  { value: '100', label: 'Within 100 mi' },
+];
+
+const SKILL_LEVEL_OPTIONS = [
+  { value: SkillLevel.BEGINNER, label: 'Beginner' },
+  { value: SkillLevel.INTERMEDIATE, label: 'Intermediate' },
+  { value: SkillLevel.ADVANCED, label: 'Advanced' },
+];
+
+const RATING_OPTIONS = [
+  { value: StaffRating.A, label: 'A' },
+  { value: StaffRating.B, label: 'B' },
+  { value: StaffRating.C, label: 'C' },
+  { value: StaffRating.D, label: 'D' },
+  { value: StaffRating.NA, label: 'N/A' },
+];
+
+const AVAILABILITY_OPTIONS = [
+  { value: AvailabilityStatus.OPEN_TO_OFFERS, label: 'Available' },
+  { value: AvailabilityStatus.BUSY, label: 'Busy' },
+  { value: AvailabilityStatus.TIME_OFF, label: 'Time Off' },
+];
 
 export function FindTalentModal({
   callTimeId,
@@ -31,9 +60,17 @@ export function FindTalentModal({
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const [includeAlreadyInvited, setIncludeAlreadyInvited] = useState(false);
 
+  // Filter state
+  const [maxDistance, setMaxDistance] = useState<string>('');
+  const [skillLevels, setSkillLevels] = useState<SkillLevel[]>([]);
+  const [ratings, setRatings] = useState<StaffRating[]>([]);
+  const [availabilityStatuses, setAvailabilityStatuses] = useState<AvailabilityStatus[]>([]);
+
   const utils = trpc.useUtils();
   const hasCallTimeId = Boolean(callTimeId);
   const callTimeQueryId = callTimeId ?? '';
+
+  const hasActiveFilters = maxDistance || skillLevels.length > 0 || ratings.length > 0 || availabilityStatuses.length > 0;
 
   // Fetch call time details (minimal, just for header info)
   const { data: callTime, isLoading } = trpc.callTime.getById.useQuery(
@@ -41,12 +78,16 @@ export function FindTalentModal({
     { enabled: hasCallTimeId && open }
   );
 
-  // Fetch available staff
+  // Fetch available staff with filters
   const { data: staffData, isLoading: isLoadingStaff } =
     trpc.callTime.searchStaff.useQuery(
       {
         callTimeId: callTimeQueryId,
         includeAlreadyInvited,
+        maxDistance: maxDistance ? Number(maxDistance) : undefined,
+        skillLevels: skillLevels.length > 0 ? skillLevels : undefined,
+        ratings: ratings.length > 0 ? ratings : undefined,
+        availabilityStatuses: availabilityStatuses.length > 0 ? availabilityStatuses : undefined,
       },
       { enabled: hasCallTimeId && open }
     );
@@ -85,12 +126,28 @@ export function FindTalentModal({
   const handleClose = () => {
     setSelectedStaffIds([]);
     setIncludeAlreadyInvited(false);
+    clearFilters();
     onClose();
+  };
+
+  const clearFilters = () => {
+    setMaxDistance('');
+    setSkillLevels([]);
+    setRatings([]);
+    setAvailabilityStatuses([]);
+  };
+
+  const toggleMultiSelect = <T,>(list: T[], value: T, setter: (v: T[]) => void) => {
+    if (list.includes(value)) {
+      setter(list.filter((v) => v !== value));
+    } else {
+      setter([...list, value]);
+    }
   };
 
   if (isLoading || !callTime) {
     return (
-      <Dialog open={open} onClose={handleClose} className="max-w-4xl">
+      <Dialog open={open} onClose={handleClose} className="max-w-5xl">
         <DialogContent>
           <div className="h-64 flex items-center justify-center">
             <p className="text-muted-foreground">Loading...</p>
@@ -103,7 +160,7 @@ export function FindTalentModal({
   const isFilled = callTime.confirmedCount >= callTime.numberOfStaffRequired;
 
   return (
-    <Dialog open={open} onClose={handleClose} className="max-w-4xl">
+    <Dialog open={open} onClose={handleClose} className="max-w-5xl">
       <DialogHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -129,6 +186,103 @@ export function FindTalentModal({
 
       <DialogContent className="max-h-[calc(100vh-200px)] overflow-y-auto">
         <div className="space-y-4">
+          {/* Filters Bar */}
+          <div className="bg-muted/30 border border-border/50 rounded-lg p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <FilterIcon className="h-4 w-4" />
+                Filters
+              </div>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <XIcon className="h-3 w-3" />
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* Distance Filter */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Distance</label>
+                <select
+                  value={maxDistance}
+                  onChange={(e) => setMaxDistance(e.target.value)}
+                  className="w-full text-sm rounded-md border border-input bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {DISTANCE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Skill Level Multi-Select */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Skill Level</label>
+                <div className="flex flex-wrap gap-1">
+                  {SKILL_LEVEL_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => toggleMultiSelect(skillLevels, opt.value, setSkillLevels)}
+                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${skillLevels.includes(opt.value)
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-input hover:bg-muted text-foreground'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rating Multi-Select */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Rating</label>
+                <div className="flex flex-wrap gap-1">
+                  {RATING_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => toggleMultiSelect(ratings, opt.value, setRatings)}
+                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${ratings.includes(opt.value)
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-input hover:bg-muted text-foreground'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Availability Multi-Select */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Availability</label>
+                <div className="flex flex-wrap gap-1">
+                  {AVAILABILITY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => toggleMultiSelect(availabilityStatuses, opt.value, setAvailabilityStatuses)}
+                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${availabilityStatuses.includes(opt.value)
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-input hover:bg-muted text-foreground'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions Row */}
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -157,6 +311,7 @@ export function FindTalentModal({
             selectedIds={selectedStaffIds}
             onSelectionChange={setSelectedStaffIds}
             isLoading={isLoadingStaff}
+            showInvitationStatus={includeAlreadyInvited}
           />
 
           {staffData && staffData.meta.totalPages > 1 && (

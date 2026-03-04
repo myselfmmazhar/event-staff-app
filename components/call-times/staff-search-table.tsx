@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { SkillLevel, AvailabilityStatus } from '@prisma/client';
+import { SkillLevel, AvailabilityStatus, StaffRating } from '@prisma/client';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { AlertIcon } from '@/components/ui/icons';
 
@@ -16,10 +16,14 @@ interface Staff {
   phone: string;
   skillLevel: SkillLevel;
   availabilityStatus: AvailabilityStatus;
+  staffRating?: StaffRating;
   city: string;
   state: string;
   country: string;
   locationMatch: number;
+  distanceMiles?: number | null;
+  invitationStatus?: string | null;
+  invitationConfirmed?: boolean | null;
   userId?: string | null;
   hasLoginAccess?: boolean;
   services?: Array<{
@@ -32,6 +36,7 @@ interface StaffSearchTableProps {
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
   isLoading?: boolean;
+  showInvitationStatus?: boolean;
 }
 
 const SKILL_LEVEL_LABELS: Record<SkillLevel, string> = {
@@ -46,11 +51,50 @@ const AVAILABILITY_LABELS: Record<AvailabilityStatus, string> = {
   TIME_OFF: 'Time Off',
 };
 
+const RATING_LABELS: Record<StaffRating, string> = {
+  A: 'A',
+  B: 'B',
+  C: 'C',
+  D: 'D',
+  NA: 'N/A',
+};
+
+const RATING_COLORS: Record<StaffRating, string> = {
+  A: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  B: 'bg-blue-100 text-blue-800 border-blue-200',
+  C: 'bg-amber-100 text-amber-800 border-amber-200',
+  D: 'bg-red-100 text-red-800 border-red-200',
+  NA: 'bg-gray-100 text-gray-600 border-gray-200',
+};
+
+function getInvitationBadge(status: string | null | undefined, isConfirmed: boolean | null | undefined) {
+  if (!status) return null;
+
+  switch (status) {
+    case 'ACCEPTED':
+      if (isConfirmed) {
+        return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs">Confirmed</Badge>;
+      }
+      return <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">Accepted</Badge>;
+    case 'PENDING':
+      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs">Pending</Badge>;
+    case 'DECLINED':
+      return <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">Declined</Badge>;
+    case 'CANCELLED':
+      return <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">Cancelled</Badge>;
+    case 'WAITLISTED':
+      return <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs">Waitlisted</Badge>;
+    default:
+      return null;
+  }
+}
+
 export function StaffSearchTable({
   staff,
   selectedIds,
   onSelectionChange,
   isLoading,
+  showInvitationStatus = false,
 }: StaffSearchTableProps) {
   const staffTerm = useStaffTerm();
 
@@ -136,7 +180,7 @@ export function StaffSearchTable({
         </div>
       )}
 
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-x-auto">
         <table className="w-full">
           <thead className="bg-muted/50">
             <tr>
@@ -149,9 +193,13 @@ export function StaffSearchTable({
                 />
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium">{staffTerm.singular}</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">Contact</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">Distance</th>
               <th className="px-4 py-3 text-left text-sm font-medium">Skill</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">Rating</th>
               <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+              {showInvitationStatus && (
+                <th className="px-4 py-3 text-left text-sm font-medium">Invitation</th>
+              )}
               <th className="px-4 py-3 text-left text-sm font-medium">Location</th>
             </tr>
           </thead>
@@ -197,15 +245,26 @@ export function StaffSearchTable({
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-sm">
-                      <p>{member.email}</p>
-                      <p className="text-muted-foreground">{member.phone}</p>
-                    </div>
+                    {member.distanceMiles != null ? (
+                      <span className="text-sm font-medium">{member.distanceMiles} mi</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline">
                       {SKILL_LEVEL_LABELS[member.skillLevel]}
                     </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    {member.staffRating && (
+                      <Badge
+                        variant="outline"
+                        className={RATING_COLORS[member.staffRating]}
+                      >
+                        {RATING_LABELS[member.staffRating]}
+                      </Badge>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Badge
@@ -218,6 +277,11 @@ export function StaffSearchTable({
                       {AVAILABILITY_LABELS[member.availabilityStatus]}
                     </Badge>
                   </td>
+                  {showInvitationStatus && (
+                    <td className="px-4 py-3">
+                      {getInvitationBadge(member.invitationStatus, member.invitationConfirmed)}
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {getLocationBadge(member.locationMatch)}

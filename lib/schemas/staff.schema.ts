@@ -101,6 +101,10 @@ const baseFields = {
         .transform((val) => val?.trim())
         .optional(),
 
+    // Geo coordinates (from address autocomplete)
+    latitude: z.number().optional().nullable(),
+    longitude: z.number().optional().nullable(),
+
     // Custom Admin Fields
     experience: z
         .string()
