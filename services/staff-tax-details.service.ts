@@ -1,4 +1,4 @@
-import { PrismaClient, BusinessStructure } from "@prisma/client";
+import { PrismaClient, BusinessStructure, TaxFilledBy } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import type {
     UpsertStaffTaxDetailsInput,
@@ -6,28 +6,34 @@ import type {
 } from "@/lib/schemas/staff-tax-details.schema";
 
 /**
- * StaffTaxDetails type for service returns
+ * StaffTaxDetails type for service returns (W-9 based)
  */
 export type StaffTaxDetailsSelect = {
     id: string;
     staffId: string;
-    collectTaxDetails: boolean;
-    trackFor1099: boolean;
-    businessStructure: BusinessStructure;
+    taxFilledBy: TaxFilledBy;
+    taxName: string | null;
     businessName: string | null;
+    businessStructure: BusinessStructure;
+    llcClassification: string | null;
+    exemptPayeeCode: string | null;
+    fatcaExemptionCode: string | null;
+    taxAddress: string | null;
+    taxCity: string | null;
+    taxState: string | null;
+    taxZip: string | null;
+    accountNumbers: string | null;
     ssn: string | null;
     ein: string | null;
-    identificationFrontUrl: string | null;
-    identificationBackUrl: string | null;
-    electronic1099Consent: boolean;
     signatureUrl: string | null;
-    consentDate: Date | null;
+    certificationDate: Date | null;
     createdAt: Date;
     updatedAt: Date;
 };
 
 /**
  * StaffTaxDetails Service - Business logic layer for staff tax details operations
+ * Based on IRS Form W-9 (Rev. March 2024)
  */
 export class StaffTaxDetailsService {
     /**
@@ -36,28 +42,32 @@ export class StaffTaxDetailsService {
     private readonly taxDetailsSelect = {
         id: true,
         staffId: true,
-        collectTaxDetails: true,
-        trackFor1099: true,
-        businessStructure: true,
+        taxFilledBy: true,
+        taxName: true,
         businessName: true,
+        businessStructure: true,
+        llcClassification: true,
+        exemptPayeeCode: true,
+        fatcaExemptionCode: true,
+        taxAddress: true,
+        taxCity: true,
+        taxState: true,
+        taxZip: true,
+        accountNumbers: true,
         ssn: true,
         ein: true,
-        identificationFrontUrl: true,
-        identificationBackUrl: true,
-        electronic1099Consent: true,
         signatureUrl: true,
-        consentDate: true,
+        certificationDate: true,
         createdAt: true,
         updatedAt: true,
     } as const;
 
-    constructor(private prisma: PrismaClient) {}
+    constructor(private prisma: PrismaClient) { }
 
     /**
      * Get tax details by staff ID
      */
     async getByStaffId(staffId: string): Promise<StaffTaxDetailsSelect | null> {
-        // First verify the staff exists
         const staff = await this.prisma.staff.findUnique({
             where: { id: staffId },
             select: { id: true },
@@ -84,7 +94,6 @@ export class StaffTaxDetailsService {
     async upsert(data: UpsertStaffTaxDetailsInput): Promise<StaffTaxDetailsSelect> {
         const { staffId, ...taxData } = data;
 
-        // Verify the staff exists
         const staff = await this.prisma.staff.findUnique({
             where: { id: staffId },
             select: { id: true },
@@ -97,7 +106,6 @@ export class StaffTaxDetailsService {
             });
         }
 
-        // Upsert the tax details
         const taxDetails = await this.prisma.staffTaxDetails.upsert({
             where: { staffId },
             create: {
@@ -112,14 +120,12 @@ export class StaffTaxDetailsService {
     }
 
     /**
-     * Staff self-service update of their tax details
-     * Used when staff is updating their own tax information
+     * Staff self-service update of their tax details (talent fills own W-9)
      */
     async selfUpdate(
         staffId: string,
         data: StaffTaxDetailsSelfUpdateInput
     ): Promise<StaffTaxDetailsSelect> {
-        // Verify the staff exists
         const staff = await this.prisma.staff.findUnique({
             where: { id: staffId },
             select: { id: true },
@@ -132,7 +138,6 @@ export class StaffTaxDetailsService {
             });
         }
 
-        // Upsert the tax details (create if doesn't exist, update if exists)
         const taxDetails = await this.prisma.staffTaxDetails.upsert({
             where: { staffId },
             create: {
@@ -150,7 +155,6 @@ export class StaffTaxDetailsService {
      * Delete tax details for a staff member
      */
     async delete(staffId: string): Promise<void> {
-        // Check if tax details exist
         const existing = await this.prisma.staffTaxDetails.findUnique({
             where: { staffId },
             select: { id: true },
@@ -193,7 +197,6 @@ export class StaffTaxDetailsService {
             return null;
         }
 
-        // Return only last 4 digits
         const ssn = taxDetails.ssn.replace(/\D/g, '');
         if (ssn.length >= 4) {
             return `***-**-${ssn.slice(-4)}`;
@@ -215,7 +218,6 @@ export class StaffTaxDetailsService {
             return null;
         }
 
-        // Return only last 4 digits
         const ein = taxDetails.ein.replace(/\D/g, '');
         if (ein.length >= 4) {
             return `**-***${ein.slice(-4)}`;

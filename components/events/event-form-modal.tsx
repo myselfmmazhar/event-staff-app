@@ -101,26 +101,6 @@ const editFormSchema = z.object({
   onsitePocEmail: z.string().email().max(255).optional().or(z.literal('')),
   estimate: z.boolean().optional(),
   taskRateType: z.nativeEnum(AmountType).optional().nullable(),
-  commission: z.boolean().optional(),
-  commissionAmount: z.union([
-    z.number().min(0),
-    z.literal(''),
-    z.nan(),
-  ]).optional().nullable().transform((val) => {
-    if (val === '' || val === undefined || val === null || (typeof val === 'number' && Number.isNaN(val))) return undefined;
-    return val;
-  }),
-  commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
-  approveForOvertime: z.boolean().optional(),
-  overtimeRate: z.union([
-    z.number().min(0),
-    z.literal(''),
-    z.nan(),
-  ]).optional().nullable().transform((val) => {
-    if (val === '' || val === undefined || val === null || (typeof val === 'number' && Number.isNaN(val))) return undefined;
-    return val;
-  }),
-  overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
 }).refine((data) => {
   // Only validate if both dates are provided (not UBD)
   if (data.startDate && data.endDate) {
@@ -181,12 +161,6 @@ interface Event {
   onsitePocEmail?: string | null;
   estimate?: boolean | null;
   taskRateType?: AmountType | null;
-  commission?: boolean | null;
-  commissionAmount?: number | any | null;
-  commissionAmountType?: AmountType | null;
-  approveForOvertime?: boolean | null;
-  overtimeRate?: number | any | null;
-  overtimeRateType?: AmountType | null;
 }
 
 type SaveAction = 'close' | 'new';
@@ -381,12 +355,6 @@ export function EventFormModal({
       onsitePocEmail: '',
       estimate: false,
       taskRateType: undefined,
-      commission: false,
-      commissionAmount: undefined,
-      commissionAmountType: undefined,
-      approveForOvertime: false,
-      overtimeRate: undefined,
-      overtimeRateType: undefined,
     };
   }
 
@@ -444,12 +412,6 @@ export function EventFormModal({
         onsitePocEmail: event.onsitePocEmail || '',
         estimate: event.estimate ?? false,
         taskRateType: event.taskRateType || undefined,
-        commission: event.commission ?? false,
-        commissionAmount: event.commissionAmount ? Number(event.commissionAmount) : undefined,
-        commissionAmountType: event.commissionAmountType || undefined,
-        approveForOvertime: event.approveForOvertime ?? false,
-        overtimeRate: event.overtimeRate ? Number(event.overtimeRate) : undefined,
-        overtimeRateType: event.overtimeRateType || undefined,
       });
       // Set UBD/TBD state
       setStartDateUBD(startDateIsUBD);
@@ -539,12 +501,6 @@ export function EventFormModal({
         onsitePocEmail: template.onsitePocEmail || '',
         estimate: false,
         taskRateType: undefined,
-        commission: false,
-        commissionAmount: undefined,
-        commissionAmountType: undefined,
-        approveForOvertime: false,
-        overtimeRate: undefined,
-        overtimeRateType: undefined,
       });
       setStartDateUBD(template.startDate === null);
       setEndDateUBD(template.endDate === null);
@@ -620,6 +576,8 @@ export function EventFormModal({
           } : null,
           quantity: ct.numberOfStaffRequired,
           commission: ct.commission ?? false,
+          commissionAmount: ct.commissionAmount ? Number(ct.commissionAmount) : null,
+          commissionAmountType: ct.commissionAmountType ?? null,
           startDate: formatDate(ct.startDate),
           startTime: ct.startTime ?? null,
           endDate: formatDate(ct.endDate),
@@ -627,6 +585,8 @@ export function EventFormModal({
           experienceRequired: mapSkillToExperience(ct.skillLevel),
           ratingRequired: ct.ratingRequired ?? 'ANY',
           approveOvertime: ct.approveOvertime ?? false,
+          overtimeRate: ct.overtimeRate ? Number(ct.overtimeRate) : null,
+          overtimeRateType: ct.overtimeRateType ?? null,
           payRate: ct.payRate ? Number(ct.payRate) : null,
           billRate: ct.billRate ? Number(ct.billRate) : null,
           rateType: ct.payRateType ?? null,
@@ -663,6 +623,8 @@ export function EventFormModal({
           },
           quantity: p.quantity,
           commission: extendedData.commission ?? false,
+          commissionAmount: extendedData.commissionAmount ?? null,
+          commissionAmountType: (extendedData.commissionAmountType as AmountType) ?? null,
           description: extendedData.description ?? p.product.description ?? null,
           instructions: extendedData.instructions ?? null,
         };
@@ -770,7 +732,11 @@ export function EventFormModal({
         experienceRequired: s.experienceRequired,
         ratingRequired: s.ratingRequired,
         approveOvertime: s.approveOvertime,
+        overtimeRate: s.overtimeRate,
+        overtimeRateType: s.overtimeRateType,
         commission: s.commission,
+        commissionAmount: s.commissionAmount,
+        commissionAmountType: s.commissionAmountType,
         payRate: s.payRate,
         billRate: s.billRate,
         rateType: s.rateType,
@@ -782,6 +748,8 @@ export function EventFormModal({
           description: p.description,
           instructions: p.instructions,
           commission: p.commission,
+          commissionAmount: p.commissionAmount,
+          commissionAmountType: p.commissionAmountType,
         };
         return {
           productId: p.productId,
@@ -880,11 +848,18 @@ export function EventFormModal({
     }
   };
 
+  // Wrapper to ensure form submission doesn't bubble and is properly isolated
+  const onFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleSubmit(handleFormSubmit, handleFormError)(e);
+  };
+
   const clients = clientsData?.data || [];
 
   return (
     <Dialog open={open} onClose={onClose} fullScreen>
-      <form onSubmit={handleSubmit(handleFormSubmit, handleFormError)} className="h-full flex flex-col">
+      <form onSubmit={onFormSubmit} className="h-full flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>
@@ -1101,6 +1076,7 @@ export function EventFormModal({
                 setEndTimeTBD={setEndTimeTBD}
                 assignments={assignments}
                 onAssignmentsChange={setAssignments}
+                onClientCreated={(clientId) => setValue('clientId', clientId)}
                 disabled={isSubmitting}
               />
             </>

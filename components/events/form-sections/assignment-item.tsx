@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -10,7 +9,9 @@ import { cn } from '@/lib/utils';
 import {
   EXPERIENCE_REQUIREMENT_LABELS,
   STAFF_RATING_LABELS,
+  RATE_TYPE_LABELS,
 } from '@/lib/constants/enums';
+import { getAssignmentTotals, formatCurrency } from '@/lib/utils/assignment-calculations';
 import type { Assignment, ProductAssignment, ServiceAssignment } from '@/lib/types/assignment.types';
 import type { ExperienceRequirement, StaffRating } from '@prisma/client';
 
@@ -34,53 +35,6 @@ export function AssignmentItem({
   const productAssignment = isProduct ? (assignment as ProductAssignment) : null;
   const serviceAssignment = !isProduct ? (assignment as ServiceAssignment) : null;
 
-  // Quick edit state
-  const [editingQty, setEditingQty] = useState(false);
-  const [tempQty, setTempQty] = useState(assignment.quantity);
-  const qtyInputRef = useRef<HTMLInputElement>(null);
-  const [editingPrice, setEditingPrice] = useState(false);
-  const [tempPrice, setTempPrice] = useState(0);
-  const priceInputRef = useRef<HTMLInputElement>(null);
-  const [editingCost, setEditingCost] = useState(false);
-  const [tempCost, setTempCost] = useState(0);
-  const costInputRef = useRef<HTMLInputElement>(null);
-
-  // Date quick edit state
-  const [editingDate, setEditingDate] = useState(false);
-  const [tempStartDate, setTempStartDate] = useState(serviceAssignment?.startDate || '');
-  const [tempStartTime, setTempStartTime] = useState(serviceAssignment?.startTime || '');
-  const [tempEndDate, setTempEndDate] = useState(serviceAssignment?.endDate || '');
-  const [tempEndTime, setTempEndTime] = useState(serviceAssignment?.endTime || '');
-  const dateInputRef = useRef<HTMLInputElement>(null);
-
-  // Focus input when editing starts
-  useEffect(() => {
-    if (editingQty && qtyInputRef.current) {
-      qtyInputRef.current.focus();
-      qtyInputRef.current.select();
-    }
-  }, [editingQty]);
-
-  useEffect(() => {
-    if (editingPrice && priceInputRef.current) {
-      priceInputRef.current.focus();
-      priceInputRef.current.select();
-    }
-  }, [editingPrice]);
-
-  useEffect(() => {
-    if (editingCost && costInputRef.current) {
-      costInputRef.current.focus();
-      costInputRef.current.select();
-    }
-  }, [editingCost]);
-
-  useEffect(() => {
-    if (editingDate && dateInputRef.current) {
-      dateInputRef.current.focus();
-    }
-  }, [editingDate]);
-
 
   // Get display title
   const title = isProduct
@@ -97,120 +51,45 @@ export function AssignmentItem({
     ? productAssignment?.product?.price
     : serviceAssignment?.billRate ?? serviceAssignment?.service?.price;
 
-  // Calculate line total
-  const lineTotal = price !== null && price !== undefined
-    ? Number(price) * assignment.quantity
-    : null;
+  // Calculate hours and totals using shared utility
+  const { hours, isHourly, totalCost, totalPrice } = getAssignmentTotals(assignment);
 
-  // Format currency
-  const formatCurrency = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '-';
-    return `$${Number(value).toFixed(2)}`;
-  };
-
-
-  // Handle quantity quick edit
-  const handleQtyClick = (e: React.MouseEvent) => {
-    if (disabled || !onQuickUpdate) return;
-    e.stopPropagation();
-    e.preventDefault();
-    setTempQty(assignment.quantity);
-    setEditingQty(true);
-  };
-
-  const handleQtySave = () => {
-    if (tempQty !== assignment.quantity && tempQty >= 1) {
-      onQuickUpdate?.({ quantity: tempQty });
-    }
-    setEditingQty(false);
-  };
-
-  const handleQtyKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleQtySave();
-    } else if (e.key === 'Escape') {
-      setEditingQty(false);
+  // Direct update handlers (no click-to-edit, fields are always editable)
+  const handleQtyChange = (value: number) => {
+    if (value >= 1) {
+      onQuickUpdate?.({ quantity: value });
     }
   };
 
-  // Handle cost quick edit
-  const handleCostClick = (e: React.MouseEvent) => {
-    if (disabled || !onQuickUpdate) return;
-    e.stopPropagation();
-    e.preventDefault();
-    setTempCost(cost !== null && cost !== undefined ? Number(cost) : 0);
-    setEditingCost(true);
-  };
-
-  const handleCostSave = () => {
-    const currentCost = cost !== null && cost !== undefined ? Number(cost) : 0;
-    if (tempCost !== currentCost && tempCost >= 0) {
-      onQuickUpdate?.({ cost: tempCost });
-    }
-    setEditingCost(false);
-  };
-
-  const handleCostKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleCostSave();
-    } else if (e.key === 'Escape') {
-      setEditingCost(false);
+  const handleCostChange = (value: number) => {
+    if (value >= 0) {
+      onQuickUpdate?.({ cost: value });
     }
   };
 
-  // Handle price quick edit
-  const handlePriceClick = (e: React.MouseEvent) => {
-    if (disabled || !onQuickUpdate) return;
-    e.stopPropagation();
-    e.preventDefault();
-    setTempPrice(price !== null && price !== undefined ? Number(price) : 0);
-    setEditingPrice(true);
-  };
-
-  const handlePriceSave = () => {
-    const currentPrice = price !== null && price !== undefined ? Number(price) : 0;
-    if (tempPrice !== currentPrice && tempPrice >= 0) {
-      onQuickUpdate?.({ price: tempPrice });
-    }
-    setEditingPrice(false);
-  };
-
-  const handlePriceKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handlePriceSave();
-    } else if (e.key === 'Escape') {
-      setEditingPrice(false);
+  const handlePriceChange = (value: number) => {
+    if (value >= 0) {
+      onQuickUpdate?.({ price: value });
     }
   };
 
-  // Handle date quick edit
-  const handleDateClick = (e: React.MouseEvent) => {
-    if (disabled || !onQuickUpdate || isProduct) return;
-    e.stopPropagation();
-    e.preventDefault();
-    setTempStartDate(serviceAssignment?.startDate || '');
-    setTempStartTime(serviceAssignment?.startTime || '');
-    setTempEndDate(serviceAssignment?.endDate || '');
-    setTempEndTime(serviceAssignment?.endTime || '');
-    setEditingDate(true);
-  };
+  const handleDateChange = (field: 'startDate' | 'startTime' | 'endDate' | 'endTime', value: string) => {
+    const updates: { startDate?: string | null; startTime?: string | null; endDate?: string | null; endTime?: string | null } = {};
+    updates[field] = value || null;
 
-  const handleDateSave = () => {
-    onQuickUpdate?.({
-      startDate: tempStartDate || null,
-      startTime: tempStartTime || null,
-      endDate: tempEndDate || null,
-      endTime: tempEndTime || null,
-    });
-    setEditingDate(false);
-  };
-
-  const handleDateKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleDateSave();
-    } else if (e.key === 'Escape') {
-      setEditingDate(false);
+    // When start date changes, also update end date if it's empty or before start date
+    if (field === 'startDate' && value) {
+      const currentEndDate = serviceAssignment?.endDate;
+      if (!currentEndDate || currentEndDate < value) {
+        updates.endDate = value;
+      }
     }
+    // When start time changes, also update end time if it's empty
+    if (field === 'startTime' && value && !serviceAssignment?.endTime) {
+      updates.endTime = value;
+    }
+
+    onQuickUpdate?.(updates);
   };
 
 
@@ -235,172 +114,138 @@ export function AssignmentItem({
           </div>
         </div>
 
-        {/* Date & Time - for service assignments (click to edit) */}
-        {!isProduct && serviceAssignment && (
-          editingDate ? (
-            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-              <Input
-                ref={dateInputRef}
-                type="date"
-                value={tempStartDate}
-                onChange={(e) => { setTempStartDate(e.target.value); setTempEndDate(e.target.value); }}
-                onKeyDown={handleDateKeyDown}
-                className="w-[130px] h-7 text-xs"
-              />
-              <Input
-                type="time"
-                value={tempStartTime}
-                onChange={(e) => { setTempStartTime(e.target.value); setTempEndTime(e.target.value); }}
-                onKeyDown={handleDateKeyDown}
-                className="w-[100px] h-7 text-xs"
-              />
-              <span className="text-xs text-muted-foreground">→</span>
-              <Input
-                type="date"
-                value={tempEndDate}
-                onChange={(e) => setTempEndDate(e.target.value)}
-                onKeyDown={handleDateKeyDown}
-                className="w-[130px] h-7 text-xs"
-              />
-              <Input
-                type="time"
-                value={tempEndTime}
-                onChange={(e) => setTempEndTime(e.target.value)}
-                onKeyDown={handleDateKeyDown}
-                className="w-[100px] h-7 text-xs"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={(e) => { e.stopPropagation(); handleDateSave(); }}
-              >
-                ✓
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={(e) => { e.stopPropagation(); setEditingDate(false); }}
-              >
-                ✕
-              </Button>
-            </div>
-          ) : (serviceAssignment.startDate || serviceAssignment.endDate) ? (
-            <div
-              className={cn(
-                'text-xs text-muted-foreground hidden md:block whitespace-nowrap',
-                onQuickUpdate && !disabled && 'cursor-pointer hover:text-primary'
-              )}
-              onClick={handleDateClick}
-              title="Click to edit dates"
-            >
-              {serviceAssignment.startDate && (
-                <span>
-                  {serviceAssignment.startDateUBD ? 'UBD' : serviceAssignment.startDate}
-                  {serviceAssignment.startTime && !serviceAssignment.startTimeTBD && ` ${serviceAssignment.startTime}`}
-                  {serviceAssignment.startTimeTBD && ' (TBD)'}
-                </span>
-              )}
-              {serviceAssignment.startDate && serviceAssignment.endDate && ' → '}
-              {serviceAssignment.endDate && (
-                <span>
-                  {serviceAssignment.endDateUBD ? 'UBD' : serviceAssignment.endDate}
-                  {serviceAssignment.endTime && !serviceAssignment.endTimeTBD && ` ${serviceAssignment.endTime}`}
-                  {serviceAssignment.endTimeTBD && ' (TBD)'}
-                </span>
-              )}
-            </div>
-          ) : onQuickUpdate && !disabled ? (
-            <span
-              className="text-xs text-muted-foreground/50 italic hidden md:block cursor-pointer hover:text-primary"
-              onClick={handleDateClick}
-              title="Click to add dates"
-            >
-              + Add dates
-            </span>
-          ) : null
+        {/* Date & Time - for service assignments (editable when not disabled) */}
+        {!isProduct && serviceAssignment && onQuickUpdate && !disabled && (
+          <div className="hidden md:flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <Input
+              type="date"
+              value={serviceAssignment.startDate || ''}
+              onChange={(e) => handleDateChange('startDate', e.target.value)}
+              disabled={disabled}
+              className="w-[130px] h-7 text-xs"
+            />
+            <Input
+              type="time"
+              value={serviceAssignment.startTime || ''}
+              onChange={(e) => handleDateChange('startTime', e.target.value)}
+              disabled={disabled}
+              className="w-[100px] h-7 text-xs"
+            />
+            <span className="text-xs text-muted-foreground">→</span>
+            <Input
+              type="date"
+              value={serviceAssignment.endDate || ''}
+              onChange={(e) => handleDateChange('endDate', e.target.value)}
+              disabled={disabled}
+              className="w-[130px] h-7 text-xs"
+            />
+            <Input
+              type="time"
+              value={serviceAssignment.endTime || ''}
+              onChange={(e) => handleDateChange('endTime', e.target.value)}
+              disabled={disabled}
+              className="w-[100px] h-7 text-xs"
+            />
+            {/* Hours display - only for PER_HOUR rate type */}
+            {isHourly && hours !== null && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap ml-1">
+                ({hours}h)
+              </span>
+            )}
+          </div>
         )}
 
-        {/* Quantity - Click to edit */}
-        {editingQty ? (
-          <Input
-            ref={qtyInputRef}
-            type="number"
-            min={1}
-            value={tempQty}
-            onChange={(e) => setTempQty(parseInt(e.target.value) || 1)}
-            onBlur={handleQtySave}
-            onKeyDown={handleQtyKeyDown}
-            onClick={(e) => e.stopPropagation()}
-            className="w-20 h-7 text-sm"
-          />
-        ) : (
-          <span onClick={handleQtyClick}>
-            <Badge
-              variant="secondary"
-              className={cn(
-                onQuickUpdate && !disabled && "cursor-pointer hover:bg-primary hover:text-primary-foreground"
-              )}
-              asSpan
-            >
-              Talent Qty: {assignment.quantity}
-            </Badge>
+        {/* Hours display when disabled (form open) - show separately */}
+        {!isProduct && serviceAssignment && disabled && isHourly && hours !== null && (
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            ({hours}h)
           </span>
         )}
 
-        {/* Cost - Click to edit */}
-        {editingCost ? (
-          <Input
-            ref={costInputRef}
-            type="number"
-            step="0.01"
-            min={0}
-            value={tempCost}
-            onChange={(e) => setTempCost(parseFloat(e.target.value) || 0)}
-            onBlur={handleCostSave}
-            onKeyDown={handleCostKeyDown}
-            onClick={(e) => e.stopPropagation()}
-            className="w-24 h-7 text-sm"
-          />
+        {/* Quantity - always editable */}
+        {onQuickUpdate && !disabled ? (
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Qty:</span>
+            <Input
+              type="number"
+              min={1}
+              value={assignment.quantity}
+              onChange={(e) => handleQtyChange(parseInt(e.target.value) || 1)}
+              disabled={disabled}
+              className="w-16 h-7 text-sm text-center"
+            />
+          </div>
         ) : (
-          <span
-            onClick={handleCostClick}
-            className={cn(
-              'text-sm whitespace-nowrap text-muted-foreground',
-              onQuickUpdate && !disabled && 'cursor-pointer hover:text-primary'
-            )}
-          >
+          <Badge variant="secondary" asSpan>
+            Talent Needed: {assignment.quantity}
+          </Badge>
+        )}
+
+        {/* Cost - always editable */}
+        {onQuickUpdate && !disabled ? (
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Cost:</span>
+            <span className="text-xs text-muted-foreground">$</span>
+            <Input
+              type="number"
+              step="0.01"
+              min={0}
+              value={cost ?? 0}
+              onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
+              disabled={disabled}
+              className="w-20 h-7 text-sm text-muted-foreground"
+            />
+          </div>
+        ) : (
+          <span className="text-sm whitespace-nowrap text-muted-foreground">
             {formatCurrency(cost)}
           </span>
         )}
 
-        {/* Price - Click to edit */}
-        {editingPrice ? (
-          <Input
-            ref={priceInputRef}
-            type="number"
-            step="0.01"
-            min={0}
-            value={tempPrice}
-            onChange={(e) => setTempPrice(parseFloat(e.target.value) || 0)}
-            onBlur={handlePriceSave}
-            onKeyDown={handlePriceKeyDown}
-            onClick={(e) => e.stopPropagation()}
-            className="w-24 h-7 text-sm"
-          />
-        ) : (
-          <span
-            onClick={handlePriceClick}
-            className={cn(
-              'text-sm font-medium whitespace-nowrap',
-              onQuickUpdate && !disabled && 'cursor-pointer hover:text-primary'
+        {/* Price - always editable */}
+        {onQuickUpdate && !disabled ? (
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Price:</span>
+            <span className="text-sm font-medium">$</span>
+            <Input
+              type="number"
+              step="0.01"
+              min={0}
+              value={price ?? 0}
+              onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
+              disabled={disabled}
+              className="w-20 h-7 text-sm font-medium"
+            />
+            {/* Rate Type display - only for services */}
+            {!isProduct && serviceAssignment?.rateType && (
+              <span className="text-xs text-muted-foreground">
+                {RATE_TYPE_LABELS[serviceAssignment.rateType]}
+              </span>
             )}
-          >
+          </div>
+        ) : (
+          <span className="text-sm font-medium whitespace-nowrap">
             {formatCurrency(price)}
+            {!isProduct && serviceAssignment?.rateType && (
+              <span className="text-xs text-muted-foreground ml-1">
+                {RATE_TYPE_LABELS[serviceAssignment.rateType]}
+              </span>
+            )}
           </span>
+        )}
+
+        {/* Total - calculated display */}
+        {totalPrice !== null && (
+          <div className="flex flex-col items-end">
+            <span className="text-sm font-semibold text-primary whitespace-nowrap">
+              {formatCurrency(totalPrice)}
+            </span>
+            {totalCost !== null && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                Cost: {formatCurrency(totalCost)}
+              </span>
+            )}
+          </div>
         )}
 
         {/* Edit */}

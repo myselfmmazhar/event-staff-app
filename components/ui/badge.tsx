@@ -75,6 +75,7 @@ export const Badge = ({
     return (
       <span
         className={baseStyles}
+        onClick={onClick}
         {...(props as HTMLAttributes<HTMLSpanElement>)}
       >
         {content}

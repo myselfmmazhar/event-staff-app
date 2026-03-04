@@ -42,6 +42,10 @@ const typeIcons: Record<NotificationType, React.ComponentType<{ className?: stri
     SHIFT_REMINDER: Bell,
     STAFF_INVITATION: UserPlus,
     GENERAL: Bell,
+    // Event status change notifications
+    EVENT_FULLY_STAFFED: Check,
+    EVENT_STARTED: Calendar,
+    EVENT_COMPLETED: Check,
 };
 
 // Color mapping for notification types
@@ -55,6 +59,10 @@ const typeColors: Record<NotificationType, string> = {
     SHIFT_REMINDER: "text-orange-500",
     STAFF_INVITATION: "text-indigo-500",
     GENERAL: "text-gray-500",
+    // Event status change notifications
+    EVENT_FULLY_STAFFED: "text-green-500",
+    EVENT_STARTED: "text-blue-600",
+    EVENT_COMPLETED: "text-green-700",
 };
 
 /**

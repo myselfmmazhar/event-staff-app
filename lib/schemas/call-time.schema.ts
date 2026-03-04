@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SkillLevel, RateType, CallTimeInvitationStatus } from '@prisma/client';
+import { SkillLevel, RateType, CallTimeInvitationStatus, AmountType } from '@prisma/client';
 
 // Experience requirement options (matches Prisma ExperienceRequirement enum)
 // Using string literals instead of z.nativeEnum for browser compatibility
@@ -83,6 +83,13 @@ export class CallTimeSchema {
         .max(5000)
         .optional()
         .transform((val) => val?.trim()),
+      // Commission & Overtime
+      approveOvertime: z.boolean().default(false),
+      overtimeRate: z.number().min(0).optional().nullable(),
+      overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
+      commission: z.boolean().default(false),
+      commissionAmount: z.number().min(0).optional().nullable(),
+      commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
     })
     .refine((data) => data.payRateType === data.billRateType, {
       message: FieldErrors.rateTypeMismatch,
@@ -146,6 +153,13 @@ export class CallTimeSchema {
         .optional()
         .nullable()
         .transform((val) => val?.trim()),
+      // Commission & Overtime
+      approveOvertime: z.boolean().optional(),
+      overtimeRate: z.number().min(0).optional().nullable(),
+      overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
+      commission: z.boolean().optional(),
+      commissionAmount: z.number().min(0).optional().nullable(),
+      commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
     })
     .refine(
       (data) => {
@@ -302,7 +316,11 @@ export class CallTimeSchema {
     experienceRequired: z.enum(experienceRequiredValues).default('ANY'),
     ratingRequired: z.enum([...staffRatingValues, 'ANY']).default('ANY'),
     approveOvertime: z.boolean().default(false),
+    overtimeRate: z.number().min(0).optional().nullable(),
+    overtimeRateType: z.nativeEnum(AmountType).optional().nullable(),
     commission: z.boolean().default(false),
+    commissionAmount: z.number().min(0).optional().nullable(),
+    commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
     payRate: z.number().min(0).optional().nullable(),
     billRate: z.number().min(0).optional().nullable(),
     rateType: z.nativeEnum(RateType).optional().nullable(),

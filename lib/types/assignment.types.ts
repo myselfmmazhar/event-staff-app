@@ -5,7 +5,7 @@
  * Assignments can be either Product or Service based.
  */
 
-import type { CostUnitType, PriceUnitType, ExperienceRequirement, StaffRating, RateType } from '@prisma/client';
+import type { CostUnitType, PriceUnitType, ExperienceRequirement, StaffRating, RateType, AmountType } from '@prisma/client';
 
 /**
  * Assignment type discriminator
@@ -53,6 +53,10 @@ export interface BaseAssignment {
   quantity: number;
   /** Whether commission applies to this assignment */
   commission: boolean;
+  /** Commission amount (if commission is enabled) */
+  commissionAmount?: number | null;
+  /** Commission amount type (e.g. PERCENTAGE, FLAT) */
+  commissionAmountType?: AmountType | null;
 }
 
 /**
@@ -101,6 +105,10 @@ export interface ServiceAssignment extends BaseAssignment {
   ratingRequired: StaffRating | 'ANY';
   /** Whether overtime is approved */
   approveOvertime: boolean;
+  /** Overtime rate (if overtime is approved) */
+  overtimeRate?: number | null;
+  /** Overtime rate type (e.g. PERCENTAGE, FLAT) */
+  overtimeRateType?: AmountType | null;
   /** Pay rate for staff */
   payRate: number | null;
   /** Bill rate for client */
@@ -125,6 +133,8 @@ export interface AssignmentFormData {
   serviceId?: string;
   quantity: number;
   commission: boolean;
+  commissionAmount?: number | null;
+  commissionAmountType?: AmountType | null;
   // Product-specific
   description?: string | null;
   instructions?: string | null;
@@ -140,6 +150,8 @@ export interface AssignmentFormData {
   experienceRequired?: ExperienceRequirement;
   ratingRequired?: StaffRating | 'ANY';
   approveOvertime?: boolean;
+  overtimeRate?: number | null;
+  overtimeRateType?: AmountType | null;
   payRate?: number | null;
   billRate?: number | null;
   rateType?: RateType | null;
@@ -158,4 +170,6 @@ export interface ProductAssignmentExtendedData {
   description?: string | null;
   instructions?: string | null;
   commission?: boolean;
+  commissionAmount?: number | null;
+  commissionAmountType?: string | null;
 }

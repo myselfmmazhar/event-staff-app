@@ -115,19 +115,17 @@ export const ASSIGNMENT_TYPE_OPTIONS: Array<{ value: 'PRODUCT' | 'SERVICE'; labe
  */
 export const RATE_TYPE_LABELS: Record<RateType, string> = {
   PER_HOUR: 'Per Hour',
-  PER_SHIFT: 'Per Shift',
+  PER_SHIFT: 'Per Assignment',
   PER_DAY: 'Per Day',
   PER_EVENT: 'Per Event',
 };
 
 /**
- * Rate Type Options for forms
+ * Rate Type Options for forms (simplified to 2 options)
  */
 export const RATE_TYPE_OPTIONS: Array<{ value: RateType; label: string }> = [
   { value: 'PER_HOUR', label: 'Per Hour' },
-  { value: 'PER_SHIFT', label: 'Per Shift' },
-  { value: 'PER_DAY', label: 'Per Day' },
-  { value: 'PER_EVENT', label: 'Per Event' },
+  { value: 'PER_SHIFT', label: 'Per Assignment' },
 ];
 
 /**

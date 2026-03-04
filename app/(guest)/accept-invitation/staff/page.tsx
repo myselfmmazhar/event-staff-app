@@ -30,37 +30,30 @@ const baseFormSchema = z.object({
     password: StaffSchema.acceptInvitation.shape.password,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
     phone: StaffSchema.acceptInvitation.shape.phone,
-    dateOfBirth: z.string().min(1, 'Date of birth is required'),
     streetAddress: StaffSchema.acceptInvitation.shape.streetAddress,
     aptSuiteUnit: StaffSchema.acceptInvitation.shape.aptSuiteUnit,
     city: StaffSchema.acceptInvitation.shape.city,
     state: StaffSchema.acceptInvitation.shape.state,
     zipCode: StaffSchema.acceptInvitation.shape.zipCode,
     country: StaffSchema.acceptInvitation.shape.country,
-    // Tax details (optional)
+    // Tax details (optional W-9)
     provideTaxDetails: z.boolean(),
-    collectTaxDetails: z.boolean(),
-    trackFor1099: z.boolean(),
-    businessStructure: z.nativeEnum(BusinessStructure),
+    taxName: z.string().optional(),
     businessName: z.string().optional(),
+    businessStructure: z.nativeEnum(BusinessStructure),
+    llcClassification: z.string().optional(),
+    taxAddress: z.string().optional(),
+    taxCity: z.string().optional(),
+    taxState: z.string().optional(),
+    taxZip: z.string().optional(),
     ssn: z.string().optional(),
     ein: z.string().optional(),
-    electronic1099Consent: z.boolean(),
 });
 
 // Form schema with refinements for validation
 const formSchema = baseFormSchema.refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ['confirmPassword'],
-}).refine((data) => {
-    // If providing tax details and tracking for 1099, SSN or EIN is required
-    if (data.provideTaxDetails && data.trackFor1099) {
-        return !!(data.ssn || data.ein);
-    }
-    return true;
-}, {
-    message: "SSN or EIN is required when tracking for 1099",
-    path: ['ssn'],
 });
 
 type FormData = z.infer<typeof baseFormSchema>;
@@ -69,8 +62,10 @@ type FormData = z.infer<typeof baseFormSchema>;
 const businessStructureLabels: Record<BusinessStructure, string> = {
     INDIVIDUAL: 'Individual / Sole Proprietor',
     LLC: 'LLC',
-    CORPORATION: 'Corporation',
+    C_CORPORATION: 'C Corporation',
+    S_CORPORATION: 'S Corporation',
     PARTNERSHIP: 'Partnership',
+    TRUST_ESTATE: 'Trust/Estate',
     OTHER: 'Other',
 };
 
@@ -121,13 +116,17 @@ function AcceptStaffInvitationContent() {
                 const data = pendingTaxDetails.data;
                 taxDetailsMutation.mutate({
                     staffId: staff.id,
-                    collectTaxDetails: data.collectTaxDetails,
-                    trackFor1099: data.trackFor1099,
+                    taxFilledBy: 'TALENT' as const,
+                    taxName: data.taxName || undefined,
                     businessStructure: data.businessStructure,
                     businessName: data.businessName || undefined,
+                    llcClassification: data.llcClassification || undefined,
+                    taxAddress: data.taxAddress || undefined,
+                    taxCity: data.taxCity || undefined,
+                    taxState: data.taxState || undefined,
+                    taxZip: data.taxZip || undefined,
                     ssn: data.ssn || undefined,
                     ein: data.ein || undefined,
-                    electronic1099Consent: data.electronic1099Consent,
                 });
             } else {
                 toast({
@@ -172,7 +171,6 @@ function AcceptStaffInvitationContent() {
             password: '',
             confirmPassword: '',
             phone: '',
-            dateOfBirth: '',
             streetAddress: '',
             aptSuiteUnit: '',
             city: '',
@@ -181,19 +179,21 @@ function AcceptStaffInvitationContent() {
             country: 'USA',
             // Tax details defaults
             provideTaxDetails: false,
-            collectTaxDetails: false,
-            trackFor1099: false,
-            businessStructure: BusinessStructure.INDIVIDUAL,
+            taxName: '',
             businessName: '',
+            businessStructure: BusinessStructure.INDIVIDUAL,
+            llcClassification: '',
+            taxAddress: '',
+            taxCity: '',
+            taxState: '',
+            taxZip: '',
             ssn: '',
             ein: '',
-            electronic1099Consent: false,
         },
     });
 
     // Watch tax-related fields
     const provideTaxDetails = form.watch('provideTaxDetails');
-    const trackFor1099 = form.watch('trackFor1099');
     const businessStructure = form.watch('businessStructure');
 
     const onSubmit = (data: FormData) => {
@@ -208,7 +208,6 @@ function AcceptStaffInvitationContent() {
             token,
             password: data.password,
             phone: data.phone,
-            dateOfBirth: new Date(data.dateOfBirth),
             streetAddress: data.streetAddress,
             aptSuiteUnit: data.aptSuiteUnit || undefined,
             city: data.city,
@@ -327,7 +326,7 @@ function AcceptStaffInvitationContent() {
                                             <Input
                                                 id="password"
                                                 type={showPassword ? 'text' : 'password'}
-                                                placeholder="Min 8 characters"
+                                                placeholder="e.g. MyP@ssw0rd!"
                                                 invalid={!!form.formState.errors.password}
                                                 disabled={form.formState.isSubmitting || acceptMutation.isPending}
                                                 {...form.register('password')}
@@ -361,7 +360,7 @@ function AcceptStaffInvitationContent() {
                                             <Input
                                                 id="confirmPassword"
                                                 type={showConfirmPassword ? 'text' : 'password'}
-                                                placeholder="Confirm your password"
+                                                placeholder="Re-enter your password"
                                                 invalid={!!form.formState.errors.confirmPassword}
                                                 disabled={form.formState.isSubmitting || acceptMutation.isPending}
                                                 {...form.register('confirmPassword')}
@@ -395,43 +394,23 @@ function AcceptStaffInvitationContent() {
                             {/* Personal Info Section */}
                             <div className="space-y-4">
                                 <h3 className="text-lg font-medium border-b pb-2">Personal Information</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="phone" requiredMark>
-                                            Phone Number
-                                        </Label>
-                                        <Input
-                                            id="phone"
-                                            type="tel"
-                                            placeholder="(555) 555-5555"
-                                            invalid={!!form.formState.errors.phone}
-                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                            {...form.register('phone')}
-                                        />
-                                        {form.formState.errors.phone && (
-                                            <p className="text-sm text-destructive mt-1">
-                                                {String(form.formState.errors.phone.message)}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="dateOfBirth" requiredMark>
-                                            Date of Birth
-                                        </Label>
-                                        <Input
-                                            id="dateOfBirth"
-                                            type="date"
-                                            invalid={!!form.formState.errors.dateOfBirth}
-                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                            {...form.register('dateOfBirth')}
-                                        />
-                                        {form.formState.errors.dateOfBirth && (
-                                            <p className="text-sm text-destructive mt-1">
-                                                {String(form.formState.errors.dateOfBirth.message)}
-                                            </p>
-                                        )}
-                                    </div>
+                                <div>
+                                    <Label htmlFor="phone" requiredMark>
+                                        Phone Number
+                                    </Label>
+                                    <Input
+                                        id="phone"
+                                        type="tel"
+                                        placeholder="(555) 555-5555"
+                                        invalid={!!form.formState.errors.phone}
+                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                        {...form.register('phone')}
+                                    />
+                                    {form.formState.errors.phone && (
+                                        <p className="text-sm text-destructive mt-1">
+                                            {String(form.formState.errors.phone.message)}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
@@ -579,43 +558,38 @@ function AcceptStaffInvitationContent() {
 
                                         {provideTaxDetails && (
                                             <div className="space-y-4 mt-4">
-                                                {/* Tax Preferences */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div className="flex items-center space-x-2">
-                                                        <Checkbox
-                                                            id="collectTaxDetails"
-                                                            checked={form.watch('collectTaxDetails')}
-                                                            onChange={(e) => form.setValue('collectTaxDetails', e.target.checked)}
-                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                        />
-                                                        <Label htmlFor="collectTaxDetails" className="cursor-pointer text-sm">
-                                                            Collect tax details
-                                                        </Label>
-                                                    </div>
-
-                                                    <div className="flex items-center space-x-2">
-                                                        <Checkbox
-                                                            id="trackFor1099"
-                                                            checked={trackFor1099}
-                                                            onChange={(e) => form.setValue('trackFor1099', e.target.checked)}
-                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                        />
-                                                        <Label htmlFor="trackFor1099" className="cursor-pointer text-sm">
-                                                            Track for 1099
-                                                        </Label>
-                                                    </div>
+                                                {/* W-9 Line 1: Name */}
+                                                <div>
+                                                    <Label htmlFor="taxName">Name (as shown on your income tax return)</Label>
+                                                    <Input
+                                                        id="taxName"
+                                                        placeholder="Legal name"
+                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                        {...form.register('taxName')}
+                                                    />
                                                 </div>
 
-                                                {/* Business Structure */}
+                                                {/* W-9 Line 2: Business name */}
                                                 <div>
-                                                    <Label htmlFor="businessStructure">Business Structure</Label>
+                                                    <Label htmlFor="businessName">Business name (if different from above)</Label>
+                                                    <Input
+                                                        id="businessName"
+                                                        placeholder="Business name (if applicable)"
+                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                        {...form.register('businessName')}
+                                                    />
+                                                </div>
+
+                                                {/* W-9 Line 3a: Federal tax classification */}
+                                                <div>
+                                                    <Label htmlFor="businessStructure">Federal Tax Classification</Label>
                                                     <Select
                                                         value={businessStructure}
                                                         onValueChange={(value) => form.setValue('businessStructure', value as BusinessStructure)}
                                                         disabled={form.formState.isSubmitting || acceptMutation.isPending}
                                                     >
                                                         <SelectTrigger id="businessStructure">
-                                                            <SelectValue placeholder="Select structure" />
+                                                            <SelectValue placeholder="Select classification" />
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {Object.entries(businessStructureLabels).map(([value, label]) => (
@@ -627,73 +601,92 @@ function AcceptStaffInvitationContent() {
                                                     </Select>
                                                 </div>
 
-                                                {/* Business Name (conditional) */}
-                                                {businessStructure !== BusinessStructure.INDIVIDUAL && (
+                                                {/* LLC sub-classification */}
+                                                {businessStructure === BusinessStructure.LLC && (
                                                     <div>
-                                                        <Label htmlFor="businessName">Business Name</Label>
-                                                        <Input
-                                                            id="businessName"
-                                                            placeholder="Your business name"
+                                                        <Label htmlFor="llcClassification">LLC Tax Classification</Label>
+                                                        <Select
+                                                            value={form.watch('llcClassification') || ''}
+                                                            onValueChange={(value) => form.setValue('llcClassification', value)}
                                                             disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                            {...form.register('businessName')}
+                                                        >
+                                                            <SelectTrigger id="llcClassification">
+                                                                <SelectValue placeholder="Select LLC classification" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="C">C — C Corporation</SelectItem>
+                                                                <SelectItem value="S">S — S Corporation</SelectItem>
+                                                                <SelectItem value="P">P — Partnership</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
+                                                {/* W-9 Lines 5-6: Address */}
+                                                <div>
+                                                    <Label htmlFor="taxAddress">Address (number, street, apt/suite)</Label>
+                                                    <Input
+                                                        id="taxAddress"
+                                                        placeholder="Street address"
+                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                        {...form.register('taxAddress')}
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div>
+                                                        <Label htmlFor="taxCity">City</Label>
+                                                        <Input
+                                                            id="taxCity"
+                                                            placeholder="City"
+                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                            {...form.register('taxCity')}
                                                         />
                                                     </div>
-                                                )}
+                                                    <div>
+                                                        <Label htmlFor="taxState">State</Label>
+                                                        <Input
+                                                            id="taxState"
+                                                            placeholder="State"
+                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                            {...form.register('taxState')}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="taxZip">ZIP Code</Label>
+                                                        <Input
+                                                            id="taxZip"
+                                                            placeholder="ZIP"
+                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                            {...form.register('taxZip')}
+                                                        />
+                                                    </div>
+                                                </div>
 
-                                                {/* Tax Identifiers (required if tracking for 1099) */}
-                                                {trackFor1099 && (
-                                                    <div className="space-y-4 p-3 border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 rounded-lg">
-                                                        <p className="text-sm text-amber-800 dark:text-amber-200">
-                                                            Since you're tracking for 1099, please provide your SSN or EIN.
-                                                        </p>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            <div>
-                                                                <Label htmlFor="ssn">
-                                                                    Social Security Number (SSN)
-                                                                </Label>
-                                                                <Input
-                                                                    id="ssn"
-                                                                    type="password"
-                                                                    placeholder="XXX-XX-XXXX"
-                                                                    invalid={!!form.formState.errors.ssn}
-                                                                    disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                                    {...form.register('ssn')}
-                                                                />
-                                                                {form.formState.errors.ssn && (
-                                                                    <p className="text-sm text-destructive mt-1">
-                                                                        {String(form.formState.errors.ssn.message)}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-
-                                                            <div>
-                                                                <Label htmlFor="ein">
-                                                                    Employer Identification Number (EIN)
-                                                                </Label>
-                                                                <Input
-                                                                    id="ein"
-                                                                    type="password"
-                                                                    placeholder="XX-XXXXXXX"
-                                                                    disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                                    {...form.register('ein')}
-                                                                />
-                                                            </div>
+                                                {/* W-9 Part I: Tax Identifiers */}
+                                                <div className="space-y-4 p-3 border border-border/30 bg-accent/5 rounded-lg">
+                                                    <p className="text-sm font-medium">Taxpayer Identification Number (TIN)</p>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <Label htmlFor="ssn">Social Security Number</Label>
+                                                            <Input
+                                                                id="ssn"
+                                                                type="password"
+                                                                placeholder="XXX-XX-XXXX"
+                                                                disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                                autoComplete="off"
+                                                                {...form.register('ssn')}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="ein">Employer Identification Number</Label>
+                                                            <Input
+                                                                id="ein"
+                                                                placeholder="XX-XXXXXXX"
+                                                                disabled={form.formState.isSubmitting || acceptMutation.isPending}
+                                                                {...form.register('ein')}
+                                                            />
                                                         </div>
                                                     </div>
-                                                )}
-
-                                                {/* Electronic 1099 Consent */}
-                                                <div className="flex items-start space-x-2">
-                                                    <Checkbox
-                                                        id="electronic1099Consent"
-                                                        checked={form.watch('electronic1099Consent')}
-                                                        onChange={(e) => form.setValue('electronic1099Consent', e.target.checked)}
-                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                        className="mt-1"
-                                                    />
-                                                    <Label htmlFor="electronic1099Consent" className="cursor-pointer text-sm">
-                                                        I consent to receive my 1099 form electronically
-                                                    </Label>
                                                 </div>
                                             </div>
                                         )}

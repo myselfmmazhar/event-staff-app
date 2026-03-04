@@ -37,6 +37,7 @@ export interface EventFormFieldsProps {
   setEndTimeTBD: (value: boolean) => void;
   assignments?: Assignment[];
   onAssignmentsChange?: (assignments: Assignment[]) => void;
+  onClientCreated?: (clientId: string) => void;
   disabled?: boolean;
   compact?: boolean;
 }
@@ -59,6 +60,7 @@ export function EventFormFields({
   setEndTimeTBD,
   assignments = [],
   onAssignmentsChange,
+  onClientCreated,
   disabled = false,
   compact = false,
 }: EventFormFieldsProps) {
@@ -89,6 +91,7 @@ export function EventFormFields({
           setValue={setValue}
           clients={clients}
           terminology={terminology}
+          onClientCreated={onClientCreated}
           disabled={disabled}
           className="lg:col-span-3"
         />
@@ -142,46 +145,48 @@ export function EventFormFields({
         />
       </div>
 
-      {/* === ROW 4: Pre-Event Instructions + Documents & Files === */}
-      <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
-        <PreEventSection
-          register={register}
-          control={control}
-          errors={errors}
-          watch={watch}
-          setValue={setValue}
-          disabled={disabled}
-        />
-        <DocumentsSection
-          register={register}
-          control={control}
-          errors={errors}
-          watch={watch}
-          setValue={setValue}
-          fileLinksFieldArray={fileLinksFieldArray}
-          disabled={disabled}
-        />
-      </div>
-
-      {/* === ROW 5: Private Notes + Custom Fields === */}
-      <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
-        <PrivateNotesSection
-          register={register}
-          control={control}
-          errors={errors}
-          watch={watch}
-          setValue={setValue}
-          disabled={disabled}
-        />
-        <CustomFieldsSection
-          register={register}
-          control={control}
-          errors={errors}
-          watch={watch}
-          setValue={setValue}
-          customFieldsFieldArray={customFieldsFieldArray}
-          disabled={disabled}
-        />
+      {/* === ROW 4: Pre-Event + Private Notes (left) | Documents + Custom Fields (right) === */}
+      <div className={`grid grid-cols-1 lg:grid-cols-2 items-start ${gridGap} ${spacing}`}>
+        {/* Left column: Pre-Event Instructions + Private Notes stacked */}
+        <div className={`flex flex-col ${gridGap}`}>
+          <PreEventSection
+            register={register}
+            control={control}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
+            disabled={disabled}
+          />
+          <PrivateNotesSection
+            register={register}
+            control={control}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
+            disabled={disabled}
+          />
+        </div>
+        {/* Right column: Documents + Custom Fields stacked */}
+        <div className={`flex flex-col ${gridGap}`}>
+          <DocumentsSection
+            register={register}
+            control={control}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
+            fileLinksFieldArray={fileLinksFieldArray}
+            disabled={disabled}
+          />
+          <CustomFieldsSection
+            register={register}
+            control={control}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
+            customFieldsFieldArray={customFieldsFieldArray}
+            disabled={disabled}
+          />
+        </div>
       </div>
 
       {/* === ROW 6: Assignments (full width) === */}

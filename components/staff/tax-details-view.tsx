@@ -3,8 +3,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { BusinessStructure } from '@prisma/client';
-import { ExternalLinkIcon, CheckCircleIcon, XCircleIcon, EditIcon } from 'lucide-react';
+import { BusinessStructure, TaxFilledBy } from '@prisma/client';
+import { ExternalLinkIcon, EditIcon } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 
 interface TaxDetailsViewProps {
@@ -12,48 +12,45 @@ interface TaxDetailsViewProps {
     taxDetails: {
         id: string;
         staffId: string;
-        collectTaxDetails: boolean;
-        trackFor1099: boolean;
-        businessStructure: string;
+        taxFilledBy: string;
+        taxName: string | null;
         businessName: string | null;
-        identificationFrontUrl: string | null;
-        identificationBackUrl: string | null;
-        electronic1099Consent: boolean;
+        businessStructure: string;
+        llcClassification: string | null;
+        exemptPayeeCode: string | null;
+        fatcaExemptionCode: string | null;
+        taxAddress: string | null;
+        taxCity: string | null;
+        taxState: string | null;
+        taxZip: string | null;
+        accountNumbers: string | null;
         signatureUrl: string | null;
-        consentDate: Date | string | null;
+        certificationDate: Date | string | null;
         createdAt: Date | string;
         updatedAt: Date | string;
     } | null;
     onEdit?: () => void;
 }
 
-// Helper to format business structure for display
-function formatBusinessStructure(structure: string): string {
-    switch (structure) {
-        case BusinessStructure.INDIVIDUAL:
-            return 'Individual/Sole Proprietor';
-        case BusinessStructure.LLC:
-            return 'LLC';
-        case BusinessStructure.CORPORATION:
-            return 'Corporation';
-        case BusinessStructure.PARTNERSHIP:
-            return 'Partnership';
-        case BusinessStructure.OTHER:
-            return 'Other';
-        default:
-            return structure;
-    }
-}
+const BUSINESS_STRUCTURE_LABELS: Record<string, string> = {
+    [BusinessStructure.INDIVIDUAL]: 'Individual/Sole Proprietor',
+    [BusinessStructure.LLC]: 'LLC',
+    [BusinessStructure.C_CORPORATION]: 'C Corporation',
+    [BusinessStructure.S_CORPORATION]: 'S Corporation',
+    [BusinessStructure.PARTNERSHIP]: 'Partnership',
+    [BusinessStructure.TRUST_ESTATE]: 'Trust/Estate',
+    [BusinessStructure.OTHER]: 'Other',
+};
 
 export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewProps) {
     // Query masked SSN and EIN
     const { data: maskedSsn } = trpc.staffTaxDetails.getMaskedSsn.useQuery(
         { staffId },
-        { enabled: !!taxDetails?.collectTaxDetails }
+        { enabled: taxDetails?.taxFilledBy === TaxFilledBy.STAFF }
     );
     const { data: maskedEin } = trpc.staffTaxDetails.getMaskedEin.useQuery(
         { staffId },
-        { enabled: !!taxDetails?.collectTaxDetails }
+        { enabled: taxDetails?.taxFilledBy === TaxFilledBy.STAFF }
     );
 
     // If no tax details exist yet
@@ -74,12 +71,14 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
         );
     }
 
+    const isStaffFilled = taxDetails.taxFilledBy === TaxFilledBy.STAFF;
+
     return (
         <div className="space-y-6">
-            {/* Tax Collection Preferences */}
+            {/* Tax Collection Mode */}
             <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold border-b border-border pb-2 w-full">Tax Collection Preferences</h3>
+                    <h3 className="text-lg font-semibold border-b border-border pb-2 w-full">Tax Information</h3>
                     {onEdit && (
                         <Button variant="outline" size="sm" onClick={onEdit} className="ml-4 shrink-0">
                             <EditIcon className="h-4 w-4 mr-1" />
@@ -87,55 +86,73 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
                         </Button>
                     )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2">
-                        {taxDetails.collectTaxDetails ? (
-                            <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                        ) : (
-                            <XCircleIcon className="h-5 w-5 text-muted-foreground" />
-                        )}
-                        <div>
-                            <p className="text-sm text-muted-foreground">Collect Tax Details</p>
-                            <Badge variant={taxDetails.collectTaxDetails ? 'success' : 'secondary'}>
-                                {taxDetails.collectTaxDetails ? 'Yes' : 'No'}
-                            </Badge>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {taxDetails.trackFor1099 ? (
-                            <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                        ) : (
-                            <XCircleIcon className="h-5 w-5 text-muted-foreground" />
-                        )}
-                        <div>
-                            <p className="text-sm text-muted-foreground">Track for 1099</p>
-                            <Badge variant={taxDetails.trackFor1099 ? 'success' : 'secondary'}>
-                                {taxDetails.trackFor1099 ? 'Yes' : 'No'}
-                            </Badge>
-                        </div>
-                    </div>
+                <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">Filled by:</p>
+                    <Badge variant={isStaffFilled ? 'default' : 'secondary'}>
+                        {isStaffFilled ? 'Staff / Admin' : 'Talent'}
+                    </Badge>
                 </div>
             </div>
 
-            {/* Only show remaining sections if collecting tax details */}
-            {taxDetails.collectTaxDetails && (
+            {/* Only show W-9 details if Staff filled it out */}
+            {isStaffFilled && (
                 <>
-                    {/* Business Information */}
+                    {/* W-9 Details */}
                     <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Business Information</h3>
+                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">W-9 Information</h3>
                         <div className="space-y-3">
-                            <div>
-                                <p className="text-sm text-muted-foreground">Structure</p>
-                                <p className="text-base">{formatBusinessStructure(taxDetails.businessStructure)}</p>
-                            </div>
+                            {taxDetails.taxName && (
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Name (Line 1)</p>
+                                    <p className="text-base">{taxDetails.taxName}</p>
+                                </div>
+                            )}
                             {taxDetails.businessName && (
                                 <div>
-                                    <p className="text-sm text-muted-foreground">Business Name</p>
+                                    <p className="text-sm text-muted-foreground">Business Name (Line 2)</p>
                                     <p className="text-base">{taxDetails.businessName}</p>
+                                </div>
+                            )}
+                            <div>
+                                <p className="text-sm text-muted-foreground">Federal Tax Classification</p>
+                                <p className="text-base">
+                                    {BUSINESS_STRUCTURE_LABELS[taxDetails.businessStructure] || taxDetails.businessStructure}
+                                    {taxDetails.businessStructure === BusinessStructure.LLC && taxDetails.llcClassification && (
+                                        <span className="text-muted-foreground ml-1">({taxDetails.llcClassification})</span>
+                                    )}
+                                </p>
+                            </div>
+                            {(taxDetails.exemptPayeeCode || taxDetails.fatcaExemptionCode) && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {taxDetails.exemptPayeeCode && (
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Exempt Payee Code</p>
+                                            <p className="text-base">{taxDetails.exemptPayeeCode}</p>
+                                        </div>
+                                    )}
+                                    {taxDetails.fatcaExemptionCode && (
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">FATCA Exemption Code</p>
+                                            <p className="text-base">{taxDetails.fatcaExemptionCode}</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
                     </div>
+
+                    {/* Address */}
+                    {(taxDetails.taxAddress || taxDetails.taxCity) && (
+                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Address</h3>
+                            <div className="space-y-1">
+                                {taxDetails.taxAddress && <p className="text-base">{taxDetails.taxAddress}</p>}
+                                <p className="text-base">
+                                    {[taxDetails.taxCity, taxDetails.taxState, taxDetails.taxZip].filter(Boolean).join(', ')}
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Tax Identifiers */}
                     <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
@@ -156,90 +173,36 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
                         </div>
                     </div>
 
-                    {/* ID Verification */}
-                    {(taxDetails.identificationFrontUrl || taxDetails.identificationBackUrl) && (
+                    {/* Certification */}
+                    {(taxDetails.signatureUrl || taxDetails.certificationDate) && (
                         <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">ID Verification</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">ID Front</p>
-                                    {taxDetails.identificationFrontUrl ? (
+                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Certification</h3>
+                            <div className="space-y-3">
+                                {taxDetails.certificationDate && (
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Certification Date</p>
+                                        <p className="text-base">
+                                            {format(new Date(taxDetails.certificationDate), 'MMM dd, yyyy')}
+                                        </p>
+                                    </div>
+                                )}
+                                {taxDetails.signatureUrl && (
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Signature</p>
                                         <a
-                                            href={taxDetails.identificationFrontUrl}
+                                            href={taxDetails.signatureUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center text-primary hover:underline"
                                         >
-                                            View Document
+                                            View Signature
                                             <ExternalLinkIcon className="h-3 w-3 ml-1" />
                                         </a>
-                                    ) : (
-                                        <p className="text-base text-muted-foreground">Not provided</p>
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="text-sm text-muted-foreground">ID Back</p>
-                                    {taxDetails.identificationBackUrl ? (
-                                        <a
-                                            href={taxDetails.identificationBackUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center text-primary hover:underline"
-                                        >
-                                            View Document
-                                            <ExternalLinkIcon className="h-3 w-3 ml-1" />
-                                        </a>
-                                    ) : (
-                                        <p className="text-base text-muted-foreground">Not provided</p>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
-
-                    {/* Electronic Consent */}
-                    <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Electronic 1099 Consent</h3>
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                                {taxDetails.electronic1099Consent ? (
-                                    <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                                ) : (
-                                    <XCircleIcon className="h-5 w-5 text-muted-foreground" />
-                                )}
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Electronic Delivery Consent</p>
-                                    <Badge variant={taxDetails.electronic1099Consent ? 'success' : 'secondary'}>
-                                        {taxDetails.electronic1099Consent ? 'Consented' : 'Not Consented'}
-                                    </Badge>
-                                </div>
-                            </div>
-
-                            {taxDetails.consentDate && (
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Consent Date</p>
-                                    <p className="text-base">
-                                        {format(new Date(taxDetails.consentDate), 'MMM dd, yyyy')}
-                                    </p>
-                                </div>
-                            )}
-
-                            {taxDetails.signatureUrl && (
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Signature</p>
-                                    <a
-                                        href={taxDetails.signatureUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center text-primary hover:underline"
-                                    >
-                                        View Signature
-                                        <ExternalLinkIcon className="h-3 w-3 ml-1" />
-                                    </a>
-                                </div>
-                            )}
-                        </div>
-                    </div>
                 </>
             )}
         </div>
