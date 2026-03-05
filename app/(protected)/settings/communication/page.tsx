@@ -392,7 +392,7 @@ export default function CommunicationSettingsPage() {
                                                 size="sm"
                                                 className="w-full gap-2"
                                                 onClick={() => {
-                                                    setMailgunForm({ name: 'Mailgun Sandbox', apiKey: '', domain: '', isDefault: false });
+                                                    setMailgunForm({ name: 'Mailgun Sandbox', apiKey: '', domain: '', from: '', isDefault: false });
                                                     setMailgunDomains([]);
                                                     setIsMailgunModalOpen(true);
                                                 }}
