@@ -7,7 +7,7 @@ import { PlusIcon } from 'lucide-react';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { StaffFormModal } from '@/components/staff/staff-form-modal';
 import { StaffTable, type StaffWithRelations } from '@/components/staff/staff-table';
-import { AssignStaffModal } from '@/components/staff/assign-staff-modal';
+// AssignStaffModal removed - using ViewDetails and Message actions instead
 import { StaffSearch } from '@/components/staff/staff-search';
 import { StaffFilters } from '@/components/staff/staff-filters';
 import { ActiveFilters } from '@/components/common/active-filters';
@@ -71,7 +71,8 @@ export default function StaffPage() {
     const [isDisableConfirmOpen, setIsDisableConfirmOpen] = useState(false);
     const [staffToResend, setStaffToResend] = useState<StaffWithRelations | null>(null);
     const [staffToDisable, setStaffToDisable] = useState<StaffWithRelations | null>(null);
-    const [assigningStaff, setAssigningStaff] = useState<StaffWithRelations | null>(null);
+    // Message staff placeholder (no action for now)
+    const [messagingStaff, setMessagingStaff] = useState<StaffWithRelations | null>(null);
 
     // Rehydrate date filters from localStorage on mount
     useEffect(() => {
@@ -360,6 +361,20 @@ export default function StaffPage() {
         setModals((prev) => ({ ...prev, form: false, view: true }));
     };
 
+    const handleViewDetails = (staff: StaffWithRelations) => {
+        setSelectedStaff(staff);
+        setModals((prev) => ({ ...prev, view: true }));
+    };
+
+    const handleMessage = (staff: StaffWithRelations) => {
+        // Placeholder - no action for now, just set the staff
+        setMessagingStaff(staff);
+        toast({
+            title: 'Message',
+            description: `Message functionality coming soon for ${staff.firstName} ${staff.lastName}`,
+        });
+    };
+
     const handleFormSubmit = (formData: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => {
         if (selectedStaff) {
             updateMutation.mutate({
@@ -618,7 +633,8 @@ export default function StaffPage() {
                                 staff={(data?.data ?? []) as StaffWithRelations[]}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
-                                onAssign={(staff) => setAssigningStaff(staff)}
+                                onViewDetails={handleViewDetails}
+                                onMessage={handleMessage}
                                 selectedIds={selectedIds}
                                 onSelectionChange={setSelectedIds}
                             />
@@ -753,14 +769,6 @@ export default function StaffPage() {
                 )}
             </ConfirmModal>
 
-            {/* Assign Staff Modal */}
-            {assigningStaff && (
-                <AssignStaffModal
-                    staff={assigningStaff}
-                    open={!!assigningStaff}
-                    onClose={() => setAssigningStaff(null)}
-                />
-            )}
-        </div>
+            </div>
     );
 }
