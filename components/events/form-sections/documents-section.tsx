@@ -21,7 +21,7 @@ export function DocumentsSection({
   const { terminology } = useTerminology();
 
   return (
-    <div className={cn('space-y-6', className)}>
+    <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-4', className)}>
       {/* Event Documents */}
       <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
         <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">{terminology.event.singular} Documents</h3>

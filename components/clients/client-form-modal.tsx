@@ -325,331 +325,313 @@ export function ClientFormModal({
         <DialogContent className="flex-1 overflow-y-auto">
           {/* Client ID (Read-only in edit mode) */}
           {isEdit && client && (
-            <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
+            <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border inline-block">
               <p className="text-sm text-muted-foreground">Client ID</p>
               <p className="text-base font-medium">{client.clientId}</p>
             </div>
           )}
 
-          {/* Row 1: Client Information + Business Address (side-by-side on lg+) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Client Information */}
-            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Client Information</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="businessName" required>Business Name</Label>
-                  <Input
-                    id="businessName"
-                    {...register('businessName')}
-                    error={!!errors.businessName}
-                    disabled={isSubmitting}
-                    placeholder="Business name"
-                  />
-                  {errors.businessName && (
-                    <p className="text-sm text-destructive mt-1">{errors.businessName.message}</p>
-                  )}
-                </div>
+          {/* Client Information Section */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Client Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <Label htmlFor="businessName" required>Business Name</Label>
+                <Input
+                  id="businessName"
+                  {...register('businessName')}
+                  error={!!errors.businessName}
+                  disabled={isSubmitting}
+                  placeholder="Business name"
+                />
+                {errors.businessName && (
+                  <p className="text-sm text-destructive mt-1">{errors.businessName.message}</p>
+                )}
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName" required>First Name</Label>
-                    <Input
-                      id="firstName"
-                      {...register('firstName')}
-                      error={!!errors.firstName}
-                      disabled={isSubmitting}
-                      placeholder="First name"
-                    />
-                    {errors.firstName && (
-                      <p className="text-sm text-destructive mt-1">{errors.firstName.message}</p>
-                    )}
-                  </div>
+              <div>
+                <Label htmlFor="firstName" required>First Name</Label>
+                <Input
+                  id="firstName"
+                  {...register('firstName')}
+                  error={!!errors.firstName}
+                  disabled={isSubmitting}
+                  placeholder="First name"
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-destructive mt-1">{errors.firstName.message}</p>
+                )}
+              </div>
 
-                  <div>
-                    <Label htmlFor="lastName" required>Last Name</Label>
-                    <Input
-                      id="lastName"
-                      {...register('lastName')}
-                      error={!!errors.lastName}
-                      disabled={isSubmitting}
-                      placeholder="Last name"
-                    />
-                    {errors.lastName && (
-                      <p className="text-sm text-destructive mt-1">{errors.lastName.message}</p>
-                    )}
-                  </div>
-                </div>
+              <div>
+                <Label htmlFor="lastName" required>Last Name</Label>
+                <Input
+                  id="lastName"
+                  {...register('lastName')}
+                  error={!!errors.lastName}
+                  disabled={isSubmitting}
+                  placeholder="Last name"
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-destructive mt-1">{errors.lastName.message}</p>
+                )}
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="email" required>Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...register('email')}
-                      error={!!errors.email}
-                      disabled={isSubmitting}
-                      placeholder="Email address"
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
-                    )}
-                  </div>
+              <div>
+                <Label htmlFor="email" required>Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  {...register('email')}
+                  error={!!errors.email}
+                  disabled={isSubmitting}
+                  placeholder="Email address"
+                />
+                {errors.email && (
+                  <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
+                )}
+              </div>
 
-                  <div>
-                    <Label htmlFor="ccEmail">CC Email</Label>
-                    <Input
-                      id="ccEmail"
-                      type="email"
-                      {...register('ccEmail')}
-                      error={!!errors.ccEmail}
-                      disabled={isSubmitting}
-                      placeholder="CC email address"
-                    />
-                    {errors.ccEmail && (
-                      <p className="text-sm text-destructive mt-1">{errors.ccEmail.message}</p>
-                    )}
-                  </div>
-                </div>
+              <div>
+                <Label htmlFor="ccEmail">CC Email</Label>
+                <Input
+                  id="ccEmail"
+                  type="email"
+                  {...register('ccEmail')}
+                  error={!!errors.ccEmail}
+                  disabled={isSubmitting}
+                  placeholder="CC email address"
+                />
+                {errors.ccEmail && (
+                  <p className="text-sm text-destructive mt-1">{errors.ccEmail.message}</p>
+                )}
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="cellPhone" required>Cell Phone</Label>
-                    <Input
-                      id="cellPhone"
-                      {...register('cellPhone')}
-                      error={!!errors.cellPhone}
-                      disabled={isSubmitting}
-                      placeholder="(123) 456-7890"
-                    />
-                    {errors.cellPhone && (
-                      <p className="text-sm text-destructive mt-1">{errors.cellPhone.message}</p>
-                    )}
-                  </div>
+              <div>
+                <Label htmlFor="cellPhone" required>Cell Phone</Label>
+                <Input
+                  id="cellPhone"
+                  {...register('cellPhone')}
+                  error={!!errors.cellPhone}
+                  disabled={isSubmitting}
+                  placeholder="(123) 456-7890"
+                />
+                {errors.cellPhone && (
+                  <p className="text-sm text-destructive mt-1">{errors.cellPhone.message}</p>
+                )}
+              </div>
 
-                  <div>
-                    <Label htmlFor="businessPhone">Business Phone</Label>
-                    <Input
-                      id="businessPhone"
-                      {...register('businessPhone')}
-                      error={!!errors.businessPhone}
-                      disabled={isSubmitting}
-                      placeholder="(123) 456-7890"
-                    />
-                    {errors.businessPhone && (
-                      <p className="text-sm text-destructive mt-1">{errors.businessPhone.message}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="details">Details</Label>
-                  <Textarea
-                    id="details"
-                    {...register('details')}
-                    disabled={isSubmitting}
-                    rows={3}
-                    placeholder="Additional client details"
-                  />
-                  {errors.details && (
-                    <p className="text-sm text-destructive mt-1">{errors.details.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="requirements">Requirements</Label>
-                  <Textarea
-                    id="requirements"
-                    {...register('requirements')}
-                    disabled={isSubmitting}
-                    rows={3}
-                    placeholder="e.g., Business casual attire, Steel-toed boots required, Must have valid driver's license"
-                  />
-                  {errors.requirements && (
-                    <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
-                  )}
-                </div>
+              <div>
+                <Label htmlFor="businessPhone">Business Phone</Label>
+                <Input
+                  id="businessPhone"
+                  {...register('businessPhone')}
+                  error={!!errors.businessPhone}
+                  disabled={isSubmitting}
+                  placeholder="(123) 456-7890"
+                />
+                {errors.businessPhone && (
+                  <p className="text-sm text-destructive mt-1">{errors.businessPhone.message}</p>
+                )}
               </div>
             </div>
 
-            {/* Business Address + Billing Contact (stacked in right column) */}
-            <div className="space-y-6">
-              {/* Business Address */}
-              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Business Address</h3>
-                <div className="space-y-4">
-                  <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
-                    <AddressAutocomplete
-                      label="Search Address (Optional)"
-                      placeholder="Type to search for a business address..."
-                      defaultValue={client?.businessAddress || ''}
-                      onSelect={(addressData) => {
-                        setValue('businessAddress', addressData.address);
-                        setValue('city', addressData.city);
-                        setValue('state', addressData.state);
-                        setValue('zipCode', addressData.zipCode);
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Start typing to search for an address, or fill in the fields below manually
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="businessAddress">Business Address</Label>
-                      <Input
-                        id="businessAddress"
-                        {...register('businessAddress')}
-                        error={!!errors.businessAddress}
-                        disabled={isSubmitting}
-                        placeholder="Business address"
-                      />
-                      {errors.businessAddress && (
-                        <p className="text-sm text-destructive mt-1">{errors.businessAddress.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="businessAddressLine2">Apt / Suite / Unit</Label>
-                      <Input
-                        id="businessAddressLine2"
-                        {...register('businessAddressLine2')}
-                        disabled={isSubmitting}
-                        placeholder="Suite 200"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="city" required>City</Label>
-                      <Input
-                        id="city"
-                        {...register('city')}
-                        error={!!errors.city}
-                        disabled={isSubmitting}
-                        placeholder="City"
-                      />
-                      {errors.city && (
-                        <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="state" required>State</Label>
-                      <Input
-                        id="state"
-                        {...register('state')}
-                        error={!!errors.state}
-                        disabled={isSubmitting}
-                        placeholder="State"
-                      />
-                      {errors.state && (
-                        <p className="text-sm text-destructive mt-1">{errors.state.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="zipCode" required>ZIP Code</Label>
-                      <Input
-                        id="zipCode"
-                        {...register('zipCode')}
-                        error={!!errors.zipCode}
-                        disabled={isSubmitting}
-                        placeholder="ZIP code"
-                      />
-                      {errors.zipCode && (
-                        <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+            {/* Details & Requirements - separate row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+              <div>
+                <Label htmlFor="details">Details</Label>
+                <Textarea
+                  id="details"
+                  {...register('details')}
+                  disabled={isSubmitting}
+                  rows={2}
+                  placeholder="Additional details"
+                />
+                {errors.details && (
+                  <p className="text-sm text-destructive mt-1">{errors.details.message}</p>
+                )}
               </div>
 
-              {/* Billing Contact */}
-              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
-                  <h3 className="text-lg font-semibold">Billing Contact</h3>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="sameAsContact"
-                      {...register('sameAsContact')}
-                      disabled={isSubmitting}
-                    />
-                    <Label htmlFor="sameAsContact" className="text-[14px] font-medium cursor-pointer">
-                      Same as contact
-                    </Label>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="billingFirstName">Billing First Name</Label>
-                      <Input
-                        id="billingFirstName"
-                        {...register('billingFirstName')}
-                        error={!!errors.billingFirstName}
-                        disabled={isSubmitting || sameAsContact}
-                        placeholder="First name"
-                      />
-                      {errors.billingFirstName && (
-                        <p className="text-sm text-destructive mt-1">{errors.billingFirstName.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="billingLastName">Billing Last Name</Label>
-                      <Input
-                        id="billingLastName"
-                        {...register('billingLastName')}
-                        error={!!errors.billingLastName}
-                        disabled={isSubmitting || sameAsContact}
-                        placeholder="Last name"
-                      />
-                      {errors.billingLastName && (
-                        <p className="text-sm text-destructive mt-1">{errors.billingLastName.message}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="billingEmail">Billing Email</Label>
-                      <Input
-                        id="billingEmail"
-                        type="email"
-                        {...register('billingEmail')}
-                        error={!!errors.billingEmail}
-                        disabled={isSubmitting || sameAsContact}
-                        placeholder="billing@example.com"
-                      />
-                      {errors.billingEmail && (
-                        <p className="text-sm text-destructive mt-1">{errors.billingEmail.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="billingPhone">Billing Phone</Label>
-                      <Input
-                        id="billingPhone"
-                        {...register('billingPhone')}
-                        error={!!errors.billingPhone}
-                        disabled={isSubmitting || sameAsContact}
-                        placeholder="(123) 456-7890"
-                      />
-                      {errors.billingPhone && (
-                        <p className="text-sm text-destructive mt-1">{errors.billingPhone.message}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <Label htmlFor="requirements">Requirements</Label>
+                <Textarea
+                  id="requirements"
+                  {...register('requirements')}
+                  disabled={isSubmitting}
+                  rows={2}
+                  placeholder="e.g., Business casual attire"
+                />
+                {errors.requirements && (
+                  <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Row 2: Saved Locations + Client Portal Access (side-by-side on lg+) */}
+          {/* Business Address Section */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Business Address</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Address Search */}
+              <div>
+                <AddressAutocomplete
+                  label="Search Address"
+                  placeholder="Type to search..."
+                  defaultValue={client?.businessAddress || ''}
+                  onSelect={(addressData) => {
+                    setValue('businessAddress', addressData.address);
+                    setValue('city', addressData.city);
+                    setValue('state', addressData.state);
+                    setValue('zipCode', addressData.zipCode);
+                  }}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="businessAddress">Business Address</Label>
+                <Input
+                  id="businessAddress"
+                  {...register('businessAddress')}
+                  error={!!errors.businessAddress}
+                  disabled={isSubmitting}
+                  placeholder="Business address"
+                />
+                {errors.businessAddress && (
+                  <p className="text-sm text-destructive mt-1">{errors.businessAddress.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="businessAddressLine2">Apt / Suite / Unit</Label>
+                <Input
+                  id="businessAddressLine2"
+                  {...register('businessAddressLine2')}
+                  disabled={isSubmitting}
+                  placeholder="Suite 200"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="city" required>City</Label>
+                <Input
+                  id="city"
+                  {...register('city')}
+                  error={!!errors.city}
+                  disabled={isSubmitting}
+                  placeholder="City"
+                />
+                {errors.city && (
+                  <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="state" required>State</Label>
+                <Input
+                  id="state"
+                  {...register('state')}
+                  error={!!errors.state}
+                  disabled={isSubmitting}
+                  placeholder="State"
+                />
+                {errors.state && (
+                  <p className="text-sm text-destructive mt-1">{errors.state.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="zipCode" required>ZIP Code</Label>
+                <Input
+                  id="zipCode"
+                  {...register('zipCode')}
+                  error={!!errors.zipCode}
+                  disabled={isSubmitting}
+                  placeholder="ZIP code"
+                />
+                {errors.zipCode && (
+                  <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Billing Contact Section */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
+              <h3 className="text-lg font-semibold">Billing Contact</h3>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="sameAsContact"
+                  {...register('sameAsContact')}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor="sameAsContact" className="text-[14px] font-medium cursor-pointer">
+                  Same as contact
+                </Label>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <Label htmlFor="billingFirstName">Billing First Name</Label>
+                <Input
+                  id="billingFirstName"
+                  {...register('billingFirstName')}
+                  error={!!errors.billingFirstName}
+                  disabled={isSubmitting || sameAsContact}
+                  placeholder="First name"
+                />
+                {errors.billingFirstName && (
+                  <p className="text-sm text-destructive mt-1">{errors.billingFirstName.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="billingLastName">Billing Last Name</Label>
+                <Input
+                  id="billingLastName"
+                  {...register('billingLastName')}
+                  error={!!errors.billingLastName}
+                  disabled={isSubmitting || sameAsContact}
+                  placeholder="Last name"
+                />
+                {errors.billingLastName && (
+                  <p className="text-sm text-destructive mt-1">{errors.billingLastName.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="billingEmail">Billing Email</Label>
+                <Input
+                  id="billingEmail"
+                  type="email"
+                  {...register('billingEmail')}
+                  error={!!errors.billingEmail}
+                  disabled={isSubmitting || sameAsContact}
+                  placeholder="billing@example.com"
+                />
+                {errors.billingEmail && (
+                  <p className="text-sm text-destructive mt-1">{errors.billingEmail.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="billingPhone">Billing Phone</Label>
+                <Input
+                  id="billingPhone"
+                  {...register('billingPhone')}
+                  error={!!errors.billingPhone}
+                  disabled={isSubmitting || sameAsContact}
+                  placeholder="(123) 456-7890"
+                />
+                {errors.billingPhone && (
+                  <p className="text-sm text-destructive mt-1">{errors.billingPhone.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Locations & Portal Access Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Saved Locations */}
             {isEdit && client ? (

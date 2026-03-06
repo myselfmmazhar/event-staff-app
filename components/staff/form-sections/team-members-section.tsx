@@ -30,7 +30,7 @@ export function TeamMembersSection({
   };
 
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
+    <div className={cn(className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
         Team Members
       </h3>

@@ -31,12 +31,12 @@ export function AccountDetailsSection({
   const staffType = watch('staffType');
 
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
+    <div className={cn(className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
         Account Details
       </h3>
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <Label htmlFor="accountStatus" required>
               Account Status
@@ -222,95 +222,93 @@ export function AccountDetailsSection({
               <p className="text-sm text-destructive mt-1">{String(errors.availabilityStatus?.message || "")}</p>
             )}
           </div>
-        </div>
 
-        {availabilityStatus === AvailabilityStatus.TIME_OFF && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="timeOffStart">Time Off Start</Label>
-              <Controller
-                name="timeOffStart"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    id="timeOffStart"
-                    type="date"
-                    value={
-                      field.value
-                        ? new Date(field.value).toISOString().split('T')[0]
-                        : ''
-                    }
-                    onChange={(e) =>
-                      field.onChange(e.target.value ? new Date(e.target.value) : null)
-                    }
-                    disabled={disabled}
-                    error={!!errors.timeOffStart}
-                  />
-                )}
-              />
-              {errors.timeOffStart && (
-                <p className="text-sm text-destructive mt-1">{String(errors.timeOffStart?.message || "")}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="timeOffEnd">Time Off End</Label>
-              <Controller
-                name="timeOffEnd"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    id="timeOffEnd"
-                    type="date"
-                    value={
-                      field.value
-                        ? new Date(field.value).toISOString().split('T')[0]
-                        : ''
-                    }
-                    onChange={(e) =>
-                      field.onChange(e.target.value ? new Date(e.target.value) : null)
-                    }
-                    disabled={disabled}
-                    error={!!errors.timeOffEnd}
-                  />
-                )}
-              />
-              {errors.timeOffEnd && (
-                <p className="text-sm text-destructive mt-1">{String(errors.timeOffEnd?.message || "")}</p>
-              )}
-            </div>
+          <div>
+            <Label htmlFor="experience">Experience/Notes</Label>
+            <Textarea
+              id="experience"
+              {...register('experience')}
+              disabled={disabled}
+              rows={2}
+              placeholder="Experience, notes"
+            />
+            {errors.experience && (
+              <p className="text-sm text-destructive mt-1">{String(errors.experience?.message || "")}</p>
+            )}
           </div>
-        )}
 
-        <div>
-          <Label htmlFor="experience">Experience/Notes</Label>
-          <Textarea
-            id="experience"
-            {...register('experience')}
-            disabled={disabled}
-            rows={3}
-            placeholder="Experience, notes, or other relevant information"
-          />
-          {errors.experience && (
-            <p className="text-sm text-destructive mt-1">{String(errors.experience?.message || "")}</p>
+          <div>
+            <Label htmlFor="internalNotes">Internal Notes</Label>
+            <Textarea
+              id="internalNotes"
+              {...register('internalNotes')}
+              disabled={disabled}
+              rows={2}
+              placeholder="Internal notes"
+            />
+            {errors.internalNotes && (
+              <p className="text-sm text-destructive mt-1">{String(errors.internalNotes?.message || "")}</p>
+            )}
+          </div>
+
+          {availabilityStatus === AvailabilityStatus.TIME_OFF && (
+            <>
+              <div>
+                <Label htmlFor="timeOffStart">Time Off Start</Label>
+                <Controller
+                  name="timeOffStart"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      id="timeOffStart"
+                      type="date"
+                      value={
+                        field.value
+                          ? new Date(field.value).toISOString().split('T')[0]
+                          : ''
+                      }
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? new Date(e.target.value) : null)
+                      }
+                      disabled={disabled}
+                      error={!!errors.timeOffStart}
+                    />
+                  )}
+                />
+                {errors.timeOffStart && (
+                  <p className="text-sm text-destructive mt-1">{String(errors.timeOffStart?.message || "")}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="timeOffEnd">Time Off End</Label>
+                <Controller
+                  name="timeOffEnd"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      id="timeOffEnd"
+                      type="date"
+                      value={
+                        field.value
+                          ? new Date(field.value).toISOString().split('T')[0]
+                          : ''
+                      }
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? new Date(e.target.value) : null)
+                      }
+                      disabled={disabled}
+                      error={!!errors.timeOffEnd}
+                    />
+                  )}
+                />
+                {errors.timeOffEnd && (
+                  <p className="text-sm text-destructive mt-1">{String(errors.timeOffEnd?.message || "")}</p>
+                )}
+              </div>
+            </>
           )}
-        </div>
 
-        <div>
-          <Label htmlFor="internalNotes">Internal Notes</Label>
-          <Textarea
-            id="internalNotes"
-            {...register('internalNotes')}
-            disabled={disabled}
-            rows={3}
-            placeholder="Internal notes (not visible to staff)"
-          />
-          {errors.internalNotes && (
-            <p className="text-sm text-destructive mt-1">{String(errors.internalNotes?.message || "")}</p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label htmlFor="customField1">Custom Field 1</Label>
             <Input

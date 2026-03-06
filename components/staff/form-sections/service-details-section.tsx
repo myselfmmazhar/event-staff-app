@@ -18,13 +18,13 @@ export function ServiceDetailsSection({
   onCreateService,
 }: ServiceDetailsSectionProps) {
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
+    <div className={cn(className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
         Service Assignment
       </h3>
       <div className="space-y-4">
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          <div>
             <Label htmlFor="serviceSearch">Search Services</Label>
             <Input
               id="serviceSearch"
@@ -36,15 +36,17 @@ export function ServiceDetailsSection({
             />
           </div>
           {onCreateService && (
-            <button
-              type="button"
-              onClick={onCreateService}
-              disabled={disabled}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-primary border border-primary/30 rounded-md hover:bg-primary/10 transition-colors disabled:opacity-50 whitespace-nowrap"
-            >
-              <PlusIcon className="h-4 w-4" />
-              New Service
-            </button>
+            <div>
+              <button
+                type="button"
+                onClick={onCreateService}
+                disabled={disabled}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-primary border border-primary/30 rounded-md hover:bg-primary/10 transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                <PlusIcon className="h-4 w-4" />
+                New Service
+              </button>
+            </div>
           )}
         </div>
 

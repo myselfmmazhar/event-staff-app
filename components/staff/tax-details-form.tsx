@@ -177,40 +177,42 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
     return (
         <div className="space-y-6">
             {/* Toggle: Who fills out tax details? */}
-            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+            <div>
                 <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
                     Tax Information Collection
                 </h3>
-                <div>
-                    <Label>Who will provide tax details?</Label>
-                    <Controller
-                        name="taxFilledBy"
-                        control={control}
-                        render={({ field }) => (
-                            <Select
-                                value={field.value}
-                                onValueChange={field.onChange}
-                                disabled={isDisabled}
-                            >
-                                <SelectTrigger className="mt-1.5">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={TaxFilledBy.TALENT}>
-                                        Talent (will fill out their own W-9)
-                                    </SelectItem>
-                                    <SelectItem value={TaxFilledBy.STAFF}>
-                                        Staff / Admin (enter W-9 details now)
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <Label>Who will provide tax details?</Label>
+                        <Controller
+                            name="taxFilledBy"
+                            control={control}
+                            render={({ field }) => (
+                                <Select
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                    disabled={isDisabled}
+                                >
+                                    <SelectTrigger className="mt-1.5">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={TaxFilledBy.TALENT}>
+                                            Talent (will fill out their own W-9)
+                                        </SelectItem>
+                                        <SelectItem value={TaxFilledBy.STAFF}>
+                                            Staff / Admin (enter W-9 details now)
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                        {taxFilledBy === TaxFilledBy.TALENT && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Tax details will be collected from the talent directly when they complete their profile.
+                            </p>
                         )}
-                    />
-                    {taxFilledBy === TaxFilledBy.TALENT && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                            Tax details will be collected from the talent directly when they complete their profile.
-                        </p>
-                    )}
+                    </div>
                 </div>
             </div>
 
@@ -218,17 +220,16 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
             {taxFilledBy === TaxFilledBy.STAFF && (
                 <>
                     {/* W-9 Header */}
-                    <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                        <div className="flex items-center gap-3 mb-4">
+                    <div>
+                        <div className="flex items-center gap-3 border-b border-border pb-2 mb-4">
                             <h3 className="text-lg font-semibold">Form W-9</h3>
                             <span className="text-xs text-muted-foreground">Request for Taxpayer Identification Number and Certification</span>
                         </div>
 
-                        {/* Line 1: Name */}
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
                                 <Label htmlFor="taxName">
-                                    1. Name <span className="text-xs text-muted-foreground">(as shown on your income tax return)</span>
+                                    Name <span className="text-xs text-muted-foreground">(as shown on your income tax return)</span>
                                 </Label>
                                 <Input
                                     id="taxName"
@@ -241,10 +242,9 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 )}
                             </div>
 
-                            {/* Line 2: Business name */}
                             <div>
                                 <Label htmlFor="businessName">
-                                    2. Business name / disregarded entity name <span className="text-xs text-muted-foreground">(if different from above)</span>
+                                    Business name / disregarded entity name
                                 </Label>
                                 <Input
                                     id="businessName"
@@ -257,10 +257,9 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 )}
                             </div>
 
-                            {/* Line 3a: Federal tax classification */}
                             <div>
                                 <Label>
-                                    3a. Federal tax classification
+                                    Federal tax classification
                                 </Label>
                                 <Controller
                                     name="businessStructure"
@@ -284,7 +283,6 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 />
                             </div>
 
-                            {/* LLC sub-classification */}
                             {businessStructure === BusinessStructure.LLC && (
                                 <div>
                                     <Label htmlFor="llcClassification">
@@ -316,41 +314,39 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 </div>
                             )}
 
-                            {/* Line 4: Exemptions */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <Label htmlFor="exemptPayeeCode">
-                                        4. Exempt payee code <span className="text-xs text-muted-foreground">(if any)</span>
-                                    </Label>
-                                    <Input
-                                        id="exemptPayeeCode"
-                                        {...register('exemptPayeeCode')}
-                                        disabled={isDisabled}
-                                        placeholder="Code (if applicable)"
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="fatcaExemptionCode">
-                                        FATCA exemption code <span className="text-xs text-muted-foreground">(if any)</span>
-                                    </Label>
-                                    <Input
-                                        id="fatcaExemptionCode"
-                                        {...register('fatcaExemptionCode')}
-                                        disabled={isDisabled}
-                                        placeholder="Code (if applicable)"
-                                    />
-                                </div>
+                            <div>
+                                <Label htmlFor="exemptPayeeCode">
+                                    Exempt payee code <span className="text-xs text-muted-foreground">(if any)</span>
+                                </Label>
+                                <Input
+                                    id="exemptPayeeCode"
+                                    {...register('exemptPayeeCode')}
+                                    disabled={isDisabled}
+                                    placeholder="Code (if applicable)"
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="fatcaExemptionCode">
+                                    FATCA exemption code <span className="text-xs text-muted-foreground">(if any)</span>
+                                </Label>
+                                <Input
+                                    id="fatcaExemptionCode"
+                                    {...register('fatcaExemptionCode')}
+                                    disabled={isDisabled}
+                                    placeholder="Code (if applicable)"
+                                />
                             </div>
                         </div>
                     </div>
 
-                    {/* Lines 5-6: Address */}
-                    <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                    {/* Address */}
+                    <div>
                         <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Address</h3>
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
                                 <Label htmlFor="taxAddress">
-                                    5. Address <span className="text-xs text-muted-foreground">(number, street, and apt. or suite no.)</span>
+                                    Address <span className="text-xs text-muted-foreground">(number, street, and apt. or suite no.)</span>
                                 </Label>
                                 <Input
                                     id="taxAddress"
@@ -359,38 +355,36 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                     placeholder="Street address"
                                 />
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <Label htmlFor="taxCity">6. City</Label>
-                                    <Input
-                                        id="taxCity"
-                                        {...register('taxCity')}
-                                        disabled={isDisabled}
-                                        placeholder="City"
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="taxState">State</Label>
-                                    <Input
-                                        id="taxState"
-                                        {...register('taxState')}
-                                        disabled={isDisabled}
-                                        placeholder="State"
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="taxZip">ZIP Code</Label>
-                                    <Input
-                                        id="taxZip"
-                                        {...register('taxZip')}
-                                        disabled={isDisabled}
-                                        placeholder="ZIP"
-                                    />
-                                </div>
+                            <div>
+                                <Label htmlFor="taxCity">City</Label>
+                                <Input
+                                    id="taxCity"
+                                    {...register('taxCity')}
+                                    disabled={isDisabled}
+                                    placeholder="City"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="taxState">State</Label>
+                                <Input
+                                    id="taxState"
+                                    {...register('taxState')}
+                                    disabled={isDisabled}
+                                    placeholder="State"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="taxZip">ZIP Code</Label>
+                                <Input
+                                    id="taxZip"
+                                    {...register('taxZip')}
+                                    disabled={isDisabled}
+                                    placeholder="ZIP"
+                                />
                             </div>
                             <div>
                                 <Label htmlFor="accountNumbers">
-                                    7. Account number(s) <span className="text-xs text-muted-foreground">(optional)</span>
+                                    Account number(s) <span className="text-xs text-muted-foreground">(optional)</span>
                                 </Label>
                                 <Input
                                     id="accountNumbers"
@@ -403,74 +397,76 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                     </div>
 
                     {/* Part I: Taxpayer Identification Number */}
-                    <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                    <div>
                         <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-                            Part I — Taxpayer Identification Number (TIN)
+                            Taxpayer Identification Number (TIN)
                         </h3>
                         <p className="text-sm text-muted-foreground mb-4">
                             Enter your TIN in the appropriate box. This is securely stored and used for tax reporting purposes only.
                         </p>
 
-                        {/* TIN Type toggle */}
-                        <div className="flex items-center gap-4 mb-4">
-                            <button
-                                type="button"
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tinType === 'SSN'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted text-muted-foreground hover:bg-accent'
-                                    }`}
-                                onClick={() => setTinType('SSN')}
-                            >
-                                Social Security Number
-                            </button>
-                            <span className="text-sm text-muted-foreground">or</span>
-                            <button
-                                type="button"
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tinType === 'EIN'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted text-muted-foreground hover:bg-accent'
-                                    }`}
-                                onClick={() => setTinType('EIN')}
-                            >
-                                Employer Identification Number
-                            </button>
-                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                            {/* TIN Type toggle */}
+                            <div className="flex items-center gap-4">
+                                <button
+                                    type="button"
+                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tinType === 'SSN'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-muted text-muted-foreground hover:bg-accent'
+                                        }`}
+                                    onClick={() => setTinType('SSN')}
+                                >
+                                    Social Security Number
+                                </button>
+                                <span className="text-sm text-muted-foreground">or</span>
+                                <button
+                                    type="button"
+                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tinType === 'EIN'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-muted text-muted-foreground hover:bg-accent'
+                                        }`}
+                                    onClick={() => setTinType('EIN')}
+                                >
+                                    Employer Identification Number
+                                </button>
+                            </div>
 
-                        {tinType === 'SSN' ? (
-                            <div>
-                                <Label htmlFor="ssn">Social Security Number</Label>
-                                <Input
-                                    id="ssn"
-                                    type="password"
-                                    {...register('ssn')}
-                                    disabled={isDisabled}
-                                    placeholder="XXX-XX-XXXX"
-                                    autoComplete="off"
-                                />
-                                {errors.ssn && (
-                                    <p className="text-sm text-destructive mt-1">{errors.ssn.message}</p>
-                                )}
-                            </div>
-                        ) : (
-                            <div>
-                                <Label htmlFor="ein">Employer Identification Number</Label>
-                                <Input
-                                    id="ein"
-                                    {...register('ein')}
-                                    disabled={isDisabled}
-                                    placeholder="XX-XXXXXXX"
-                                />
-                                {errors.ein && (
-                                    <p className="text-sm text-destructive mt-1">{errors.ein.message}</p>
-                                )}
-                            </div>
-                        )}
+                            {tinType === 'SSN' ? (
+                                <div>
+                                    <Label htmlFor="ssn">Social Security Number</Label>
+                                    <Input
+                                        id="ssn"
+                                        type="password"
+                                        {...register('ssn')}
+                                        disabled={isDisabled}
+                                        placeholder="XXX-XX-XXXX"
+                                        autoComplete="off"
+                                    />
+                                    {errors.ssn && (
+                                        <p className="text-sm text-destructive mt-1">{errors.ssn.message}</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <div>
+                                    <Label htmlFor="ein">Employer Identification Number</Label>
+                                    <Input
+                                        id="ein"
+                                        {...register('ein')}
+                                        disabled={isDisabled}
+                                        placeholder="XX-XXXXXXX"
+                                    />
+                                    {errors.ein && (
+                                        <p className="text-sm text-destructive mt-1">{errors.ein.message}</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Part II: Certification */}
-                    <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                    <div>
                         <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-                            Part II — Certification
+                            Certification
                         </h3>
                         <div className="text-sm text-muted-foreground space-y-2 mb-4">
                             <p>Under penalties of perjury, I certify that:</p>
@@ -482,49 +478,51 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                             </ol>
                         </div>
 
-                        {/* Signature */}
-                        <div className="mt-4">
-                            <Label>Signature</Label>
-                            <div className="mt-1.5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Signature */}
+                            <div className="lg:col-span-2">
+                                <Label>Signature</Label>
+                                <div className="mt-1.5">
+                                    <Controller
+                                        name="signatureUrl"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <SignaturePad
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                disabled={isDisabled}
+                                            />
+                                        )}
+                                    />
+                                </div>
+                                {errors.signatureUrl && (
+                                    <p className="text-sm text-destructive mt-1">{errors.signatureUrl.message}</p>
+                                )}
+                            </div>
+
+                            {/* Certification Date */}
+                            <div>
+                                <Label htmlFor="certificationDate">Date</Label>
                                 <Controller
-                                    name="signatureUrl"
+                                    name="certificationDate"
                                     control={control}
                                     render={({ field }) => (
-                                        <SignaturePad
-                                            value={field.value}
-                                            onChange={field.onChange}
+                                        <Input
+                                            id="certificationDate"
+                                            type="date"
+                                            value={field.value instanceof Date && !isNaN(field.value.getTime())
+                                                ? field.value.toISOString().split('T')[0]
+                                                : ''
+                                            }
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                field.onChange(val ? new Date(val + 'T00:00:00') : null);
+                                            }}
                                             disabled={isDisabled}
                                         />
                                     )}
                                 />
                             </div>
-                            {errors.signatureUrl && (
-                                <p className="text-sm text-destructive mt-1">{errors.signatureUrl.message}</p>
-                            )}
-                        </div>
-
-                        {/* Certification Date */}
-                        <div className="mt-4">
-                            <Label htmlFor="certificationDate">Date</Label>
-                            <Controller
-                                name="certificationDate"
-                                control={control}
-                                render={({ field }) => (
-                                    <Input
-                                        id="certificationDate"
-                                        type="date"
-                                        value={field.value instanceof Date && !isNaN(field.value.getTime())
-                                            ? field.value.toISOString().split('T')[0]
-                                            : ''
-                                        }
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            field.onChange(val ? new Date(val + 'T00:00:00') : null);
-                                        }}
-                                        disabled={isDisabled}
-                                    />
-                                )}
-                            />
                         </div>
                     </div>
                 </>
