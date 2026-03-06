@@ -8,19 +8,23 @@ export async function sendMessage(
 ) {
     // 1. Get Messaging configuration
     let config;
+    console.log('Lookup config with id:', configId);
     if (configId) {
-        config = await prisma.messagingConfiguration.findUnique({
+        config = await (prisma as any).messagingConfiguration.findUnique({
             where: { id: configId },
         });
     } else {
-        config = await prisma.messagingConfiguration.findFirst({
+        config = await (prisma as any).messagingConfiguration.findFirst({
             where: { isDefault: true },
         });
 
         if (!config) {
-            config = await prisma.messagingConfiguration.findFirst();
+            console.log('No default config, trying findFirst()');
+            config = await (prisma as any).messagingConfiguration.findFirst();
         }
     }
+
+    console.log('Found config:', config ? config.name : 'null');
 
     if (!config) {
         throw new Error('No Messaging configuration found');
