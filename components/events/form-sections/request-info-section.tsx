@@ -51,19 +51,17 @@ export function RequestInfoSection({
               placeholder="Purchase Order Number"
             />
           </div>
-        </div>
 
-        <div>
-          <Label htmlFor="requestorName">Requestor Name</Label>
-          <Input
-            id="requestorName"
-            {...register('requestorName')}
-            disabled={disabled}
-            placeholder="John Doe"
-          />
-        </div>
+          <div>
+            <Label htmlFor="requestorName">Requestor Name</Label>
+            <Input
+              id="requestorName"
+              {...register('requestorName')}
+              disabled={disabled}
+              placeholder="John Doe"
+            />
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="requestorPhone">Requestor Phone</Label>
             <Input
