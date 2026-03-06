@@ -106,9 +106,7 @@ export function EventTable({
     title: 'Title',
     client: 'Client',
     venue: 'Location',
-    openAssignments: 'Open',
-    closedAssignments: 'Accepted',
-    progress: 'Progress',
+    assignmentProgress: 'Assignment Progress',
   });
 
   const getAssignmentSummary = (event: Event) => {
@@ -116,18 +114,23 @@ export function EventTable({
 
     const groups = new Map<
       string,
-      { serviceId: string | null; serviceName: string; required: number; accepted: number; open: number; invitations: typeof callTimes[0]['invitations'] }
+      { serviceId: string | null; serviceName: string; required: number; accepted: number; pending: number; open: number; invitations: typeof callTimes[0]['invitations'] }
     >();
 
     let totalRequired = 0;
     let totalAccepted = 0;
+    let totalPending = 0;
 
     for (const callTime of callTimes) {
       const required = callTime.numberOfStaffRequired ?? 0;
       const accepted = callTime.invitations.filter((inv) => inv.status === 'ACCEPTED').length;
+      const pending = callTime.invitations.filter((inv) => inv.status === 'PENDING').length;
+      // Open = positions not yet filled (not offered or declined needing re-offer)
+      const open = Math.max(0, required - accepted - pending);
 
       totalRequired += required;
       totalAccepted += accepted;
+      totalPending += pending;
 
       const serviceId = callTime.service?.id ?? null;
       const key = serviceId ?? callTime.service?.title ?? callTime.id;
@@ -135,7 +138,8 @@ export function EventTable({
       if (existing) {
         existing.required += required;
         existing.accepted += accepted;
-        existing.open = existing.required - existing.accepted;
+        existing.pending += pending;
+        existing.open = Math.max(0, existing.required - existing.accepted - existing.pending);
         existing.invitations = [...existing.invitations, ...callTime.invitations];
       } else {
         groups.set(key, {
@@ -143,7 +147,8 @@ export function EventTable({
           serviceName: callTime.service?.title ?? 'Unknown',
           required,
           accepted,
-          open: required - accepted,
+          pending,
+          open,
           invitations: [...callTime.invitations],
         });
       }
@@ -152,18 +157,16 @@ export function EventTable({
     const allGroups = Array.from(groups.values())
       .sort((a, b) => b.required - a.required || a.serviceName.localeCompare(b.serviceName));
 
-    // Open assignments = groups that still have unfilled positions
-    const openAssignments = allGroups.filter((g) => g.open > 0);
-    // Accepted assignments = groups that have any accepted staff
-    const acceptedAssignments = allGroups.filter((g) => g.accepted > 0);
+    // Calculate totals
+    const totalOpen = Math.max(0, totalRequired - totalAccepted - totalPending);
 
-    // Invitation stats
-    const allInvitations = callTimes.flatMap((ct) => ct.invitations);
-    const totalSent = allInvitations.length;
-    const totalPending = allInvitations.filter((i) => i.status === 'PENDING').length;
-    const totalDeclined = allInvitations.filter((i) => i.status === 'DECLINED').length;
-
-    return { openAssignments, acceptedAssignments, totalRequired, totalAccepted, totalSent, totalPending, totalDeclined, allGroups };
+    return {
+      totalRequired,
+      totalAccepted,
+      totalPending,
+      totalOpen,
+      allGroups
+    };
   };
 
   // Selection handlers
@@ -326,165 +329,232 @@ export function EventTable({
       ),
     },
     {
-      key: 'openAssignments',
-      label: columnLabels.openAssignments,
-      className: 'py-4 px-4 text-sm text-muted-foreground',
-      render: (event) => {
-        const { openAssignments } = getAssignmentSummary(event);
-        if (openAssignments.length === 0) {
-          return <span className="text-muted-foreground/50 italic">—</span>;
-        }
-
-        const isExpanded = expandedRows.has(event.id);
-        const visible = isExpanded ? openAssignments : openAssignments.slice(0, 3);
-        const remaining = openAssignments.length - 3;
-        const hasMore = remaining > 0;
-
-        return (
-          <div className="flex flex-wrap gap-1">
-            {visible.map((item, idx) => {
-              const url = item.serviceId
-                ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
-                : `/assignments?eventId=${event.id}`;
-              return (
-                <Badge
-                  key={idx}
-                  variant="warning"
-                  size="sm"
-                  asSpan
-                  className="cursor-pointer hover:opacity-80 transition-opacity min-w-[120px] text-center"
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    router.push(url);
-                  }}
-                  title={`${item.serviceName}: ${item.open} of ${item.required} - Click to view`}
-                >
-                  <span className="flex flex-col items-center leading-tight">
-                    <span>{item.serviceName}</span>
-                    <span className="text-xs opacity-80">{item.open} of {item.required}</span>
-                  </span>
-                </Badge>
-              );
-            })}
-            {hasMore && (
-              <button
-                type="button"
-                className="flex items-center gap-1 text-xs opacity-75 hover:opacity-100 hover:text-primary transition-all cursor-pointer"
-                onClick={(e) => toggleRowExpanded(event.id, e)}
-              >
-                {isExpanded ? (
-                  <>
-                    <ChevronUpIcon className="h-3 w-3" />
-                    Show less
-                  </>
-                ) : (
-                  <>
-                    <ChevronDownIcon className="h-3 w-3" />
-                    +{remaining} more
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'closedAssignments',
-      label: columnLabels.closedAssignments,
-      className: 'py-4 px-4 text-sm text-muted-foreground',
-      render: (event) => {
-        const { acceptedAssignments } = getAssignmentSummary(event);
-        if (acceptedAssignments.length === 0) {
-          return <span className="text-muted-foreground/50 italic">—</span>;
-        }
-
-        const isExpanded = expandedRows.has(event.id);
-        const visible = isExpanded ? acceptedAssignments : acceptedAssignments.slice(0, 3);
-        const remaining = acceptedAssignments.length - 3;
-        const hasMore = remaining > 0;
-
-        return (
-          <div className="flex flex-wrap gap-1">
-            {visible.map((item, idx) => {
-              const url = item.serviceId
-                ? `/assignments?eventId=${event.id}&serviceId=${item.serviceId}`
-                : `/assignments?eventId=${event.id}`;
-              return (
-                <Badge
-                  key={idx}
-                  variant="success"
-                  size="sm"
-                  asSpan
-                  className="cursor-pointer hover:opacity-80 transition-opacity min-w-[120px] text-center"
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    router.push(url);
-                  }}
-                  title={`${item.serviceName}: ${item.accepted} of ${item.required} - Click to view`}
-                >
-                  <span className="flex flex-col items-center leading-tight">
-                    <span>{item.serviceName}</span>
-                    <span className="text-xs opacity-80">{item.accepted} of {item.required}</span>
-                  </span>
-                </Badge>
-              );
-            })}
-            {hasMore && (
-              <button
-                type="button"
-                className="flex items-center gap-1 text-xs opacity-75 hover:opacity-100 hover:text-primary transition-all cursor-pointer"
-                onClick={(e) => toggleRowExpanded(event.id, e)}
-              >
-                {isExpanded ? (
-                  <>
-                    <ChevronUpIcon className="h-3 w-3" />
-                    Show less
-                  </>
-                ) : (
-                  <>
-                    <ChevronDownIcon className="h-3 w-3" />
-                    +{remaining} more
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'progress',
-      label: columnLabels.progress,
+      key: 'assignmentProgress',
+      label: columnLabels.assignmentProgress,
       className: 'py-4 px-4',
       render: (event) => {
-        const { totalRequired, totalAccepted, totalSent, totalPending, totalDeclined } = getAssignmentSummary(event);
+        const { totalRequired, totalAccepted, totalPending, totalOpen, allGroups } = getAssignmentSummary(event);
 
         if (totalRequired === 0) {
           return <span className="text-muted-foreground/50 italic">—</span>;
         }
 
+        const isExpanded = expandedRows.has(event.id);
+
+        // Get all invitations grouped by status for expanded view
+        const allInvitations = allGroups.flatMap(g => g.invitations);
+        const acceptedInvitations = allInvitations.filter(inv => inv.status === 'ACCEPTED');
+        const pendingInvitations = allInvitations.filter(inv => inv.status === 'PENDING');
+        const declinedInvitations = allInvitations.filter(inv => inv.status === 'DECLINED');
+
         return (
-          <div
-            className="cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSummaryEvent(event);
-            }}
-            title="Click for details"
-          >
-            <div className="flex flex-wrap gap-1">
-              {totalAccepted > 0 && (
-                <Badge variant="success" size="sm">{totalAccepted} Accepted</Badge>
-              )}
-              {totalPending > 0 && (
-                <Badge variant="warning" size="sm">{totalPending} Pending</Badge>
-              )}
-              {totalDeclined > 0 && (
-                <Badge variant="danger" size="sm">{totalDeclined} Declined</Badge>
-              )}
-              <Badge variant="default" size="sm">{totalSent} Sent</Badge>
+          <div className="space-y-2">
+            {/* Compressed view - always visible */}
+            <div
+              className="cursor-pointer hover:bg-accent/50 rounded-md p-2 -m-2 transition-colors"
+              onClick={(e) => toggleRowExpanded(event.id, e)}
+              title="Click for details"
+            >
+              <div className="flex flex-col gap-1 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Open:</span>
+                  <Badge variant={totalOpen > 0 ? 'danger' : 'secondary'} size="sm">
+                    {totalOpen} of {totalRequired}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Pending:</span>
+                  <Badge variant={totalPending > 0 ? 'warning' : 'secondary'} size="sm">
+                    {totalPending} of {totalRequired}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Accepted:</span>
+                  <Badge variant={totalAccepted > 0 ? 'success' : 'secondary'} size="sm">
+                    {totalAccepted} of {totalRequired}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex items-center justify-center mt-1">
+                {isExpanded ? (
+                  <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
             </div>
+
+            {/* Expanded panel - full summary inline */}
+            {isExpanded && (
+              <div className="mt-3 pt-3 border-t border-border min-w-[300px]">
+                {/* Stats header */}
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
+                  <Badge variant="default" size="sm">{totalRequired} Required</Badge>
+                  <Badge variant="info" size="sm">{allInvitations.length} Sent</Badge>
+                </div>
+
+                {/* Status sections */}
+                <div className="space-y-3">
+                  {/* Open Positions */}
+                  {totalOpen > 0 && (
+                    <button
+                      type="button"
+                      className="w-full text-left group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/assignments?eventId=${event.id}&status=open`);
+                      }}
+                    >
+                      <div className="flex items-center gap-3 p-3 rounded-lg border border-danger/30 bg-gradient-to-r from-danger/5 to-transparent hover:from-danger/10 transition-all">
+                        <div className="h-10 w-10 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
+                          <span className="text-danger font-bold text-lg">{totalOpen}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm group-hover:text-danger transition-colors">Open Positions</p>
+                          <p className="text-xs text-muted-foreground">Needs staffing</p>
+                        </div>
+                        <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Pending */}
+                  {pendingInvitations.length > 0 && (
+                    <button
+                      type="button"
+                      className="w-full text-left group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/assignments?eventId=${event.id}&status=pending`);
+                      }}
+                    >
+                      <div className="p-3 rounded-lg border border-warning/30 bg-gradient-to-r from-warning/5 to-transparent hover:from-warning/10 transition-all">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="h-10 w-10 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
+                            <span className="text-warning font-bold text-lg">{pendingInvitations.length}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm group-hover:text-warning transition-colors">Pending Response</p>
+                            <p className="text-xs text-muted-foreground">Awaiting confirmation</p>
+                          </div>
+                          <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                        <div className="flex flex-wrap gap-1 pl-[52px]">
+                          {pendingInvitations.slice(0, 4).map((inv) => (
+                            <div key={inv.id} className="h-6 w-6 rounded-full bg-warning/20 border border-warning/30 flex items-center justify-center text-[9px] font-medium" title={`${inv.staff.firstName} ${inv.staff.lastName}`}>
+                              {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
+                            </div>
+                          ))}
+                          {pendingInvitations.length > 4 && (
+                            <div className="h-6 px-2 rounded-full bg-warning/10 flex items-center justify-center text-[10px] text-warning font-medium">
+                              +{pendingInvitations.length - 4}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Accepted */}
+                  {acceptedInvitations.length > 0 && (
+                    <button
+                      type="button"
+                      className="w-full text-left group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/assignments?eventId=${event.id}&status=accepted`);
+                      }}
+                    >
+                      <div className="p-3 rounded-lg border border-success/30 bg-gradient-to-r from-success/5 to-transparent hover:from-success/10 transition-all">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+                            <span className="text-success font-bold text-lg">{acceptedInvitations.length}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm group-hover:text-success transition-colors">Accepted</p>
+                            <p className="text-xs text-muted-foreground">
+                              {acceptedInvitations.filter(i => i.isConfirmed).length} confirmed
+                            </p>
+                          </div>
+                          <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                        <div className="flex flex-wrap gap-1 pl-[52px]">
+                          {acceptedInvitations.slice(0, 4).map((inv) => (
+                            <div
+                              key={inv.id}
+                              className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-medium ${
+                                inv.isConfirmed
+                                  ? 'bg-success/30 border-2 border-success'
+                                  : 'bg-success/20 border border-success/30'
+                              }`}
+                              title={`${inv.staff.firstName} ${inv.staff.lastName}${inv.isConfirmed ? ' (Confirmed)' : ''}`}
+                            >
+                              {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
+                            </div>
+                          ))}
+                          {acceptedInvitations.length > 4 && (
+                            <div className="h-6 px-2 rounded-full bg-success/10 flex items-center justify-center text-[10px] text-success font-medium">
+                              +{acceptedInvitations.length - 4}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Declined - more subtle */}
+                  {declinedInvitations.length > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30">
+                      <span className="text-xs text-muted-foreground">{declinedInvitations.length} declined</span>
+                      <div className="flex -space-x-1">
+                        {declinedInvitations.slice(0, 3).map((inv) => (
+                          <div key={inv.id} className="h-5 w-5 rounded-full bg-muted border border-background flex items-center justify-center text-[8px] font-medium text-muted-foreground" title={`${inv.staff.firstName} ${inv.staff.lastName}`}>
+                            {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
+                          </div>
+                        ))}
+                        {declinedInvitations.length > 3 && (
+                          <div className="h-5 w-5 rounded-full bg-muted border border-background flex items-center justify-center text-[8px] font-medium text-muted-foreground">
+                            +{declinedInvitations.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* By Service breakdown */}
+                {allGroups.length > 1 && (
+                  <div className="mt-4 pt-3 border-t border-border/50">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">By Service</p>
+                    <div className="space-y-1">
+                      {allGroups.map((group, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-xs py-1.5 px-2 rounded hover:bg-accent/50 transition-colors">
+                          <span className="font-medium truncate">{group.serviceName}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {group.open > 0 && <span className="text-danger font-medium">{group.open} open</span>}
+                            {group.pending > 0 && <span className="text-warning">{group.pending} pending</span>}
+                            {group.accepted > 0 && <span className="text-success">{group.accepted} accepted</span>}
+                            <span className="text-muted-foreground">/ {group.required}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Manage All button */}
+                <button
+                  type="button"
+                  className="w-full mt-4 py-2 text-center text-sm font-medium text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/assignments?eventId=${event.id}`);
+                  }}
+                >
+                  Manage All Assignments →
+                </button>
+              </div>
+            )}
           </div>
         );
       },
@@ -518,25 +588,26 @@ export function EventTable({
           <span className="font-medium">Venue:</span>
           <span>{event.venueName}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="font-medium">Progress:</span>
-          {(() => {
-            const { totalRequired, totalAccepted } = getAssignmentSummary(event);
-            if (totalRequired === 0) return <span className="italic opacity-50">—</span>;
-            const percent = Math.round((totalAccepted / totalRequired) * 100);
-            const status = totalAccepted === 0 ? 'Open' : totalAccepted >= totalRequired ? 'Accepted' : 'Pending';
-            const barColor = totalAccepted === 0 ? 'bg-red-500' : totalAccepted >= totalRequired ? 'bg-green-500' : 'bg-yellow-500';
-            const barBg = totalAccepted === 0 ? 'bg-red-100' : totalAccepted >= totalRequired ? 'bg-green-100' : 'bg-yellow-100';
-            return (
-              <div className="flex items-center gap-2 flex-1">
-                <span className="text-xs font-medium">{status}</span>
-                <div className={`flex-1 h-2 rounded-full ${barBg} overflow-hidden`}>
-                  <div className={`h-full rounded-full ${barColor}`} style={{ width: `${percent}%` }} />
-                </div>
+        {(() => {
+          const { totalRequired, totalAccepted, totalPending, totalOpen } = getAssignmentSummary(event);
+          if (totalRequired === 0) return null;
+          return (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span>Open:</span>
+                <Badge variant={totalOpen > 0 ? 'danger' : 'secondary'} size="sm">{totalOpen} of {totalRequired}</Badge>
               </div>
-            );
-          })()}
-        </div>
+              <div className="flex items-center justify-between text-xs">
+                <span>Pending:</span>
+                <Badge variant={totalPending > 0 ? 'warning' : 'secondary'} size="sm">{totalPending} of {totalRequired}</Badge>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span>Accepted:</span>
+                <Badge variant={totalAccepted > 0 ? 'success' : 'secondary'} size="sm">{totalAccepted} of {totalRequired}</Badge>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="flex items-center gap-2 pt-2 border-t border-border">

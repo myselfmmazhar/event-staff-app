@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SkillLevel, RateType, CallTimeInvitationStatus, AmountType, StaffRating, AvailabilityStatus } from '@prisma/client';
+import { SkillLevel, RateType, CallTimeInvitationStatus, AmountType, StaffRating, AvailabilityStatus, InternalReviewRating } from '@prisma/client';
 
 // Experience requirement options (matches Prisma ExperienceRequirement enum)
 // Using string literals instead of z.nativeEnum for browser compatibility
@@ -346,6 +346,37 @@ export class CallTimeSchema {
   static getByEventForBilling = z.object({
     eventId: z.string().uuid(FieldErrors.eventId),
   });
+
+  /**
+   * Submit Internal Review Schema - For managers to review staff after assignment completion
+   * Reviews are locked after submission and cannot be edited
+   */
+  static submitReview = z
+    .object({
+      invitationId: z.string().uuid(FieldErrors.invitationId),
+      rating: z.nativeEnum(InternalReviewRating),
+      notes: z.string().max(1000).optional().nullable(),
+    })
+    .refine(
+      (data) => {
+        // Require notes for NO_CALL_NO_SHOW
+        if (data.rating === InternalReviewRating.NO_CALL_NO_SHOW && !data.notes?.trim()) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: 'Notes are required for No Call / No Show',
+        path: ['notes'],
+      }
+    );
+
+  /**
+   * Get Staff Assignment History Schema - Get past, current, and upcoming assignments for a staff member
+   */
+  static getStaffAssignmentHistory = z.object({
+    staffId: z.string().uuid(FieldErrors.staffId),
+  });
 }
 
 // Export types
@@ -361,6 +392,8 @@ export type GetMyInvitationsInput = z.infer<typeof CallTimeSchema.getMyInvitatio
 export type EventFormAssignmentInput = z.infer<typeof CallTimeSchema.eventFormAssignment>;
 export type BulkSyncForEventInput = z.infer<typeof CallTimeSchema.bulkSyncForEvent>;
 export type GetByEventForBillingInput = z.infer<typeof CallTimeSchema.getByEventForBilling>;
+export type SubmitReviewInput = z.infer<typeof CallTimeSchema.submitReview>;
+export type GetStaffAssignmentHistoryInput = z.infer<typeof CallTimeSchema.getStaffAssignmentHistory>;
 
 // Rate type labels for UI
 export const RATE_TYPE_LABELS: Record<RateType, string> = {
@@ -377,4 +410,12 @@ export const INVITATION_STATUS_LABELS: Record<CallTimeInvitationStatus, string> 
   [CallTimeInvitationStatus.DECLINED]: 'Declined',
   [CallTimeInvitationStatus.CANCELLED]: 'Cancelled',
   [CallTimeInvitationStatus.WAITLISTED]: 'Waitlisted',
+};
+
+// Internal review rating labels for UI
+export const INTERNAL_REVIEW_LABELS: Record<InternalReviewRating, { label: string; description: string }> = {
+  [InternalReviewRating.MET_EXPECTATIONS]: { label: 'Met Expectations', description: 'Default' },
+  [InternalReviewRating.NEEDS_IMPROVEMENT]: { label: 'Needs Improvement', description: 'Coach & monitor' },
+  [InternalReviewRating.DID_NOT_MEET]: { label: 'Did Not Meet', description: 'Pause / review' },
+  [InternalReviewRating.NO_CALL_NO_SHOW]: { label: 'No Call / No Show', description: 'Comment required' },
 };

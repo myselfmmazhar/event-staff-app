@@ -11,15 +11,17 @@ export function DocumentsSection({
   className,
 }: DocumentsSectionProps) {
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
+    <div className={cn(className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
         Documents
       </h3>
-      <StaffDocumentUpload
-        documents={watch('documents') || []}
-        onChange={(docs) => setValue('documents', docs)}
-        disabled={disabled}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StaffDocumentUpload
+          documents={watch('documents') || []}
+          onChange={(docs) => setValue('documents', docs)}
+          disabled={disabled}
+        />
+      </div>
     </div>
   );
 }

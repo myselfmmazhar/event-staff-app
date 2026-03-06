@@ -14,11 +14,11 @@ export function TeamDetailsSection({
   className,
 }: TeamDetailsSectionProps) {
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
+    <div className={cn(className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
         Team Entity Details
       </h3>
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <Label htmlFor="teamEntityName" required>
             Team Entity Name
@@ -35,46 +35,44 @@ export function TeamDetailsSection({
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="teamEmail" required>
-              Team Email
-            </Label>
-            <Input
-              id="teamEmail"
-              type="email"
-              {...register('teamEmail')}
-              disabled={disabled}
-              error={!!errors.teamEmail}
-              placeholder="team@example.com"
-            />
-            {errors.teamEmail && (
-              <p className="text-sm text-destructive mt-1">{String(errors.teamEmail?.message || "")}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="teamPhone" required>
-              Team Phone
-            </Label>
-            <Input
-              id="teamPhone"
-              type="tel"
-              {...register('teamPhone')}
-              disabled={disabled}
-              error={!!errors.teamPhone}
-              placeholder="(555) 123-4567"
-            />
-            {errors.teamPhone && (
-              <p className="text-sm text-destructive mt-1">{String(errors.teamPhone?.message || "")}</p>
-            )}
-          </div>
+        <div>
+          <Label htmlFor="teamEmail" required>
+            Team Email
+          </Label>
+          <Input
+            id="teamEmail"
+            type="email"
+            {...register('teamEmail')}
+            disabled={disabled}
+            error={!!errors.teamEmail}
+            placeholder="team@example.com"
+          />
+          {errors.teamEmail && (
+            <p className="text-sm text-destructive mt-1">{String(errors.teamEmail?.message || "")}</p>
+          )}
         </div>
 
-        <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
+        <div>
+          <Label htmlFor="teamPhone" required>
+            Team Phone
+          </Label>
+          <Input
+            id="teamPhone"
+            type="tel"
+            {...register('teamPhone')}
+            disabled={disabled}
+            error={!!errors.teamPhone}
+            placeholder="(555) 123-4567"
+          />
+          {errors.teamPhone && (
+            <p className="text-sm text-destructive mt-1">{String(errors.teamPhone?.message || "")}</p>
+          )}
+        </div>
+
+        <div>
           <AddressAutocomplete
-            label="Search Address (Optional)"
-            placeholder="Type to search for an address..."
+            label="Search Address"
+            placeholder="Type to search..."
             onSelect={(addressData) => {
               setValue('teamAddressLine1', addressData.address);
               setValue('teamCity', addressData.city);
@@ -82,89 +80,82 @@ export function TeamDetailsSection({
               setValue('teamZipCode', addressData.zipCode);
             }}
           />
-          <p className="text-xs text-muted-foreground mt-2">
-            Start typing to search for an address, or fill in the fields below manually
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="teamAddressLine1" required>
-              Team Address
-            </Label>
-            <Input
-              id="teamAddressLine1"
-              {...register('teamAddressLine1')}
-              disabled={disabled}
-              error={!!errors.teamAddressLine1}
-              placeholder="123 Main Street"
-            />
-            {errors.teamAddressLine1 && (
-              <p className="text-sm text-destructive mt-1">{String(errors.teamAddressLine1?.message || "")}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="teamAddressLine2">
-              Apt / Suite / Unit
-            </Label>
-            <Input
-              id="teamAddressLine2"
-              {...register('teamAddressLine2')}
-              disabled={disabled}
-              placeholder="Suite 200"
-            />
-          </div>
+        <div>
+          <Label htmlFor="teamAddressLine1" required>
+            Team Address
+          </Label>
+          <Input
+            id="teamAddressLine1"
+            {...register('teamAddressLine1')}
+            disabled={disabled}
+            error={!!errors.teamAddressLine1}
+            placeholder="123 Main Street"
+          />
+          {errors.teamAddressLine1 && (
+            <p className="text-sm text-destructive mt-1">{String(errors.teamAddressLine1?.message || "")}</p>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="teamCity" required>
-              City
-            </Label>
-            <Input
-              id="teamCity"
-              {...register('teamCity')}
-              disabled={disabled}
-              error={!!errors.teamCity}
-              placeholder="New York"
-            />
-            {errors.teamCity && (
-              <p className="text-sm text-destructive mt-1">{String(errors.teamCity?.message || "")}</p>
-            )}
-          </div>
+        <div>
+          <Label htmlFor="teamAddressLine2">
+            Apt / Suite / Unit
+          </Label>
+          <Input
+            id="teamAddressLine2"
+            {...register('teamAddressLine2')}
+            disabled={disabled}
+            placeholder="Suite 200"
+          />
+        </div>
 
-          <div>
-            <Label htmlFor="teamState" required>
-              State
-            </Label>
-            <Input
-              id="teamState"
-              {...register('teamState')}
-              disabled={disabled}
-              error={!!errors.teamState}
-              placeholder="NY"
-            />
-            {errors.teamState && (
-              <p className="text-sm text-destructive mt-1">{String(errors.teamState?.message || "")}</p>
-            )}
-          </div>
+        <div>
+          <Label htmlFor="teamCity" required>
+            City
+          </Label>
+          <Input
+            id="teamCity"
+            {...register('teamCity')}
+            disabled={disabled}
+            error={!!errors.teamCity}
+            placeholder="New York"
+          />
+          {errors.teamCity && (
+            <p className="text-sm text-destructive mt-1">{String(errors.teamCity?.message || "")}</p>
+          )}
+        </div>
 
-          <div>
-            <Label htmlFor="teamZipCode" required>
-              ZIP Code
-            </Label>
-            <Input
-              id="teamZipCode"
-              {...register('teamZipCode')}
-              disabled={disabled}
-              error={!!errors.teamZipCode}
-              placeholder="12345"
-            />
-            {errors.teamZipCode && (
-              <p className="text-sm text-destructive mt-1">{String(errors.teamZipCode?.message || "")}</p>
-            )}
-          </div>
+        <div>
+          <Label htmlFor="teamState" required>
+            State
+          </Label>
+          <Input
+            id="teamState"
+            {...register('teamState')}
+            disabled={disabled}
+            error={!!errors.teamState}
+            placeholder="NY"
+          />
+          {errors.teamState && (
+            <p className="text-sm text-destructive mt-1">{String(errors.teamState?.message || "")}</p>
+          )}
+        </div>
+
+        <div>
+          <Label htmlFor="teamZipCode" required>
+            ZIP Code
+          </Label>
+          <Input
+            id="teamZipCode"
+            {...register('teamZipCode')}
+            disabled={disabled}
+            error={!!errors.teamZipCode}
+            placeholder="12345"
+          />
+          {errors.teamZipCode && (
+            <p className="text-sm text-destructive mt-1">{String(errors.teamZipCode?.message || "")}</p>
+          )}
         </div>
       </div>
     </div>

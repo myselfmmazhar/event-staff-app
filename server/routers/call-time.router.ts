@@ -320,4 +320,28 @@ export const callTimeRouter = router({
       const service = new CallTimeService(ctx.prisma);
       return await service.getByEventForBilling(input.eventId, ctx.userId!);
     }),
+
+  /**
+   * Submit internal review for an assignment
+   * Reviews are locked after submission and cannot be edited
+   * Requires: Authentication (event owner)
+   */
+  submitReview: protectedProcedure
+    .input(CallTimeSchema.submitReview)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.submitReview(input, ctx.userId!);
+    }),
+
+  /**
+   * Get assignment history for a staff member
+   * Returns past, current, and upcoming assignments
+   * Requires: Authentication
+   */
+  getStaffAssignmentHistory: protectedProcedure
+    .input(CallTimeSchema.getStaffAssignmentHistory)
+    .query(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.getStaffAssignmentHistory(input, ctx.userId!);
+    }),
 });

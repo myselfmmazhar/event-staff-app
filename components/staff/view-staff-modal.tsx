@@ -16,6 +16,7 @@ import { AccountStatus, AvailabilityStatus, StaffType, StaffRole } from '@prisma
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import type { StaffWithRelations } from '@/components/staff/staff-table';
 import { TaxDetailsView } from './tax-details-view';
+import { AssignmentHistory } from './assignment-history';
 import { FileText, Download } from 'lucide-react';
 
 interface ViewStaffModalProps {
@@ -447,6 +448,9 @@ export function ViewStaffModal({
                             </div>
                         </div>
                     )}
+
+                    {/* Assignment History Section */}
+                    <AssignmentHistory staffId={staff.id} />
 
                     {/* Tax Details Section (Read-only) */}
                     <div className="mb-6">
