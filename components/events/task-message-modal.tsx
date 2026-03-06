@@ -25,8 +25,8 @@ interface TaskMessageModalProps {
                     id: string;
                     firstName: string;
                     lastName: string;
-                    email: string;
-                    phone: string | null;
+                    email?: string;
+                    phone?: string | null;
                 }
             }>
         }>
@@ -184,7 +184,8 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
 
         if (event.callTimes) {
             const allInvitations = event.callTimes.flatMap((ct) => ct.invitations);
-            let matchedStaff = [];
+            type StaffInfo = { id: string; firstName: string; lastName: string; email?: string; phone?: string | null };
+            let matchedStaff: StaffInfo[] = [];
 
             if (type === 'ACCEPTED') {
                 matchedStaff = allInvitations.filter(i => i.status === 'ACCEPTED').map(i => i.staff);

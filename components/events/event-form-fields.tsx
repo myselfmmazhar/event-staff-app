@@ -145,49 +145,46 @@ export function EventFormFields({
         />
       </div>
 
-      {/* === ROW 4: Pre-Event + Private Notes (left) | Documents + Custom Fields (right) === */}
-      <div className={`grid grid-cols-1 lg:grid-cols-2 items-start ${gridGap} ${spacing}`}>
-        {/* Left column: Pre-Event Instructions + Private Notes stacked */}
-        <div className={`flex flex-col ${gridGap}`}>
-          <PreEventSection
-            register={register}
-            control={control}
-            errors={errors}
-            watch={watch}
-            setValue={setValue}
-            disabled={disabled}
-          />
-          <PrivateNotesSection
-            register={register}
-            control={control}
-            errors={errors}
-            watch={watch}
-            setValue={setValue}
-            disabled={disabled}
-          />
-        </div>
-        {/* Right column: Documents + Custom Fields stacked */}
-        <div className={`flex flex-col ${gridGap}`}>
-          <DocumentsSection
-            register={register}
-            control={control}
-            errors={errors}
-            watch={watch}
-            setValue={setValue}
-            fileLinksFieldArray={fileLinksFieldArray}
-            disabled={disabled}
-          />
-          <CustomFieldsSection
-            register={register}
-            control={control}
-            errors={errors}
-            watch={watch}
-            setValue={setValue}
-            customFieldsFieldArray={customFieldsFieldArray}
-            disabled={disabled}
-          />
-        </div>
+      {/* === ROW 4: Pre-Event Instructions + Private Notes + Custom Fields === */}
+      <div className={`grid grid-cols-1 lg:grid-cols-3 ${gridGap} ${spacing}`}>
+        <PreEventSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+        <PrivateNotesSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+        <CustomFieldsSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          customFieldsFieldArray={customFieldsFieldArray}
+          disabled={disabled}
+        />
       </div>
+
+      {/* === ROW 5: Documents + File Links === */}
+      <DocumentsSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        fileLinksFieldArray={fileLinksFieldArray}
+        disabled={disabled}
+        className={spacing}
+      />
 
       {/* === ROW 6: Assignments (full width) === */}
       {onAssignmentsChange ? (

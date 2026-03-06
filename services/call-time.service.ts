@@ -6,6 +6,7 @@ import {
   RateType,
   StaffRating,
   EventStatus,
+  InternalReviewRating,
 } from '@prisma/client';
 import { TRPCError } from '@trpc/server';
 import type {
@@ -17,6 +18,8 @@ import type {
   StaffSearchInput,
   EventFormAssignmentInput,
   BulkSyncForEventInput,
+  SubmitReviewInput,
+  GetStaffAssignmentHistoryInput,
 } from '@/lib/schemas/call-time.schema';
 import { generateCallTimeId } from '@/lib/utils/id-generator';
 import { getNotificationTriggerService } from '@/services/notification-trigger.service';
@@ -1540,5 +1543,142 @@ export class CallTimeService {
         createdBy: event.createdBy,
       });
     }
+  }
+
+  /**
+   * Submit or update internal review for a call time invitation
+   * Reviews can be edited after submission
+   */
+  async submitReview(input: SubmitReviewInput, userId: string) {
+    // Get the invitation with call time and event details
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { id: input.invitationId },
+      include: {
+        callTime: {
+          include: {
+            event: {
+              select: { createdBy: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!invitation) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Invitation not found',
+      });
+    }
+
+    // Verify user owns the event
+    if (invitation.callTime.event.createdBy !== userId) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to review this assignment',
+      });
+    }
+
+    // Submit or update the review
+    const updated = await this.prisma.callTimeInvitation.update({
+      where: { id: input.invitationId },
+      data: {
+        internalReviewRating: input.rating,
+        internalReviewNotes: input.notes?.trim() || null,
+        reviewedBy: userId,
+        reviewedAt: new Date(),
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Get assignment history for a staff member
+   * Returns past, current, and upcoming assignments grouped
+   */
+  async getStaffAssignmentHistory(input: GetStaffAssignmentHistoryInput, userId: string) {
+    // Verify staff exists
+    const staff = await this.prisma.staff.findUnique({
+      where: { id: input.staffId },
+      select: { id: true, createdBy: true },
+    });
+
+    if (!staff) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Staff member not found',
+      });
+    }
+
+    // Get all invitations for this staff member
+    const invitations = await this.prisma.callTimeInvitation.findMany({
+      where: {
+        staffId: input.staffId,
+        // Only include accepted/confirmed or completed
+        OR: [
+          { status: 'ACCEPTED', isConfirmed: true },
+          { status: 'PENDING' },
+        ],
+      },
+      include: {
+        callTime: {
+          include: {
+            service: {
+              select: { id: true, title: true },
+            },
+            event: {
+              select: {
+                id: true,
+                eventId: true,
+                title: true,
+                venueName: true,
+                city: true,
+                state: true,
+                status: true,
+              },
+            },
+          },
+        },
+        reviewer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: { callTime: { startDate: 'desc' } },
+    });
+
+    const now = new Date();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Categorize assignments
+    const past: typeof invitations = [];
+    const current: typeof invitations = [];
+    const upcoming: typeof invitations = [];
+
+    for (const inv of invitations) {
+      const startDate = inv.callTime.startDate ? new Date(inv.callTime.startDate) : null;
+      const endDate = inv.callTime.endDate ? new Date(inv.callTime.endDate) : null;
+
+      if (!startDate) {
+        // No date set - treat as upcoming
+        upcoming.push(inv);
+      } else if (endDate && endDate < startOfToday) {
+        // End date is in the past
+        past.push(inv);
+      } else if (startDate > now) {
+        // Start date is in the future
+        upcoming.push(inv);
+      } else {
+        // Currently active (between start and end)
+        current.push(inv);
+      }
+    }
+
+    return { past, current, upcoming };
   }
 }

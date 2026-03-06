@@ -35,8 +35,16 @@ model CallTimeInvitation {
   confirmedAt   DateTime?                @db.Timestamp(6)
   createdAt     DateTime                 @default(now()) @db.Timestamp(6)
   updatedAt     DateTime                 @updatedAt @db.Timestamp(6)
+
+  // Internal review fields (locked after submission)
+  internalReviewRating  InternalReviewRating?
+  internalReviewNotes   String?
+  reviewedBy            String?
+  reviewedAt            DateTime?                @db.Timestamp(6)
+
   callTime      CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
   staff         Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  reviewer      User?                    @relation("invitation_reviews", fields: [reviewedBy], references: [id])
 
   @@unique([callTimeId, staffId])
   @@index([callTimeId])
@@ -723,6 +731,7 @@ model User {
   staff_staff_userIdTousers        Staff?                    @relation("staff_userIdTousers")
   communicationLogs                CommunicationLog[]
   contacts                         Contact[]                 @relation("contacts_created")
+  invitationReviews                CallTimeInvitation[]      @relation("invitation_reviews")
   @@map("users")
 }
 
@@ -782,6 +791,13 @@ enum CallTimeInvitationStatus {
   DECLINED
   CANCELLED
   WAITLISTED
+}
+
+enum InternalReviewRating {
+  MET_EXPECTATIONS
+  NEEDS_IMPROVEMENT
+  DID_NOT_MEET
+  NO_CALL_NO_SHOW
 }
 
 enum EmailTemplateType {
