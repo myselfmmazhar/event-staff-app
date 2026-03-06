@@ -230,19 +230,19 @@ export function EventTable({
             variant="ghost"
             size="sm"
             className="px-0"
-            onClick={() => onMessage(event)}
-            title="Send Message"
+            onClick={() => onEdit(event)}
+            title={`Edit ${terminology.event.lower}`}
           >
-            <ChatBubbleLeftRightIcon className="h-4 w-4" />
+            <EditIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="px-0"
-            onClick={() => onEdit(event)}
-            title={`Edit ${terminology.event.lower}`}
+            onClick={() => onMessage(event)}
+            title="Send Message"
           >
-            <EditIcon className="h-4 w-4" />
+            <ChatBubbleLeftRightIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"

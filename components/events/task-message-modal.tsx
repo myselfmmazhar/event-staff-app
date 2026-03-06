@@ -153,6 +153,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
             body,
             statusToUpdate: selectedStatus || undefined,
             attachments: attachments.length > 0 ? attachments : undefined,
+            commMethod: commMethod,
         });
     };
 
@@ -222,6 +223,14 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                         <div className="grid grid-cols-3 gap-2">
                             <Button
                                 size="sm"
+                                variant={commMethod === 'EMAIL' ? "default" : "outline"}
+                                onClick={() => setCommMethod('EMAIL')}
+                                className={`flex-1 ${commMethod === 'EMAIL' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-blue-700 border-blue-200 hover:bg-blue-50'}`}
+                            >
+                                Email
+                            </Button>
+                            <Button
+                                size="sm"
                                 variant={commMethod === 'SMS' ? "default" : "outline"}
                                 onClick={() => setCommMethod('SMS')}
                                 className={`flex-1 ${commMethod === 'SMS' ? 'bg-primary' : ''}`}
@@ -236,14 +245,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                             >
                                 WhatsApp
                             </Button>
-                            <Button
-                                size="sm"
-                                variant={commMethod === 'EMAIL' ? "default" : "outline"}
-                                onClick={() => setCommMethod('EMAIL')}
-                                className={`flex-1 ${commMethod === 'EMAIL' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-blue-700 border-blue-200 hover:bg-blue-50'}`}
-                            >
-                                Email
-                            </Button>
+
                         </div>
                     </div>
 
@@ -264,7 +266,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                                 onClick={() => handleStatusClick('REJECTED')}
                                 className={`flex-1 ${selectedStatus === EventStatus.CANCELLED ? 'bg-red-600 hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100 border-red-200'}`}
                             >
-                                Rejected
+                                Declined
                             </Button>
                             <Button
                                 size="sm"

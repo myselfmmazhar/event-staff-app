@@ -457,15 +457,27 @@ export const eventRouter = router({
         await eventService.updateStatus(input.eventId, input.statusToUpdate, ctx.userId!);
       }
 
-      // 2. Send emails
+      // 2. Send messages
       const { sendEmail } = await import('@/lib/utils/email');
+      const { sendMessage } = await import('@/lib/utils/messaging');
+
       const results = await Promise.all(
         input.recipients.map(async (to) => {
           try {
-            await sendEmail(ctx.prisma, to, input.subject, input.body, undefined, input.attachments);
+            if (input.commMethod === 'EMAIL') {
+              await sendEmail(ctx.prisma, to, input.subject, input.body, undefined, input.attachments);
+            } else {
+              // SMS or WHATSAPP (Uses Bird API)
+              await sendMessage(
+                ctx.prisma,
+                to,
+                // Include subject in sms/whatsapp body if provided
+                input.subject ? `${input.subject}\n\n${input.body}` : input.body
+              );
+            }
             return { email: to, success: true };
           } catch (error) {
-            console.error(`Failed to send email to ${to}:`, error);
+            console.error(`Failed to send message to ${to}:`, error);
             return { email: to, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
           }
         })
