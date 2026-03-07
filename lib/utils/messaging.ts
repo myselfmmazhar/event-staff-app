@@ -8,31 +8,45 @@ export async function sendMessage(
 ) {
     // 1. Get Messaging configuration
     let config;
-    console.log('Lookup config with id:', configId);
+    console.log('[sendMessage] configId:', configId);
+
     if (configId) {
         config = await (prisma as any).messagingConfiguration.findUnique({
             where: { id: configId },
         });
+        console.log('[sendMessage] found by configId:', !!config);
     } else {
         config = await (prisma as any).messagingConfiguration.findFirst({
             where: { isDefault: true },
         });
+        console.log('[sendMessage] found default:', !!config);
 
         if (!config) {
-            console.log('No default config, trying findFirst()');
             config = await (prisma as any).messagingConfiguration.findFirst();
+            console.log('[sendMessage] found first available:', !!config);
         }
     }
 
-    console.log('Found config:', config ? config.name : 'null');
-
     if (!config) {
-        throw new Error('No Messaging configuration found');
+        const allConfigs = await (prisma as any).messagingConfiguration.findMany();
+        console.log('[sendMessage] Total configs in DB:', allConfigs.length);
+        throw new Error(`No Messaging configuration found for ID "${configId || 'default'}". (Total configs in DB: ${allConfigs.length})`);
     }
 
     // 2. Send message based on provider (Currently only BIRD supported)
     if (config.provider === 'BIRD') {
-        const response = await fetch('https://api.bird.com/v2/messages', {
+        const workspaceId = config.workspaceId as string | undefined;
+        const channelId = config.channelId as string | undefined;
+
+        if (!workspaceId || !channelId) {
+            throw new Error(
+                'Messaging configuration is missing Bird workspaceId/channelId. Please update your Messaging (Bird) settings.'
+            );
+        }
+
+        const endpoint = `https://api.bird.com/workspaces/${encodeURIComponent(workspaceId)}/channels/${encodeURIComponent(channelId)}/messages`;
+
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Authorization': `AccessKey ${config.apiKey}`,
@@ -45,15 +59,22 @@ export async function sendMessage(
                 body: {
                     type: 'text',
                     text: { text: content }
-                },
-                channelId: config.channelId,
-                workspaceId: config.workspaceId,
+                }
             }),
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`Bird API Error: ${response.status} ${JSON.stringify(errorData)}`);
+            const raw = await response.text().catch(() => '');
+            let parsed: unknown = undefined;
+            try {
+                parsed = raw ? JSON.parse(raw) : undefined;
+            } catch {
+                // ignore
+            }
+
+            throw new Error(
+                `Bird API Error: ${response.status} ${parsed ? JSON.stringify(parsed) : raw || '(no response body)'}`
+            );
         }
 
         return await response.json();

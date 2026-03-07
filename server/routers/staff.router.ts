@@ -55,7 +55,8 @@ export const staffRouter = router({
                     invitation.email,
                     invitation.firstName,
                     invitation.token,
-                    terminology.staff.singular
+                    terminology.staff.singular,
+                    ctx.userId
                 );
             }
 
@@ -84,7 +85,8 @@ export const staffRouter = router({
                     staff.staff.email,
                     staff.staff.firstName,
                     staff.invitationToken,
-                    terminology.staff.singular
+                    terminology.staff.singular,
+                    ctx.userId
                 );
             }
 
@@ -113,7 +115,8 @@ export const staffRouter = router({
                     result.staff.email,
                     result.staff.firstName,
                     result.invitationToken,
-                    terminology.staff.singular
+                    terminology.staff.singular,
+                    ctx.userId
                 );
             }
 
@@ -137,12 +140,15 @@ export const staffRouter = router({
             const terminology = await settingsService.getTerminology();
 
             // Send credentials email
-            await emailService.sendStaffCredentials(
-                result.staff.email,
-                result.staff.firstName,
-                result.tempPassword,
-                terminology.staff.singular
-            );
+            if (result.tempPassword) {
+                await emailService.sendStaffCredentials(
+                    result.staff.email,
+                    result.staff.firstName,
+                    result.tempPassword,
+                    terminology.staff.singular,
+                    ctx.userId!
+                );
+            }
 
             return result.staff;
         }),

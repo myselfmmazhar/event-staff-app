@@ -15,6 +15,7 @@ import { ViewStaffModal } from '@/components/staff/view-staff-modal';
 import { DeleteStaffModal } from '@/components/staff/delete-staff-modal';
 import { BulkEditModal, type BulkEditFormData } from '@/components/staff/bulk-edit-modal';
 import { BulkActionBar } from '@/components/staff/bulk-action-bar';
+import { StaffMessageModal } from '@/components/staff/staff-message-modal';
 import { Pagination } from '@/components/common/pagination';
 import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc as api } from '@/lib/client/trpc';
@@ -62,6 +63,7 @@ export default function StaffPage() {
         delete: false,
         bulkEdit: false,
         bulkDelete: false,
+        message: false,
     });
     const [selectedStaff, setSelectedStaff] = useState<StaffWithRelations | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -367,12 +369,8 @@ export default function StaffPage() {
     };
 
     const handleMessage = (staff: StaffWithRelations) => {
-        // Placeholder - no action for now, just set the staff
         setMessagingStaff(staff);
-        toast({
-            title: 'Message',
-            description: `Message functionality coming soon for ${staff.firstName} ${staff.lastName}`,
-        });
+        setModals((prev) => ({ ...prev, message: true }));
     };
 
     const handleFormSubmit = (formData: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => {
@@ -769,6 +767,15 @@ export default function StaffPage() {
                 )}
             </ConfirmModal>
 
-            </div>
+            <StaffMessageModal
+                staff={messagingStaff}
+                open={modals.message}
+                onClose={() => {
+                    setModals((prev) => ({ ...prev, message: false }));
+                    setMessagingStaff(null);
+                }}
+            />
+
+        </div>
     );
 }
