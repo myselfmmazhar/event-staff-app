@@ -16,6 +16,7 @@ const STATUS_OPTIONS: Array<{ value: EventStatus; label: string }> = [
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'PUBLISHED', label: 'Published' },
 ];
 
 export function EventFilters() {

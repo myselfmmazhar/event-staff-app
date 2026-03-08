@@ -261,6 +261,7 @@ export default function ArchivedEventsPage() {
     IN_PROGRESS: 'In Progress',
     COMPLETED: 'Completed',
     CANCELLED: 'Cancelled',
+    PUBLISHED: 'Published',
   };
 
   const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];

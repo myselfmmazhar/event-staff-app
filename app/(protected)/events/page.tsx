@@ -309,6 +309,18 @@ export default function EventsPage() {
   const getEventDetails = (id: string): EventListItem | undefined =>
     events.find((evt) => evt.id === id);
 
+  const updateStatusMutation = trpc.event.updateStatus.useMutation({
+    onSuccess: () => {
+      handleSuccess(`${terminology.event.singular} status updated successfully`);
+      refetch();
+    },
+    onError: handleError,
+  });
+
+  const handleStatusChange = (id: string, status: EventStatus) => {
+    updateStatusMutation.mutate({ id, status });
+  };
+
   const handleViewEvent = (event: EventListItem) => {
     setSelectedViewEventId(event.id);
     setIsViewOpen(true);
@@ -512,6 +524,7 @@ export default function EventsPage() {
     IN_PROGRESS: 'In Progress',
     COMPLETED: 'Completed',
     CANCELLED: 'Cancelled',
+    PUBLISHED: 'Published',
   };
 
   const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];
@@ -709,6 +722,7 @@ export default function EventsPage() {
               onEdit={handleEditEventFromTable}
               onArchive={handleArchiveEventFromTable}
               onMessage={handleMessageEventFromTable}
+              onStatusChange={handleStatusChange}
               onSort={handleSort}
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}

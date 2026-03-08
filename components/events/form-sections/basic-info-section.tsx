@@ -16,6 +16,7 @@ const STATUSES: Array<{ value: EventStatus; label: string }> = [
   { value: EventStatus.IN_PROGRESS, label: 'In Progress' },
   { value: EventStatus.COMPLETED, label: 'Completed' },
   { value: EventStatus.CANCELLED, label: 'Cancelled' },
+  { value: EventStatus.PUBLISHED, label: 'Published' },
 ];
 
 export function BasicInfoSection({
