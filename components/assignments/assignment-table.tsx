@@ -139,31 +139,31 @@ export function AssignmentTable({
     // Selection checkbox column (conditionally added)
     ...(selectable
       ? [
-          {
-            key: 'select',
-            label: (
-              <input
-                type="checkbox"
-                checked={allSelected}
-                ref={(el) => {
-                  if (el) el.indeterminate = someSelected;
-                }}
-                onChange={handleSelectAll}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-            ),
-            headerClassName: 'text-center py-3 px-2 w-10',
-            render: (item: AssignmentData) => (
-              <input
-                type="checkbox"
-                checked={selectedIds.has(item.id)}
-                onChange={() => handleSelectOne(item.id)}
-                onClick={(e) => e.stopPropagation()}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-            ),
-          } as ColumnDef<AssignmentData>,
-        ]
+        {
+          key: 'select',
+          label: (
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = someSelected;
+              }}
+              onChange={handleSelectAll}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+          ),
+          headerClassName: 'text-center py-3 px-2 w-10',
+          render: (item: AssignmentData) => (
+            <input
+              type="checkbox"
+              checked={selectedIds.has(item.id)}
+              onChange={() => handleSelectOne(item.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+          ),
+        } as ColumnDef<AssignmentData>,
+      ]
       : []),
     {
       key: 'actions',
@@ -285,7 +285,8 @@ export function AssignmentTable({
     },
     {
       key: 'staff',
-      label: staffTerm.singular,
+      label: 'Progress',
+      // label: staffTerm.singular,
       render: (item) => (
         <div className="flex items-center gap-2">
           <span className={`font-medium ${item.needsStaff ? 'text-yellow-600' : 'text-green-600'}`}>

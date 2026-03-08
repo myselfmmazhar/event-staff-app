@@ -142,6 +142,8 @@ export type { Assignment, ProductAssignment, ServiceAssignment, AssignmentSaveAc
 export interface AssignmentsSectionProps {
   assignments: import('@/lib/types/assignment.types').Assignment[];
   onAssignmentsChange: (assignments: import('@/lib/types/assignment.types').Assignment[]) => void;
+  watch: UseFormWatch<EventFormData>;
+  setValue: UseFormSetValue<EventFormData>;
   disabled?: boolean;
   className?: string;
 }

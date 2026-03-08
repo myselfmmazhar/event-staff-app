@@ -9,6 +9,7 @@ import { FilterIcon, CalendarIcon, SearchIcon, AlertIcon, CheckCircleIcon } from
 import { useAssignmentsFilters, type QuickFilter } from '@/store/assignments-filters.store';
 import { trpc } from '@/lib/client/trpc';
 import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
+import { EVENT_STATUS_LABELS } from '@/lib/constants/status';
 
 export function AssignmentFilters() {
   const staffTerm = useStaffTerm();
@@ -28,6 +29,8 @@ export function AssignmentFilters() {
     setSelectedEventIds,
     selectedServiceIds,
     setSelectedServiceIds,
+    selectedEventStatuses,
+    setSelectedEventStatuses,
     dateFrom,
     setDateFrom,
     dateTo,
@@ -38,13 +41,13 @@ export function AssignmentFilters() {
   } = useAssignmentsFilters();
 
   // Fetch events for filter
-  const { data: eventsData } = trpc.event.getAll.useQuery({
+  const { data: eventsData, isLoading: eventsLoading } = trpc.event.getAll.useQuery({
     page: 1,
     limit: 100,
   });
 
   // Fetch services for filter
-  const { data: servicesData } = trpc.service.getAll.useQuery({
+  const { data: servicesData, isLoading: servicesLoading } = trpc.service.getAll.useQuery({
     page: 1,
     limit: 100,
   });
@@ -65,6 +68,7 @@ export function AssignmentFilters() {
     search.length > 0 ||
     selectedEventIds.length > 0 ||
     selectedServiceIds.length > 0 ||
+    selectedEventStatuses.length > 0 ||
     dateFrom !== null ||
     dateTo !== null;
 
@@ -104,7 +108,7 @@ export function AssignmentFilters() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         {/* Search */}
         <div className="flex flex-col gap-2">
           <Label className="text-sm font-medium text-foreground flex items-center gap-2">
@@ -129,7 +133,9 @@ export function AssignmentFilters() {
             options={eventOptions}
             value={selectedEventIds}
             onChange={setSelectedEventIds}
-            placeholder={`All ${terminology.event.plural}`}
+            placeholder={eventsLoading ? 'Loading...' : `All ${terminology.event.plural}`}
+            disabled={eventsLoading}
+            showSelectAll
           />
         </div>
 
@@ -143,7 +149,22 @@ export function AssignmentFilters() {
             options={serviceOptions}
             value={selectedServiceIds}
             onChange={setSelectedServiceIds}
-            placeholder="All Services"
+            placeholder={servicesLoading ? 'Loading...' : 'All Services'}
+            disabled={servicesLoading}
+          />
+        </div>
+
+        {/* Event Status Filter */}
+        <div className="flex flex-col gap-2">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <FilterIcon className="h-4 w-4" />
+            Status
+          </Label>
+          <MultiSelect
+            options={Object.entries(EVENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))}
+            value={selectedEventStatuses}
+            onChange={setSelectedEventStatuses}
+            placeholder="All Statuses"
           />
         </div>
 

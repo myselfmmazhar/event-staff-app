@@ -86,27 +86,17 @@ export default function AssignmentManagerPage() {
 
   const selectedAssignments = allAssignments.filter(a => selectedIds.has(a.id));
 
-  // Hydrate the store on mount, then apply eventId and serviceId from URL if present
+  // Apply eventId and serviceIds from URL params on mount / URL change
   useEffect(() => {
     const eventId = searchParams.get('eventId');
-    const serviceId = searchParams.get('serviceId');
+    const serviceIdsRaw = searchParams.get('serviceIds'); // comma-separated e.g. "id1,id2"
+    const serviceIds = serviceIdsRaw
+      ? serviceIdsRaw.split(',').filter(Boolean)
+      : [];
 
-    // Subscribe to hydration completion
-    const unsubFinish = useAssignmentsFilters.persist.onFinishHydration(() => {
-      if (eventId) {
-        useAssignmentsFilters.getState().setSelectedEventIds([eventId]);
-      }
-      if (serviceId) {
-        useAssignmentsFilters.getState().setSelectedServiceIds([serviceId]);
-      }
-    });
-
-    // Trigger hydration
-    useAssignmentsFilters.persist.rehydrate();
-
-    return () => {
-      unsubFinish();
-    };
+    // Always reset event/service selection first, then apply URL values
+    useAssignmentsFilters.getState().setSelectedEventIds(eventId ? [eventId] : []);
+    useAssignmentsFilters.getState().setSelectedServiceIds(serviceIds);
   }, [searchParams]);
 
   const handleManageAssignment = (assignment: AssignmentData) => {

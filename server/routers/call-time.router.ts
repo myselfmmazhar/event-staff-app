@@ -265,6 +265,17 @@ export const callTimeRouter = router({
     }),
 
   /**
+   * Accept invitation on behalf of user
+   * Requires: Authentication (event owner)
+   */
+  acceptInvitationOnBehalf: protectedProcedure
+    .input(CallTimeSchema.cancelInvitation)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.acceptInvitationOnBehalf(input.invitationId, ctx.userId!);
+    }),
+
+  /**
    * Cancel invitation
    * Requires: Authentication (event owner)
    */

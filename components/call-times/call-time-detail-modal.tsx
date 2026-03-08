@@ -43,6 +43,7 @@ export function CallTimeDetailModal({
   const { toast } = useToast();
   const [resendingId, setResendingId] = useState<string | undefined>();
   const [cancellingId, setCancellingId] = useState<string | undefined>();
+  const [acceptingId, setAcceptingId] = useState<string | undefined>();
   const [isEditing, setIsEditing] = useState(false);
 
   const utils = trpc.useUtils();
@@ -121,6 +122,29 @@ export function CallTimeDetailModal({
     },
   });
 
+  // Accept invitation on behalf mutation
+  const acceptInvitationOnBehalf = trpc.callTime.acceptInvitationOnBehalf.useMutation({
+    onSuccess: () => {
+      toast({
+        title: 'Offer accepted',
+        description: 'The offer has been accepted on behalf of the user',
+      });
+      if (hasCallTimeId) {
+        utils.callTime.getById.invalidate({ id: callTimeQueryId });
+        utils.callTime.getAll.invalidate();
+      }
+      setAcceptingId(undefined);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'error',
+      });
+      setAcceptingId(undefined);
+    },
+  });
+
   const handleResend = (invitationId: string) => {
     setResendingId(invitationId);
     resendInvitation.mutate({ invitationId });
@@ -129,6 +153,11 @@ export function CallTimeDetailModal({
   const handleCancel = (invitationId: string) => {
     setCancellingId(invitationId);
     cancelInvitation.mutate({ invitationId });
+  };
+
+  const handleAcceptOnBehalf = (invitationId: string) => {
+    setAcceptingId(invitationId);
+    acceptInvitationOnBehalf.mutate({ invitationId });
   };
 
   const handleEditSubmit = (data: Omit<UpdateCallTimeInput, 'id'>) => {
@@ -161,7 +190,7 @@ export function CallTimeDetailModal({
 
   if (isLoading || !callTime) {
     return (
-      <Dialog open={open} onClose={onClose} className="max-w-4xl">
+      <Dialog open={open} onClose={onClose} className="max-w-5xl w-[90vw]">
         <DialogContent>
           <div className="h-96 flex items-center justify-center">
             <p className="text-muted-foreground">Loading...</p>
@@ -192,7 +221,7 @@ export function CallTimeDetailModal({
   const isFilled = callTime.confirmedCount >= callTime.numberOfStaffRequired;
 
   return (
-    <Dialog open={open} onClose={onClose} className="max-w-4xl">
+    <Dialog open={open} onClose={onClose} className="max-w-5xl w-[90vw]">
       <DialogHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -295,8 +324,10 @@ export function CallTimeDetailModal({
             invitations={callTime.invitations}
             onResend={handleResend}
             onCancel={handleCancel}
+            onAcceptOnBehalf={handleAcceptOnBehalf}
             isResending={resendingId}
             isCancelling={cancellingId}
+            isAccepting={acceptingId}
           />
         </div>
       </DialogContent>

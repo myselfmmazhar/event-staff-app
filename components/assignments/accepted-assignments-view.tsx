@@ -89,6 +89,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
     sortOrder,
     setSortBy,
     setSortOrder,
+    selectedEventStatuses,
   } = useAssignmentsFilters();
 
   const { data, isLoading } = trpc.callTime.getAll.useQuery({
@@ -102,6 +103,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
     sortBy: sortBy as 'startDate' | 'position' | 'event',
     sortOrder,
     staffingStatus: 'all',
+    eventStatuses: selectedEventStatuses as any[],
   });
 
   // Flatten the data to show one row per confirmed staff member
@@ -139,7 +141,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
 
   const handleSortBy = (field: string) => {
     if (field === 'startDate' || field === 'position' || field === 'event' ||
-        field === 'firstName' || field === 'lastName') {
+      field === 'firstName' || field === 'lastName') {
       // Map field to valid sortBy if needed
       if (field === 'firstName' || field === 'lastName') {
         setSortBy('startDate'); // Default to date sorting for staff fields

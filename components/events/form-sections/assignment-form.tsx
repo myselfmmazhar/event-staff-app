@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,6 +43,12 @@ interface AssignmentFormProps {
   onCreateService?: () => void;
   /** Opens modal to create new product */
   onCreateProduct?: () => void;
+  /** Min date allowed (e.g. event start date) */
+  minDate?: string | null;
+  /** Max date allowed (e.g. event end date) */
+  maxDate?: string | null;
+  /** Callback when a date is out of range */
+  onInvalidDate?: (message: string) => void;
   /** Whether form is disabled */
   disabled?: boolean;
 }
@@ -54,6 +61,9 @@ export function AssignmentForm({
   onLiveChange,
   onCreateService,
   onCreateProduct,
+  minDate,
+  maxDate,
+  onInvalidDate,
   disabled = false,
 }: AssignmentFormProps) {
   const [productSelectorOpen, setProductSelectorOpen] = useState(false);
@@ -140,6 +150,28 @@ export function AssignmentForm({
   const { register, control, watch, setValue, handleSubmit, formState: { errors }, trigger, reset } = form;
   const assignmentType = watch('type');
   const startDate = watch('startDate');
+
+  // Helper to validate date range with dialog warning
+  const validateAndSetDate = (fieldName: 'startDate' | 'endDate', value: string) => {
+    if (!value) {
+      setValue(fieldName, '');
+      return;
+    }
+
+    if (minDate && value < minDate) {
+      onInvalidDate?.(`You cannot select a date earlier than ${new Date(minDate + 'T12:00:00').toLocaleDateString()}.`);
+      setValue(fieldName, ''); // Reset invalid value
+      return;
+    }
+
+    if (maxDate && value > maxDate) {
+      onInvalidDate?.(`You cannot select a date later than ${new Date(maxDate + 'T12:00:00').toLocaleDateString()}.`);
+      setValue(fieldName, ''); // Reset invalid value
+      return;
+    }
+
+    setValue(fieldName, value);
+  };
 
   // Reset form when assignment prop changes (e.g. after quick-edit)
   useEffect(() => {
@@ -703,7 +735,10 @@ export function AssignmentForm({
                 <Input
                   id="startDate"
                   type="date"
-                  {...register('startDate')}
+                  min={minDate || undefined}
+                  max={maxDate || undefined}
+                  value={watch('startDate') || ''}
+                  onChange={(e) => validateAndSetDate('startDate', e.target.value)}
                   disabled={disabled || startDateUBD}
                   className={startDateUBD ? 'opacity-50' : ''}
                 />
@@ -753,7 +788,10 @@ export function AssignmentForm({
                 <Input
                   id="endDate"
                   type="date"
-                  {...register('endDate')}
+                  min={minDate || undefined}
+                  max={maxDate || undefined}
+                  value={watch('endDate') || ''}
+                  onChange={(e) => validateAndSetDate('endDate', e.target.value)}
                   disabled={disabled || endDateUBD}
                   className={endDateUBD ? 'opacity-50' : ''}
                 />
@@ -1055,14 +1093,15 @@ export function AssignmentForm({
 
       </div>
 
-      {/* Fixed Bottom Save Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg p-4 z-50">
-        <div className="flex flex-wrap items-center justify-center gap-2">
+      {/* Bottom Save Bar - No longer fixed to viewport, but sticky at the bottom of the container */}
+      <div className="mt-8 pt-6 border-t bg-background sticky bottom-[-1px] z-10 -mx-6 px-6 pb-4">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <Button
             type="button"
             variant="default"
             onClick={() => handleSaveWithAction('close')}
             disabled={disabled}
+            className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px] shadow-sm"
           >
             Save & Close
           </Button>
@@ -1071,6 +1110,7 @@ export function AssignmentForm({
             variant="secondary"
             onClick={() => handleSaveWithAction('new')}
             disabled={disabled}
+            className="bg-orange-500 hover:bg-orange-600 text-white border-none min-w-[120px] shadow-sm"
           >
             Save & New
           </Button>
@@ -1079,6 +1119,7 @@ export function AssignmentForm({
             variant="secondary"
             onClick={() => handleSaveWithAction('repeat')}
             disabled={disabled}
+            className="bg-orange-500 hover:bg-orange-600 text-white border-none min-w-[120px] shadow-sm"
           >
             Save & Repeat
           </Button>
@@ -1087,6 +1128,7 @@ export function AssignmentForm({
             variant="ghost"
             onClick={onCancel}
             disabled={disabled}
+            className="min-w-[100px]"
           >
             Cancel
           </Button>

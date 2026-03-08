@@ -64,6 +64,7 @@ export function OpenAssignmentsView() {
     sortOrder,
     selectedAssignmentId,
     setSelectedAssignmentId,
+    selectedEventStatuses,
   } = useAssignmentsFilters();
 
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
@@ -81,6 +82,7 @@ export function OpenAssignmentsView() {
     sortBy: sortBy as 'startDate' | 'position' | 'event',
     sortOrder,
     staffingStatus: 'needsStaff',
+    eventStatuses: selectedEventStatuses as any[],
   });
 
   // Fetch available staff for selected assignment
@@ -174,11 +176,10 @@ export function OpenAssignmentsView() {
               return (
                 <Card
                   key={assignment.id}
-                  className={`p-4 cursor-pointer transition-colors ${
-                    isSelected
+                  className={`p-4 cursor-pointer transition-colors ${isSelected
                       ? 'border-primary bg-primary/5'
                       : 'hover:bg-muted/50'
-                  }`}
+                    }`}
                   onClick={() => handleSelectAssignment(assignment.id)}
                 >
                   <div className="flex items-start justify-between mb-2">
