@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from '@/components/ui/icons';
 import { cn } from '@/lib/utils';
@@ -12,10 +11,17 @@ import { ProductFormModal } from '@/components/catalog/products/product-form-mod
 import { useToast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
 import type { Assignment, AssignmentSaveAction } from '@/lib/types/assignment.types';
+import { XIcon } from '@/components/ui/icons';
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import type { EventFormData } from './types';
+import type { UseFormWatch, UseFormSetValue } from 'react-hook-form';
 
 interface AssignmentsSectionProps {
   assignments: Assignment[];
   onAssignmentsChange: (assignments: Assignment[]) => void;
+  watch: UseFormWatch<EventFormData>;
+  setValue: UseFormSetValue<EventFormData>;
   disabled?: boolean;
   className?: string;
 }
@@ -23,6 +29,8 @@ interface AssignmentsSectionProps {
 export function AssignmentsSection({
   assignments,
   onAssignmentsChange,
+  watch: eventWatch,
+  setValue: eventSetValue,
   disabled = false,
   className,
 }: AssignmentsSectionProps) {
@@ -38,6 +46,15 @@ export function AssignmentsSection({
   const [repeatAssignment, setRepeatAssignment] = useState<Assignment | null>(null);
   // For live preview - holds current form values while editing
   const [livePreviewAssignment, setLivePreviewAssignment] = useState<Assignment | null>(null);
+
+  // Date range warning dialog state
+  const [showDateWarning, setShowDateWarning] = useState(false);
+  const [dateWarningMessage, setDateWarningMessage] = useState('');
+
+  const handleInvalidDate = (message: string) => {
+    setDateWarningMessage(message);
+    setShowDateWarning(true);
+  };
 
   // For SSR safety
   useEffect(() => {
@@ -195,11 +212,64 @@ export function AssignmentsSection({
     setShowForm(true);
   };
 
-  return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
-      <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Assignments</h3>
+  // Sync event dates to a new service assignment when form is first opened
+  // Handle date restrictions for AssignmentForm
+  const eventStartDate = eventWatch('startDate');
+  const eventEndDate = eventWatch('endDate');
 
-      <div className="space-y-4">
+  const formatDateForInput = (date: any): string | null => {
+    if (!date) return null;
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) return date; // Already in correct format
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return null;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const minDate = formatDateForInput(eventStartDate);
+  const maxDate = formatDateForInput(eventEndDate);
+
+  // Sync event dates to a new service assignment when form is first opened
+  useEffect(() => {
+    if (showForm && !editingAssignment && !repeatAssignment && defaultType === 'SERVICE') {
+      const eventStartTime = eventWatch('startTime');
+      const eventEndTime = eventWatch('endTime');
+
+      // Use a small timeout to ensure the form is mounted and registered before we try to set values
+      // Note: AssignmentForm has its own internal reset/defaultValues logic, but it takes an optional 'assignment' prop.
+      // We'll create a "prefill" assignment if dates are present.
+      if (minDate || eventStartTime || maxDate || eventEndTime) {
+        const prefill: Partial<Assignment> = {
+          type: 'SERVICE',
+          startDate: minDate || undefined,
+          startTime: eventStartTime || undefined,
+          endDate: maxDate || undefined,
+          endTime: eventEndTime || undefined,
+          startTimeTBD: eventStartTime === 'TBD',
+          endTimeTBD: eventEndTime === 'TBD'
+        };
+        setRepeatAssignment(prefill as Assignment);
+      }
+    }
+  }, [showForm, editingAssignment, repeatAssignment, defaultType, eventWatch, minDate, maxDate]);
+
+
+  return (
+    <div className={cn('bg-white border rounded-xl overflow-hidden', className)}>
+      <div className="bg-slate-50/50 px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-slate-900 tracking-tight uppercase">Assignments</h3>
+        {!showForm && assignments.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+              {assignments.length} Total
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="p-5 space-y-5">
         {/* Assignment List - always show when there are assignments */}
         {assignments.length > 0 && (
           <AssignmentList
@@ -210,6 +280,9 @@ export function AssignmentsSection({
             disabled={disabled || showForm}
             editingId={editingAssignment?.id}
             livePreviewAssignment={livePreviewAssignment}
+            minDate={minDate}
+            maxDate={maxDate}
+            onInvalidDate={handleInvalidDate}
             renderEditForm={(assignment) => (
               <>
                 <h4 className="text-base font-medium mb-4">Edit Assignment</h4>
@@ -220,6 +293,9 @@ export function AssignmentsSection({
                   onLiveChange={setLivePreviewAssignment}
                   onCreateService={() => setShowCreateService(true)}
                   onCreateProduct={() => setShowCreateProduct(true)}
+                  minDate={minDate}
+                  maxDate={maxDate}
+                  onInvalidDate={handleInvalidDate}
                   disabled={disabled}
                 />
               </>
@@ -229,29 +305,46 @@ export function AssignmentsSection({
 
         {/* Assignment Form - only for NEW assignments (not editing) */}
         {showForm && !editingAssignment && (
-          <div className="border border-border rounded-lg p-4 bg-background">
-            <h4 className="text-base font-medium mb-4">Assignment Details</h4>
-            <AssignmentForm
-              assignment={repeatAssignment}
-              defaultType={defaultType}
-              onSave={handleSaveAssignment}
-              onCancel={handleCancelForm}
-              onCreateService={() => setShowCreateService(true)}
-              onCreateProduct={() => setShowCreateProduct(true)}
-              disabled={disabled}
-            />
-          </div>
+          <Dialog open={showForm} onClose={handleCancelForm} className="max-w-4xl w-[90vw]">
+            <DialogHeader className="flex flex-row items-center justify-between pr-2">
+              <DialogTitle>
+                {defaultType === 'SERVICE' ? 'Add Service Assignment' : 'Add Product Assignment'}
+              </DialogTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCancelForm}
+                className="h-8 w-8 p-0 rounded-full hover:bg-accent"
+              >
+                <XIcon className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
+            <DialogContent>
+              <AssignmentForm
+                assignment={repeatAssignment}
+                defaultType={defaultType}
+                onSave={handleSaveAssignment}
+                onCancel={handleCancelForm}
+                onCreateService={() => setShowCreateService(true)}
+                onCreateProduct={() => setShowCreateProduct(true)}
+                minDate={minDate}
+                maxDate={maxDate}
+                onInvalidDate={handleInvalidDate}
+                disabled={disabled}
+              />
+            </DialogContent>
+          </Dialog>
         )}
 
         {/* Add Assignment Buttons */}
         {!showForm && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={handleAddServiceAssignment}
               disabled={disabled}
-              className="gap-2"
+              className="gap-2.5 h-11 px-6 rounded-xl border-blue-100 text-blue-600 font-semibold hover:bg-blue-50 hover:border-blue-200 transition-all text-xs"
             >
               <PlusIcon className="h-4 w-4" />
               Add Service Assignment
@@ -261,7 +354,7 @@ export function AssignmentsSection({
               variant="outline"
               onClick={handleAddProductAssignment}
               disabled={disabled}
-              className="gap-2"
+              className="gap-2.5 h-11 px-6 rounded-xl border-blue-100 text-blue-600 font-semibold hover:bg-blue-50 hover:border-blue-200 transition-all text-xs"
             >
               <PlusIcon className="h-4 w-4" />
               Add Product Assignment

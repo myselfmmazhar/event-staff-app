@@ -45,6 +45,7 @@ export function AllAssignmentsView({
     sortOrder,
     setSortBy,
     setSortOrder,
+    selectedEventStatuses,
   } = useAssignmentsFilters();
 
   // Calculate date range for quick filters
@@ -75,7 +76,7 @@ export function AllAssignmentsView({
 
   // Determine staffing status from quick filter
   const staffingStatus = quickFilter === 'needsStaff' ? 'needsStaff' :
-                         quickFilter === 'filled' ? 'fullyStaffed' : 'all';
+    quickFilter === 'filled' ? 'fullyStaffed' : 'all';
 
   const { data, isLoading } = trpc.callTime.getAll.useQuery({
     page,
@@ -88,6 +89,7 @@ export function AllAssignmentsView({
     sortBy: sortBy as 'startDate' | 'position' | 'event',
     sortOrder,
     staffingStatus,
+    eventStatuses: selectedEventStatuses as any[],
   });
 
   const assignments: AssignmentData[] = (data?.data || []).map((item) => ({

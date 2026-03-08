@@ -16,6 +16,12 @@ interface AssignmentListProps {
   editingId?: string | null;
   /** Live preview assignment from form (overrides stored assignment for display) */
   livePreviewAssignment?: Assignment | null;
+  /** Min date for service assignments */
+  minDate?: string | null;
+  /** Max date for service assignments */
+  maxDate?: string | null;
+  /** Callback when a date is out of range */
+  onInvalidDate?: (message: string) => void;
   /** Render prop for inline edit form */
   renderEditForm?: (assignment: Assignment) => React.ReactNode;
 }
@@ -29,6 +35,9 @@ export function AssignmentList({
   editingId,
   livePreviewAssignment,
   renderEditForm,
+  minDate,
+  maxDate,
+  onInvalidDate,
 }: AssignmentListProps) {
   if (assignments.length === 0) {
     return (
@@ -81,58 +90,61 @@ export function AssignmentList({
         {assignments.map((assignment) => {
           const displayAssignment = getDisplayAssignment(assignment);
           return (
-          <div key={assignment.id}>
-            <AssignmentItem
-              assignment={displayAssignment}
-              onEdit={() => onEdit(assignment.id)}
-              onDelete={() => onDelete(assignment.id)}
-              onQuickUpdate={onQuickUpdate ? (updates) => onQuickUpdate(assignment.id, updates) : undefined}
-              disabled={disabled || editingId === assignment.id}
-            />
-            {/* Inline edit form - renders right below the item being edited */}
-            {editingId === assignment.id && renderEditForm && (
-              <div className="mt-2 border border-primary/30 rounded-lg p-4 bg-background shadow-sm">
-                {renderEditForm(assignment)}
-              </div>
-            )}
-          </div>
+            <div key={assignment.id}>
+              <AssignmentItem
+                assignment={displayAssignment}
+                onEdit={() => onEdit(assignment.id)}
+                onDelete={() => onDelete(assignment.id)}
+                onQuickUpdate={onQuickUpdate ? (updates) => onQuickUpdate(assignment.id, updates) : undefined}
+                minDate={minDate}
+                maxDate={maxDate}
+                onInvalidDate={onInvalidDate}
+                disabled={disabled || editingId === assignment.id}
+              />
+              {/* Inline edit form - renders right below the item being edited */}
+              {editingId === assignment.id && renderEditForm && (
+                <div className="mt-2 border border-primary/30 rounded-lg p-4 bg-background shadow-sm">
+                  {renderEditForm(assignment)}
+                </div>
+              )}
+            </div>
           );
         })}
       </Accordion>
 
       {/* Totals Summary */}
-      <div className="border-t pt-4 mt-4 space-y-2">
+      <div className="pt-6 mt-6 space-y-3">
         {totals.servicesCount > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">
+          <div className="flex justify-between items-center text-sm px-1">
+            <span className="text-slate-500 font-medium">
               Services ({totals.servicesCount})
             </span>
             <div className="text-right">
-              <span className="font-medium">${totals.servicesTotalPrice.toFixed(2)}</span>
-              <span className="text-xs text-muted-foreground ml-2">
+              <span className="font-bold text-slate-900">${totals.servicesTotalPrice.toFixed(2)}</span>
+              <span className="text-[11px] text-slate-400 ml-3 font-medium">
                 Cost: ${totals.servicesTotalCost.toFixed(2)}
               </span>
             </div>
           </div>
         )}
         {totals.productsCount > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">
+          <div className="flex justify-between items-center text-sm px-1">
+            <span className="text-slate-500 font-medium">
               Products ({totals.productsCount})
             </span>
             <div className="text-right">
-              <span className="font-medium">${totals.productsTotalPrice.toFixed(2)}</span>
-              <span className="text-xs text-muted-foreground ml-2">
+              <span className="font-bold text-slate-900">${totals.productsTotalPrice.toFixed(2)}</span>
+              <span className="text-[11px] text-slate-400 ml-3 font-medium">
                 Cost: ${totals.productsTotalCost.toFixed(2)}
               </span>
             </div>
           </div>
         )}
-        <div className="flex justify-between text-base font-semibold border-t pt-2">
-          <span>Grand Total</span>
-          <div className="text-right">
-            <span>${totals.grandTotalPrice.toFixed(2)}</span>
-            <span className="text-xs text-muted-foreground font-normal ml-2">
+        <div className="flex justify-between items-center text-base border-t border-slate-100 pt-3 px-1">
+          <span className="font-bold text-slate-900">Grand Total</span>
+          <div className="text-right flex items-center gap-3">
+            <span className="font-extrabold text-[#1e293b] text-lg">${totals.grandTotalPrice.toFixed(2)}</span>
+            <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
               Cost: ${totals.grandTotalCost.toFixed(2)}
             </span>
           </div>

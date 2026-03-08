@@ -18,6 +18,7 @@ export interface MultiSelectProps<T extends string = string> {
   className?: string;
   disabled?: boolean;
   error?: boolean;
+  showSelectAll?: boolean;
 }
 
 export function MultiSelect<T extends string = string>({
@@ -28,6 +29,7 @@ export function MultiSelect<T extends string = string>({
   className,
   disabled = false,
   error = false,
+  showSelectAll = false,
 }: MultiSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,12 +54,22 @@ export function MultiSelect<T extends string = string>({
     }
   };
 
+  const handleToggleAll = () => {
+    if (value.length === options.length) {
+      onChange([]);
+    } else {
+      onChange(options.map((o) => o.value));
+    }
+  };
+
   const getDisplayText = () => {
     if (value.length === 0) {
       return placeholder;
     }
     if (value.length === 1) {
       const option = options.find((o) => o.value === value[0]);
+      // If options haven't loaded yet, show a loading indicator instead of the raw ID
+      if (!option && options.length === 0) return 'Loading...';
       return option?.label || value[0];
     }
     return `${value.length} selected`;
@@ -91,6 +103,15 @@ export function MultiSelect<T extends string = string>({
       {isOpen && (
         <div className="absolute z-100 mt-1 w-full rounded-md border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95">
           <div className="max-h-60 overflow-auto">
+            {showSelectAll && options.length > 0 && (
+              <label className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground border-b mb-1 pb-2">
+                <Checkbox
+                  checked={value.length === options.length}
+                  onChange={handleToggleAll}
+                />
+                <span>Select All</span>
+              </label>
+            )}
             {options.map((option) => (
               <label
                 key={option.value}

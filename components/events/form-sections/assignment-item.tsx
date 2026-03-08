@@ -19,9 +19,12 @@ interface AssignmentItemProps {
   assignment: Assignment;
   onEdit: () => void;
   onDelete: () => void;
-  /** Quick update for quantity, price, cost, or dates without opening full form */
   onQuickUpdate?: (updates: { quantity?: number; price?: number; cost?: number; startDate?: string | null; startTime?: string | null; endDate?: string | null; endTime?: string | null }) => void;
+  minDate?: string | null;
+  maxDate?: string | null;
   disabled?: boolean;
+  /** Callback when a date is out of range */
+  onInvalidDate?: (message: string) => void;
 }
 
 export function AssignmentItem({
@@ -29,6 +32,9 @@ export function AssignmentItem({
   onEdit,
   onDelete,
   onQuickUpdate,
+  minDate,
+  maxDate,
+  onInvalidDate,
   disabled = false,
 }: AssignmentItemProps) {
   const isProduct = assignment.type === 'PRODUCT';
@@ -74,6 +80,17 @@ export function AssignmentItem({
   };
 
   const handleDateChange = (field: 'startDate' | 'startTime' | 'endDate' | 'endTime', value: string) => {
+    if ((field === 'startDate' || field === 'endDate') && value) {
+      if (minDate && value < minDate) {
+        onInvalidDate?.(`You cannot select a date earlier than ${new Date(minDate + 'T12:00:00').toLocaleDateString()}.`);
+        return;
+      }
+      if (maxDate && value > maxDate) {
+        onInvalidDate?.(`You cannot select a date later than ${new Date(maxDate + 'T12:00:00').toLocaleDateString()}.`);
+        return;
+      }
+    }
+
     const updates: { startDate?: string | null; startTime?: string | null; endDate?: string | null; endTime?: string | null } = {};
     updates[field] = value || null;
 
@@ -94,243 +111,183 @@ export function AssignmentItem({
 
 
   return (
-    <AccordionItem value={assignment.id} className="border rounded-lg mb-2">
-      <div className="flex items-center gap-3 px-4 py-3">
-        {/* Left: Type Icon + Title */}
-        <div className={cn(
-          'p-2 rounded-lg shrink-0',
-          isProduct ? 'bg-blue-500/10 text-blue-500' : 'bg-green-500/10 text-green-500'
-        )}>
-          {isProduct ? (
-            <CubeIcon className="h-4 w-4" />
-          ) : (
-            <WrenchScrewdriverIcon className="h-4 w-4" />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="font-medium truncate text-sm">{title}</div>
-          <div className="text-xs text-muted-foreground">
-            {isProduct ? 'Product' : 'Service'}
+    <AccordionItem value={assignment.id} className="border rounded-xl bg-white mb-2 overflow-hidden shadow-sm hover:border-primary/20 transition-all group">
+      <div className="flex items-center gap-4 px-4 py-3">
+        {/* Left: Type Icon & Name/Type Info */}
+        <div className="flex items-center gap-3 w-[180px] shrink-0">
+          <div className={cn(
+            'p-2.5 rounded-xl shrink-0 flex items-center justify-center transition-colors',
+            isProduct ? 'bg-blue-50 text-blue-500 group-hover:bg-blue-100' : 'bg-green-50 text-green-500 group-hover:bg-green-100'
+          )}>
+            {isProduct ? (
+              <CubeIcon className="h-5 w-5" />
+            ) : (
+              <WrenchScrewdriverIcon className="h-5 w-5" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="font-bold text-[13px] leading-tight truncate text-slate-900">{title}</div>
+            <div className="text-[11px] text-slate-400 leading-tight font-medium mt-0.5">
+              {isProduct ? 'Product' : 'Service'}
+            </div>
           </div>
         </div>
 
-        {/* Date & Time - for service assignments (editable when not disabled) */}
+        {/* Date & Time Group - for service assignments */}
         {!isProduct && serviceAssignment && onQuickUpdate && !disabled && (
-          <div className="hidden md:flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-            <Input
-              type="date"
-              value={serviceAssignment.startDate || ''}
-              onChange={(e) => handleDateChange('startDate', e.target.value)}
-              disabled={disabled}
-              className="w-[130px] h-7 text-xs"
-            />
-            <Input
-              type="time"
-              value={serviceAssignment.startTime || ''}
-              onChange={(e) => handleDateChange('startTime', e.target.value)}
-              disabled={disabled}
-              className="w-[100px] h-7 text-xs"
-            />
-            <span className="text-xs text-muted-foreground">→</span>
-            <Input
-              type="date"
-              value={serviceAssignment.endDate || ''}
-              onChange={(e) => handleDateChange('endDate', e.target.value)}
-              disabled={disabled}
-              className="w-[130px] h-7 text-xs"
-            />
-            <Input
-              type="time"
-              value={serviceAssignment.endTime || ''}
-              onChange={(e) => handleDateChange('endTime', e.target.value)}
-              disabled={disabled}
-              className="w-[100px] h-7 text-xs"
-            />
-            {/* Hours display - only for PER_HOUR rate type */}
-            {isHourly && hours !== null && (
-              <span className="text-xs text-muted-foreground whitespace-nowrap ml-1">
-                ({hours}h)
-              </span>
-            )}
+          <div className="shrink-0 flex items-center gap-2 px-3 border-l min-w-[430px]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="date"
+                value={serviceAssignment.startDate || ''}
+                min={minDate || undefined}
+                max={maxDate || undefined}
+                onChange={(e) => handleDateChange('startDate', e.target.value)}
+                disabled={disabled}
+                className="w-[125px] h-9 text-[11px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
+              />
+              <Input
+                type="time"
+                value={serviceAssignment.startTime || ''}
+                onChange={(e) => handleDateChange('startTime', e.target.value)}
+                disabled={disabled}
+                className="w-[95px] h-9 text-[11px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
+              />
+            </div>
+            <span className="text-slate-300 text-xs font-light">→</span>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="date"
+                value={serviceAssignment.endDate || ''}
+                min={minDate || undefined}
+                max={maxDate || undefined}
+                onChange={(e) => handleDateChange('endDate', e.target.value)}
+                disabled={disabled}
+                className="w-[125px] h-9 text-[11px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
+              />
+              <Input
+                type="time"
+                value={serviceAssignment.endTime || ''}
+                onChange={(e) => handleDateChange('endTime', e.target.value)}
+                disabled={disabled}
+                className="w-[95px] h-9 text-[11px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
+              />
+            </div>
           </div>
         )}
 
-        {/* Hours display when disabled (form open) - show separately */}
-        {!isProduct && serviceAssignment && disabled && isHourly && hours !== null && (
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            ({hours}h)
-          </span>
-        )}
+        {/* Quick Edit Controls (Always visible when not disabled) */}
+        {onQuickUpdate && !disabled && (
+          <div className="flex-1 flex items-center justify-end gap-5" onClick={(e) => e.stopPropagation()}>
+            {/* Qty */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Qty:</span>
+              <Input
+                type="number"
+                min={1}
+                value={assignment.quantity}
+                onChange={(e) => handleQtyChange(parseInt(e.target.value) || 1)}
+                disabled={disabled}
+                className="w-14 h-9 text-[12px] text-center px-1 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
+              />
+            </div>
 
-        {/* Quantity - always editable */}
-        {onQuickUpdate && !disabled ? (
-          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Qty:</span>
-            <Input
-              type="number"
-              min={1}
-              value={assignment.quantity}
-              onChange={(e) => handleQtyChange(parseInt(e.target.value) || 1)}
-              disabled={disabled}
-              className="w-16 h-7 text-sm text-center"
-            />
-          </div>
-        ) : (
-          <Badge variant="secondary" asSpan>
-            Talent Needed: {assignment.quantity}
-          </Badge>
-        )}
+            {/* Cost */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Cost: <span className="text-slate-400 font-normal">$</span></span>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                value={cost ?? 0}
+                onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
+                disabled={disabled}
+                className="w-20 h-9 text-[12px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white text-slate-600"
+              />
+            </div>
 
-        {/* Cost - always editable */}
-        {onQuickUpdate && !disabled ? (
-          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Cost:</span>
-            <span className="text-xs text-muted-foreground">$</span>
-            <Input
-              type="number"
-              step="0.01"
-              min={0}
-              value={cost ?? 0}
-              onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
-              disabled={disabled}
-              className="w-20 h-7 text-sm text-muted-foreground"
-            />
-          </div>
-        ) : (
-          <span className="text-sm whitespace-nowrap text-muted-foreground">
-            {formatCurrency(cost)}
-          </span>
-        )}
+            {/* Price */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Price: <span className="text-slate-400 font-normal">$</span></span>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                value={price ?? 0}
+                onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
+                disabled={disabled}
+                className="w-20 h-9 text-[12px] px-2 font-bold rounded-lg border-slate-200 focus:ring-1 focus:ring-primary/20"
+              />
+            </div>
 
-        {/* Price - always editable */}
-        {onQuickUpdate && !disabled ? (
-          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Price:</span>
-            <span className="text-sm font-medium">$</span>
-            <Input
-              type="number"
-              step="0.01"
-              min={0}
-              value={price ?? 0}
-              onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
-              disabled={disabled}
-              className="w-20 h-7 text-sm font-medium"
-            />
-            {/* Rate Type display - only for services */}
-            {!isProduct && serviceAssignment?.rateType && (
-              <span className="text-xs text-muted-foreground">
-                {RATE_TYPE_LABELS[serviceAssignment.rateType]}
-              </span>
-            )}
-          </div>
-        ) : (
-          <span className="text-sm font-medium whitespace-nowrap">
-            {formatCurrency(price)}
-            {!isProduct && serviceAssignment?.rateType && (
-              <span className="text-xs text-muted-foreground ml-1">
-                {RATE_TYPE_LABELS[serviceAssignment.rateType]}
-              </span>
-            )}
-          </span>
-        )}
-
-        {/* Total - calculated display */}
-        {totalPrice !== null && (
-          <div className="flex flex-col items-end">
-            <span className="text-sm font-semibold text-primary whitespace-nowrap">
-              {formatCurrency(totalPrice)}
+            {/* Rate Scale Label */}
+            <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap w-[90px]">
+              {isProduct ? 'Per Item' : (serviceAssignment?.rateType ? RATE_TYPE_LABELS[serviceAssignment.rateType] : 'Per Assignment')}
             </span>
-            {totalCost !== null && (
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                Cost: {formatCurrency(totalCost)}
-              </span>
-            )}
           </div>
         )}
 
-        {/* Edit */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-          disabled={disabled}
-          className="h-8 w-8 p-0"
-        >
-          <EditIcon className="h-4 w-4" />
-        </Button>
+        {/* Total Calculations */}
+        <div className="w-[120px] text-right shrink-0 pr-1 pl-4 border-l">
+          <div className="text-[14px] font-extrabold text-blue-600 tracking-tight">
+            ${totalPrice.toFixed(2)}
+          </div>
+          <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+            Cost: ${totalCost.toFixed(2)}
+          </div>
+        </div>
 
-        {/* Delete */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          disabled={disabled}
-          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </Button>
-
-        {/* Accordion Arrow - only this expands/collapses */}
-        <AccordionArrow />
+        {/* Row Actions */}
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onEdit}
+            disabled={disabled}
+            className="h-9 w-9 p-0 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-lg"
+          >
+            <EditIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            disabled={disabled}
+            className="h-9 w-9 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-6 p-0 text-slate-300 pointer-events-none"
+          >
+            <AccordionArrow className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      <AccordionContent className="px-4 pb-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          {/* Commission */}
+      <AccordionContent>
+        <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 grid grid-cols-2 md:grid-cols-4 gap-6">
+          {/* Detailed assignment info */}
           <div>
-            <div className="text-muted-foreground text-xs mb-1">Commission</div>
-            <div className="font-medium">{assignment.commission ? 'Yes' : 'No'}</div>
+            <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">Description</div>
+            <div className="text-sm text-slate-600 line-clamp-3">{assignment.description || (isProduct ? 'No product description provided' : 'No service description provided')}</div>
           </div>
 
-          {/* Product-specific fields */}
-          {isProduct && productAssignment && (
-            <>
-              {productAssignment.description && (
-                <div className="col-span-2">
-                  <div className="text-muted-foreground text-xs mb-1">Description</div>
-                  <div className="font-medium">{productAssignment.description}</div>
-                </div>
-              )}
-              {productAssignment.instructions && (
-                <div className="col-span-2">
-                  <div className="text-muted-foreground text-xs mb-1">Instructions</div>
-                  <div className="font-medium">{productAssignment.instructions}</div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Service-specific fields */}
           {!isProduct && serviceAssignment && (
             <>
-              {/* Experience & Rating */}
               <div>
-                <div className="text-muted-foreground text-xs mb-1">Experience</div>
-                <div className="font-medium">
-                  {serviceAssignment.experienceRequired === 'ANY'
-                    ? 'Any'
-                    : EXPERIENCE_REQUIREMENT_LABELS[serviceAssignment.experienceRequired as ExperienceRequirement] || serviceAssignment.experienceRequired}
-                </div>
+                <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">Rating Requirement</div>
+                <div className="text-sm text-slate-700 font-semibold">{STAFF_RATING_LABELS[serviceAssignment.ratingRequired as StaffRating] || serviceAssignment.ratingRequired}</div>
               </div>
               <div>
-                <div className="text-muted-foreground text-xs mb-1">Rating</div>
-                <div className="font-medium">
-                  {serviceAssignment.ratingRequired === 'ANY'
-                    ? 'Any'
-                    : STAFF_RATING_LABELS[serviceAssignment.ratingRequired as StaffRating] || serviceAssignment.ratingRequired}
-                </div>
+                <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">Exp Requirement</div>
+                <div className="text-sm text-slate-700 font-semibold">{EXPERIENCE_REQUIREMENT_LABELS[serviceAssignment.experienceRequired as ExperienceRequirement] || serviceAssignment.experienceRequired}</div>
               </div>
               <div>
-                <div className="text-muted-foreground text-xs mb-1">Approve Overtime</div>
-                <div className="font-medium">{serviceAssignment.approveOvertime ? 'Yes' : 'No'}</div>
+                <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">Approve Overtime</div>
+                <div className="font-semibold text-xs py-1 px-2 rounded bg-slate-200/50 w-fit">{serviceAssignment.approveOvertime ? 'YES' : 'NO'}</div>
               </div>
             </>
           )}

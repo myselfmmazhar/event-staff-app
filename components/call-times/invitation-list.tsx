@@ -6,6 +6,8 @@ import { CallTimeInvitationStatus } from '@prisma/client';
 import { INVITATION_STATUS_LABELS } from '@/lib/schemas/call-time.schema';
 import { RefreshCwIcon, XIcon } from '@/components/ui/icons';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
+import { useState } from 'react';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 
 interface Invitation {
   id: string;
@@ -27,8 +29,10 @@ interface InvitationListProps {
   invitations: Invitation[];
   onResend: (invitationId: string) => void;
   onCancel: (invitationId: string) => void;
+  onAcceptOnBehalf?: (invitationId: string) => void;
   isResending?: string;
   isCancelling?: string;
+  isAccepting?: string;
 }
 
 const STATUS_VARIANTS: Record<CallTimeInvitationStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -45,8 +49,14 @@ export function InvitationList({
   onCancel,
   isResending,
   isCancelling,
+  isAccepting,
+  onAcceptOnBehalf,
 }: InvitationListProps) {
   const staffTerm = useStaffTerm();
+
+  const [resendTarget, setResendTarget] = useState<Invitation | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Invitation | null>(null);
+  const [acceptTarget, setAcceptTarget] = useState<Invitation | null>(null);
 
   const formatDate = (date: Date | null) => {
     if (!date) return '-';
@@ -112,29 +122,51 @@ export function InvitationList({
         <div className="flex items-center gap-1">
           {(invitation.status === 'DECLINED' ||
             invitation.status === 'CANCELLED') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onResend(invitation.id)}
-              disabled={isResending === invitation.id}
-              title="Resend offer"
-            >
-              <RefreshCwIcon
-                className={`h-4 w-4 ${isResending === invitation.id ? 'animate-spin' : ''}`}
-              />
-            </Button>
-          )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setResendTarget(invitation)}
+                disabled={isResending === invitation.id}
+                title="Resend offer"
+              >
+                <RefreshCwIcon
+                  className={`h-4 w-4 ${isResending === invitation.id ? 'animate-spin' : ''}`}
+                />
+              </Button>
+            )}
           {invitation.status === 'PENDING' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onCancel(invitation.id)}
-              disabled={isCancelling === invitation.id}
-              title="Cancel offer"
-              className="text-destructive hover:text-destructive"
-            >
-              <XIcon className="h-4 w-4" />
-            </Button>
+            <>
+              {onAcceptOnBehalf && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAcceptTarget(invitation)}
+                  disabled={isAccepting === invitation.id}
+                  title="Accept for User"
+                >
+                  Accept
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setResendTarget(invitation)}
+                disabled={isResending === invitation.id}
+                title="Resend offer"
+              >
+                Resend
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setCancelTarget(invitation)}
+                disabled={isCancelling === invitation.id}
+                title="Cancel offer"
+                className="hover:bg-destructive/90"
+              >
+                Cancel
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -205,6 +237,73 @@ export function InvitationList({
             {cancelled.map(renderInvitation)}
           </div>
         </div>
+      )}
+
+      {/* Modals */}
+      {resendTarget && (
+        <ConfirmModal
+          open={!!resendTarget}
+          onClose={() => setResendTarget(null)}
+          onConfirm={() => {
+            onResend(resendTarget.id);
+            setResendTarget(null);
+          }}
+          title="Resend Invitation"
+          description={`Are you sure you want to resend the invitation to ${resendTarget.staff.firstName} ${resendTarget.staff.lastName}?`}
+          confirmText="Resend"
+          cancelText="Cancel"
+          variant="default"
+        >
+          <div className="py-2">
+            <p className="text-sm text-foreground">
+              A new invitation email will be sent to <span className="font-semibold">{resendTarget.staff.email}</span>. The previous invitation link will be invalidated.
+            </p>
+          </div>
+        </ConfirmModal>
+      )}
+
+      {acceptTarget && (
+        <ConfirmModal
+          open={!!acceptTarget}
+          onClose={() => setAcceptTarget(null)}
+          onConfirm={() => {
+            onAcceptOnBehalf?.(acceptTarget.id);
+            setAcceptTarget(null);
+          }}
+          title="Accept Invitation"
+          description={`Are you sure you want to accept the invitation on behalf of ${acceptTarget.staff.firstName} ${acceptTarget.staff.lastName}?`}
+          confirmText="Accept"
+          cancelText="Cancel"
+          variant="default"
+        >
+          <div className="py-2">
+            <p className="text-sm text-foreground">
+              This will confirm the offer for <span className="font-semibold">{acceptTarget.staff.email}</span> and assign them to the position.
+            </p>
+          </div>
+        </ConfirmModal>
+      )}
+
+      {cancelTarget && (
+        <ConfirmModal
+          open={!!cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onConfirm={() => {
+            onCancel(cancelTarget.id);
+            setCancelTarget(null);
+          }}
+          title="Cancel Invitation"
+          description={`Are you sure you want to cancel the invitation for ${cancelTarget.staff.firstName} ${cancelTarget.staff.lastName}?`}
+          confirmText="Cancel Invitation"
+          cancelText="Keep Invitation"
+          variant="danger"
+        >
+          <div className="py-2">
+            <p className="text-sm text-foreground">
+              This will cancel the pending offer. <span className="font-semibold">{cancelTarget.staff.email}</span> will be notified of the cancellation.
+            </p>
+          </div>
+        </ConfirmModal>
       )}
     </div>
   );
