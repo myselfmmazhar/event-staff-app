@@ -1,16 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { EventStatus } from '@prisma/client';
-import { SendIcon, XIcon, PaperclipIcon, SpinnerIcon } from '@/components/ui/icons';
+import { SendIcon, XIcon, PaperclipIcon, SpinnerIcon, TrashIcon, PlusIcon } from '@/components/ui/icons';
 import { FileUpload } from '@/components/ui/file-upload';
+import { cn } from '@/lib/utils';
+
+interface StaffInfo {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string | null;
+}
 
 interface TaskMessageModalProps {
     event: {
@@ -21,13 +31,7 @@ interface TaskMessageModalProps {
             invitations: Array<{
                 status: string;
                 isConfirmed: boolean;
-                staff: {
-                    id: string;
-                    firstName: string;
-                    lastName: string;
-                    email?: string;
-                    phone?: string | null;
-                }
+                staff: StaffInfo;
             }>
         }>
     } | null;
@@ -40,14 +44,23 @@ interface Attachment {
     path: string;
 }
 
+interface CustomRecipient {
+    id: string;
+    value: string;
+}
+
 export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps) {
-    const [recipients, setRecipients] = useState('');
     const [subject, setSubject] = useState('');
     const [body, setBody] = useState('');
-    const [selectedStatus, setSelectedStatus] = useState<EventStatus | null>(null);
+    const [selectedStatus, setSelectedStatus] = useState<EventStatus | 'ALL' | null>('ALL');
     const [commMethod, setCommMethod] = useState<'EMAIL' | 'SMS' | 'WHATSAPP'>('EMAIL');
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+
+    // Recipient selection
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [customRecipients, setCustomRecipients] = useState<CustomRecipient[]>([]);
+    const [newCustomVal, setNewCustomVal] = useState('');
 
     const { toast } = useToast();
     const utils = trpc.useUtils();
@@ -78,19 +91,85 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
         },
     });
 
+    // Extract unique staff members from event
+    const allStaff = useMemo(() => {
+        if (!event?.callTimes) return [];
+        const seen = new Set();
+        const staff: StaffInfo[] = [];
+        event.callTimes.forEach(ct => {
+            ct.invitations.forEach(inv => {
+                if (!seen.has(inv.staff.id)) {
+                    seen.add(inv.staff.id);
+                    staff.push(inv.staff);
+                }
+            });
+        });
+        return staff.sort((a, b) => a.firstName.localeCompare(b.firstName));
+    }, [event]);
+
+    // Derived list of valid staff for the current commMethod
+    const validStaff = useMemo(() => {
+        return allStaff.filter(s => {
+            if (commMethod === 'EMAIL') return !!s.email;
+            return !!s.phone;
+        });
+    }, [allStaff, commMethod]);
+
     useEffect(() => {
         if (event && open) {
             setSubject(`Message regarding Task: ${event.title}`);
             setBody(`Hello,\n\nI'm writing regarding the task "${event.title}".\n\nBest regards,`);
-            setRecipients('');
-            setSelectedStatus(null);
             setAttachments([]);
             setCommMethod('EMAIL');
+            setCustomRecipients([]);
+            setNewCustomVal('');
+
+            // Set "All" as default
+            setSelectedStatus('ALL');
+            if (event.callTimes) {
+                const allInvitations = event.callTimes.flatMap(ct => ct.invitations);
+                const allStaffIds = new Set(allInvitations.map(i => i.staff.id));
+                // Filter these IDs to only include staff valid for the current commMethod
+                const validIds = new Set(Array.from(allStaffIds).filter(id => validStaff.some(s => s.id === id)));
+                setSelectedIds(validIds);
+            } else {
+                setSelectedIds(new Set());
+            }
         }
-    }, [event, open]);
+    }, [event, open, validStaff]);
+
+    const toggleStaffSelection = (id: string) => {
+        const next = new Set(selectedIds);
+        if (next.has(id)) {
+            next.delete(id);
+            setSelectedStatus(null); // Deselect template match if manually changed
+        } else {
+            next.add(id);
+        }
+        setSelectedIds(next);
+    };
+
+    const toggleAllStaff = () => {
+        if (selectedIds.size === validStaff.length) {
+            setSelectedIds(new Set());
+            setSelectedStatus(null);
+        } else {
+            setSelectedIds(new Set(validStaff.map(s => s.id)));
+            setSelectedStatus('ALL');
+        }
+    };
+
+    const addCustomRecipient = () => {
+        if (!newCustomVal.trim()) return;
+        setCustomRecipients(prev => [...prev, { id: crypto.randomUUID(), value: newCustomVal.trim() }]);
+        setNewCustomVal('');
+    };
+
+    const removeCustomRecipient = (id: string) => {
+        setCustomRecipients(prev => prev.filter(r => r.id !== id));
+    };
 
     const handleFileUpload = async (files: File[]) => {
-        // Only upload files that haven't been uploaded yet
         const newFilesToUpload = files.filter(file =>
             !attachments.some(attr => attr.filename === file.name)
         );
@@ -100,7 +179,6 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
         setIsUploading(true);
         try {
             const uploadedAttachments: Attachment[] = [];
-
             for (const file of newFilesToUpload) {
                 const formData = new FormData();
                 formData.append('file', file);
@@ -116,10 +194,9 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                 const data = await res.json();
                 uploadedAttachments.push({
                     filename: data.name,
-                    path: data.absolutePath, // Local absolute path for backend
+                    path: data.absolutePath,
                 });
             }
-
             setAttachments(prev => [...prev, ...uploadedAttachments]);
             toast({ title: 'Success', description: `${newFilesToUpload.length} file(s) uploaded` });
         } catch (error) {
@@ -140,28 +217,47 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
     const handleSend = () => {
         if (!event) return;
 
-        const recipientList = recipients.split(',').map(e => e.trim()).filter(e => e !== '');
-        if (recipientList.length === 0) {
+        // Collect all target addresses (email or phone)
+        const recipientList: string[] = [];
+
+        // From selected staff
+        validStaff.forEach(s => {
+            if (selectedIds.has(s.id)) {
+                if (commMethod === 'EMAIL') {
+                    if (s.email) recipientList.push(s.email);
+                } else {
+                    if (s.phone) recipientList.push(s.phone);
+                }
+            }
+        });
+
+        // From custom recipients
+        customRecipients.forEach(r => recipientList.push(r.value));
+
+        const uniqueRecipients = Array.from(new Set(recipientList));
+
+        if (uniqueRecipients.length === 0) {
             toast({ title: 'Error', description: 'At least one recipient is required', variant: 'destructive' });
             return;
         }
 
         sendMessageMutation.mutate({
             eventId: event.id,
-            recipients: recipientList,
+            recipients: uniqueRecipients,
             subject,
             body,
-            statusToUpdate: selectedStatus || undefined,
+            statusToUpdate: (selectedStatus && selectedStatus !== 'ALL') ? (selectedStatus as EventStatus) : undefined,
             attachments: attachments.length > 0 ? attachments : undefined,
+            commMethod: commMethod,
         });
     };
 
-    const handleStatusClick = (type: 'ACCEPTED' | 'REJECTED' | 'COMPLETED') => {
+    const handleStatusClick = (type: 'ALL' | 'ACCEPTED' | 'REJECTED' | 'COMPLETED') => {
         if (!event) return;
 
-        let newSubject = '';
-        let newBody = '';
-        let status: EventStatus | null = null;
+        let newSubject = `Message regarding Task: ${event.title}`;
+        let newBody = `Hello,\n\nI'm writing regarding the task "${event.title}".\n\nBest regards,`;
+        let status: EventStatus | 'ALL' | null = type;
 
         switch (type) {
             case 'ACCEPTED':
@@ -179,35 +275,31 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                 newBody = `Hello,\n\nThis is to notify you that the task "${event.title}" has been successfully COMPLETED.\n\nBest regards,`;
                 status = EventStatus.COMPLETED;
                 break;
-        }
-
-        if (event.callTimes) {
-            const allInvitations = event.callTimes.flatMap((ct) => ct.invitations);
-            type StaffInfo = { id: string; firstName: string; lastName: string; email?: string; phone?: string | null };
-            let matchedStaff: StaffInfo[] = [];
-
-            if (type === 'ACCEPTED') {
-                matchedStaff = allInvitations.filter(i => i.status === 'ACCEPTED').map(i => i.staff);
-            } else if (type === 'REJECTED') {
-                matchedStaff = allInvitations.filter(i => i.status === 'DECLINED' || i.status === 'REJECTED').map(i => i.staff);
-            } else if (type === 'COMPLETED') {
-                matchedStaff = allInvitations.map(i => i.staff);
-            }
-
-            const uniqueStaff = Array.from(new Map(matchedStaff.map(s => [s.id, s])).values());
-
-            if (commMethod === 'EMAIL') {
-                const emails = uniqueStaff.map(s => s.email).filter(Boolean);
-                setRecipients(emails.join(', '));
-            } else {
-                const phones = uniqueStaff.map(s => s.phone).filter(Boolean);
-                setRecipients(phones.join(', '));
-            }
+            case 'ALL':
+                // Already set defaults above
+                break;
         }
 
         setSubject(newSubject);
         setBody(newBody);
         setSelectedStatus(status);
+
+        // Selection logic based on invitations
+        if (event.callTimes) {
+            const allInvitations = event.callTimes.flatMap(ct => ct.invitations);
+            let nextIds = new Set<string>();
+
+            if (type === 'ACCEPTED') {
+                nextIds = new Set(allInvitations.filter(i => i.status === 'ACCEPTED').map(i => i.staff.id));
+            } else if (type === 'REJECTED') {
+                nextIds = new Set(allInvitations.filter(i => i.status === 'DECLINED' || i.status === 'REJECTED').map(i => i.staff.id));
+            } else if (type === 'COMPLETED' || type === 'ALL') {
+                nextIds = new Set(allInvitations.map(i => i.staff.id));
+            }
+
+            // Only select those valid for current method
+            setSelectedIds(new Set(Array.from(nextIds).filter(id => validStaff.some(s => s.id === id))));
+        }
     };
 
     return (
@@ -216,16 +308,25 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                 <DialogTitle>Send Task Message</DialogTitle>
             </DialogHeader>
 
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[550px]">
                 <div className="space-y-6 py-4">
+                    {/* 1. Comm Method */}
                     <div className="space-y-2">
                         <Label className="text-sm font-semibold">1. Select Communication Method</Label>
                         <div className="grid grid-cols-3 gap-2">
                             <Button
                                 size="sm"
+                                variant={commMethod === 'EMAIL' ? "default" : "outline"}
+                                onClick={() => setCommMethod('EMAIL')}
+                                className={cn("flex-1", commMethod === 'EMAIL' ? 'bg-blue-600 hover:bg-blue-700' : 'text-blue-700 border-blue-200 hover:bg-blue-50')}
+                            >
+                                Email
+                            </Button>
+                            <Button
+                                size="sm"
                                 variant={commMethod === 'SMS' ? "default" : "outline"}
                                 onClick={() => setCommMethod('SMS')}
-                                className={`flex-1 ${commMethod === 'SMS' ? 'bg-primary' : ''}`}
+                                className={cn("flex-1", commMethod === 'SMS' ? 'bg-primary' : '')}
                             >
                                 SMS
                             </Button>
@@ -233,29 +334,30 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                                 size="sm"
                                 variant={commMethod === 'WHATSAPP' ? "default" : "outline"}
                                 onClick={() => setCommMethod('WHATSAPP')}
-                                className={`flex-1 ${commMethod === 'WHATSAPP' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-green-700 border-green-200 hover:bg-green-50'}`}
+                                className={cn("flex-1", commMethod === 'WHATSAPP' ? 'bg-green-600 hover:bg-green-700' : 'text-green-700 border-green-200 hover:bg-green-50')}
                             >
                                 WhatsApp
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant={commMethod === 'EMAIL' ? "default" : "outline"}
-                                onClick={() => setCommMethod('EMAIL')}
-                                className={`flex-1 ${commMethod === 'EMAIL' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-blue-700 border-blue-200 hover:bg-blue-50'}`}
-                            >
-                                Email
                             </Button>
                         </div>
                     </div>
 
+                    {/* 2. Template */}
                     <div className="space-y-2">
                         <Label className="text-sm font-semibold">2. Select Template & Action</Label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
+                            <Button
+                                size="sm"
+                                variant={selectedStatus === 'ALL' ? "default" : "outline"}
+                                onClick={() => handleStatusClick('ALL')}
+                                className={cn("flex-1", selectedStatus === 'ALL' ? 'bg-primary' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200')}
+                            >
+                                All
+                            </Button>
                             <Button
                                 size="sm"
                                 variant={selectedStatus === EventStatus.IN_PROGRESS ? "default" : "outline"}
                                 onClick={() => handleStatusClick('ACCEPTED')}
-                                className={`flex-1 ${selectedStatus === EventStatus.IN_PROGRESS ? 'bg-green-600 hover:bg-green-700' : 'bg-green-50 text-green-700 hover:bg-green-100 border-green-200'}`}
+                                className={cn("flex-1", selectedStatus === EventStatus.IN_PROGRESS ? 'bg-green-600 hover:bg-green-700' : 'bg-green-50 text-green-700 hover:bg-green-100 border-green-200')}
                             >
                                 Accepted
                             </Button>
@@ -263,31 +365,92 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                                 size="sm"
                                 variant={selectedStatus === EventStatus.CANCELLED ? "default" : "outline"}
                                 onClick={() => handleStatusClick('REJECTED')}
-                                className={`flex-1 ${selectedStatus === EventStatus.CANCELLED ? 'bg-red-600 hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100 border-red-200'}`}
+                                className={cn("flex-1", selectedStatus === EventStatus.CANCELLED ? 'bg-red-600 hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100 border-red-200')}
                             >
-                                Rejected
+                                Declined
                             </Button>
                             <Button
                                 size="sm"
                                 variant={selectedStatus === EventStatus.COMPLETED ? "default" : "outline"}
                                 onClick={() => handleStatusClick('COMPLETED')}
-                                className={`flex-1 ${selectedStatus === EventStatus.COMPLETED ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200'}`}
+                                className={cn("flex-1", selectedStatus === EventStatus.COMPLETED ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200')}
                             >
                                 Completed
                             </Button>
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label className="text-sm font-semibold">3. Recipients</Label>
-                        <Input
-                            placeholder={commMethod === 'EMAIL' ? "email1@example.com, email2@example.com" : "+1234567890, +0987654321"}
-                            value={recipients}
-                            onChange={(e) => setRecipients(e.target.value)}
-                        />
-                        <p className="text-[10px] text-muted-foreground">Separate multiple recipients with commas.</p>
+                    {/* 3. Recipients with Checkboxes */}
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <Label className="text-sm font-semibold">3. Recipients ({selectedIds.size + customRecipients.length})</Label>
+                            {validStaff.length > 0 && (
+                                <Button variant="ghost" size="xs" onClick={toggleAllStaff} className="text-[10px] h-6">
+                                    {selectedIds.size === validStaff.length ? 'Deselect All' : 'Select All'}
+                                </Button>
+                            )}
+                        </div>
+
+                        {validStaff.length > 0 ? (
+                            <div className="border rounded-md divide-y max-h-[160px] overflow-y-auto bg-muted/5">
+                                {validStaff.map(staff => (
+                                    <div
+                                        key={staff.id}
+                                        className="flex items-center gap-3 p-2 px-3 hover:bg-muted/10 transition-colors cursor-pointer group"
+                                        onClick={() => toggleStaffSelection(staff.id)}
+                                    >
+                                        <Checkbox
+                                            checked={selectedIds.has(staff.id)}
+                                            onChange={() => toggleStaffSelection(staff.id)} // Internal toggle handled by parent div too
+                                            readOnly
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium truncate">{staff.firstName} {staff.lastName}</p>
+                                            <p className="text-[10px] text-muted-foreground truncate">
+                                                {commMethod === 'EMAIL' ? staff.email : staff.phone}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-4 border border-dashed rounded-md bg-muted/5">
+                                <p className="text-xs text-muted-foreground italic">No staff available with {commMethod.toLowerCase()} info</p>
+                            </div>
+                        )}
+
+                        {/* Custom Recipients */}
+                        <div className="space-y-2 pt-1">
+                            <div className="flex gap-2">
+                                <Input
+                                    size="sm"
+                                    className="h-8 text-xs"
+                                    placeholder={commMethod === 'EMAIL' ? "Add custom email..." : "Add custom number..."}
+                                    value={newCustomVal}
+                                    onChange={(e) => setNewCustomVal(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomRecipient())}
+                                />
+                                <Button size="sm" className="h-8 px-2" onClick={addCustomRecipient} variant="outline">
+                                    <PlusIcon className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+
+                            {customRecipients.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {customRecipients.map(r => (
+                                        <div key={r.id} className="flex items-center gap-1 bg-primary/10 text-primary-foreground border border-primary/20 rounded-full px-2 py-0.5 text-[10px]">
+                                            <span className="max-w-[120px] truncate">{r.value}</span>
+                                            <button onClick={() => removeCustomRecipient(r.id)} className="hover:text-red-500">
+                                                <XIcon className="h-2.5 w-2.5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
+                    {/* 4. Content */}
                     <div className="space-y-2">
                         <Label className="text-sm font-semibold">4. Message Content</Label>
                         <div className="space-y-2">
@@ -305,6 +468,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                         </div>
                     </div>
 
+                    {/* 5. Attachments */}
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <Label className="text-sm font-semibold">5. Attachments ({attachments.length})</Label>
@@ -350,7 +514,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
 
             <DialogFooter className="flex sm:justify-between items-center sm:gap-4 mt-4">
                 <p className="hidden sm:block text-[10px] text-muted-foreground italic flex-1">
-                    {selectedStatus ? `Will update status to ${selectedStatus.replace('_', ' ')}` : 'Message only (no status change)'}
+                    {selectedStatus && selectedStatus !== 'ALL' ? `Will update status to ${selectedStatus.replace('_', ' ')}` : 'Message only (no status change)'}
                 </p>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="outline" className="flex-1 sm:flex-none" onClick={onClose}>Cancel</Button>

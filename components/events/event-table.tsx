@@ -58,6 +58,7 @@ interface EventTableProps {
   onEdit: (event: Event) => void;
   onArchive: (event: Event) => void;
   onMessage: (event: Event) => void;
+  onStatusChange?: (id: string, status: EventStatus) => void;
   onSort: (field: SortableField) => void;
   // Optional selection props
   selectedIds?: Set<string>;
@@ -72,6 +73,7 @@ export function EventTable({
   onEdit,
   onArchive,
   onMessage,
+  onStatusChange,
   onSort,
   selectedIds,
   onSelectionChange,
@@ -233,19 +235,19 @@ export function EventTable({
             variant="ghost"
             size="sm"
             className="px-0"
-            onClick={() => onMessage(event)}
-            title="Send Message"
+            onClick={() => onEdit(event)}
+            title={`Edit ${terminology.event.lower}`}
           >
-            <ChatBubbleLeftRightIcon className="h-4 w-4" />
+            <EditIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="px-0"
-            onClick={() => onEdit(event)}
-            title={`Edit ${terminology.event.lower}`}
+            onClick={() => onMessage(event)}
+            title="Send Message"
           >
-            <EditIcon className="h-4 w-4" />
+            <ChatBubbleLeftRightIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -273,11 +275,32 @@ export function EventTable({
       label: columnLabels.status,
       sortable: true,
       className: 'py-4 px-4 whitespace-nowrap',
-      render: (event) => (
-        <Badge variant={EVENT_STATUS_COLORS[event.status]} asSpan>
-          {EVENT_STATUS_LABELS[event.status]}
-        </Badge>
-      ),
+      render: (event) => {
+        const nextStatusMap: Record<EventStatus, EventStatus> = {
+          DRAFT: 'PUBLISHED',
+          PUBLISHED: 'ASSIGNED',
+          ASSIGNED: 'IN_PROGRESS',
+          IN_PROGRESS: 'COMPLETED',
+          COMPLETED: 'CANCELLED',
+          CANCELLED: 'DRAFT',
+        };
+
+        return (
+          <Badge
+            variant={EVENT_STATUS_COLORS[event.status]}
+            asSpan
+            className={onStatusChange ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}
+            onClick={(e) => {
+              if (onStatusChange) {
+                e.stopPropagation();
+                onStatusChange(event.id, nextStatusMap[event.status]);
+              }
+            }}
+          >
+            {EVENT_STATUS_LABELS[event.status]}
+          </Badge>
+        );
+      },
     },
     {
       key: 'startDate',
@@ -482,11 +505,10 @@ export function EventTable({
                           {acceptedInvitations.slice(0, 4).map((inv) => (
                             <div
                               key={inv.id}
-                              className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-medium ${
-                                inv.isConfirmed
-                                  ? 'bg-success/30 border-2 border-success'
-                                  : 'bg-success/20 border border-success/30'
-                              }`}
+                              className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-medium ${inv.isConfirmed
+                                ? 'bg-success/30 border-2 border-success'
+                                : 'bg-success/20 border border-success/30'
+                                }`}
                               title={`${inv.staff.firstName} ${inv.staff.lastName}${inv.isConfirmed ? ' (Confirmed)' : ''}`}
                             >
                               {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
