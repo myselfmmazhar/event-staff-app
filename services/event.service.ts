@@ -26,6 +26,7 @@ export interface EventStats {
   upcoming: number; // Events starting in next 30 days
   byStatus: {
     DRAFT: number;
+    PUBLISHED: number;
     ASSIGNED: number;
     IN_PROGRESS: number;
     COMPLETED: number;
@@ -874,6 +875,7 @@ export class EventService {
       }),
       Promise.all([
         this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.DRAFT } }),
+        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.PUBLISHED } }),
         this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.ASSIGNED } }),
         this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.IN_PROGRESS } }),
         this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.COMPLETED } }),
@@ -886,10 +888,11 @@ export class EventService {
       upcoming,
       byStatus: {
         DRAFT: byStatus[0],
-        ASSIGNED: byStatus[1],
-        IN_PROGRESS: byStatus[2],
-        COMPLETED: byStatus[3],
-        CANCELLED: byStatus[4],
+        PUBLISHED: byStatus[1],
+        ASSIGNED: byStatus[2],
+        IN_PROGRESS: byStatus[3],
+        COMPLETED: byStatus[4],
+        CANCELLED: byStatus[5],
       },
     };
   }

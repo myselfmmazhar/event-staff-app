@@ -11,6 +11,7 @@ interface CalendarEventTooltipProps {
 
 const STATUS_COLORS: Record<EventStatus, 'default' | 'info' | 'success' | 'primary' | 'purple' | 'danger'> = {
   DRAFT: 'default',
+  PUBLISHED: 'success',
   ASSIGNED: 'info',
   IN_PROGRESS: 'primary',
   COMPLETED: 'success',
@@ -19,6 +20,7 @@ const STATUS_COLORS: Record<EventStatus, 'default' | 'info' | 'success' | 'prima
 
 const STATUS_LABELS: Record<EventStatus, string> = {
   DRAFT: 'Draft',
+  PUBLISHED: 'Published',
   ASSIGNED: 'Assigned',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',

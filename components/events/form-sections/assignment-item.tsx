@@ -230,10 +230,10 @@ export function AssignmentItem({
         {/* Total Calculations */}
         <div className="w-[120px] text-right shrink-0 pr-1 pl-4 border-l">
           <div className="text-[14px] font-extrabold text-blue-600 tracking-tight">
-            ${totalPrice.toFixed(2)}
+            ${(totalPrice ?? 0).toFixed(2)}
           </div>
           <div className="text-[10px] text-slate-400 font-medium mt-0.5">
-            Cost: ${totalCost.toFixed(2)}
+            Cost: ${(totalCost ?? 0).toFixed(2)}
           </div>
         </div>
 
@@ -272,7 +272,7 @@ export function AssignmentItem({
           {/* Detailed assignment info */}
           <div>
             <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">Description</div>
-            <div className="text-sm text-slate-600 line-clamp-3">{assignment.description || (isProduct ? 'No product description provided' : 'No service description provided')}</div>
+            <div className="text-sm text-slate-600 line-clamp-3">{(isProduct ? productAssignment?.description : serviceAssignment?.notes) || (isProduct ? 'No product description provided' : 'No service description provided')}</div>
           </div>
 
           {!isProduct && serviceAssignment && (
