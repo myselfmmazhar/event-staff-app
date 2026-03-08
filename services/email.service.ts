@@ -59,23 +59,73 @@ export class EmailService {
   }
 
   /**
-   * Send email using configured provider
+   * Send email using configured provider and log the communication
    */
-  private async sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; error?: string }> {
+  private async sendEmail(to: string, subject: string, html: string, senderId?: string): Promise<{ success: boolean; error?: string }> {
     try {
       const { sendEmail: utilsSendEmail } = await import('@/lib/utils/email');
-      await utilsSendEmail(prisma, to, subject, html);
+      const result = await utilsSendEmail(prisma, to, subject, html);
+
+      // Log the communication if senderId is provided
+      if (senderId) {
+        try {
+          await prisma.communicationLog.create({
+            data: {
+              type: 'EMAIL',
+              recipient: to,
+              subject,
+              content: html,
+              status: 'SENT',
+              senderId: senderId,
+            }
+          });
+        } catch (logError) {
+          console.error('Error logging communication:', logError);
+          // Don't fail the whole email flow if logging fails
+        }
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Error sending email:', error);
 
-      // Fallback to basic logging if enabled
+      // Fallback to basic logging to console if no provider is configured
       if (!this.isEnabled()) {
-        console.log('\n📧 EMAIL WOULD BE SENT:');
+        console.log('\n📧 EMAIL WOULD BE SENT (Log to Console Only):');
         console.log(`   To: ${to}`);
         console.log(`   Subject: ${subject}`);
         console.log('   (Configure SMTP or Resend to send actual emails)\n');
+
+        // Even in dev mode, we might want to log it to the DB if a senderId exists
+        if (senderId) {
+          await prisma.communicationLog.create({
+            data: {
+              type: 'EMAIL',
+              recipient: to,
+              subject,
+              content: html,
+              status: 'SENT', // Mark as sent for dev visibility
+              senderId: senderId,
+            }
+          }).catch(() => { });
+        }
+
         return { success: true };
+      }
+
+      // Log failed attempt if senderId is provided
+      if (senderId) {
+        await prisma.communicationLog.create({
+          data: {
+            type: 'EMAIL',
+            recipient: to,
+            subject,
+            content: html,
+            status: 'FAILED',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            senderId: senderId,
+          }
+        }).catch(() => { });
       }
 
       return {
@@ -92,7 +142,8 @@ export class EmailService {
     email: string,
     firstName: string,
     invitationToken: string,
-    staffTermLabel: string = 'Staff'
+    staffTermLabel: string = 'Staff',
+    senderId?: string
   ): Promise<{ success: boolean; error?: string }> {
     const inviteUrl = `${this.appUrl}/accept-invitation/staff?token=${invitationToken}`;
 
@@ -107,14 +158,15 @@ export class EmailService {
         }
       );
 
-      return this.sendEmail(email, subject, html);
+      return this.sendEmail(email, subject, html, senderId);
     } catch (error) {
       console.error('Error rendering staff invitation template:', error);
       // Fallback to basic email if template rendering fails
       return this.sendEmail(
         email,
         `You've been invited to join as ${staffTermLabel}`,
-        `<p>Hi ${firstName}, you've been invited to join as ${staffTermLabel}.</p><p><a href="${inviteUrl}">Accept Invitation</a></p>`
+        `<p>Hi ${firstName}, you've been invited to join as ${staffTermLabel}.</p><p><a href="${inviteUrl}">Accept Invitation</a></p>`,
+        senderId
       );
     }
   }
@@ -125,7 +177,8 @@ export class EmailService {
   async sendClientInvitation(
     email: string,
     firstName: string,
-    invitationToken: string
+    invitationToken: string,
+    senderId?: string
   ): Promise<{ success: boolean; error?: string }> {
     const inviteUrl = `${this.appUrl}/accept-invitation/client?token=${invitationToken}`;
 
@@ -139,13 +192,14 @@ export class EmailService {
         }
       );
 
-      return this.sendEmail(email, subject, html);
+      return this.sendEmail(email, subject, html, senderId);
     } catch (error) {
       console.error('Error rendering client invitation template:', error);
       return this.sendEmail(
         email,
         `You've been invited to the Client Portal`,
-        `<p>Hi ${firstName}, you've been invited to access the Client Portal.</p><p><a href="${inviteUrl}">Accept Invitation</a></p>`
+        `<p>Hi ${firstName}, you've been invited to access the Client Portal.</p><p><a href="${inviteUrl}">Accept Invitation</a></p>`,
+        senderId
       );
     }
   }
@@ -157,7 +211,8 @@ export class EmailService {
     email: string,
     firstName: string,
     invitationToken: string,
-    role: string
+    role: string,
+    senderId?: string
   ): Promise<{ success: boolean; error?: string }> {
     const inviteUrl = `${this.appUrl}/accept-invitation/user?token=${invitationToken}`;
 
@@ -172,14 +227,15 @@ export class EmailService {
         }
       );
 
-      return this.sendEmail(email, subject, html);
+      return this.sendEmail(email, subject, html, senderId);
     } catch (error) {
       console.error('Error rendering user invitation template:', error);
       // Fallback to basic email if template rendering fails
       return this.sendEmail(
         email,
         `You've been invited to join as ${role}`,
-        `<p>Hi ${firstName}, you've been invited to join as ${role}.</p><p><a href="${inviteUrl}">Accept Invitation</a></p>`
+        `<p>Hi ${firstName}, you've been invited to join as ${role}.</p><p><a href="${inviteUrl}">Accept Invitation</a></p>`,
+        senderId
       );
     }
   }

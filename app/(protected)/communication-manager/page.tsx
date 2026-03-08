@@ -108,9 +108,9 @@ export default function CommunicationManagerPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+    const [contactActionEmailConfigId, setContactActionEmailConfigId] = useState('default');
+    const [contactActionMsgConfigId, setContactActionMsgConfigId] = useState('default');
     const [contactActionSubject, setContactActionSubject] = useState('');
-    const [contactActionConfigId, setContactActionConfigId] = useState('default');
-
     const [newMessage, setNewMessage] = useState('');
     const [selectedLogs, setSelectedLogs] = useState<string[]>([]);
 
@@ -350,7 +350,7 @@ export default function CommunicationManagerPage() {
                 to: selectedContact.email,
                 subject: contactActionSubject || `Message for ${selectedContact.firstName}`,
                 content: content,
-                configId: contactActionConfigId === 'default' ? undefined : contactActionConfigId,
+                configId: contactActionEmailConfigId === 'default' ? undefined : contactActionEmailConfigId,
                 fileLinks: uploadedFileLinks.length > 0 ? uploadedFileLinks : undefined,
             });
         } else if (contactActionTab === 'SMS' || contactActionTab === 'WHATSAPP') {
@@ -358,7 +358,7 @@ export default function CommunicationManagerPage() {
                 to: selectedContact.phone,
                 content: content,
                 type: contactActionTab as 'SMS' | 'WHATSAPP',
-                configId: contactActionConfigId === 'default' ? undefined : contactActionConfigId
+                configId: contactActionMsgConfigId === 'default' ? undefined : contactActionMsgConfigId
             });
         }
         setNewMessage('');
@@ -376,17 +376,27 @@ export default function CommunicationManagerPage() {
         setAttachments(prev => prev.filter((_, i) => i !== index));
     };
 
-    const selectedSmtpConfig = smtpConfigs?.find((c: any) => c.id === contactActionConfigId) ||
-        messagingConfigs?.find((c: any) => c.id === contactActionConfigId && c.provider === 'MAILGUN') ||
+    const selectedSmtpConfig = smtpConfigs?.find((c: any) => c.id === contactActionEmailConfigId) ||
+        messagingConfigs?.find((c: any) => c.id === contactActionEmailConfigId && c.provider === 'MAILGUN') ||
         smtpConfigs?.find((c: any) => c.isDefault) ||
-        smtpConfigs?.[0];
+        messagingConfigs?.find((c: any) => c.provider === 'MAILGUN' && c.isDefault);
+
+    const selectedMsgConfig = messagingConfigs?.find((c: any) => c.id === contactActionMsgConfigId) ||
+        messagingConfigs?.find((c: any) => c.isDefault);
 
     useEffect(() => {
-        if (smtpConfigs && smtpConfigs.length > 0 && contactActionConfigId === 'default') {
+        if (smtpConfigs && smtpConfigs.length > 0 && contactActionEmailConfigId === 'default') {
             const def = smtpConfigs.find((c: any) => c.isDefault) || smtpConfigs[0];
-            setContactActionConfigId(def.id);
+            setContactActionEmailConfigId(def.id);
         }
-    }, [smtpConfigs, contactActionConfigId]);
+    }, [smtpConfigs, contactActionEmailConfigId]);
+
+    useEffect(() => {
+        if (messagingConfigs && messagingConfigs.length > 0 && contactActionMsgConfigId === 'default') {
+            const def = messagingConfigs.find((c: any) => c.isDefault) || messagingConfigs[0];
+            setContactActionMsgConfigId(def.id);
+        }
+    }, [messagingConfigs, contactActionMsgConfigId]);
 
     const handleComposeSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -425,179 +435,7 @@ export default function CommunicationManagerPage() {
     return (
         <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
             {/* Folder / Category Sidebar */}
-            {activeTab !== 'contacts' && (
-                <div className="w-64 border-r bg-card/50 backdrop-blur-md flex flex-col shrink-0">
-                    <div className="p-6 border-b flex items-center justify-between">
-                        <div>
-                            <h2 className="font-bold text-xl tracking-tight">
-                                {activeTab === 'email' ? 'Email Hub' : activeTab === 'contacts' ? 'Contacts' : 'Messaging'}
-                            </h2>
-                            <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mt-0.5">
-                                {activeTab === 'email' ? 'Inbox & Outbox' : activeTab === 'contacts' ? 'CRM & Relations' : 'Direct Conversations'}
-                            </p>
-                        </div>
-                    </div>
 
-                    <div className="flex-1 overflow-y-auto py-4">
-                        {activeTab === 'contacts' ? (
-                            <div className="space-y-1">
-                                <div className="px-4 mb-4 flex gap-2">
-                                    <Button
-                                        className="flex-1 justify-start gap-2 h-11 shadow-md bg-primary hover:bg-primary/90 transition-all hover:scale-[1.02]"
-                                        onClick={() => { setContactToEdit(null); setIsContactModalOpen(true); }}
-                                    >
-                                        <div className="bg-white/20 rounded-md p-1">
-                                            <Plus className="h-4 w-4" />
-                                        </div>
-                                        <span className="font-semibold">Add Contact</span>
-                                    </Button>
-                                </div>
-                                <SidebarItem
-                                    icon={Users}
-                                    label="Contacts"
-                                    active={!isDetailView}
-                                    onClick={() => { setIsDetailView(false); setSelectedContact(null); }}
-                                    badge={contactsData?.meta?.total?.toString() || '0'}
-                                />
-                                <SidebarItem
-                                    icon={List}
-                                    label="Smart Lists"
-                                    active={false}
-                                    onClick={() => { }}
-                                />
-                                <SidebarItem
-                                    icon={BuildingOfficeIcon}
-                                    label="Companies"
-                                    active={false}
-                                    onClick={() => { }}
-                                />
-
-                                <div className="mt-8 px-4 py-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                                    Filters
-                                </div>
-                                <div className="px-4 mt-2 space-y-2">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                                        <Input
-                                            placeholder="Filter list..."
-                                            className="h-9 pl-9 bg-muted/40 border-none focus-visible:ring-1 text-sm"
-                                            value={search}
-                                            onChange={e => setSearch(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ) : activeTab === 'email' ? (
-                            <div className="space-y-1">
-                                <div className="px-4 mb-4">
-                                    <Button
-                                        className="w-full justify-start gap-2 h-11 shadow-md bg-primary hover:bg-primary/90 transition-all hover:scale-[1.02]"
-                                        onClick={() => { setComposeType('EMAIL'); setIsComposeOpen(true); }}
-                                    >
-                                        <div className="bg-white/20 rounded-md p-1">
-                                            <Plus className="h-4 w-4" />
-                                        </div>
-                                        <span className="font-semibold">Compose Email</span>
-                                    </Button>
-                                </div>
-                                <SidebarItem
-                                    icon={SendHorizontal}
-                                    label="Sent Messages"
-                                    active={emailFolder === 'SENT'}
-                                    onClick={() => setEmailFolder('SENT')}
-                                    badge={logsData?.logs?.filter((l: any) => l.type === 'EMAIL' && !l.isTrashed).length?.toString() || '0'}
-                                />
-                                <SidebarItem
-                                    icon={Trash2}
-                                    label="Trash"
-                                    active={emailFolder === 'TRASH'}
-                                    onClick={() => { setEmailFolder('TRASH'); setSelectedLogs([]); }}
-                                    badge={logsData?.logs?.filter((l: any) => l.isTrashed).length?.toString() || '0'}
-                                />
-                                <div className="mt-8 px-4 py-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                                    Manage
-                                </div>
-                                <SidebarItem
-                                    icon={Settings}
-                                    label="SMTP Settings"
-                                    onClick={() => router.push('/settings/communication')}
-                                />
-                            </div>
-                        ) : (
-                            <div className="flex flex-col h-full">
-                                <div className="px-4 mb-4 flex gap-2">
-                                    <Button
-                                        className="flex-1 justify-start gap-2 h-11 shadow-md hover:scale-[1.02] transition-all"
-                                        onClick={() => { setComposeType('MESSAGE'); setIsComposeOpen(true); }}
-                                    >
-                                        <div className="bg-white/20 rounded-md p-1">
-                                            <Plus className="h-4 w-4" />
-                                        </div>
-                                        <span className="font-semibold">New Chat</span>
-                                    </Button>
-                                </div>
-
-                                <div className="px-4 mb-2 relative">
-                                    <Search className="absolute left-7 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
-                                    <Input
-                                        placeholder="Search users..."
-                                        className="h-9 pl-9 bg-muted/40 border-none focus-visible:ring-1 text-sm"
-                                    />
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto mt-2 custom-scrollbar">
-                                    {isConversationsLoading ? (
-                                        <div className="flex flex-col items-center justify-center py-12 gap-2">
-                                            <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
-                                            <span className="text-xs text-muted-foreground animate-pulse">Syncing...</span>
-                                        </div>
-                                    ) : conversations?.length === 0 ? (
-                                        <div className="px-6 py-12 text-center">
-                                            <div className="bg-muted/30 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                                                <MessageSquare className="h-5 w-5 text-muted-foreground/30" />
-                                            </div>
-                                            <p className="text-sm font-medium text-muted-foreground">No chats yet</p>
-                                            <p className="text-[10px] text-muted-foreground/60 mt-1">Direct messages will appear here</p>
-                                        </div>
-                                    ) : (
-                                        [...(conversations || [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((conv: any) => (
-                                            <button
-                                                key={conv.id}
-                                                onClick={() => setSelectedRecipient(conv.recipient)}
-                                                className={`w-full flex items-center gap-3 px-4 py-4 text-sm transition-all duration-200 border-b border-muted/20 relative group ${selectedRecipient === conv.recipient
-                                                    ? 'bg-primary/5 shadow-[inset_4px_0_0_0_#3b82f6]'
-                                                    : 'hover:bg-muted/30'
-                                                    }`}
-                                            >
-                                                <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                                                    {getInitials(conv.recipient || 'U')}
-                                                </div>
-                                                <div className="flex-1 text-left overflow-hidden">
-                                                    <div className="flex justify-between items-baseline mb-0.5">
-                                                        <span className="font-bold truncate text-foreground/90">{conv.recipient}</span>
-                                                        <span className="text-[9px] font-medium text-muted-foreground shrink-0 bg-muted/50 px-1.5 py-0.5 rounded">
-                                                            {formatDate(new Date(conv.createdAt))}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground truncate leading-relaxed">
-                                                        {conv.status === 'SENT' && <Check className="h-2.5 w-2.5 inline mr-1 text-primary/60" />}
-                                                        {conv.content}
-                                                    </p>
-                                                </div>
-                                                {selectedRecipient === conv.recipient && (
-                                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <MoreVertical className="h-3 w-3 text-muted-foreground" />
-                                                    </div>
-                                                )}
-                                            </button>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col bg-muted/10 overflow-hidden">
@@ -638,7 +476,7 @@ export default function CommunicationManagerPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex-1 overflow-hidden flex">
+                                <div className="flex-1 flex flex-row overflow-hidden">
                                     {/* Left Sidebar: Contact Details */}
                                     <div className="w-64 border-r bg-card overflow-y-auto p-4 hidden lg:block">
                                         <Tabs defaultValue="contact" className="w-full">
@@ -746,163 +584,13 @@ export default function CommunicationManagerPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Action Content Area */}
-                                            {contactActionTab && (
-                                                <>
-                                                    <div className="p-4 flex-1 overflow-y-auto no-scrollbar max-h-[400px] bg-white">
-                                                        {contactActionTab === 'EMAIL' && (
-                                                            <div className="space-y-2 mb-2">
-                                                                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pb-2 border-b border-slate-50 text-[10px]">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="font-bold text-slate-400 uppercase tracking-tighter">From Name:</span>
-                                                                        <Select value={contactActionConfigId} onValueChange={setContactActionConfigId}>
-                                                                            <SelectTrigger className="h-auto p-0 border-none shadow-none bg-transparent font-black text-slate-700 focus:ring-0 text-[10px]">
-                                                                                <SelectValue placeholder="Select Name" />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent className="rounded-xl shadow-xl border-slate-100">
-                                                                                {smtpConfigs?.map((config: any) => (
-                                                                                    <SelectItem key={config.id} value={config.id} className="text-[10px] font-bold leading-none">{config.name}</SelectItem>
-                                                                                ))}
-                                                                                {messagingConfigs?.filter((c: any) => c.provider === 'MAILGUN').map((config: any) => (
-                                                                                    <SelectItem key={config.id} value={config.id} className="text-[10px] font-bold leading-none">{config.name}</SelectItem>
-                                                                                ))}
-                                                                            </SelectContent>
-                                                                        </Select>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="font-bold text-slate-400 uppercase tracking-tighter">From email:</span>
-                                                                        <span className="font-black text-slate-700">{selectedSmtpConfig?.from || selectedSmtpConfig?.user || (selectedSmtpConfig?.provider === 'MAILGUN' ? `test@${selectedSmtpConfig.workspaceId}` : 'Select Provider')}</span>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="flex items-center justify-between py-1.5 border-b border-slate-50">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-[10px] font-bold text-slate-400 w-6">To:</span>
-                                                                        <div className="flex items-center gap-1.5 bg-slate-100/80 px-1.5 py-0.5 rounded-full border border-slate-200/50 hover:bg-slate-200/50 transition-colors cursor-pointer group/to">
-                                                                            <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center text-[8px] font-black text-white uppercase shadow-sm group-hover/to:scale-110 transition-transform">
-                                                                                {selectedContact.firstName[0]}{selectedContact.lastName[0]}
-                                                                            </div>
-                                                                            <span className="text-[10px] font-black text-slate-700">{selectedContact.email}</span>
-                                                                            <span className="text-[8px] font-bold text-slate-400 ml-0.5">(Primary)</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button className="text-[8px] font-black uppercase text-slate-400 hover:text-primary transition-colors">CC</button>
-                                                                        <button className="text-[8px] font-black uppercase text-slate-400 hover:text-primary transition-colors">BCC</button>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="flex items-center gap-2 py-1.5 border-b border-slate-100">
-                                                                    <span className="text-[10px] font-bold text-slate-400 w-6 shrink-0">Subject:</span>
-                                                                    <Input
-                                                                        className="border-none shadow-none h-6 p-0 text-xs font-black text-slate-700 focus-visible:ring-0 placeholder:text-slate-300"
-                                                                        placeholder="Subject line..."
-                                                                        value={contactActionSubject}
-                                                                        onChange={(e) => setContactActionSubject(e.target.value)}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        <div className="min-h-[100px] relative group">
-                                                            <Textarea
-                                                                placeholder="Type a message..."
-                                                                className="min-h-[100px] w-full border-none shadow-none resize-none px-0 text-xs font-semibold text-slate-600 focus-visible:ring-0 placeholder:text-slate-300 placeholder:font-normal no-scrollbar"
-                                                                value={newMessage}
-                                                                onChange={(e) => setNewMessage(e.target.value)}
-                                                            />
-
-                                                            {/* Attachments Preview */}
-                                                            {attachments.length > 0 && (
-                                                                <div className="flex flex-wrap gap-1.5 py-2 border-t border-slate-50 mt-1">
-                                                                    {attachments.map((file, i) => (
-                                                                        <div key={i} className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md group/file hover:border-primary/30 transition-all">
-                                                                            <span className="text-[8px] font-black text-slate-500 uppercase truncate max-w-[100px]">{file.name}</span>
-                                                                            <button onClick={() => removeAttachment(i)} className="text-slate-300 hover:text-destructive group-hover/file:text-slate-500 transition-colors">
-                                                                                <X className="h-2.5 w-2.5" />
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Bottom Toolbar & Action Cluster */}
-                                                    <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
-                                                        <div className="flex items-center gap-0.5">
-                                                            <input
-                                                                type="file"
-                                                                multiple
-                                                                hidden
-                                                                ref={fileInputRef}
-                                                                onChange={handleFileChange}
-                                                            />
-                                                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
-                                                                <Type className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => fileInputRef.current?.click()}
-                                                                className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all"
-                                                            >
-                                                                <Paperclip className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
-                                                                <Link className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
-                                                                <ImageIcon className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
-                                                                <Code className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <div className="h-3 w-[1px] bg-slate-200 mx-0.5" />
-                                                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
-                                                                <MoreHorizontal className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </div>
-
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">{newMessage.trim().split(/\s+/).filter(Boolean).length} words</span>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => { setNewMessage(''); setAttachments([]); }}
-                                                                className="text-[10px] font-black uppercase text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 rounded-lg h-8 transition-all"
-                                                            >
-                                                                Clear
-                                                            </Button>
-                                                            <div className="flex items-center">
-                                                                <Button
-                                                                    disabled={isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || (!newMessage.trim() && attachments.length === 0)}
-                                                                    onClick={handleContactActionSubmit}
-                                                                    className="h-12 px-6 text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/30 rounded-l-2xl rounded-r-none gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] bg-primary hover:bg-primary/95"
-                                                                >
-                                                                    {(isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                                                    {isUploadingAttachments ? 'Uploading...' : 'Send'}
-                                                                </Button>
-                                                                <div className="h-12 w-[1px] bg-white/20" />
-                                                                <Button
-                                                                    className="h-12 w-12 p-0 rounded-r-2xl rounded-l-none border-l border-white/10 transition-all hover:bg-primary/90"
-                                                                    variant="default"
-                                                                    onClick={() => refetchContactLogs()}
-                                                                >
-                                                                    <History className="h-5 w-5" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
                                         </div>
 
                                         {/* Chat Timeline Area */}
                                         <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                             {/* Chat History Placeholder */}
                                             <div className="flex justify-center mb-2">
-                                                <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest px-3 py-0.5">Timeline Start</Badge>
+                                                <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-widest px-3 py-0.5">Timeline Start</Badge>
                                             </div>
                                             <div className="space-y-6 relative">
                                                 <div className="absolute left-3 top-0 bottom-0 w-[1px] bg-border/40" />
@@ -916,7 +604,7 @@ export default function CommunicationManagerPage() {
                                                         <div className="bg-card p-3 rounded-xl border shadow-sm space-y-1.5 hover:shadow-md transition-shadow">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className={`text-[9px] font-bold uppercase tracking-widest ${log.type === 'EMAIL' ? 'text-indigo-600' :
+                                                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${log.type === 'EMAIL' ? 'text-indigo-600' :
                                                                         log.type === 'WHATSAPP' ? 'text-emerald-600' : 'text-primary'
                                                                         }`}>
                                                                         {log.type} {log.subject ? `- ${log.subject}` : ''}
@@ -925,11 +613,11 @@ export default function CommunicationManagerPage() {
                                                                         <Badge variant="destructive" className="text-[8px] h-3 px-1 leading-none py-0">FAILED</Badge>
                                                                     )}
                                                                 </div>
-                                                                <span className="text-[8px] font-medium text-muted-foreground whitespace-nowrap">
+                                                                <span className="text-[9px] font-medium text-muted-foreground whitespace-nowrap">
                                                                     {format(new Date(log.createdAt), 'MMM d, HH:mm aaa')}
                                                                 </span>
                                                             </div>
-                                                            <div className="text-xs prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: log.content }} />
+                                                            <div className="text-sm prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: log.content }} />
                                                             {log.fileLinks && Array.isArray(log.fileLinks) && log.fileLinks.length > 0 && (
                                                                 <div className="flex flex-wrap gap-2 pt-1.5">
                                                                     {(log.fileLinks as any[]).map((fl: any, idx: number) => (
@@ -941,7 +629,7 @@ export default function CommunicationManagerPage() {
                                                                             className="flex items-center gap-1 bg-slate-50 border border-slate-200 hover:border-primary/40 hover:bg-primary/5 px-2 py-0.5 rounded transition-all group/att"
                                                                         >
                                                                             <Paperclip className="h-2.5 w-2.5 text-slate-400 group-hover/att:text-primary transition-colors" />
-                                                                            <span className="text-[9px] font-bold text-slate-600 group-hover/att:text-primary transition-colors truncate max-w-[120px]">
+                                                                            <span className="text-[10px] font-bold text-slate-600 group-hover/att:text-primary transition-colors truncate max-w-[120px]">
                                                                                 {fl.name}
                                                                             </span>
                                                                         </a>
@@ -949,8 +637,8 @@ export default function CommunicationManagerPage() {
                                                                 </div>
                                                             )}
                                                             <div className="flex items-center justify-between pt-1.5 border-t border-dashed overflow-hidden">
-                                                                <span className="text-[8px] text-muted-foreground italic truncate">Sent by {log.sender?.name || 'System'}</span>
-                                                                <span className="text-[8px] font-bold text-muted-foreground uppercase shrink-0 px-1">{log.status}</span>
+                                                                <span className="text-[10px] text-muted-foreground italic truncate">Sent by {log.sender?.name || 'System'}</span>
+                                                                <span className="text-[10px] font-bold text-muted-foreground uppercase shrink-0 px-1">{log.status}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -962,15 +650,167 @@ export default function CommunicationManagerPage() {
                                                         <div className="absolute left-1.5 top-0 w-3 h-3 rounded-full bg-primary ring-4 ring-background" />
                                                         <div className="bg-card p-3 rounded-xl border shadow-sm space-y-1.5">
                                                             <div className="flex items-center justify-between">
-                                                                <span className="text-[9px] font-bold uppercase tracking-widest text-primary">Initial Outreach</span>
-                                                                <span className="text-[8px] font-medium text-muted-foreground">{format(new Date(selectedContact.createdAt), 'HH:mm aaa')}</span>
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Initial Outreach</span>
+                                                                <span className="text-[9px] font-medium text-muted-foreground">{format(new Date(selectedContact.createdAt), 'HH:mm aaa')}</span>
                                                             </div>
-                                                            <p className="text-xs">Account created and welcomed to the platform.</p>
+                                                            <p className="text-sm">Account created and welcomed to the platform.</p>
                                                         </div>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* Action Bar Content Area - NOW ON BOTTOM */}
+                                        {contactActionTab && (
+                                            <div className="bg-white border-t border-slate-200 z-10 flex flex-col shrink-0">
+                                                <div className="p-4 flex-1 overflow-y-auto no-scrollbar max-h-[400px] bg-white">
+                                                    {contactActionTab === 'EMAIL' && (
+                                                        <div className="space-y-2 mb-2">
+                                                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pb-2 border-b border-slate-50 text-xs">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="font-bold text-slate-400 uppercase tracking-tighter">From Name:</span>
+                                                                    <Select value={contactActionEmailConfigId} onValueChange={setContactActionEmailConfigId}>
+                                                                        <SelectTrigger className="h-auto p-0 border-none shadow-none bg-transparent font-bold text-slate-700 focus:ring-0 text-xs">
+                                                                            <SelectValue placeholder="Select Name" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="rounded-xl shadow-xl border-slate-100">
+                                                                            <SelectItem value="default" className="text-xs font-bold leading-none italic text-muted-foreground">Default (System Settings)</SelectItem>
+                                                                            {smtpConfigs?.map((config: any) => (
+                                                                                <SelectItem key={config.id} value={config.id} className="text-xs font-bold leading-none">{config.name}</SelectItem>
+                                                                            ))}
+                                                                            {messagingConfigs?.filter((c: any) => c.provider === 'MAILGUN').map((config: any) => (
+                                                                                <SelectItem key={config.id} value={config.id} className="text-xs font-bold leading-none">{config.name}</SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="font-bold text-slate-400 uppercase tracking-tighter">From email:</span>
+                                                                    <span className="font-bold text-slate-700">{selectedSmtpConfig?.from || selectedSmtpConfig?.user || (selectedSmtpConfig?.provider === 'MAILGUN' ? `test@${selectedSmtpConfig.workspaceId}` : 'Select Provider')}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center justify-between py-1.5 border-b border-slate-50">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-bold text-slate-400 w-6">To:</span>
+                                                                    <div className="flex items-center gap-1.5 bg-slate-100/80 px-1.5 py-0.5 rounded-full border border-slate-200/50 hover:bg-slate-200/50 transition-colors cursor-pointer group/to">
+                                                                        <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-white uppercase shadow-sm group-hover/to:scale-110 transition-transform">
+                                                                            {selectedContact.firstName[0]}{selectedContact.lastName[0]}
+                                                                        </div>
+                                                                        <span className="text-xs font-bold text-slate-700">{selectedContact.email}</span>
+                                                                        <span className="text-[10px] font-bold text-slate-400 ml-0.5">(Primary)</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <button className="text-[10px] font-bold uppercase text-slate-400 hover:text-primary transition-colors">CC</button>
+                                                                    <button className="text-[10px] font-bold uppercase text-slate-400 hover:text-primary transition-colors">BCC</button>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-100">
+                                                                <span className="text-xs font-bold text-slate-400 w-6 shrink-0">Subject:</span>
+                                                                <Input
+                                                                    className="border-none shadow-none h-6 p-0 text-xs font-bold text-slate-700 focus-visible:ring-0 placeholder:text-slate-300"
+                                                                    placeholder="Subject line..."
+                                                                    value={contactActionSubject}
+                                                                    onChange={(e) => setContactActionSubject(e.target.value)}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="min-h-[100px] relative group">
+                                                        <Textarea
+                                                            placeholder="Type a message..."
+                                                            className="min-h-[100px] w-full border-none shadow-none resize-none px-0 text-sm font-medium text-slate-600 focus-visible:ring-0 placeholder:text-slate-300 placeholder:font-normal no-scrollbar"
+                                                            value={newMessage}
+                                                            onChange={(e) => setNewMessage(e.target.value)}
+                                                        />
+
+                                                        {/* Attachments Preview */}
+                                                        {attachments.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1.5 py-2 border-t border-slate-50 mt-1">
+                                                                {attachments.map((file, i) => (
+                                                                    <div key={i} className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md group/file hover:border-primary/30 transition-all">
+                                                                        <span className="text-[10px] font-bold text-slate-500 uppercase truncate max-w-[100px]">{file.name}</span>
+                                                                        <button onClick={() => removeAttachment(i)} className="text-slate-300 hover:text-destructive group-hover/file:text-slate-500 transition-colors">
+                                                                            <X className="h-2.5 w-2.5" />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Bottom Toolbar & Action Cluster */}
+                                                <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
+                                                    <div className="flex items-center gap-0.5">
+                                                        <input
+                                                            type="file"
+                                                            multiple
+                                                            hidden
+                                                            ref={fileInputRef}
+                                                            onChange={handleFileChange}
+                                                        />
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <Type className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all"
+                                                        >
+                                                            <Paperclip className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <Link className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <ImageIcon className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <Code className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <div className="h-3 w-[1px] bg-slate-200 mx-0.5" />
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <MoreHorizontal className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">{newMessage.trim().split(/\s+/).filter(Boolean).length} words</span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => { setNewMessage(''); setAttachments([]); }}
+                                                            className="text-xs font-bold uppercase text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 rounded-lg h-8 transition-all"
+                                                        >
+                                                            Clear
+                                                        </Button>
+                                                        <div className="flex items-center">
+                                                            <Button
+                                                                disabled={isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || (!newMessage.trim() && attachments.length === 0)}
+                                                                onClick={handleContactActionSubmit}
+                                                                className="h-10 px-6 text-xs font-bold uppercase tracking-widest shadow-lg shadow-primary/20 rounded-l-xl rounded-r-none gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] bg-primary hover:bg-primary/95"
+                                                            >
+                                                                {(isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                                                {isUploadingAttachments ? 'Uploading...' : 'Send'}
+                                                            </Button>
+                                                            <div className="h-10 w-[1px] bg-white/20" />
+                                                            <Button
+                                                                className="h-10 w-10 p-0 rounded-r-xl rounded-l-none border-l border-white/10 transition-all hover:bg-primary/90"
+                                                                variant="default"
+                                                                onClick={() => refetchContactLogs()}
+                                                            >
+                                                                <History className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Right Sidebar: Activity */}
@@ -1718,6 +1558,6 @@ export default function CommunicationManagerPage() {
                     background: rgba(255, 255, 255, 0.1);
                 }
             `}</style>
-        </div>
+        </div >
     );
 }

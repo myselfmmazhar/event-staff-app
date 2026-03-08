@@ -49,7 +49,8 @@ export const userRouter = router({
           user.email,
           user.firstName,
           user.invitationToken,
-          user.role
+          user.role,
+          ctx.userId!
         );
       }
 
