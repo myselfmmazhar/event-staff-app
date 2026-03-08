@@ -607,6 +607,7 @@ export class EventSchema {
     body: z.string().min(1, "Message body is required"),
     attachments: z.array(z.object({ filename: z.string(), path: z.string() })).optional(),
     statusToUpdate: z.nativeEnum(EventStatus).optional(),
+    commMethod: z.enum(['EMAIL', 'SMS', 'WHATSAPP']).default('EMAIL'),
   });
 }
 

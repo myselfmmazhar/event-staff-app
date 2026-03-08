@@ -242,17 +242,15 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
             headerClassName: 'text-left py-3 px-4',
             render: (member) => (
                 <div className="flex items-center gap-2">
-                    {onViewDetails && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="px-0"
-                            onClick={() => onViewDetails(member)}
-                            title={`View ${staffTerm.lower} details`}
-                        >
-                            <EyeIcon className="h-4 w-4" />
-                        </Button>
-                    )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="px-0"
+                        onClick={() => onEdit(member)}
+                        title={`Edit ${staffTerm.lower}`}
+                    >
+                        <Edit2Icon className="h-4 w-4" />
+                    </Button>
                     {onMessage && (
                         <Button
                             variant="ghost"
@@ -264,15 +262,17 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
                             <MessageSquareIcon className="h-4 w-4" />
                         </Button>
                     )}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onEdit(member)}
-                        title={`Edit ${staffTerm.lower}`}
-                    >
-                        <Edit2Icon className="h-4 w-4" />
-                    </Button>
+                    {onViewDetails && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="px-0"
+                            onClick={() => onViewDetails(member)}
+                            title={`View ${staffTerm.lower} details`}
+                        >
+                            <EyeIcon className="h-4 w-4" />
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
                         size="sm"

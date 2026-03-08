@@ -52,6 +52,7 @@ const STATUS_COLORS: Record<EventStatus, 'default' | 'info' | 'success' | 'prima
   IN_PROGRESS: 'primary',
   COMPLETED: 'success',
   CANCELLED: 'danger',
+  PUBLISHED: 'success',
 };
 
 /**

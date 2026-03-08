@@ -35,6 +35,7 @@ const statusVariants: Record<EventStatus, "default" | "info" | "success" | "purp
   IN_PROGRESS: "purple",
   COMPLETED: "success",
   CANCELLED: "danger",
+  PUBLISHED: "success",
 };
 
 /**
@@ -46,6 +47,7 @@ const statusGradients: Record<EventStatus, string> = {
   IN_PROGRESS: "from-purple-500 to-purple-600",
   COMPLETED: "from-success to-success/80",
   CANCELLED: "from-destructive to-destructive/80",
+  PUBLISHED: "from-success to-success/80",
 };
 
 /**
