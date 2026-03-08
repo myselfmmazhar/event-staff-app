@@ -12,6 +12,7 @@ export const EVENT_STATUS_COLORS: Record<
   IN_PROGRESS: 'primary',
   COMPLETED: 'success',
   CANCELLED: 'danger',
+  PUBLISHED: 'success',
 };
 
 /**
@@ -23,6 +24,7 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
+  PUBLISHED: 'Published',
 };
 
 /**

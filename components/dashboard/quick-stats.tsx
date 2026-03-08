@@ -13,6 +13,7 @@ interface EventStats {
     IN_PROGRESS: number;
     COMPLETED: number;
     CANCELLED: number;
+    PUBLISHED: number;
   };
 }
 

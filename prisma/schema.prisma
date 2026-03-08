@@ -816,6 +816,7 @@ enum EventStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+  PUBLISHED
 }
 
 enum RequestMethod {
