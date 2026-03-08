@@ -20,6 +20,7 @@ interface Staff {
   city: string;
   state: string;
   country: string;
+  internalNotes?: string | null;
   locationMatch: number;
   distanceMiles?: number | null;
   invitationStatus?: string | null;
@@ -29,6 +30,10 @@ interface Staff {
     eventTitle: string;
     startDate: string | Date;
     endDate: string | Date;
+    startTime?: string | null;
+    endTime?: string | null;
+    city?: string | null;
+    state?: string | null;
   }>;
   userId?: string | null;
   hasLoginAccess?: boolean;
@@ -202,11 +207,13 @@ export function StaffSearchTable({
               <th className="px-4 py-3 text-left text-sm font-medium">Distance</th>
               <th className="px-4 py-3 text-left text-sm font-medium">Skill</th>
               <th className="px-4 py-3 text-left text-sm font-medium">Rating</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+              {/* <th className="px-4 py-3 text-left text-sm font-medium">Status</th> */}
               {showInvitationStatus && (
                 <th className="px-4 py-3 text-left text-sm font-medium">Invitation</th>
               )}
-              <th className="px-4 py-3 text-left text-sm font-medium">Location</th>
+              <th className="px-4 py-3 text-left text-sm font-medium whitespace-nowrap">Location</th>
+              <th className="px-4 py-3 text-left text-sm font-medium whitespace-nowrap">Conflict</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">Internal Comments</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -243,22 +250,9 @@ export function StaffSearchTable({
                               Not Registered
                             </Badge>
                           )}
-                          {member.hasConflict && member.conflicts && member.conflicts.length > 0 && (
-                            <Badge
-                              className="bg-orange-100 text-orange-800 border-orange-200 text-xs"
-                              title={`Conflict: ${member.conflicts.map((c) => c.eventTitle).join(', ')}`}
-                            >
-                              ⚠ Conflict
-                            </Badge>
-                          )}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {member.staffId}
-                          {member.hasConflict && member.conflicts && member.conflicts.length > 0 && (
-                            <span className="ml-2 text-orange-600 text-xs">
-                              Assigned to: {member.conflicts.map((c) => c.eventTitle).join(', ')}
-                            </span>
-                          )}
                         </p>
                       </div>
                     </div>
@@ -285,7 +279,7 @@ export function StaffSearchTable({
                       </Badge>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  {/* <td className="px-4 py-3">
                     <Badge
                       variant={
                         member.availabilityStatus === 'OPEN_TO_OFFERS'
@@ -295,7 +289,7 @@ export function StaffSearchTable({
                     >
                       {AVAILABILITY_LABELS[member.availabilityStatus]}
                     </Badge>
-                  </td>
+                  </td> */}
                   {showInvitationStatus && (
                     <td className="px-4 py-3">
                       {getInvitationBadge(member.invitationStatus, member.invitationConfirmed)}
@@ -308,6 +302,39 @@ export function StaffSearchTable({
                         {member.city}, {member.state}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {member.hasConflict && member.conflicts && member.conflicts.length > 0 ? (
+                      <div className="space-y-1 min-w-[180px]">
+                        {member.conflicts.map((c, idx) => (
+                          <div key={idx} className="bg-orange-100/30 p-2 rounded border border-orange-200/50 text-xs shadow-sm">
+                            <p className="font-bold text-orange-900 truncate mb-1" title={c.eventTitle}>
+                              {c.eventTitle}
+                            </p>
+                            <div className="flex flex-col gap-1 text-[11px] text-orange-700 font-medium">
+                              <span className="flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                {new Date(c.startDate).toLocaleDateString()}
+                                {c.startTime ? ` • ${c.startTime}` : ''}
+                              </span>
+                              {c.city && (
+                                <span className="flex items-center gap-1.5 opacity-80">
+                                  <svg className="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                  {c.city}, {c.state}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Clear</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-muted-foreground truncate max-w-[200px] block">
+                      {member.internalNotes || '—'}
+                    </span>
                   </td>
                 </tr>
               );

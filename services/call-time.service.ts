@@ -415,6 +415,7 @@ export class CallTimeService {
           country: true,
           latitude: true,
           longitude: true,
+          internalNotes: true,
           userId: true,
           hasLoginAccess: true,
           services: {
@@ -445,9 +446,11 @@ export class CallTimeService {
               callTime: {
                 select: {
                   id: true,
-                  event: { select: { title: true } },
+                  event: { select: { title: true, city: true, state: true } },
                   startDate: true,
                   endDate: true,
+                  startTime: true,
+                  endTime: true,
                 },
               },
             },
@@ -497,6 +500,10 @@ export class CallTimeService {
           eventTitle: inv.callTime.event.title,
           startDate: inv.callTime.startDate,
           endDate: inv.callTime.endDate,
+          startTime: (inv.callTime as any).startTime,
+          endTime: (inv.callTime as any).endTime,
+          city: (inv.callTime.event as any).city,
+          state: (inv.callTime.event as any).state,
         }));
 
       return {
@@ -509,6 +516,7 @@ export class CallTimeService {
         skillLevel: s.skillLevel,
         availabilityStatus: s.availabilityStatus,
         staffRating: s.staffRating,
+        internalNotes: s.internalNotes,
         city: s.city,
         state: s.state,
         country: s.country,
@@ -871,6 +879,37 @@ export class CallTimeService {
   }
 
   /**
+   * Accept invitation on behalf of user (admin action)
+   */
+  async acceptInvitationOnBehalf(invitationId: string, userId: string) {
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { id: invitationId },
+      include: {
+        callTime: { include: { event: { select: { id: true, createdBy: true } } } },
+      },
+    });
+
+    if (!invitation || invitation.callTime.event.createdBy !== userId) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Invitation not found',
+      });
+    }
+
+    const updated = await this.prisma.callTimeInvitation.update({
+      where: { id: invitationId },
+      data: { status: 'ACCEPTED', isConfirmed: true, respondedAt: new Date() },
+      include: {
+        staff: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    await this.updateEventStatusBasedOnStaffing(invitation.callTime.event.id);
+
+    return updated;
+  }
+
+  /**
    * Cancel invitation (admin action)
    */
   async cancelInvitation(invitationId: string, userId: string) {
@@ -1099,6 +1138,7 @@ export class CallTimeService {
       dateFrom?: Date;
       dateTo?: Date;
       staffingStatus?: 'needsStaff' | 'fullyStaffed' | 'all';
+      eventStatuses?: EventStatus[];
     }
   ) {
     const page = input.page ?? 1;
@@ -1119,6 +1159,10 @@ export class CallTimeService {
 
     if (input.serviceId) {
       where.serviceId = input.serviceId;
+    }
+
+    if (input.eventStatuses && input.eventStatuses.length > 0) {
+      where.event.status = { in: input.eventStatuses };
     }
 
     if (input.dateFrom || input.dateTo) {

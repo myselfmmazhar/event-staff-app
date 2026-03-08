@@ -40,12 +40,12 @@ export function AssignmentExpandedRow({
         {/* Talents Section */}
         <div>
           <h4 className="text-sm font-medium text-foreground mb-2">
-            {staffTerm.plural} Assigned
+            {staffTerm.plural} Accepted
           </h4>
 
           {!hasAssignedTalent ? (
             <p className="text-sm text-muted-foreground italic">
-              No {staffTerm.lowerPlural} assigned yet
+              No {staffTerm.lowerPlural} accepted yet
             </p>
           ) : (
             <div className="space-y-2">

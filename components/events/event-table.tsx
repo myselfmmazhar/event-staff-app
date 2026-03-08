@@ -253,7 +253,16 @@ export function EventTable({
             variant="ghost"
             size="sm"
             className="px-0"
-            onClick={() => router.push(`/assignments?eventId=${event.id}`)}
+            onClick={() => {
+              const { allGroups } = getAssignmentSummary(event);
+              const serviceIds = allGroups
+                .map(g => g.serviceId)
+                .filter(Boolean) as string[];
+              const serviceParam = serviceIds.length > 0
+                ? `&serviceIds=${serviceIds.join(',')}`
+                : '';
+              router.push(`/assignments?eventId=${event.id}${serviceParam}`);
+            }}
             title="Manage Assignments"
           >
             <UsersIcon className="h-4 w-4" />
@@ -550,15 +559,26 @@ export function EventTable({
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">By Service</p>
                     <div className="space-y-1">
                       {allGroups.map((group, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs py-1.5 px-2 rounded hover:bg-accent/50 transition-colors">
+                        <button
+                          key={idx}
+                          type="button"
+                          className="w-full text-left flex items-center justify-between text-xs py-1.5 px-2 rounded hover:bg-accent/50 transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const serviceParam = group.serviceId ? `&serviceId=${group.serviceId}` : '';
+                            router.push(`/assignments?eventId=${event.id}${serviceParam}`);
+                          }}
+                          title={`View assignments for ${group.serviceName}`}
+                        >
                           <span className="font-medium truncate">{group.serviceName}</span>
                           <div className="flex items-center gap-2 shrink-0">
                             {group.open > 0 && <span className="text-danger font-medium">{group.open} open</span>}
                             {group.pending > 0 && <span className="text-warning">{group.pending} pending</span>}
                             {group.accepted > 0 && <span className="text-success">{group.accepted} accepted</span>}
                             <span className="text-muted-foreground">/ {group.required}</span>
+                            <ChevronDownIcon className="h-3 w-3 text-muted-foreground -rotate-90" />
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -570,7 +590,13 @@ export function EventTable({
                   className="w-full mt-4 py-2 text-center text-sm font-medium text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
-                    router.push(`/assignments?eventId=${event.id}`);
+                    const serviceIds = allGroups
+                      .map(g => g.serviceId)
+                      .filter(Boolean) as string[];
+                    const serviceParam = serviceIds.length > 0
+                      ? `&serviceIds=${serviceIds.join(',')}`
+                      : '';
+                    router.push(`/assignments?eventId=${event.id}${serviceParam}`);
                   }}
                 >
                   Manage All Assignments →

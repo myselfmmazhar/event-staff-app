@@ -154,7 +154,7 @@ export function ServiceFormModal({
           </div>
         </DialogHeader>
 
-        <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
+        <DialogContent>
           {isEdit && service && (
             <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
               <p className="text-sm text-muted-foreground">Service ID</p>

@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon, SendIcon, FilterIcon, XIcon } from '@/components/ui/icons';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
+import { formatDateTime } from '@/lib/utils/date-formatter';
 
 interface FindTalentModalProps {
   callTimeId: string | null;
@@ -62,15 +63,15 @@ export function FindTalentModal({
 
   // Filter state
   const [maxDistance, setMaxDistance] = useState<string>('');
-  const [skillLevels, setSkillLevels] = useState<SkillLevel[]>([]);
-  const [ratings, setRatings] = useState<StaffRating[]>([]);
+  const [skillLevel, setSkillLevel] = useState<SkillLevel | ''>('');
+  const [rating, setRating] = useState<StaffRating | ''>('');
   const [availabilityStatuses, setAvailabilityStatuses] = useState<AvailabilityStatus[]>([]);
 
   const utils = trpc.useUtils();
   const hasCallTimeId = Boolean(callTimeId);
   const callTimeQueryId = callTimeId ?? '';
 
-  const hasActiveFilters = maxDistance || skillLevels.length > 0 || ratings.length > 0 || availabilityStatuses.length > 0;
+  const hasActiveFilters = maxDistance || skillLevel || rating || availabilityStatuses.length > 0;
 
   // Fetch call time details (minimal, just for header info)
   const { data: callTime, isLoading } = trpc.callTime.getById.useQuery(
@@ -85,8 +86,8 @@ export function FindTalentModal({
         callTimeId: callTimeQueryId,
         includeAlreadyInvited,
         maxDistance: maxDistance ? Number(maxDistance) : undefined,
-        skillLevels: skillLevels.length > 0 ? skillLevels : undefined,
-        ratings: ratings.length > 0 ? ratings : undefined,
+        skillLevels: skillLevel ? [skillLevel] : undefined,
+        ratings: rating ? [rating] : undefined,
         availabilityStatuses: availabilityStatuses.length > 0 ? availabilityStatuses : undefined,
       },
       { enabled: hasCallTimeId && open }
@@ -132,8 +133,8 @@ export function FindTalentModal({
 
   const clearFilters = () => {
     setMaxDistance('');
-    setSkillLevels([]);
-    setRatings([]);
+    setSkillLevel('');
+    setRating('');
     setAvailabilityStatuses([]);
   };
 
@@ -147,7 +148,7 @@ export function FindTalentModal({
 
   if (isLoading || !callTime) {
     return (
-      <Dialog open={open} onClose={handleClose} className="max-w-5xl">
+      <Dialog open={open} onClose={handleClose} className="max-w-6xl w-[90vw]">
         <DialogContent>
           <div className="h-64 flex items-center justify-center">
             <p className="text-muted-foreground">Loading...</p>
@@ -160,7 +161,7 @@ export function FindTalentModal({
   const isFilled = callTime.confirmedCount >= callTime.numberOfStaffRequired;
 
   return (
-    <Dialog open={open} onClose={handleClose} className="max-w-5xl">
+    <Dialog open={open} onClose={handleClose} className="max-w-6xl w-[90vw]">
       <DialogHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -170,8 +171,10 @@ export function FindTalentModal({
                 {callTime.confirmedCount}/{callTime.numberOfStaffRequired} filled
               </Badge>
             </DialogTitle>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-base font-medium text-muted-foreground mt-1">
               {callTime.service?.title || 'No Position'} - {callTime.event.title}
+              <span className="mx-2">•</span>
+              {formatDateTime(callTime.startDate, callTime.startTime)}
             </p>
           </div>
           <button
@@ -221,7 +224,7 @@ export function FindTalentModal({
               </div>
 
               {/* Skill Level Multi-Select */}
-              <div>
+              {/* <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Skill Level</label>
                 <div className="flex flex-wrap gap-1">
                   {SKILL_LEVEL_OPTIONS.map((opt) => (
@@ -230,18 +233,32 @@ export function FindTalentModal({
                       type="button"
                       onClick={() => toggleMultiSelect(skillLevels, opt.value, setSkillLevels)}
                       className={`text-xs px-2 py-1 rounded-md border transition-colors ${skillLevels.includes(opt.value)
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background border-input hover:bg-muted text-foreground'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-input hover:bg-muted text-foreground'
                         }`}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
+              </div> */}
+              {/* Skill Level Dropdown */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Skill Level</label>
+                <select
+                  value={skillLevel}
+                  onChange={(e) => setSkillLevel(e.target.value as SkillLevel)}
+                  className="w-full text-sm rounded-md border border-input bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Any Skill Level</option>
+                  {SKILL_LEVEL_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Rating Multi-Select */}
-              <div>
+              {/* <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Rating</label>
                 <div className="flex flex-wrap gap-1">
                   {RATING_OPTIONS.map((opt) => (
@@ -250,18 +267,32 @@ export function FindTalentModal({
                       type="button"
                       onClick={() => toggleMultiSelect(ratings, opt.value, setRatings)}
                       className={`text-xs px-2 py-1 rounded-md border transition-colors ${ratings.includes(opt.value)
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background border-input hover:bg-muted text-foreground'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-input hover:bg-muted text-foreground'
                         }`}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
+              </div> */}
+              {/* Rating Dropdown */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Rating</label>
+                <select
+                  value={rating}
+                  onChange={(e) => setRating(e.target.value as StaffRating)}
+                  className="w-full text-sm rounded-md border border-input bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Any Rating</option>
+                  {RATING_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Availability Multi-Select */}
-              <div>
+              {/* <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Availability</label>
                 <div className="flex flex-wrap gap-1">
                   {AVAILABILITY_OPTIONS.map((opt) => (
@@ -278,7 +309,7 @@ export function FindTalentModal({
                     </button>
                   ))}
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SkillLevel, RateType, CallTimeInvitationStatus, AmountType, StaffRating, AvailabilityStatus, InternalReviewRating } from '@prisma/client';
+import { SkillLevel, RateType, CallTimeInvitationStatus, AmountType, StaffRating, AvailabilityStatus, InternalReviewRating, EventStatus } from '@prisma/client';
 
 // Experience requirement options (matches Prisma ExperienceRequirement enum)
 // Using string literals instead of z.nativeEnum for browser compatibility
@@ -296,6 +296,7 @@ export class CallTimeSchema {
     dateFrom: z.coerce.date().optional(),
     dateTo: z.coerce.date().optional(),
     staffingStatus: z.enum(['needsStaff', 'fullyStaffed', 'all']).default('all').optional(),
+    eventStatuses: z.array(z.nativeEnum(EventStatus)).optional(),
   });
 
   /**

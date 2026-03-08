@@ -18,6 +18,7 @@ interface AssignmentsFiltersState {
   search: string;
   selectedEventIds: string[];
   selectedServiceIds: string[];
+  selectedEventStatuses: string[];
 
   // Date Filters
   dateFrom: string | null;
@@ -44,6 +45,7 @@ interface AssignmentsFiltersState {
   setSearch: (search: string) => void;
   setSelectedEventIds: (eventIds: string[]) => void;
   setSelectedServiceIds: (serviceIds: string[]) => void;
+  setSelectedEventStatuses: (statuses: string[]) => void;
 
   // Actions - Date Filters
   setDateFrom: (date: string | null) => void;
@@ -68,6 +70,7 @@ const DEFAULT_FILTERS = {
   search: '',
   selectedEventIds: [] as string[],
   selectedServiceIds: [] as string[],
+  selectedEventStatuses: [] as string[],
   dateFrom: null as string | null,
   dateTo: null as string | null,
 };
@@ -99,6 +102,7 @@ export const useAssignmentsFilters = create<AssignmentsFiltersState>()(
       setSearch: (search) => set({ search, page: 1 }),
       setSelectedEventIds: (selectedEventIds) => set({ selectedEventIds, page: 1 }),
       setSelectedServiceIds: (selectedServiceIds) => set({ selectedServiceIds, page: 1 }),
+      setSelectedEventStatuses: (selectedEventStatuses) => set({ selectedEventStatuses, page: 1 }),
 
       // Date Filter actions
       setDateFrom: (dateFrom) => set({ dateFrom, page: 1 }),
@@ -123,8 +127,9 @@ export const useAssignmentsFilters = create<AssignmentsFiltersState>()(
       partialize: (state) => ({
         activeTab: state.activeTab,
         search: state.search,
-        selectedEventIds: state.selectedEventIds,
-        selectedServiceIds: state.selectedServiceIds,
+        // NOTE: selectedEventIds and selectedServiceIds are intentionally NOT persisted
+        // so that URL params (e.g. from event table "Manage Assignment") always take priority.
+        selectedEventStatuses: state.selectedEventStatuses,
         dateFrom: state.dateFrom,
         dateTo: state.dateTo,
         sortBy: state.sortBy,

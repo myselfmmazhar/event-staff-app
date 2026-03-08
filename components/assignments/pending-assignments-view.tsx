@@ -72,6 +72,7 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
         sortOrder,
         setSortBy,
         setSortOrder,
+        selectedEventStatuses,
     } = useAssignmentsFilters();
 
     const { data, isLoading } = trpc.callTime.getAll.useQuery({
@@ -85,6 +86,7 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
         sortBy: sortBy as 'startDate' | 'position' | 'event',
         sortOrder,
         staffingStatus: 'all',
+        eventStatuses: selectedEventStatuses as any[],
     });
 
     // Flatten the data to show one row per pending invitation

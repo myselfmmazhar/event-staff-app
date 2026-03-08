@@ -191,6 +191,8 @@ export function EventFormFields({
         <AssignmentsSection
           assignments={assignments}
           onAssignmentsChange={onAssignmentsChange}
+          watch={watch}
+          setValue={setValue}
           disabled={disabled}
           className={spacing}
         />
