@@ -423,7 +423,6 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                         <div className="space-y-2 pt-1">
                             <div className="flex gap-2">
                                 <Input
-                                    size="sm"
                                     className="h-8 text-xs"
                                     placeholder={commMethod === 'EMAIL' ? "Add custom email..." : "Add custom number..."}
                                     value={newCustomVal}
