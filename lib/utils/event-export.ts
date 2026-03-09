@@ -109,6 +109,7 @@ const REQUEST_METHOD_LABELS: Record<RequestMethod, string> = {
  */
 const STATUS_LABELS: Record<EventStatus, string> = {
   DRAFT: 'Draft',
+  PUBLISHED: 'Published',
   ASSIGNED: 'Assigned',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',

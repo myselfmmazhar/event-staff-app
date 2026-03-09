@@ -34,6 +34,7 @@ const STATUS_VARIANTS: Record<
   "default" | "secondary" | "success" | "warning" | "destructive"
 > = {
   DRAFT: "secondary",
+  PUBLISHED: "success",
   ASSIGNED: "default",
   IN_PROGRESS: "warning",
   COMPLETED: "success",

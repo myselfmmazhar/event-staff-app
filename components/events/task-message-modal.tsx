@@ -257,7 +257,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
 
         let newSubject = `Message regarding Task: ${event.title}`;
         let newBody = `Hello,\n\nI'm writing regarding the task "${event.title}".\n\nBest regards,`;
-        let status: EventStatus | 'ALL' | null = type;
+        let status: EventStatus | 'ALL' | null = type === 'ALL' ? 'ALL' : null;
 
         switch (type) {
             case 'ACCEPTED':
@@ -385,7 +385,7 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                         <div className="flex justify-between items-center">
                             <Label className="text-sm font-semibold">3. Recipients ({selectedIds.size + customRecipients.length})</Label>
                             {validStaff.length > 0 && (
-                                <Button variant="ghost" size="xs" onClick={toggleAllStaff} className="text-[10px] h-6">
+                                <Button variant="ghost" size="sm" onClick={toggleAllStaff} className="text-[10px] h-6">
                                     {selectedIds.size === validStaff.length ? 'Deselect All' : 'Select All'}
                                 </Button>
                             )}
@@ -423,7 +423,6 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
                         <div className="space-y-2 pt-1">
                             <div className="flex gap-2">
                                 <Input
-                                    size="sm"
                                     className="h-8 text-xs"
                                     placeholder={commMethod === 'EMAIL' ? "Add custom email..." : "Add custom number..."}
                                     value={newCustomVal}
