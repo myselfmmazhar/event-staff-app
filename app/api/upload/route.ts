@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { put } from '@vercel/blob';
 
 export async function POST(request: NextRequest) {
     try {
@@ -14,13 +15,28 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const buffer = Buffer.from(await file.arrayBuffer());
         const uniqueSuffix = crypto.randomUUID();
         const originalName = file.name.replace(/[^a-zA-Z0-9.]/g, '');
         const filename = `${uniqueSuffix}-${originalName}`;
 
-        // Define local storage path
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'temp');
+        // On Vercel: use Blob storage (persistent, no local filesystem)
+        if (process.env.VERCEL) {
+            const blob = await put(filename, file, {
+                access: 'public',
+                addRandomSuffix: false,
+            });
+
+            return NextResponse.json({
+                url: blob.url,
+                name: file.name,
+                type: file.type,
+                size: file.size,
+            });
+        }
+
+        // Local / non-serverless: save to disk in public/uploads
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
@@ -28,9 +44,8 @@ export async function POST(request: NextRequest) {
         const filePath = path.join(uploadDir, filename);
         fs.writeFileSync(filePath, buffer);
 
-        // Return the absolute path for backend use and relative URL for frontend preview if needed
         return NextResponse.json({
-            url: `/uploads/temp/${filename}`,
+            url: `/uploads/${filename}`,
             absolutePath: filePath,
             name: file.name,
             type: file.type,
