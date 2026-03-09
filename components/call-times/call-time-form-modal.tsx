@@ -88,12 +88,30 @@ export function CallTimeFormModal({
   const [endTimeTBD, setEndTimeTBD] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
 
+  // Duplicate-assignment warning state
+  const [duplicateWarningActive, setDuplicateWarningActive] = useState(false);
+  const [duplicateMatchLabel, setDuplicateMatchLabel] = useState<string | null>(null);
+  const [duplicateAcknowledge, setDuplicateAcknowledge] = useState(false);
+
   // Fetch services for the selector
   const { data: servicesData, isLoading: servicesLoading } = trpc.staff.getServices.useQuery(
     undefined,
     { enabled: open }
   );
   const services = (servicesData ?? []) as ServiceOption[];
+
+  // Fetch existing call times for this event to detect potential duplicates on create
+  const { data: existingCallTimes } = trpc.callTime.getAll.useQuery(
+    {
+      page: 1,
+      limit: 100,
+      eventId,
+      staffingStatus: 'all',
+    },
+    {
+      enabled: open && !isEdit,
+    }
+  );
 
   // Form setup using shared hook
   const form = useAssignmentForm();
@@ -222,6 +240,69 @@ export function CallTimeFormModal({
       commissionAmountType: data.commissionAmountType ?? undefined,
     };
 
+    // When creating a new assignment, check for an existing one with the same
+    // event + service + start/end date + start/end time + pay rate + staff required.
+    if (!isEdit && existingCallTimes?.data) {
+      const normalizeDate = (value: unknown): string | null => {
+        if (!value) return null;
+        const d = typeof value === 'string' || value instanceof Date ? new Date(value) : null;
+        if (!d || Number.isNaN(d.getTime())) return null;
+        return d.toISOString().slice(0, 10);
+      };
+
+      const targetStartDate = submitData.startDate ? normalizeDate(submitData.startDate) : null;
+      const targetEndDate = submitData.endDate ? normalizeDate(submitData.endDate) : null;
+      const targetStartTime = submitData.startTime ?? null;
+      const targetEndTime = submitData.endTime ?? null;
+      const targetPayRate = submitData.payRate;
+      const targetStaffRequired = submitData.numberOfStaffRequired;
+
+      const duplicate = existingCallTimes.data.find((ct: any) => {
+        const ctStartDate = normalizeDate(ct.startDate);
+        const ctEndDate = normalizeDate(ct.endDate);
+        const ctStartTime = ct.startTime ?? null;
+        const ctEndTime = ct.endTime ?? null;
+        const ctPayRate =
+          typeof ct.payRate === 'number'
+            ? ct.payRate
+            : typeof ct.payRate === 'string'
+              ? parseFloat(ct.payRate)
+              : (ct.payRate as any)?.toNumber?.() ?? 0;
+
+        return (
+          ct.serviceId === submitData.serviceId &&
+          ctStartDate === targetStartDate &&
+          ctEndDate === targetEndDate &&
+          ctStartTime === targetStartTime &&
+          ctEndTime === targetEndTime &&
+          ctPayRate === targetPayRate &&
+          ct.numberOfStaffRequired === targetStaffRequired
+        );
+      });
+
+      if (duplicate) {
+        // First time we detect a duplicate for this data: show warning and require checkbox
+        if (!duplicateWarningActive) {
+          setDuplicateWarningActive(true);
+          setDuplicateAcknowledge(false);
+          setDuplicateMatchLabel(
+            `${duplicate.service?.title ?? 'Service'} for this event with the same time, rate and staff count already exists.`
+          );
+          return;
+        }
+
+        // Duplicate exists and warning is shown, but user hasn't acknowledged yet
+        if (!duplicateAcknowledge) {
+          return;
+        }
+      } else if (duplicateWarningActive) {
+        // No longer a duplicate (user changed fields) – reset warning state
+        setDuplicateWarningActive(false);
+        setDuplicateAcknowledge(false);
+        setDuplicateMatchLabel(null);
+      }
+    }
+
     onSubmit(submitData as CreateCallTimeInput | Omit<UpdateCallTimeInput, 'id'>);
   };
 
@@ -271,7 +352,29 @@ export function CallTimeFormModal({
           />
         </DialogContent>
 
-        <DialogFooter>
+        <DialogFooter className="flex items-center gap-4">
+          {duplicateWarningActive && (
+            <div className="flex-1 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <p className="font-semibold">Similar assignment already exists.</p>
+              {duplicateMatchLabel && (
+                <p className="mt-1">
+                  {duplicateMatchLabel}
+                </p>
+              )}
+              <label className="flex items-center gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  checked={duplicateAcknowledge}
+                  onChange={(e) => setDuplicateAcknowledge(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span className="text-xs">
+                  Add this assignment into the same row (it will be grouped with the existing one).
+                </span>
+              </label>
+            </div>
+          )}
+
           <Button
             type="button"
             variant="outline"
@@ -282,7 +385,7 @@ export function CallTimeFormModal({
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (duplicateWarningActive && !duplicateAcknowledge)}
           >
             {isSubmitting
               ? 'Saving...'

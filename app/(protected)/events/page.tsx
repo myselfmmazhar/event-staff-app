@@ -520,11 +520,11 @@ export default function EventsPage() {
   // Build active filters array
   const STATUS_LABELS: Record<EventStatus, string> = {
     DRAFT: 'Draft',
+    PUBLISHED: 'Published',
     ASSIGNED: 'Assigned',
     IN_PROGRESS: 'In Progress',
     COMPLETED: 'Completed',
     CANCELLED: 'Cancelled',
-    PUBLISHED: 'Published',
   };
 
   const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];

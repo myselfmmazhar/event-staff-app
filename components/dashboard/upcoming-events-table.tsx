@@ -48,11 +48,11 @@ interface UpcomingEventsTableProps {
 
 const STATUS_COLORS: Record<EventStatus, 'default' | 'info' | 'success' | 'primary' | 'purple' | 'danger'> = {
   DRAFT: 'default',
+  PUBLISHED: 'success',
   ASSIGNED: 'info',
   IN_PROGRESS: 'primary',
   COMPLETED: 'success',
   CANCELLED: 'danger',
-  PUBLISHED: 'success',
 };
 
 /**
