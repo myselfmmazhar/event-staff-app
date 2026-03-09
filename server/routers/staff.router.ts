@@ -56,7 +56,7 @@ export const staffRouter = router({
                     invitation.firstName,
                     invitation.token,
                     terminology.staff.singular,
-                    ctx.userId
+                    ctx.userId!
                 );
             }
 
@@ -86,7 +86,7 @@ export const staffRouter = router({
                     staff.staff.firstName,
                     staff.invitationToken,
                     terminology.staff.singular,
-                    ctx.userId
+                    ctx.userId!
                 );
             }
 
@@ -116,7 +116,7 @@ export const staffRouter = router({
                     result.staff.firstName,
                     result.invitationToken,
                     terminology.staff.singular,
-                    ctx.userId
+                    ctx.userId!
                 );
             }
 
@@ -145,8 +145,7 @@ export const staffRouter = router({
                     result.staff.email,
                     result.staff.firstName,
                     result.tempPassword,
-                    terminology.staff.singular,
-                    ctx.userId!
+                    terminology.staff.singular
                 );
             }
 

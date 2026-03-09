@@ -15,6 +15,7 @@ interface CalendarEventBadgeProps {
 
 const STATUS_COLORS: Record<EventStatus, string> = {
   DRAFT: 'bg-muted hover:bg-muted/80',
+  PUBLISHED: 'bg-success/20 hover:bg-success/30 text-success',
   ASSIGNED: 'bg-info/20 hover:bg-info/30 text-info',
   IN_PROGRESS: 'bg-primary/20 hover:bg-primary/30 text-primary',
   COMPLETED: 'bg-success/20 hover:bg-success/30 text-success',

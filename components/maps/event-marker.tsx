@@ -17,6 +17,7 @@ interface EventMarkerProps {
  */
 const STATUS_COLORS: Record<EventStatus, { fill: string; bg: string; ring: string }> = {
   DRAFT: { fill: "#6b7280", bg: "bg-gray-500", ring: "ring-gray-400" },
+  PUBLISHED: { fill: "#10b981", bg: "bg-emerald-500", ring: "ring-emerald-400" },
   ASSIGNED: { fill: "#3b82f6", bg: "bg-blue-500", ring: "ring-blue-400" },
   IN_PROGRESS: { fill: "#f59e0b", bg: "bg-amber-500", ring: "ring-amber-400" },
   COMPLETED: { fill: "#10b981", bg: "bg-emerald-500", ring: "ring-emerald-400" },
@@ -66,9 +67,8 @@ export function EventMarker({
 
         {/* Marker Pin */}
         <div
-          className={`relative transition-transform duration-200 ${
-            isHovered ? "scale-125 -translate-y-1" : "scale-100"
-          }`}
+          className={`relative transition-transform duration-200 ${isHovered ? "scale-125 -translate-y-1" : "scale-100"
+            }`}
         >
           {/* Custom Pin Shape */}
           <svg
