@@ -137,7 +137,7 @@ export function AssignmentFormFields({
   const [serviceSelectorOpen, setServiceSelectorOpen] = useState(false);
   const [serviceSearch, setServiceSearch] = useState('');
 
-  const { register, control, watch, setValue, formState: { errors } } = form;
+  const { register, control, watch, setValue, getValues, formState: { errors } } = form;
 
   // Fetch services internally if not provided externally
   const { data: internalServicesData, isLoading: internalServicesLoading } = trpc.staff.getServices.useQuery(
@@ -299,6 +299,12 @@ export function AssignmentFormFields({
                 type="number"
                 min={1}
                 {...register('numberOfStaffRequired')}
+                onFocus={() => {
+                  const current = getValues('numberOfStaffRequired') as any;
+                  if (current === 0 || current === '0') {
+                    setValue('numberOfStaffRequired', '' as any);
+                  }
+                }}
                 error={!!errors.numberOfStaffRequired}
                 disabled={disabled}
               />
@@ -523,6 +529,12 @@ export function AssignmentFormFields({
                 step="0.01"
                 min={0}
                 {...register('payRate')}
+                onFocus={() => {
+                  const current = getValues('payRate') as any;
+                  if (current === 0 || current === '0') {
+                    setValue('payRate', '' as any);
+                  }
+                }}
                 error={!!errors.payRate}
                 disabled={disabled}
                 placeholder="0.00"
@@ -545,6 +557,12 @@ export function AssignmentFormFields({
                 step="0.01"
                 min={0}
                 {...register('billRate')}
+                onFocus={() => {
+                  const current = getValues('billRate') as any;
+                  if (current === 0 || current === '0') {
+                    setValue('billRate', '' as any);
+                  }
+                }}
                 error={!!errors.billRate}
                 disabled={disabled}
                 placeholder="0.00"
@@ -626,6 +644,12 @@ export function AssignmentFormFields({
                     step="0.01"
                     min={0}
                     {...register('commissionAmount')}
+                    onFocus={() => {
+                      const current = getValues('commissionAmount') as any;
+                      if (current === 0 || current === '0') {
+                        setValue('commissionAmount', '' as any);
+                      }
+                    }}
                     disabled={disabled}
                     placeholder="0.00"
                   />
@@ -699,6 +723,12 @@ export function AssignmentFormFields({
                     step="0.01"
                     min={0}
                     {...register('overtimeRate')}
+                    onFocus={() => {
+                      const current = getValues('overtimeRate') as any;
+                      if (current === 0 || current === '0') {
+                        setValue('overtimeRate', '' as any);
+                      }
+                    }}
                     disabled={disabled}
                     placeholder="0.00"
                   />

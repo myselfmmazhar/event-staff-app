@@ -12,11 +12,11 @@ import { EventStatus } from '@prisma/client';
 
 const STATUS_OPTIONS: Array<{ value: EventStatus; label: string }> = [
   { value: 'DRAFT', label: 'Draft' },
+  { value: 'PUBLISHED', label: 'Published' },
   { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'PUBLISHED', label: 'Published' },
 ];
 
 export function EventFilters() {
