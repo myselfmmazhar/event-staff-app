@@ -812,11 +812,11 @@ enum EmailTemplateType {
 
 enum EventStatus {
   DRAFT
+  PUBLISHED
   ASSIGNED
   IN_PROGRESS
   COMPLETED
   CANCELLED
-  PUBLISHED
 }
 
 enum RequestMethod {

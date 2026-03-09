@@ -55,29 +55,120 @@ function getPayRateValue(payRate: AssignmentData['payRate']): number {
  * - Different positions = SEPARATE rows
  * - Different events = SEPARATE rows
  */
+
 export function groupAssignmentsByPositionAndTime(
   assignments: AssignmentData[]
 ): GroupedAssignment[] {
+  // ORIGINAL IMPLEMENTATION (kept for comparison):
+  //
+  // const groups = new Map<string, GroupedAssignment>();
+  //
+  // for (const assignment of assignments) {
+  //   // Create group key: eventId + serviceId + startTime
+  //   const eventId = assignment.event.id;
+  //   const serviceId = assignment.service?.id ?? 'no-service';
+  //   const startTime = assignment.startTime ?? 'no-time';
+  //   const groupKey = `${eventId}_${serviceId}_${startTime}`;
+  //
+  //   const existing = groups.get(groupKey);
+  //
+  //   if (existing) {
+  //     // Merge into existing group
+  //     existing.callTimeIds.push(assignment.id);
+  //     existing.numberOfStaffRequired += assignment.numberOfStaffRequired;
+  //     existing.confirmedCount += assignment.confirmedCount;
+  //     existing.needsStaff = existing.confirmedCount < existing.numberOfStaffRequired;
+  //     existing.invitations.push(...assignment.invitations);
+  //   } else {
+  //     // Create new group
+  //     groups.set(groupKey, {
+  //       groupKey,
+  //       callTimeIds: [assignment.id],
+  //       primaryCallTimeId: assignment.id,
+  //       callTimeId: assignment.callTimeId,
+  //       serviceName: assignment.service?.title ?? 'No Position',
+  //       serviceId: assignment.service?.id ?? null,
+  //       startDate: assignment.startDate,
+  //       startTime: assignment.startTime,
+  //       endDate: assignment.endDate,
+  //       endTime: assignment.endTime,
+  //       event: assignment.event,
+  //       numberOfStaffRequired: assignment.numberOfStaffRequired,
+  //       confirmedCount: assignment.confirmedCount,
+  //       needsStaff: assignment.needsStaff,
+  //       payRate: getPayRateValue(assignment.payRate),
+  //       payRateType: assignment.payRateType,
+  //       invitations: [...assignment.invitations],
+  //     });
+  //   }
+  // }
+  //
+  // ONE-ROW-PER-ASSIGNMENT IMPLEMENTATION (also kept for comparison):
+  //
+  // const groupsPerAssignment: GroupedAssignment[] = assignments.map((assignment) => ({
+  //   groupKey: assignment.id,
+  //   callTimeIds: [assignment.id],
+  //   primaryCallTimeId: assignment.id,
+  //   callTimeId: assignment.callTimeId,
+  //   serviceName: assignment.service?.title ?? 'No Position',
+  //   serviceId: assignment.service?.id ?? null,
+  //   startDate: assignment.startDate,
+  //   startTime: assignment.startTime,
+  //   endDate: assignment.endDate,
+  //   endTime: assignment.endTime,
+  //   event: assignment.event,
+  //   numberOfStaffRequired: assignment.numberOfStaffRequired,
+  //   confirmedCount: assignment.confirmedCount,
+  //   needsStaff: assignment.needsStaff,
+  //   payRate: getPayRateValue(assignment.payRate),
+  //   payRateType: assignment.payRateType,
+  //   invitations: [...assignment.invitations],
+  // }));
+
+  // CURRENT IMPLEMENTATION:
+  // Group when ALL of these match:
+  // - same event
+  // - same position (service)
+  // - same start/end date & time (call time)
+  // - same pay rate (price)
+  // - same numberOfStaffRequired (cost)
+
   const groups = new Map<string, GroupedAssignment>();
 
   for (const assignment of assignments) {
-    // Create group key: eventId + serviceId + startTime
     const eventId = assignment.event.id;
     const serviceId = assignment.service?.id ?? 'no-service';
-    const startTime = assignment.startTime ?? 'no-time';
-    const groupKey = `${eventId}_${serviceId}_${startTime}`;
+    const startDate = assignment.startDate
+      ? new Date(assignment.startDate).toISOString().slice(0, 10)
+      : 'no-start-date';
+    const endDate = assignment.endDate
+      ? new Date(assignment.endDate).toISOString().slice(0, 10)
+      : 'no-end-date';
+    const startTime = assignment.startTime ?? 'no-start-time';
+    const endTime = assignment.endTime ?? 'no-end-time';
+    const payRate = getPayRateValue(assignment.payRate);
+    const staffRequired = assignment.numberOfStaffRequired;
+
+    const groupKey = [
+      eventId,
+      serviceId,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      payRate,
+      staffRequired,
+    ].join('_');
 
     const existing = groups.get(groupKey);
 
     if (existing) {
-      // Merge into existing group
       existing.callTimeIds.push(assignment.id);
       existing.numberOfStaffRequired += assignment.numberOfStaffRequired;
       existing.confirmedCount += assignment.confirmedCount;
       existing.needsStaff = existing.confirmedCount < existing.numberOfStaffRequired;
       existing.invitations.push(...assignment.invitations);
     } else {
-      // Create new group
       groups.set(groupKey, {
         groupKey,
         callTimeIds: [assignment.id],
@@ -93,7 +184,7 @@ export function groupAssignmentsByPositionAndTime(
         numberOfStaffRequired: assignment.numberOfStaffRequired,
         confirmedCount: assignment.confirmedCount,
         needsStaff: assignment.needsStaff,
-        payRate: getPayRateValue(assignment.payRate),
+        payRate,
         payRateType: assignment.payRateType,
         invitations: [...assignment.invitations],
       });
