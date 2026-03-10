@@ -387,6 +387,7 @@ export function EventTable({
               onClick={(e) => toggleRowExpanded(event.id, e)}
               title="Click for details"
             >
+            {/* {!isExpanded && ( */}
               <div className="flex flex-col gap-1 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Open:</span>
@@ -407,6 +408,7 @@ export function EventTable({
                   </Badge>
                 </div>
               </div>
+              {/* ) } */}
               <div className="flex items-center justify-center mt-1">
                 {isExpanded ? (
                   <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
@@ -641,17 +643,49 @@ export function EventTable({
           if (totalRequired === 0) return null;
           return (
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
+              {/* <div className="flex items-center justify-between text-xs">
                 <span>Open:</span>
-                <Badge variant={totalOpen > 0 ? 'danger' : 'secondary'} size="sm">{totalOpen} of {totalRequired}</Badge>
+                <Badge variant={totalOpen > 0 ? 'danger' : 'secondary'} size="sm" className="min-w-[4rem] justify-center tabular-nums">{totalOpen} of {totalRequired}</Badge>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span>Pending:</span>
-                <Badge variant={totalPending > 0 ? 'warning' : 'secondary'} size="sm">{totalPending} of {totalRequired}</Badge>
+                <Badge variant={totalPending > 0 ? 'warning' : 'secondary'} size="sm" className="min-w-[4rem] justify-center tabular-nums">{totalPending} of {totalRequired}</Badge>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span>Accepted:</span>
-                <Badge variant={totalAccepted > 0 ? 'success' : 'secondary'} size="sm">{totalAccepted} of {totalRequired}</Badge>
+                <Badge variant={totalAccepted > 0 ? 'success' : 'secondary'} size="sm" className="min-w-[4rem] justify-center tabular-nums">{totalAccepted} of {totalRequired}</Badge>
+              </div> */}
+              <div className="flex flex-col gap-1 text-sm min-w-[160px]">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">Open:</span>
+                  <Badge
+                    variant={totalOpen > 0 ? 'danger' : 'secondary'}
+                    size="sm"
+                    className="w-[72px] justify-center tabular-nums whitespace-nowrap shrink-0"
+                  >
+                    {totalOpen} of {totalRequired}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">Pending:</span>
+                  <Badge
+                    variant={totalPending > 0 ? 'warning' : 'secondary'}
+                    size="sm"
+                    className="w-[72px] justify-center tabular-nums whitespace-nowrap shrink-0"
+                  >
+                    {totalPending} of {totalRequired}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">Accepted:</span>
+                  <Badge
+                    variant={totalAccepted > 0 ? 'success' : 'secondary'}
+                    size="sm"
+                    className="w-[72px] justify-center tabular-nums whitespace-nowrap shrink-0"
+                  >
+                    {totalAccepted} of {totalRequired}
+                  </Badge>
+                </div>
               </div>
             </div>
           );

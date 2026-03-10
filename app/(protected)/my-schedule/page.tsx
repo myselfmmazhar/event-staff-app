@@ -56,6 +56,23 @@ export default function MySchedulePage() {
     },
   });
 
+  const batchRespondMutation = trpc.callTime.batchRespond.useMutation({
+    onSuccess: (data) => {
+      toast({
+        title: 'Invitations Processed',
+        description: `Successfully processed ${data.count} invitation(s).`,
+      });
+      utils.callTime.getMyInvitations.invalidate();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'error',
+      });
+    },
+  });
+
   const handleRespond = (
     invitationId: string,
     accept: boolean,
@@ -66,6 +83,13 @@ export default function MySchedulePage() {
       invitationId,
       accept,
       declineReason,
+    });
+  };
+
+  const handleBatchRespond = (invitationIds: string[], accept: boolean) => {
+    batchRespondMutation.mutate({
+      invitationIds,
+      accept,
     });
   };
 
@@ -184,7 +208,9 @@ export default function MySchedulePage() {
           <PendingRequestsList
             invitations={data?.pending || []}
             onRespond={handleRespond}
+            onBatchRespond={handleBatchRespond}
             isResponding={respondingTo}
+            isBatchResponding={batchRespondMutation.isPending}
           />
         </TabsContent>
 
