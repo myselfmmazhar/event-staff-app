@@ -138,6 +138,13 @@ export class CallTimeService {
       console.error('Failed to send task creation emails to team:', error);
     }
 
+    // Auto-sync estimate for this event based on current tasks (best-effort)
+    try {
+      await this.syncEstimateForEvent(data.eventId, userId);
+    } catch (err) {
+      console.error('Failed to sync estimate after call time create:', err);
+    }
+
     return result;
   }
 
@@ -262,6 +269,49 @@ export class CallTimeService {
   }
 
   /**
+   * Get multiple call times with details
+   */
+  async findManyByIds(ids: string[], userId: string) {
+    const callTimes = await this.prisma.callTime.findMany({
+      where: {
+        id: { in: ids },
+        event: { createdBy: userId },
+      },
+      include: {
+        service: true,
+        event: {
+          select: {
+            id: true,
+            eventId: true,
+            title: true,
+            createdBy: true,
+            venueName: true,
+            city: true,
+            state: true,
+            latitude: true,
+            longitude: true,
+          },
+        },
+        invitations: {
+          select: {
+            id: true,
+            staffId: true,
+            status: true,
+            isConfirmed: true,
+          },
+        },
+      },
+    });
+
+    return callTimes.map((ct) => ({
+      ...ct,
+      confirmedCount: ct.invitations.filter(
+        (inv) => inv.status === 'ACCEPTED' && inv.isConfirmed
+      ).length,
+    }));
+  }
+
+  /**
    * Update call time
    */
   async update(
@@ -280,7 +330,7 @@ export class CallTimeService {
       prismaData.service = serviceId ? { connect: { id: serviceId } } : { disconnect: true };
     }
 
-    return await this.prisma.callTime.update({
+    const updated = await this.prisma.callTime.update({
       where: { id },
       data: prismaData,
       include: {
@@ -289,6 +339,15 @@ export class CallTimeService {
         _count: { select: { invitations: true } },
       },
     });
+
+    // Auto-sync estimate for this event based on current tasks (best-effort)
+    try {
+      await this.syncEstimateForEvent(updated.event.id, userId);
+    } catch (err) {
+      console.error('Failed to sync estimate after call time update:', err);
+    }
+
+    return updated;
   }
 
   /**
@@ -319,6 +378,13 @@ export class CallTimeService {
     // Update event status after removing a call time (may affect fully staffed state)
     await this.updateEventStatusBasedOnStaffing(eventId);
 
+    // Auto-sync estimate for this event based on current tasks (best-effort)
+    try {
+      await this.syncEstimateForEvent(eventId, userId);
+    } catch (err) {
+      console.error('Failed to sync estimate after call time delete:', err);
+    }
+
     return { success: true, message: 'Call time deleted successfully' };
   }
 
@@ -328,69 +394,96 @@ export class CallTimeService {
    * Returns invitation status when includeAlreadyInvited is true
    */
   async searchAvailableStaff(input: StaffSearchInput, userId: string) {
-    const callTime = await this.findOne(input.callTimeId, userId);
+    const callTimeIds = input.callTimeIds || [input.callTimeId!];
+    const callTimes = await this.findManyByIds(callTimeIds, userId);
+
+    if (callTimes.length === 0) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'No assignments found',
+      });
+    }
+
+    // Use the first call time for primary context (distance, location match)
+    const primaryCallTime = callTimes[0];
 
     // When distance filter is active, we need to fetch more and post-filter
-    const hasDistanceFilter = input.maxDistance && callTime.event.latitude && callTime.event.longitude;
+    const hasDistanceFilter =
+      input.maxDistance &&
+      primaryCallTime.event.latitude &&
+      primaryCallTime.event.longitude;
     const page = input.page ?? 1;
     const limit = input.limit ?? 20;
     const skip = hasDistanceFilter ? 0 : (page - 1) * limit;
     const take = hasDistanceFilter ? 1000 : limit; // Fetch more for post-query distance filtering
 
-    // Build exclusion list if not including already invited
+    // Build exclusion list: anybody invited to ANY of these call times
     let excludeStaffIds: string[] = [];
     if (!input.includeAlreadyInvited) {
-      excludeStaffIds = callTime.invitations.map((inv) => inv.staffId);
+      const allStaffIds = new Set<string>();
+      callTimes.forEach((ct) => {
+        ct.invitations.forEach((inv) => allStaffIds.add(inv.staffId));
+      });
+      excludeStaffIds = Array.from(allStaffIds);
     }
 
-    // Skill level filter: use provided filter or fall back to >= requirement
+    // Skill level filter: use highest requirement among all selected
     let skillLevelFilter: SkillLevel[];
     if (input.skillLevels && input.skillLevels.length > 0) {
       skillLevelFilter = input.skillLevels;
     } else {
-      const requiredLevel = SKILL_LEVEL_ORDER[callTime.skillLevel];
+      const maxRequiredLevel = Math.max(
+        ...callTimes.map((ct) => SKILL_LEVEL_ORDER[ct.skillLevel])
+      );
       skillLevelFilter = (
         Object.entries(SKILL_LEVEL_ORDER) as [SkillLevel, number][]
       )
-        .filter(([_, level]) => level >= requiredLevel)
+        .filter(([_, level]) => level >= maxRequiredLevel)
         .map(([name]) => name);
     }
 
     // Build staff query
     const where: Prisma.StaffWhereInput = {
-      // Has the required service (if serviceId is set)
-      ...(callTime.serviceId && {
+      // Has at least one of the required services
+      ...(callTimes.some((ct) => ct.serviceId) && {
         services: {
-          some: { serviceId: callTime.serviceId },
+          some: {
+            serviceId: {
+              in: callTimes.map((ct) => ct.serviceId).filter(Boolean) as string[],
+            },
+          },
         },
       }),
       // Skill level filter
       skillLevel: { in: skillLevelFilter },
       // Active account
       accountStatus: 'ACTIVE',
-      // Rating filter
-      ...(input.ratings && input.ratings.length > 0 && {
-        staffRating: { in: input.ratings },
+      // Multi-select filters
+      ...(input.ratings && input.ratings.length > 0 && { staffRating: { in: input.ratings } }),
+      ...(input.availabilityStatuses &&
+        input.availabilityStatuses.length > 0 && {
+        availabilityStatus: { in: input.availabilityStatuses },
       }),
-      // Availability filter (user-selected or default TIME_OFF exclusion)
-      ...(input.availabilityStatuses && input.availabilityStatuses.length > 0
-        ? { availabilityStatus: { in: input.availabilityStatuses } }
-        : // Default: exclude TIME_OFF during call time dates
-        (callTime.startDate && callTime.endDate ? {
+      // Availability filter (Time Off Check) - based on primary call time
+      ...(primaryCallTime.startDate &&
+        primaryCallTime.endDate &&
+        !input.includeAlreadyInvited
+        ? {
           NOT: {
             AND: [
               { availabilityStatus: 'TIME_OFF' },
               {
                 OR: [
                   {
-                    timeOffStart: { lte: callTime.endDate as Date },
-                    timeOffEnd: { gte: callTime.startDate as Date },
+                    timeOffStart: { lte: primaryCallTime.endDate as Date },
+                    timeOffEnd: { gte: primaryCallTime.startDate as Date },
                   },
                 ],
               },
             ],
           },
-        } : {})),
+        }
+        : {}),
       // Exclude already invited (if requested)
       ...(excludeStaffIds.length > 0 && {
         id: { notIn: excludeStaffIds },
@@ -425,18 +518,22 @@ export class CallTimeService {
           callTimeInvitations: {
             where: {
               OR: [
-                // This call time's invitation (for status display)
-                { callTimeId: input.callTimeId },
+                // Any of these call times' invitations (for status display)
+                { callTimeId: { in: callTimeIds } },
                 // Overlapping confirmed assignments (for conflict detection)
-                ...(callTime.startDate && callTime.endDate ? [{
-                  isConfirmed: true,
-                  status: 'ACCEPTED' as const,
-                  callTime: {
-                    startDate: { lte: callTime.endDate as Date },
-                    endDate: { gte: callTime.startDate as Date },
-                    id: { not: callTime.id },
-                  },
-                }] : []),
+                ...(primaryCallTime.startDate && primaryCallTime.endDate
+                  ? [
+                    {
+                      isConfirmed: true,
+                      status: 'ACCEPTED' as const,
+                      callTime: {
+                        startDate: { lte: primaryCallTime.endDate as Date },
+                        endDate: { gte: primaryCallTime.startDate as Date },
+                        id: { notIn: callTimeIds },
+                      },
+                    },
+                  ]
+                  : []),
               ],
             },
             select: {
@@ -471,8 +568,8 @@ export class CallTimeService {
     const KM_TO_MILES = 0.621371;
 
     // Enrich with distance, location match, and invitation status
-    const eventLat = callTime.event.latitude as number | null;
-    const eventLng = callTime.event.longitude as number | null;
+    const eventLat = primaryCallTime.event.latitude as number | null;
+    const eventLng = primaryCallTime.event.longitude as number | null;
 
     let enrichedStaff = staff.map((s) => {
       // Calculate distance in miles if both event and staff have coordinates
@@ -483,20 +580,22 @@ export class CallTimeService {
       }
 
       // Extract invitation status and conflicts from callTimeInvitations
-      const allInvitations = (s as any).callTimeInvitations as Array<{
-        status: string;
-        isConfirmed: boolean;
-        callTimeId: string;
-        callTime: { id: string; event: { title: string }; startDate: Date; endDate: Date };
-      }> | undefined;
+      const allInvitations = (s as any).callTimeInvitations || [];
 
-      // Invitation for THIS call time (for status badge)
-      const thisInvitation = allInvitations?.find((inv) => inv.callTimeId === input.callTimeId) ?? null;
+      // Invitation for ANY of these call times (pick the first one found for status display)
+      const thisInvitation = allInvitations.find((inv: any) =>
+        callTimeIds.includes(inv.callTimeId)
+      ) || null;
 
-      // Conflicts from OTHER overlapping call times (confirmed assignments)
-      const conflicts = (allInvitations || [])
-        .filter((inv) => inv.callTimeId !== input.callTimeId && inv.isConfirmed && inv.status === 'ACCEPTED')
-        .map((inv) => ({
+      // Conflicts from OTHER overlapping call times (confirmed assignments, excluding current batch)
+      const conflicts = allInvitations
+        .filter(
+          (inv: any) =>
+            !callTimeIds.includes(inv.callTimeId) &&
+            inv.isConfirmed &&
+            inv.status === 'ACCEPTED'
+        )
+        .map((inv: any) => ({
           eventTitle: inv.callTime.event.title,
           startDate: inv.callTime.startDate,
           endDate: inv.callTime.endDate,
@@ -507,29 +606,11 @@ export class CallTimeService {
         }));
 
       return {
-        id: s.id,
-        staffId: s.staffId,
-        firstName: s.firstName,
-        lastName: s.lastName,
-        email: s.email,
-        phone: s.phone,
-        skillLevel: s.skillLevel,
-        availabilityStatus: s.availabilityStatus,
-        staffRating: s.staffRating,
-        internalNotes: s.internalNotes,
-        city: s.city,
-        state: s.state,
-        country: s.country,
-        userId: s.userId,
-        hasLoginAccess: s.hasLoginAccess,
-        services: s.services,
+        ...s,
         distanceMiles,
-        locationMatch: this.calculateLocationMatch(s, {
-          city: callTime.event.city,
-          state: callTime.event.state,
-        }),
-        invitationStatus: thisInvitation?.status ?? null,
-        invitationConfirmed: thisInvitation?.isConfirmed ?? null,
+        locationMatch: this.calculateLocationMatch(s, primaryCallTime.event),
+        invitationStatus: thisInvitation?.status || null,
+        invitationConfirmed: thisInvitation?.isConfirmed || false,
         hasConflict: conflicts.length > 0,
         conflicts,
       };
@@ -597,65 +678,79 @@ export class CallTimeService {
    * Send invitations to staff
    */
   async sendInvitations(input: SendInvitationsInput, userId: string) {
-    const callTime = await this.findOne(input.callTimeId, userId);
+    const callTimeIds = input.callTimeIds || [input.callTimeId!];
+    const callTimes = await this.findManyByIds(callTimeIds, userId);
 
-    // Get existing invitations
-    const existingInvitations = await this.prisma.callTimeInvitation.findMany({
-      where: {
-        callTimeId: input.callTimeId,
-        staffId: { in: input.staffIds },
-      },
-    });
-
-    const existingStaffIds = existingInvitations.map((inv) => inv.staffId);
-    const newStaffIds = input.staffIds.filter(
-      (id) => !existingStaffIds.includes(id)
-    );
-
-    if (newStaffIds.length === 0) {
+    if (callTimes.length === 0) {
       throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: 'All selected staff have already been invited',
+        code: 'NOT_FOUND',
+        message: 'No assignments found',
       });
     }
 
-    // Create new invitations
-    const invitations = await Promise.all(
-      newStaffIds.map(async (staffId) => {
-        return this.prisma.callTimeInvitation.create({
-          data: {
-            callTimeId: input.callTimeId,
-            staffId,
-            status: 'PENDING',
-          },
-          include: {
-            staff: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                userId: true,
-              },
+    const invitations: any[] = [];
+
+    // Loop through each assignment and each staff member
+    for (const ct of callTimes) {
+      // Get existing invitations for THIS assignment
+      const existingInvitations = await this.prisma.callTimeInvitation.findMany({
+        where: {
+          callTimeId: ct.id,
+          staffId: { in: input.staffIds },
+        },
+      });
+
+      const existingStaffIds = existingInvitations.map((inv) => inv.staffId);
+      const newStaffIds = input.staffIds.filter(
+        (id) => !existingStaffIds.includes(id)
+      );
+
+      // Create new invitations for THIS assignment
+      const newInvitations = await Promise.all(
+        newStaffIds.map(async (staffId) => {
+          return this.prisma.callTimeInvitation.create({
+            data: {
+              callTimeId: ct.id,
+              staffId,
+              status: 'PENDING',
             },
-            callTime: {
-              include: {
-                service: true,
-                event: {
-                  select: {
-                    id: true,
-                    title: true,
-                    venueName: true,
-                    city: true,
-                    state: true,
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  userId: true,
+                },
+              },
+              callTime: {
+                include: {
+                  service: true,
+                  event: {
+                    select: {
+                      id: true,
+                      title: true,
+                      venueName: true,
+                      city: true,
+                      state: true,
+                    },
                   },
                 },
               },
             },
-          },
-        });
-      })
-    );
+          });
+        })
+      );
+      invitations.push(...newInvitations);
+    }
+
+    if (invitations.length === 0) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'All selected staff have already been invited to these assignments',
+      });
+    }
 
     // Send notifications to invited staff
     const triggerService = getNotificationTriggerService(this.prisma);
@@ -673,11 +768,7 @@ export class CallTimeService {
       }
     }
 
-    return {
-      sent: invitations.length,
-      invitations,
-      callTime,
-    };
+    return { invitations, sent: invitations.length };
   }
 
   /**
@@ -943,6 +1034,81 @@ export class CallTimeService {
     }
 
     return updated;
+  }
+
+  /**
+   * Batch Respond to invitations (staff action)
+   */
+  async batchRespond(invitationIds: string[], accept: boolean, userId: string) {
+    const results = [];
+    for (const invitationId of invitationIds) {
+      try {
+        const result = await this.respondToInvitation({ invitationId, accept }, userId);
+        results.push(result);
+      } catch (error) {
+        console.error(`Failed to respond to invitation ${invitationId}:`, error);
+      }
+    }
+    return { count: results.length };
+  }
+
+  /**
+   * Batch Accept invitations on behalf of users (admin action)
+   */
+  async batchAcceptInvitations(invitationIds: string[], userId: string) {
+    // Verify each invitation belongs to an event created by the user
+    const invitations = await this.prisma.callTimeInvitation.findMany({
+      where: {
+        id: { in: invitationIds },
+        callTime: { event: { createdBy: userId } }
+      },
+      select: { id: true, callTime: { select: { id: true, eventId: true } } }
+    });
+
+    if (invitations.length === 0) return { count: 0 };
+
+    const validIds = invitations.map(i => i.id);
+    const result = await this.prisma.callTimeInvitation.updateMany({
+      where: { id: { in: validIds } },
+      data: { status: 'ACCEPTED', isConfirmed: true, respondedAt: new Date() }
+    });
+
+    // Update event status for all affected events
+    const eventIds = [...new Set(invitations.map(i => i.callTime.eventId))];
+    for (const eventId of eventIds) {
+      await this.updateEventStatusBasedOnStaffing(eventId);
+    }
+
+    return { count: result.count };
+  }
+
+  /**
+   * Batch Cancel invitations (admin action)
+   */
+  async batchCancelInvitations(invitationIds: string[], userId: string) {
+    const invitations = await this.prisma.callTimeInvitation.findMany({
+      where: {
+        id: { in: invitationIds },
+        callTime: { event: { createdBy: userId } }
+      },
+      select: { id: true, callTime: { select: { id: true, eventId: true } }, status: true, isConfirmed: true }
+    });
+
+    if (invitations.length === 0) return { count: 0 };
+
+    const validIds = invitations.map(i => i.id);
+    const result = await this.prisma.callTimeInvitation.updateMany({
+      where: { id: { in: validIds } },
+      data: { status: 'CANCELLED', isConfirmed: false }
+    });
+
+    // Update event status for all affected events where confirmed staff were cancelled
+    const eventIds = [...new Set(invitations.filter(i => i.status === 'ACCEPTED' && i.isConfirmed).map(i => i.callTime.eventId))];
+    for (const eventId of eventIds) {
+      await this.updateEventStatusBasedOnStaffing(eventId);
+    }
+
+    return { count: result.count };
   }
 
   /**
@@ -1349,7 +1515,7 @@ export class CallTimeService {
     const callTimeIds = await this.generateBatchCallTimeIds(input.assignments.length);
 
     // Use transaction with increased timeout for atomicity
-    return await this.prisma.$transaction(async (tx) => {
+    const createdCallTimes = await this.prisma.$transaction(async (tx) => {
       // Delete existing CallTimes for this event
       // Note: This will cascade delete CallTimeInvitations as well
       await tx.callTime.deleteMany({
@@ -1419,6 +1585,132 @@ export class CallTimeService {
       return createdCallTimes;
     }, {
       timeout: 15000, // Increase timeout to 15 seconds for bulk operations
+    });
+
+    // Auto-sync estimate for this event based on current tasks (best-effort)
+    try {
+      await this.syncEstimateForEvent(input.eventId, userId);
+    } catch (err) {
+      console.error('Failed to sync estimate after bulk sync:', err);
+    }
+
+    return createdCallTimes;
+  }
+
+  /**
+   * Auto-create or update an Estimate for an event based on its tasks (call times).
+   * Uses event's client and eventId as the Estimate client/number, and builds
+   * line items from call time bill rates (Price) and required staff.
+   */
+  private async syncEstimateForEvent(eventId: string, userId: string): Promise<void> {
+    // Load event with billing settings
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, createdBy: userId },
+      select: {
+        id: true,
+        eventId: true,
+        title: true,
+        clientId: true,
+        estimate: true,
+        startDate: true,
+      },
+    });
+
+    // Only proceed when:
+    // - event exists and belongs to the user
+    // - event has a client
+    // - estimate flag is enabled
+    if (!event || !event.clientId || !event.estimate) {
+      return;
+    }
+
+    // Fetch all call times for this event with service & price info
+    const callTimes = await this.prisma.callTime.findMany({
+      where: { eventId },
+      include: {
+        service: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (callTimes.length === 0) {
+      // No tasks – for now, do not delete any existing estimate automatically
+      return;
+    }
+
+    const estimateNo = event.eventId || event.id;
+    const today = new Date();
+
+    // Build items from call times (based on Price = billRate)
+    const items = callTimes.map((ct) => {
+      const quantity = ct.numberOfStaffRequired || 0;
+      const price = Number(ct.billRate ?? 0);
+      const amount = quantity * price;
+
+      return {
+        description: ct.service?.title
+          ? `${ct.service.title} - ${event.title}`
+          : event.title,
+        quantity,
+        price,
+        amount,
+        productId: null,
+        serviceId: ct.serviceId,
+        date: ct.startDate ?? event.startDate ?? today,
+      };
+    });
+
+    // Upsert estimate using a transaction to keep header + items in sync
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.estimate.findFirst({
+        where: {
+          estimateNo,
+          clientId: event.clientId!,
+        },
+        select: { id: true, estimateDate: true, status: true },
+      });
+
+      if (!existing) {
+        await tx.estimate.create({
+          data: {
+            estimateNo,
+            clientId: event.clientId!,
+            estimateDate: today,
+            status: 'DRAFT' as any,
+            createdBy: userId,
+            notes: null,
+            items: {
+              create: items,
+            },
+          },
+        });
+      } else {
+        // Update header (keep existing status/date) and fully replace items
+        await tx.estimate.update({
+          where: { id: existing.id },
+          data: {
+            clientId: event.clientId!,
+          },
+        });
+
+        await tx.estimateItem.deleteMany({
+          where: { estimateId: existing.id },
+        });
+
+        if (items.length > 0) {
+          await tx.estimateItem.createMany({
+            data: items.map((item) => ({
+              estimateId: existing.id,
+              ...item,
+            })),
+          });
+        }
+      }
     });
   }
 
