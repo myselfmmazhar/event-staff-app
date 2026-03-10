@@ -12,6 +12,10 @@ import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
 import type { RateType } from '@prisma/client';
 import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { useToast } from '@/components/ui/use-toast';
+import { ConfirmModal } from '@/components/common/confirm-modal';
+import { CheckCircleIcon, XCircleIcon, XIcon } from '@/components/ui/icons';
+import { useState } from 'react';
 
 interface PendingStaffRow {
     id: string; // invitation id
@@ -58,6 +62,10 @@ function getPayRateValue(payRate: PendingStaffRow['payRate']): number {
 }
 
 export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsViewProps) {
+    const { toast } = useToast();
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [pendingBatchAction, setPendingBatchAction] = useState<'ACCEPT' | 'CANCEL' | null>(null);
+    const utils = trpc.useUtils();
     const {
         page,
         limit,
@@ -89,6 +97,59 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
         eventStatuses: selectedEventStatuses as any[],
     });
 
+    const batchAcceptMutation = trpc.callTime.batchAccept.useMutation({
+        onSuccess: (data) => {
+            toast({
+                title: 'Assignments Accepted',
+                description: `Successfully accepted ${data.count} assignment(s) on behalf of staff.`,
+            });
+            setSelectedIds(new Set());
+            setPendingBatchAction(null);
+            utils.callTime.getAll.invalidate();
+        },
+        onError: (error) => {
+            toast({
+                title: 'Error',
+                description: error.message,
+                variant: 'error',
+            });
+            setPendingBatchAction(null);
+        },
+    });
+
+    const batchCancelMutation = trpc.callTime.batchCancel.useMutation({
+        onSuccess: (data) => {
+            toast({
+                title: 'Invitations Cancelled',
+                description: `Successfully cancelled ${data.count} invitation(s).`,
+            });
+            setSelectedIds(new Set());
+            setPendingBatchAction(null);
+            utils.callTime.getAll.invalidate();
+        },
+        onError: (error) => {
+            toast({
+                title: 'Error',
+                description: error.message,
+                variant: 'error',
+            });
+            setPendingBatchAction(null);
+        },
+    });
+
+    const handleBatchAction = () => {
+        const invitationIds = Array.from(selectedIds);
+        if (pendingBatchAction === 'ACCEPT') {
+            batchAcceptMutation.mutate({ invitationIds });
+        } else if (pendingBatchAction === 'CANCEL') {
+            batchCancelMutation.mutate({ invitationIds });
+        }
+    };
+
+    const handleClearSelection = () => {
+        setSelectedIds(new Set());
+    };
+
     // Flatten the data to show one row per pending invitation
     const pendingStaffRows: PendingStaffRow[] = [];
 
@@ -118,7 +179,32 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
                 });
             }
         }
-    }
+    };
+
+    const allSelected = pendingStaffRows.length > 0 && pendingStaffRows.every((item) => selectedIds.has(item.id));
+    const someSelected = pendingStaffRows.some((item) => selectedIds.has(item.id)) && !allSelected;
+
+    const handleSelectAll = () => {
+        if (allSelected) {
+            const newSet = new Set(selectedIds);
+            pendingStaffRows.forEach((item) => newSet.delete(item.id));
+            setSelectedIds(newSet);
+        } else {
+            const newSet = new Set(selectedIds);
+            pendingStaffRows.forEach((item) => newSet.add(item.id));
+            setSelectedIds(newSet);
+        }
+    };
+
+    const handleSelectOne = (id: string) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedIds(newSet);
+    };
 
     const handleSortBy = (field: string) => {
         if (field === 'startDate' || field === 'position' || field === 'event' ||
@@ -132,6 +218,30 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
     };
 
     const columns: ColumnDef<PendingStaffRow>[] = [
+        {
+            key: 'select',
+            label: (
+                <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => {
+                        if (el) el.indeterminate = someSelected;
+                    }}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+            ),
+            headerClassName: 'text-center py-3 px-2 w-10',
+            render: (item: PendingStaffRow) => (
+                <input
+                    type="checkbox"
+                    checked={selectedIds.has(item.id)}
+                    onChange={() => handleSelectOne(item.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+            ),
+        },
         {
             key: 'actions',
             label: 'Actions',
@@ -285,6 +395,45 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
 
     return (
         <div className="space-y-4">
+            {selectedIds.size > 0 && (
+                <Card className="p-3 bg-primary/5 border-primary/20">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-foreground">
+                                {selectedIds.size} invitation{selectedIds.size > 1 ? 's' : ''} selected
+                            </span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleClearSelection}
+                                className="text-muted-foreground"
+                            >
+                                <XIcon className="h-4 w-4 mr-1" />
+                                Clear
+                            </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => setPendingBatchAction('ACCEPT')}
+                            >
+                                <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                Accept Selected
+                            </Button>
+                            <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => setPendingBatchAction('CANCEL')}
+                            >
+                                <XCircleIcon className="h-4 w-4 mr-1" />
+                                Reject Selected
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
             <DataTable
                 data={pendingStaffRows}
                 columns={columns}
@@ -310,6 +459,20 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
                     onItemsPerPageChange={setLimit}
                 />
             )}
+
+            <ConfirmModal
+                open={pendingBatchAction !== null}
+                onClose={() => setPendingBatchAction(null)}
+                onConfirm={handleBatchAction}
+                title={pendingBatchAction === 'ACCEPT' ? 'Accept Invitations?' : 'Reject Invitations?'}
+                description={`You are about to ${pendingBatchAction === 'ACCEPT' ? 'accept' : 'reject'} ${selectedIds.size} invitation(s).`}
+                warningMessage={pendingBatchAction === 'ACCEPT'
+                    ? 'Do you want to accept all selected invitations on behalf of staff?'
+                    : 'Do you want to reject all selected invitations? This will cancel the offers.'}
+                confirmText={pendingBatchAction === 'ACCEPT' ? 'Yes, Accept All' : 'Yes, Reject All'}
+                variant={pendingBatchAction === 'CANCEL' ? 'danger' : 'default'}
+                isLoading={batchAcceptMutation.isPending || batchCancelMutation.isPending}
+            />
         </div>
     );
 }

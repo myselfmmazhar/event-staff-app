@@ -208,7 +208,7 @@ export class CallTimeSchema {
    * Send Invitations Schema
    */
   static sendInvitations = z.object({
-    callTimeId: z.string().uuid(FieldErrors.callTimeId),
+    callTimeIds: z.array(z.string().uuid(FieldErrors.callTimeId)).min(1),
     staffIds: z
       .array(z.string().uuid(FieldErrors.staffId))
       .min(1, 'At least one staff member is required'),
@@ -238,10 +238,19 @@ export class CallTimeSchema {
     );
 
   /**
+   * Batch Respond to Invitations Schema
+   */
+  static batchRespond = z.object({
+    invitationIds: z.array(z.string().uuid(FieldErrors.invitationId)).min(1),
+    accept: z.boolean(),
+  });
+
+  /**
    * Staff Search Schema
    */
   static staffSearch = z.object({
-    callTimeId: z.string().uuid(FieldErrors.callTimeId),
+    callTimeIds: z.array(z.string().uuid(FieldErrors.callTimeId)).min(1),
+    callTimeId: z.string().uuid(FieldErrors.callTimeId).optional(),
     includeAlreadyInvited: z.boolean().default(false),
     // Filters
     maxDistance: z.number().positive().optional(),
@@ -264,6 +273,20 @@ export class CallTimeSchema {
    */
   static cancelInvitation = z.object({
     invitationId: z.string().uuid(FieldErrors.invitationId),
+  });
+
+  /**
+   * Batch Accept Invitations Schema
+   */
+  static batchAccept = z.object({
+    invitationIds: z.array(z.string().uuid(FieldErrors.invitationId)).min(1),
+  });
+
+  /**
+   * Batch Cancel Invitations Schema
+   */
+  static batchCancel = z.object({
+    invitationIds: z.array(z.string().uuid(FieldErrors.invitationId)).min(1),
   });
 
   /**
@@ -377,6 +400,13 @@ export class CallTimeSchema {
    */
   static getStaffAssignmentHistory = z.object({
     staffId: z.string().uuid(FieldErrors.staffId),
+  });
+
+  /**
+   * Get Many Call Times Schema
+   */
+  static getManyByIds = z.object({
+    ids: z.array(z.string().uuid(FieldErrors.callTimeId)),
   });
 }
 

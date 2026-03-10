@@ -106,6 +106,17 @@ export const callTimeRouter = router({
     }),
 
   /**
+   * Get many call times by IDs
+   * Requires: Authentication (event owner)
+   */
+  getManyByIds: protectedProcedure
+    .input(CallTimeSchema.getManyByIds)
+    .query(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.findManyByIds(input.ids, ctx.userId!);
+    }),
+
+  /**
    * Send invitations to staff
    * Requires: Authentication (event owner)
    */
@@ -224,6 +235,17 @@ export const callTimeRouter = router({
     }),
 
   /**
+   * Batch respond to invitations
+   * Requires: Authentication (staff member who received invitations)
+   */
+  batchRespond: protectedProcedure
+    .input(CallTimeSchema.batchRespond)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.batchRespond(input.invitationIds, input.accept, ctx.userId!);
+    }),
+
+  /**
    * Resend invitation to staff
    * Requires: Authentication (event owner)
    */
@@ -284,6 +306,28 @@ export const callTimeRouter = router({
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
       return await service.cancelInvitation(input.invitationId, ctx.userId!);
+    }),
+
+  /**
+   * Batch Accept invitations
+   * Requires: Authentication (event owner)
+   */
+  batchAccept: protectedProcedure
+    .input(CallTimeSchema.batchAccept)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.batchAcceptInvitations(input.invitationIds, ctx.userId!);
+    }),
+
+  /**
+   * Batch Cancel invitations
+   * Requires: Authentication (event owner)
+   */
+  batchCancel: protectedProcedure
+    .input(CallTimeSchema.batchCancel)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.batchCancelInvitations(input.invitationIds, ctx.userId!);
     }),
 
   /**
