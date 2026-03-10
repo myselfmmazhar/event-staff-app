@@ -13,12 +13,14 @@ import { StaffSearchTable } from '@/components/call-times/staff-search-table';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon, SendIcon, FilterIcon, XIcon } from '@/components/ui/icons';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
 import { formatDateTime } from '@/lib/utils/date-formatter';
 
 interface FindTalentModalProps {
-  callTimeId: string | null;
+  callTimeId?: string | null;
+  callTimeIds?: string[];
   open: boolean;
   onClose: () => void;
 }
@@ -53,6 +55,7 @@ const AVAILABILITY_OPTIONS = [
 
 export function FindTalentModal({
   callTimeId,
+  callTimeIds = [],
   open,
   onClose,
 }: FindTalentModalProps) {
@@ -68,42 +71,49 @@ export function FindTalentModal({
   const [availabilityStatuses, setAvailabilityStatuses] = useState<AvailabilityStatus[]>([]);
 
   const utils = trpc.useUtils();
-  const hasCallTimeId = Boolean(callTimeId);
-  const callTimeQueryId = callTimeId ?? '';
+
+  // Normalize IDs to an array
+  const effectiveCallTimeIds = callTimeId ? [callTimeId] : callTimeIds;
+  const hasCallTimeIds = effectiveCallTimeIds.length > 0;
 
   const hasActiveFilters = maxDistance || skillLevel || rating || availabilityStatuses.length > 0;
 
-  // Fetch call time details (minimal, just for header info)
-  const { data: callTime, isLoading } = trpc.callTime.getById.useQuery(
-    { id: callTimeQueryId },
-    { enabled: hasCallTimeId && open }
+  // Fetch call time details
+  const { data: callTimes, isLoading } = trpc.callTime.getManyByIds.useQuery(
+    { ids: effectiveCallTimeIds },
+    { enabled: hasCallTimeIds && open }
   );
 
   // Fetch available staff with filters
   const { data: staffData, isLoading: isLoadingStaff } =
     trpc.callTime.searchStaff.useQuery(
       {
-        callTimeId: callTimeQueryId,
+        callTimeIds: effectiveCallTimeIds,
         includeAlreadyInvited,
         maxDistance: maxDistance ? Number(maxDistance) : undefined,
         skillLevels: skillLevel ? [skillLevel] : undefined,
         ratings: rating ? [rating] : undefined,
         availabilityStatuses: availabilityStatuses.length > 0 ? availabilityStatuses : undefined,
       },
-      { enabled: hasCallTimeId && open }
+      { enabled: hasCallTimeIds && open }
     );
+
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [pendingOffers, setPendingOffers] = useState<{ callTimeIds: string[], staffIds: string[] } | null>(null);
 
   // Send offers mutation
   const sendInvitations = trpc.callTime.sendInvitations.useMutation({
     onSuccess: (data) => {
       toast({
         title: 'Offers sent',
-        description: `Successfully sent ${data.sent} offer(s)`,
+        description: `Successfully sent ${data.sent} offer(s) across ${effectiveCallTimeIds.length} assignment(s)`,
       });
       setSelectedStaffIds([]);
-      if (hasCallTimeId) {
-        utils.callTime.getById.invalidate({ id: callTimeQueryId });
-        utils.callTime.searchStaff.invalidate({ callTimeId: callTimeQueryId });
+      setPendingOffers(null);
+      setIsConfirmOpen(false);
+      if (hasCallTimeIds) {
+        utils.callTime.getManyByIds.invalidate({ ids: effectiveCallTimeIds });
+        utils.callTime.searchStaff.invalidate({ callTimeIds: effectiveCallTimeIds });
         utils.callTime.getAll.invalidate();
       }
     },
@@ -113,15 +123,34 @@ export function FindTalentModal({
         description: error.message,
         variant: 'error',
       });
+      setPendingOffers(null);
+      setIsConfirmOpen(false);
     },
   });
 
   const handleSendOffers = () => {
-    if (selectedStaffIds.length === 0 || !hasCallTimeId) return;
+    if (selectedStaffIds.length === 0 || !hasCallTimeIds) return;
+
+    // If multiple assignments are selected, show confirmation
+    if (effectiveCallTimeIds.length > 1) {
+      setPendingOffers({
+        callTimeIds: effectiveCallTimeIds,
+        staffIds: selectedStaffIds,
+      });
+      setIsConfirmOpen(true);
+      return;
+    }
+
     sendInvitations.mutate({
-      callTimeId: callTimeQueryId,
+      callTimeIds: effectiveCallTimeIds,
       staffIds: selectedStaffIds,
     });
+  };
+
+  const handleConfirmSend = () => {
+    if (pendingOffers) {
+      sendInvitations.mutate(pendingOffers);
+    }
   };
 
   const handleClose = () => {
@@ -138,15 +167,7 @@ export function FindTalentModal({
     setAvailabilityStatuses([]);
   };
 
-  const toggleMultiSelect = <T,>(list: T[], value: T, setter: (v: T[]) => void) => {
-    if (list.includes(value)) {
-      setter(list.filter((v) => v !== value));
-    } else {
-      setter([...list, value]);
-    }
-  };
-
-  if (isLoading || !callTime) {
+  if (isLoading || !callTimes) {
     return (
       <Dialog open={open} onClose={handleClose} className="max-w-6xl w-[90vw]">
         <DialogContent>
@@ -158,7 +179,9 @@ export function FindTalentModal({
     );
   }
 
-  const isFilled = callTime.confirmedCount >= callTime.numberOfStaffRequired;
+  const totalConfirmed = callTimes.reduce((sum, ct) => sum + ct.confirmedCount, 0);
+  const totalRequired = callTimes.reduce((sum, ct) => sum + ct.numberOfStaffRequired, 0);
+  const isFilled = totalConfirmed >= totalRequired;
 
   return (
     <Dialog open={open} onClose={handleClose} className="max-w-6xl w-[90vw]">
@@ -168,14 +191,20 @@ export function FindTalentModal({
             <DialogTitle className="flex items-center gap-2">
               Find {staffTerm.plural}
               <Badge variant={isFilled ? 'default' : 'secondary'}>
-                {callTime.confirmedCount}/{callTime.numberOfStaffRequired} filled
+                {totalConfirmed}/{totalRequired} filled
               </Badge>
             </DialogTitle>
-            <p className="text-base font-medium text-muted-foreground mt-1">
-              {callTime.service?.title || 'No Position'} - {callTime.event.title}
-              <span className="mx-2">•</span>
-              {formatDateTime(callTime.startDate, callTime.startTime)}
-            </p>
+            <div className="mt-2 space-y-1">
+              {callTimes.map((ct) => (
+                <p key={ct.id} className="text-xl font-medium text-muted-foreground">
+                  <span className="text-foreground">{ct.service?.title || 'No Position'}</span>
+                  <span className="mx-1.5">•</span>
+                  {ct.event.title}
+                  <span className="mx-1.5 opacity-50">•</span>
+                  <span className="text-base">{formatDateTime(ct.startDate, ct.startTime)}</span>
+                </p>
+              ))}
+            </div>
           </div>
           <button
             type="button"
@@ -223,25 +252,6 @@ export function FindTalentModal({
                 </select>
               </div>
 
-              {/* Skill Level Multi-Select */}
-              {/* <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Skill Level</label>
-                <div className="flex flex-wrap gap-1">
-                  {SKILL_LEVEL_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => toggleMultiSelect(skillLevels, opt.value, setSkillLevels)}
-                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${skillLevels.includes(opt.value)
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-input hover:bg-muted text-foreground'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div> */}
               {/* Skill Level Dropdown */}
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Skill Level</label>
@@ -257,25 +267,6 @@ export function FindTalentModal({
                 </select>
               </div>
 
-              {/* Rating Multi-Select */}
-              {/* <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Rating</label>
-                <div className="flex flex-wrap gap-1">
-                  {RATING_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => toggleMultiSelect(ratings, opt.value, setRatings)}
-                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${ratings.includes(opt.value)
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-input hover:bg-muted text-foreground'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div> */}
               {/* Rating Dropdown */}
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Rating</label>
@@ -290,26 +281,6 @@ export function FindTalentModal({
                   ))}
                 </select>
               </div>
-
-              {/* Availability Multi-Select */}
-              {/* <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Availability</label>
-                <div className="flex flex-wrap gap-1">
-                  {AVAILABILITY_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => toggleMultiSelect(availabilityStatuses, opt.value, setAvailabilityStatuses)}
-                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${availabilityStatuses.includes(opt.value)
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background border-input hover:bg-muted text-foreground'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div> */}
             </div>
           </div>
 
@@ -352,6 +323,18 @@ export function FindTalentModal({
           )}
         </div>
       </DialogContent>
+
+      <ConfirmModal
+        open={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmSend}
+        title="Confirm Batch Offers"
+        description={`You are about to send offers to ${selectedStaffIds.length} ${staffTerm.lowerPlural} for ${effectiveCallTimeIds.length} different assignments.`}
+        warningMessage="Are you sure you want to send batch alert confirmation?"
+        confirmText="Yes, Send Offers"
+        variant="default"
+        isLoading={sendInvitations.isPending}
+      />
     </Dialog>
   );
 }

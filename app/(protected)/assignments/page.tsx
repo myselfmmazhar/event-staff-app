@@ -30,6 +30,7 @@ export default function AssignmentManagerPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [managingAssignmentId, setManagingAssignmentId] = useState<string | null>(null);
   const [findTalentAssignmentId, setFindTalentAssignmentId] = useState<string | null>(null);
+  const [bulkFindTalentIds, setBulkFindTalentIds] = useState<string[]>([]);
   const [deletingAssignment, setDeletingAssignment] = useState<AssignmentData | null>(null);
   const [duplicatingAssignment, setDuplicatingAssignment] = useState<AssignmentData | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -97,6 +98,18 @@ export default function AssignmentManagerPage() {
     // Always reset event/service selection first, then apply URL values
     useAssignmentsFilters.getState().setSelectedEventIds(eventId ? [eventId] : []);
     useAssignmentsFilters.getState().setSelectedServiceIds(serviceIds);
+
+    // Preselect tab from URL (supports both `tab=` and legacy `status=`)
+    const tabParam = searchParams.get('tab');
+    const statusParam = searchParams.get('status');
+    const raw = (tabParam ?? statusParam ?? '').toLowerCase();
+    const tab =
+      raw === 'open' || raw === 'pending' || raw === 'accepted' || raw === 'all'
+        ? (raw as any)
+        : null;
+    if (tab) {
+      useAssignmentsFilters.getState().setActiveTab(tab);
+    }
   }, [searchParams]);
 
   const handleManageAssignment = (assignment: AssignmentData) => {
@@ -163,6 +176,12 @@ export default function AssignmentManagerPage() {
         </div>
       </div>
 
+
+      {/* Filters */}
+      <Card className="p-4">
+        <AssignmentFilters />
+      </Card>
+
       {/* Bulk Actions Bar */}
       {selectedIds.size > 0 && (
         <Card className="p-3 bg-primary/5 border-primary/20">
@@ -183,6 +202,18 @@ export default function AssignmentManagerPage() {
             </div>
             <div className="flex items-center gap-2">
               <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setManagingAssignmentId(null);
+                  setFindTalentAssignmentId(null);
+                  setBulkFindTalentIds(Array.from(selectedIds));
+                }}
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Find Talent
+              </Button>
+              <Button
                 variant="danger"
                 size="sm"
                 onClick={() => setIsBulkDeleteModalOpen(true)}
@@ -194,11 +225,6 @@ export default function AssignmentManagerPage() {
           </div>
         </Card>
       )}
-
-      {/* Filters */}
-      <Card className="p-4">
-        <AssignmentFilters />
-      </Card>
 
       {/* Tabs with Views */}
       <AssignmentManagerTabs
@@ -229,8 +255,12 @@ export default function AssignmentManagerPage() {
       {/* Find Talent Modal */}
       <FindTalentModal
         callTimeId={findTalentAssignmentId}
-        open={findTalentAssignmentId !== null}
-        onClose={() => setFindTalentAssignmentId(null)}
+        callTimeIds={bulkFindTalentIds}
+        open={findTalentAssignmentId !== null || bulkFindTalentIds.length > 0}
+        onClose={() => {
+          setFindTalentAssignmentId(null);
+          setBulkFindTalentIds([]);
+        }}
       />
 
       {/* Delete Assignment Modal */}
