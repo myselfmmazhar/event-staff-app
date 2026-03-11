@@ -50,6 +50,8 @@ import {
     User,
     AlertCircle,
     List,
+    ChevronDown,
+    Star,
 } from 'lucide-react';
 import { MessageType, MessageStatus, Contact } from '@prisma/client';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -78,7 +80,7 @@ export default function CommunicationManagerPage() {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // UI State
-    const activeTab = searchParams.get('tab') || 'email';
+    const activeTab = searchParams.get('tab') || 'contacts';
     const [selectedRecipient, setSelectedRecipient] = useState<string | null>(null);
     const [emailFolder, setEmailFolder] = useState<'SENT' | 'TRASH'>('SENT');
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -89,6 +91,7 @@ export default function CommunicationManagerPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [contactTypeFilter, setContactTypeFilter] = useState<'CLIENT' | 'STAFF' | 'ALL' | 'TEAM'>('CLIENT');
+    const [inboxContactType, setInboxContactType] = useState<'ALL' | 'STAFF' | 'CLIENT'>('ALL');
 
     // Compose State
     const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -130,14 +133,15 @@ export default function CommunicationManagerPage() {
     });
 
     const { data: conversations, isLoading: isConversationsLoading } = trpc.communication.getConversations.useQuery({
-        type: 'MESSAGE'
+        type: activeTab === 'email' ? 'EMAIL' : 'MESSAGE',
+        contactType: inboxContactType
     }, {
-        enabled: activeTab === 'messages'
+        enabled: activeTab === 'email' || activeTab === 'messages'
     });
 
-    const { data: chatHistory, isLoading: isChatLoading } = trpc.communication.getChatHistory.useQuery(
-        { recipient: selectedRecipient!, type: 'MESSAGE' },
-        { enabled: activeTab === 'messages' && !!selectedRecipient }
+    const { data: chatHistory, isLoading: isChatLoading, refetch: refetchChatHistory } = trpc.communication.getChatHistory.useQuery(
+        { recipient: selectedRecipient!, type: activeTab === 'email' ? 'EMAIL' : 'MESSAGE' },
+        { enabled: (activeTab === 'email' || activeTab === 'messages') && !!selectedRecipient }
     );
 
     const { data: smtpConfigs } = trpc.settings.listSmtpConfigs.useQuery();
@@ -435,11 +439,460 @@ export default function CommunicationManagerPage() {
     return (
         <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
             {/* Folder / Category Sidebar */}
+            {/* <div className="w-[200px] border-r bg-card hidden lg:flex flex-col shrink-0">
+                <div className="p-4 flex flex-col gap-4">
+                    <Button
+                        className="w-full gap-2 rounded-xl h-11 font-bold shadow-lg shadow-primary/20"
+                        onClick={() => { setComposeType('EMAIL'); setIsComposeOpen(true); }}
+                    >
+                        <Plus className="h-5 w-5" /> New
+                    </Button>
 
+                    <div className="space-y-6 mt-4">
+                        <div className="space-y-1">
+                            <h4 className="px-4 text-[10px] font-black tracking-widest uppercase text-slate-400 mb-2 flex items-center justify-between group cursor-pointer">
+                                Team Inbox <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </h4>
+                            <SidebarItem icon={List} label="Unread" active={false} />
+                            <SidebarItem icon={Clock} label="Recents" active={false} />
+                            <SidebarItem icon={Plus} label="Starred" active={false} />
+                            <SidebarItem icon={Send} label="All" active={activeTab === 'email'} onClick={() => router.push('?tab=email')} />
+                        </div>
 
-            {/* Main Content Area */}
+                        <div className="space-y-1">
+                            <h4 className="px-4 text-[10px] font-black tracking-widest uppercase text-slate-400 mb-2 flex items-center justify-between group cursor-pointer">
+                                My Inbox <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </h4>
+                            <SidebarItem icon={User} label="Assigned to me" active={false} />
+                            <SidebarItem icon={List} label="Unread" active={false} />
+                        </div>
+
+                        <div className="space-y-1">
+                            <h4 className="px-4 text-[10px] font-black tracking-widest uppercase text-slate-400 mb-2 flex items-center justify-between group cursor-pointer">
+                                Internal Chat <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </h4>
+                            <SidebarItem icon={MessageSquare} label="General" active={activeTab === 'messages'} onClick={() => router.push('?tab=messages')} />
+                            <SidebarItem icon={Users} label="Team" active={false} />
+                        </div>
+                    </div>
+                </div>
+            </div> */}
             <div className="flex-1 flex flex-col bg-muted/10 overflow-hidden">
-                {activeTab === 'contacts' ? (
+                <div className="h-14 bg-card border-b flex items-center px-6 shrink-0 z-20">
+                    <Tabs
+                        value={activeTab === 'email' || activeTab === 'messages' ? 'inbox' : activeTab}
+                        onValueChange={(val) => {
+                            if (val === 'inbox') {
+                                router.push('?tab=email');
+                            } else {
+                                router.push(`?tab=${val}`);
+                            }
+                        }}
+                    >
+                        <TabsList className="bg-transparent h-14 p-0 gap-8">
+                            <TabsTrigger
+                                value="contacts"
+                                className="h-14 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary shadow-none px-0 font-bold uppercase tracking-widest text-[11px] transition-all"
+                            >
+                                Contact
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="inbox"
+                                className="h-14 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary shadow-none px-0 font-bold uppercase tracking-widest text-[11px] transition-all"
+                            >
+                                Inbox
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+                {(activeTab === 'email' || activeTab === 'messages') ? (
+                    <div className="flex-1 flex overflow-hidden">
+                        {/* Conversation List Sidebar */}
+                        <div className="w-80 border-r bg-card flex flex-col shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
+                            <div className="p-4 border-b space-y-4">
+                                <div className="relative group">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+                                    <Input
+                                        placeholder="Search inbox..."
+                                        className="h-10 pl-10 bg-muted/30 border-none focus-visible:ring-1 transition-all"
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                    />
+                                </div>
+                                <Tabs value={inboxContactType} onValueChange={(v: any) => setInboxContactType(v)} className="w-full">
+                                    <TabsList className="w-full h-8 bg-muted/30 p-0.5 border-none">
+                                        <TabsTrigger value="ALL" className="flex-1 text-[10px] font-bold uppercase tracking-wider h-7">All</TabsTrigger>
+                                        <TabsTrigger value="CLIENT" className="flex-1 text-[10px] font-bold uppercase tracking-wider h-7">Clients</TabsTrigger>
+                                        <TabsTrigger value="STAFF" className="flex-1 text-[10px] font-bold uppercase tracking-wider h-7">Staff</TabsTrigger>
+                                    </TabsList>
+                                </Tabs>
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-4 w-4 rounded border border-muted-foreground/30 flex items-center justify-center">
+                                            <input type="checkbox" className="h-3 w-3 accent-primary" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                                            {conversations?.length || 0} Results
+                                        </span>
+                                    </div>
+                                    <button className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors">
+                                        Latest-All <ChevronDown className="h-3 w-3" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                {isConversationsLoading ? (
+                                    Array(8).fill(0).map((_, i) => (
+                                        <div key={i} className="p-4 border-b animate-pulse flex gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-muted shrink-0" />
+                                            <div className="flex-1 space-y-2">
+                                                <div className="h-4 bg-muted rounded w-1/2" />
+                                                <div className="h-3 bg-muted rounded w-3/4" />
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : conversations?.length === 0 ? (
+                                    <div className="p-10 text-center space-y-3 opacity-40">
+                                        <Mail className="h-12 w-12 mx-auto" />
+                                        <p className="text-xs font-bold uppercase tracking-widest">No conversations</p>
+                                    </div>
+                                ) : (
+                                    conversations?.map((conv: any) => (
+                                        <button
+                                            key={conv.id}
+                                            onClick={() => {
+                                                setSelectedRecipient(conv.recipient);
+                                                setContactActionTab('EMAIL');
+                                                setNewMessage('');
+                                            }}
+                                            className={`w-full p-4 border-b flex gap-3 text-left transition-all hover:bg-muted/30 group relative ${selectedRecipient === conv.recipient ? 'bg-primary/5' : ''}`}
+                                        >
+                                            <div className={`absolute left-0 top-0 bottom-0 w-1 bg-primary transition-all duration-300 ${selectedRecipient === conv.recipient ? 'opacity-100' : 'opacity-0'}`} />
+                                            <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold shadow-sm shrink-0 uppercase">
+                                                {getInitials(conv.recipient)}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="font-bold text-sm truncate tracking-tight">{conv.recipient}</span>
+                                                    <span className="text-[10px] font-bold text-muted-foreground/60">{formatDate(new Date(conv.createdAt))}</span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground line-clamp-1 group-hover:text-foreground/70 transition-colors leading-tight">
+                                                    {conv.subject || conv.content.substring(0, 50)}...
+                                                </p>
+                                            </div>
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Email Body - Refactored to match Contact Detail Body Style */}
+                        <div className="flex-1 flex overflow-hidden bg-white/40 backdrop-blur-sm">
+                            {selectedRecipient ? (
+                                <>
+                                    <div className="flex-1 flex flex-col border-r bg-muted/5 overflow-hidden">
+                                        {/* Action Bar - NOW ON TOP */}
+                                        <div className="bg-white border-b border-slate-200 z-10 flex flex-col shrink-0">
+                                            {/* Action Header Tabs */}
+                                            <div className="flex items-center justify-between px-4 h-12 border-b border-slate-100 shrink-0">
+                                                <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar">
+                                                    {['SMS', 'WHATSAPP', 'EMAIL'].map((tab) => (
+                                                        <button
+                                                            key={tab}
+                                                            onClick={() => setContactActionTab(prev => prev === tab ? null : tab as any)}
+                                                            className={`px-3 py-1.5 text-xs font-black uppercase tracking-widest transition-all relative ${contactActionTab === tab
+                                                                ? 'text-primary'
+                                                                : 'text-slate-400 hover:text-slate-600'
+                                                                }`}
+                                                        >
+                                                            {tab}
+                                                            {contactActionTab === tab && (
+                                                                <span className="absolute bottom-[-12px] left-0 right-0 h-[3px] bg-primary rounded-t-full shadow-[0_-4px_12px_rgba(var(--primary),0.3)]" />
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => setContactActionTab(prev => prev === 'COMMENT' ? null : 'COMMENT')}
+                                                        className={`text-xs font-bold uppercase tracking-widest transition-all ${contactActionTab === 'COMMENT' ? 'text-amber-600' : 'text-slate-400 hover:text-slate-600'
+                                                            }`}
+                                                    >
+                                                        Internal Comment
+                                                    </button>
+                                                    <button className="text-slate-300 hover:text-slate-500 transition-colors">
+                                                        <Maximize2 className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Chat Timeline Area */}
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar" ref={scrollRef}>
+                                            <div className="flex justify-center mb-2">
+                                                <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-widest px-3 py-0.5">Timeline Start</Badge>
+                                            </div>
+                                            <div className="space-y-6 relative">
+                                                <div className="absolute left-3 top-0 bottom-0 w-[1px] bg-border/40" />
+
+                                                {isChatLoading ? (
+                                                    <div className="flex items-center justify-center py-20">
+                                                        <Loader2 className="h-8 w-8 animate-spin text-primary opacity-20" />
+                                                    </div>
+                                                ) : chatHistory?.length === 0 ? (
+                                                    <div className="text-center py-20 opacity-40">
+                                                        <Mail className="h-12 w-12 mx-auto mb-4" />
+                                                        <p className="text-xs font-bold uppercase tracking-widest">No history found</p>
+                                                    </div>
+                                                ) : (
+                                                    [...(chatHistory || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((log: any) => (
+                                                        <div key={log.id} className="relative pl-10">
+                                                            <div className={`absolute left-1.5 top-0 w-3 h-3 rounded-full ring-4 ring-background ${log.type === 'EMAIL' ? 'bg-indigo-500' :
+                                                                log.type === 'WHATSAPP' ? 'bg-emerald-500' : 'bg-primary'
+                                                                }`} />
+                                                            <div className="bg-card p-3 rounded-xl border shadow-sm space-y-1.5 hover:shadow-md transition-shadow">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${log.type === 'EMAIL' ? 'text-indigo-600' :
+                                                                            log.type === 'WHATSAPP' ? 'text-emerald-600' : 'text-primary'
+                                                                            }`}>
+                                                                            {log.type} {log.subject ? `- ${log.subject}` : ''}
+                                                                        </span>
+                                                                        {log.status === 'FAILED' && (
+                                                                            <Badge variant="destructive" className="text-[8px] h-3 px-1 leading-none py-0">FAILED</Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="text-[9px] font-medium text-muted-foreground whitespace-nowrap">
+                                                                        {format(new Date(log.createdAt), 'MMM d, HH:mm aaa')}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-sm prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: log.content }} />
+                                                                {log.fileLinks && Array.isArray(log.fileLinks) && (log.fileLinks as any[]).length > 0 && (
+                                                                    <div className="flex flex-wrap gap-2 pt-1.5">
+                                                                        {(log.fileLinks as any[]).map((fl: any, idx: number) => (
+                                                                            <a
+                                                                                key={idx}
+                                                                                href={fl.url}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="flex items-center gap-1 bg-slate-50 border border-slate-200 hover:border-primary/40 hover:bg-primary/5 px-2 py-0.5 rounded transition-all group/att"
+                                                                            >
+                                                                                <Paperclip className="h-2.5 w-2.5 text-slate-400 group-hover/att:text-primary transition-colors" />
+                                                                                <span className="text-[10px] font-bold text-slate-600 group-hover/att:text-primary transition-colors truncate max-w-[120px]">
+                                                                                    {fl.name}
+                                                                                </span>
+                                                                            </a>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex items-center justify-between pt-1.5 border-t border-dashed overflow-hidden">
+                                                                    <span className="text-[10px] text-muted-foreground italic truncate">Sent by {log.sender?.name || 'System'}</span>
+                                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase shrink-0 px-1">{log.status}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Action Box Content Area - NOW ON BOTTOM */}
+                                        {contactActionTab && (
+                                            <div className="bg-white border-t border-slate-200 z-10 flex flex-col shrink-0">
+                                                <div className="p-4 flex-1 overflow-y-auto no-scrollbar max-h-[400px] bg-white">
+                                                    {contactActionTab === 'EMAIL' && (
+                                                        <div className="space-y-2 mb-2">
+                                                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pb-2 border-b border-slate-50 text-xs">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="font-bold text-slate-400 uppercase tracking-tighter">From Name:</span>
+                                                                    <Select value={contactActionEmailConfigId} onValueChange={setContactActionEmailConfigId}>
+                                                                        <SelectTrigger className="h-auto p-0 border-none shadow-none bg-transparent font-bold text-slate-700 focus:ring-0 text-xs">
+                                                                            <SelectValue placeholder="Select Name" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="rounded-xl shadow-xl border-slate-100">
+                                                                            <SelectItem value="default" className="text-xs font-bold leading-none italic text-muted-foreground">Default (System Settings)</SelectItem>
+                                                                            {smtpConfigs?.map((config: any) => (
+                                                                                <SelectItem key={config.id} value={config.id} className="text-xs font-bold leading-none">{config.name}</SelectItem>
+                                                                            ))}
+                                                                            {messagingConfigs?.filter((c: any) => c.provider === 'MAILGUN').map((config: any) => (
+                                                                                <SelectItem key={config.id} value={config.id} className="text-xs font-bold leading-none">{config.name}</SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="font-bold text-slate-400 uppercase tracking-tighter">From email:</span>
+                                                                    <span className="font-bold text-slate-700">{selectedSmtpConfig?.from || selectedSmtpConfig?.user || (selectedSmtpConfig?.provider === 'MAILGUN' ? `test@${selectedSmtpConfig.workspaceId}` : 'Select Provider')}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center justify-between py-1.5 border-b border-slate-50">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-bold text-slate-400 w-6">To:</span>
+                                                                    <div className="flex items-center gap-1.5 bg-slate-100/80 px-1.5 py-0.5 rounded-full border border-slate-200/50 hover:bg-slate-200/50 transition-colors cursor-pointer">
+                                                                        <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-white uppercase shadow-sm">
+                                                                            {getInitials(selectedRecipient)}
+                                                                        </div>
+                                                                        <span className="text-xs font-bold text-slate-700">{selectedRecipient}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-100">
+                                                                <span className="text-xs font-bold text-slate-400 w-6 shrink-0">Subject:</span>
+                                                                <Input
+                                                                    className="border-none shadow-none h-6 p-0 text-xs font-bold text-slate-700 focus-visible:ring-0 placeholder:text-slate-300"
+                                                                    placeholder="Subject line..."
+                                                                    value={contactActionSubject}
+                                                                    onChange={(e) => setContactActionSubject(e.target.value)}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="min-h-[100px] relative group">
+                                                        <Textarea
+                                                            placeholder="Type a message..."
+                                                            className="min-h-[100px] w-full border-none shadow-none resize-none px-0 text-sm font-medium text-slate-600 focus-visible:ring-0 placeholder:text-slate-300 placeholder:font-normal no-scrollbar"
+                                                            value={newMessage}
+                                                            onChange={(e) => setNewMessage(e.target.value)}
+                                                        />
+
+                                                        {/* Attachments Preview */}
+                                                        {attachments.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1.5 py-2 border-t border-slate-50 mt-1">
+                                                                {attachments.map((file, i) => (
+                                                                    <div key={i} className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md group/file hover:border-primary/30 transition-all">
+                                                                        <span className="text-[10px] font-bold text-slate-500 uppercase truncate max-w-[100px]">{file.name}</span>
+                                                                        <button onClick={() => removeAttachment(i)} className="text-slate-300 hover:text-destructive group-hover/file:text-slate-500 transition-colors">
+                                                                            <X className="h-2.5 w-2.5" />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Bottom Toolbar & Action Cluster */}
+                                                <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
+                                                    <div className="flex items-center gap-0.5">
+                                                        <input
+                                                            type="file"
+                                                            multiple
+                                                            hidden
+                                                            ref={fileInputRef}
+                                                            onChange={handleFileChange}
+                                                        />
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <Type className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all"
+                                                        >
+                                                            <Paperclip className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <Link className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <ImageIcon className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <Code className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <div className="h-3 w-[1px] bg-slate-200 mx-0.5" />
+                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-md text-slate-400 hover:text-primary hover:bg-white transition-all">
+                                                            <MoreHorizontal className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">{newMessage.trim().split(/\s+/).filter(Boolean).length} words</span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => { setNewMessage(''); setAttachments([]); }}
+                                                            className="text-xs font-bold uppercase text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 rounded-lg h-8 transition-all"
+                                                        >
+                                                            Clear
+                                                        </Button>
+                                                        <div className="flex items-center">
+                                                            <Button
+                                                                disabled={isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || (!newMessage.trim() && attachments.length === 0)}
+                                                                onClick={() => {
+                                                                    if (contactActionTab === 'EMAIL') {
+                                                                        sendEmailMutation.mutate({
+                                                                            to: selectedRecipient!,
+                                                                            subject: contactActionSubject || `Message for ${selectedRecipient}`,
+                                                                            content: newMessage,
+                                                                            configId: contactActionEmailConfigId === 'default' ? undefined : contactActionEmailConfigId,
+                                                                        });
+                                                                    } else {
+                                                                        sendMessageMutation.mutate({
+                                                                            to: selectedRecipient!,
+                                                                            content: newMessage,
+                                                                            type: contactActionTab as 'SMS' | 'WHATSAPP',
+                                                                        });
+                                                                    }
+                                                                    setNewMessage('');
+                                                                    setContactActionSubject('');
+                                                                }}
+                                                                className="h-10 px-6 text-xs font-bold uppercase tracking-widest shadow-lg shadow-primary/20 rounded-l-xl rounded-r-none gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] bg-primary hover:bg-primary/95"
+                                                            >
+                                                                {(isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                                                {isUploadingAttachments ? 'Uploading...' : 'Send'}
+                                                            </Button>
+                                                            <div className="h-10 w-[1px] bg-white/20" />
+                                                            <Button
+                                                                className="h-10 w-10 p-0 rounded-r-xl rounded-l-none border-l border-white/10 transition-all hover:bg-primary/90"
+                                                                variant="default"
+                                                                onClick={() => refetchChatHistory()}
+                                                            >
+                                                                <History className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Right Sidebar: Activity */}
+                                    <div className="w-[160px] bg-card overflow-y-auto hidden xl:block border-l shrink-0">
+                                        <div className="p-3 border-b bg-muted/5">
+                                            <h4 className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground/80">Activity</h4>
+                                        </div>
+                                        <div className="p-3 space-y-4">
+                                            <div className="flex gap-2">
+                                                <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                                                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold leading-tight">Account Verified</p>
+                                                    <p className="text-[9px] text-muted-foreground mt-0.5 leading-relaxed">Admin verification</p>
+                                                    <span className="text-[8px] font-medium text-muted-foreground/40 block mt-0.5 uppercase tracking-tighter">2 hours ago</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-40">
+                                    <div className="h-24 w-24 rounded-full bg-slate-100 flex items-center justify-center mb-6">
+                                        <Mail className="h-10 w-10 text-slate-300" />
+                                    </div>
+                                    <h3 className="text-lg font-black uppercase tracking-widest text-slate-400">Select a conversation</h3>
+                                    <p className="text-xs font-bold text-slate-300 max-w-[200px] mt-2">Choose a recipient from the sidebar to view thread history and transmit messages.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : activeTab === 'contacts' ? (
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {isDetailView && selectedContact ? (
                             <div className="flex-1 flex flex-col overflow-hidden">
@@ -596,7 +1049,7 @@ export default function CommunicationManagerPage() {
                                                 <div className="absolute left-3 top-0 bottom-0 w-[1px] bg-border/40" />
 
                                                 {/* Actual Logs */}
-                                                {[...(contactLogs?.logs || [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((log: any) => (
+                                                {[...(contactLogs?.logs || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((log: any) => (
                                                     <div key={log.id} className="relative pl-10">
                                                         <div className={`absolute left-1.5 top-0 w-3 h-3 rounded-full ring-4 ring-background ${log.type === 'EMAIL' ? 'bg-indigo-500' :
                                                             log.type === 'WHATSAPP' ? 'bg-emerald-500' : 'bg-primary'
@@ -618,7 +1071,7 @@ export default function CommunicationManagerPage() {
                                                                 </span>
                                                             </div>
                                                             <div className="text-sm prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: log.content }} />
-                                                            {log.fileLinks && Array.isArray(log.fileLinks) && log.fileLinks.length > 0 && (
+                                                            {log.fileLinks && Array.isArray(log.fileLinks) && (log.fileLinks as any[]).length > 0 && (
                                                                 <div className="flex flex-wrap gap-2 pt-1.5">
                                                                     {(log.fileLinks as any[]).map((fl: any, idx: number) => (
                                                                         <a
@@ -953,448 +1406,13 @@ export default function CommunicationManagerPage() {
                             </div>
                         )}
                     </div>
-                ) : activeTab === 'email' ? (
-                    <div className="flex-1 flex flex-col overflow-hidden">
-                        {/* Email Header */}
-                        <div className="h-16 bg-card border-b flex items-center px-6 justify-between shrink-0 shadow-sm z-10 relative overflow-hidden">
-                            {selectedLogs.length > 0 ? (
-                                <div className="absolute inset-0 bg-card flex items-center px-6 justify-between animate-in slide-in-from-top duration-200 z-20">
-                                    <div className="flex items-center gap-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-5 w-5 rounded border border-primary bg-primary/10 flex items-center justify-center">
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-3.5 w-3.5 rounded-sm border-primary text-primary focus:ring-primary cursor-pointer"
-                                                    checked={selectedLogs.length > 0}
-                                                    onChange={() => setSelectedLogs([])}
-                                                />
-                                            </div>
-                                            <span className="font-bold text-primary text-sm tracking-tight">{selectedLogs.length} selected</span>
-                                        </div>
-                                        <div className="h-6 w-[1px] bg-border" />
-                                        <div className="flex items-center gap-1">
-                                            {emailFolder === 'TRASH' ? (
-                                                <>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-9 px-4 text-primary hover:bg-primary/5 gap-2 font-bold transition-all rounded-full"
-                                                        onClick={() => { restoreLogsMutation.mutate({ ids: selectedLogs }); setSelectedLogs([]); }}
-                                                    >
-                                                        <RotateCcw className="h-4 w-4" />
-                                                        Restore
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-9 px-4 text-destructive hover:bg-destructive/5 gap-2 font-bold transition-all rounded-full"
-                                                        onClick={() => { deleteLogsPermanentlyMutation.mutate({ ids: selectedLogs }); setSelectedLogs([]); }}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                        Delete forever
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-9 px-4 text-destructive hover:bg-destructive/5 gap-2 font-bold transition-all rounded-full"
-                                                    onClick={() => { trashLogsMutation.mutate({ ids: selectedLogs }); setSelectedLogs([]); }}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                    Move to trash
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-9 px-4 text-muted-foreground hover:bg-muted font-bold transition-all rounded-full"
-                                        onClick={() => setSelectedLogs([])}
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${emailFolder === 'SENT' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
-                                            {emailFolder === 'SENT' ? <SendHorizontal className="h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-lg leading-tight">
-                                                {emailFolder === 'SENT' ? 'Sent Items' : 'Trash'}
-                                            </h3>
-                                            <p className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">
-                                                {logsData?.total || 0} communications logged
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="relative group">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
-                                            <Input
-                                                placeholder="Search by recipient or subject..."
-                                                className="h-10 pl-10 w-64 md:w-80 bg-muted/30 border-none focus-visible:ring-1 transition-all"
-                                                value={search}
-                                                onChange={e => setSearch(e.target.value)}
-                                            />
-                                        </div>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-10 w-10 bg-muted/40 border-none hover:bg-muted"
-                                            onClick={() => refetchLogs()}
-                                        >
-                                            <RefreshCw className={`h-4 w-4 text-muted-foreground ${isLogsLoading ? 'animate-spin' : ''}`} />
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Email List View */}
-                        <div className="flex-1 overflow-auto bg-card custom-scrollbar">
-                            {emailFolder === 'TRASH' && logsData?.logs.length! > 0 && selectedLogs.length === 0 && (
-                                <div className="bg-muted/30 px-6 py-3 border-b flex items-center justify-center gap-2 text-sm">
-                                    <span className="text-muted-foreground">Messages in Trash will be automatically deleted after 30 days.</span>
-                                    <button
-                                        className="text-primary font-bold hover:underline"
-                                        onClick={() => {
-                                            const allIds = logsData?.logs.map((l: any) => l.id) || [];
-                                            if (allIds.length > 0) {
-                                                deleteLogsPermanentlyMutation.mutate({ ids: allIds });
-                                            }
-                                        }}
-                                    >
-                                        Empty Trash now
-                                    </button>
-                                </div>
-                            )}
-                            <Table>
-                                <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
-                                    <TableRow className="hover:bg-transparent border-b-2">
-                                        <TableHead className="w-12 px-6">
-                                            <input
-                                                type="checkbox"
-                                                className="h-4 w-4 rounded-sm border-muted-foreground/30 text-primary focus:ring-primary"
-                                                checked={logsData?.logs.length > 0 && selectedLogs.length === logsData?.logs.length}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedLogs(logsData?.logs.map((l: any) => l.id) || []);
-                                                    } else {
-                                                        setSelectedLogs([]);
-                                                    }
-                                                }}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[240px] font-bold">Recipient</TableHead>
-                                        <TableHead className="font-bold">Subject & Content Preview</TableHead>
-                                        <TableHead className="w-[120px] font-bold">Status</TableHead>
-                                        <TableHead className="text-right w-[150px] font-bold pr-6">Timestamp</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {isLogsLoading ? (
-                                        Array(12).fill(0).map((_, i) => (
-                                            <TableRow key={i}>
-                                                <TableCell colSpan={5} className="h-16 p-4">
-                                                    <div className="h-8 bg-muted/40 animate-pulse rounded-md w-full" />
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : logsData?.logs.filter((l: any) => l.type === 'EMAIL').length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="h-96 text-center">
-                                                <div className="flex flex-col items-center gap-4 py-20">
-                                                    <div className="bg-muted/30 p-6 rounded-full">
-                                                        <Mail className="h-16 w-16 text-muted-foreground/20" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xl font-bold">Your mailbox is empty</p>
-                                                        <p className="text-muted-foreground mt-1">No email logs match your current filters.</p>
-                                                    </div>
-                                                    <Button variant="outline" className="mt-2" onClick={() => { setSearch(''); setEmailFolder('SENT'); }}>Clear Filters</Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        [...(logsData?.logs || [])]
-                                            .filter((l: any) => l.type === 'EMAIL')
-                                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                            .map((log: any) => (
-                                                <TableRow key={log.id} className="cursor-pointer group hover:bg-muted/20 transition-colors border-b last:border-0 h-16">
-                                                    <TableCell className="pl-6 w-14">
-                                                        <div className="relative h-8 w-14 group-hover:w-24 transition-all duration-200">
-                                                            {/* Checkbox / Default Icon Container */}
-                                                            <div className="absolute inset-0 flex items-center gap-3 transition-opacity duration-200">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className={`h-4 w-4 rounded-sm border-muted-foreground/30 text-primary focus:ring-primary transition-opacity ${selectedLogs.includes(log.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                                                                    checked={selectedLogs.includes(log.id)}
-                                                                    onChange={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (e.target.checked) {
-                                                                            setSelectedLogs([...selectedLogs, log.id]);
-                                                                        } else {
-                                                                            setSelectedLogs(selectedLogs.filter(id => id !== log.id));
-                                                                        }
-                                                                    }}
-                                                                />
-                                                                <div className={`transition-opacity duration-200 ${selectedLogs.includes(log.id) ? 'opacity-0' : 'opacity-100 group-hover:opacity-0'}`}>
-                                                                    <Mail className="h-4 w-4 text-muted-foreground/60" />
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Hover Actions - Sidebar Style */}
-                                                            <div className="absolute left-10 flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1">
-                                                                {emailFolder === 'TRASH' ? (
-                                                                    <>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            className="h-8 w-8 text-primary hover:bg-primary/20 rounded-full"
-                                                                            title="Restore"
-                                                                            onClick={(e) => { e.stopPropagation(); restoreLogsMutation.mutate({ ids: [log.id] }); }}
-                                                                        >
-                                                                            <RotateCcw className="h-4 w-4" />
-                                                                        </Button>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full"
-                                                                            title="Delete Permanently"
-                                                                            onClick={(e) => { e.stopPropagation(); deleteLogsPermanentlyMutation.mutate({ ids: [log.id] }); }}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </>
-                                                                ) : (
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
-                                                                        title="Move to Trash"
-                                                                        onClick={(e) => { e.stopPropagation(); trashLogsMutation.mutate({ ids: [log.id] }); }}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="font-semibold text-sm">{log.recipient}</TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-sm tracking-tight text-foreground/90 truncate max-w-xl group-hover:text-primary transition-colors">{log.subject}</span>
-                                                            <span className="text-[11px] text-muted-foreground/70 truncate block max-w-xl italic mt-0.5">
-                                                                {log.content.replace(/<[^>]*>?/gm, '').substring(0, 100)}...
-                                                            </span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {log.status === 'SENT' ? (
-                                                            <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-none shadow-none font-bold px-2 py-0.5">SENT</Badge>
-                                                        ) : (
-                                                            <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-none shadow-none font-bold px-2 py-0.5">ERROR</Badge>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right text-xs text-muted-foreground font-bold pr-6">
-                                                        <div className="flex flex-col items-end">
-                                                            <span>{format(new Date(log.createdAt), 'MMM d, yyyy')}</span>
-                                                            <span className="text-[10px] opacity-60 font-normal">{format(new Date(log.createdAt), 'HH:mm a')}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
                 ) : (
-                    // Messaging / WhatsApp Styled View
-                    <div className="flex-1 flex flex-col overflow-hidden bg-[#E2E8F0]/40 dark:bg-black/20">
-                        {selectedRecipient ? (
-                            <>
-                                {/* Chat Header */}
-                                <div className="h-16 bg-card border-b flex items-center px-6 justify-between shrink-0 shadow-sm z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-11 w-11 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-background ring-offset-1">
-                                            {getInitials(selectedRecipient)}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-base tracking-tight leading-none">{selectedRecipient}</h3>
-                                            <div className="flex items-center gap-1.5 mt-1.5">
-                                                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">WhatsApp Cloud API</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 text-muted-foreground hover:bg-muted/80 rounded-full transition-all duration-200">
-                                            <Search className="h-5 w-5" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 text-muted-foreground hover:bg-muted/80 rounded-full transition-all duration-200">
-                                            <Settings className="h-5 w-5" />
-                                        </Button>
-                                        <Separator orientation="vertical" className="h-8 mx-1" />
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 text-muted-foreground hover:bg-muted/80 rounded-full transition-all duration-200">
-                                            <MoreVertical className="h-5 w-5" />
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* Chat Messages Area */}
-                                <div
-                                    ref={scrollRef}
-                                    className="flex-1 overflow-y-auto p-6 space-y-3 bg-[url('https://herobot.app/wp-content/uploads/2022/11/whatsapp-background-dark.jpg')] bg-fixed bg-center opacity-90 custom-scrollbar"
-                                >
-                                    <div className="flex justify-center mb-6">
-                                        <div className="bg-card/40 backdrop-blur-md px-4 py-1.5 rounded-full border border-border/40 font-bold text-[10px] text-muted-foreground uppercase tracking-widest shadow-sm">
-                                            Today
-                                        </div>
-                                    </div>
-
-                                    {isChatLoading ? (
-                                        <div className="flex flex-col items-center justify-center h-full gap-3">
-                                            <div className="bg-card p-4 rounded-full shadow-xl">
-                                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                            </div>
-                                            <span className="text-xs font-bold text-primary animate-pulse tracking-widest uppercase">Deciphering...</span>
-                                        </div>
-                                    ) : chatHistory?.length === 0 ? (
-                                        <div className="text-center py-24 bg-card/10 backdrop-blur-sm rounded-3xl m-10 border border-dashed border-primary/20">
-                                            <div className="bg-primary/5 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <MessageSquare className="h-8 w-8 text-primary/30" />
-                                            </div>
-                                            <h4 className="font-bold text-lg mb-1">Encrypted Connection Established</h4>
-                                            <p className="text-sm text-muted-foreground max-w-xs mx-auto">This conversation is protected. Start typing below to send a message via Bird.</p>
-                                        </div>
-                                    ) : (
-                                        [...(chatHistory || [])]
-                                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                            .map((msg: any, idx: number) => (
-                                                <div
-                                                    key={msg.id}
-                                                    className={`flex ${msg.status === 'SENT' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}
-                                                    style={{ animationDelay: `${idx * 50}ms` }}
-                                                >
-                                                    <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 shadow-md relative group transition-all hover:shadow-lg ${msg.status === 'SENT'
-                                                        ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                        : 'bg-card text-card-foreground rounded-tl-none border border-border/50'
-                                                        }`}>
-                                                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                                                        <div className={`flex items-center justify-end gap-1.5 mt-2 ${msg.status === 'SENT' ? 'text-primary-foreground/60' : 'text-muted-foreground/60'
-                                                            }`}>
-                                                            <span className="text-[9px] font-bold uppercase tracking-tighter">
-                                                                {format(new Date(msg.createdAt), 'HH:mm aaa')}
-                                                            </span>
-                                                            {msg.status === 'SENT' && (
-                                                                <div className="flex">
-                                                                    <Check className="h-3 w-3 text-white/80" />
-                                                                    <Check className="h-3 w-3 -ml-1.5 text-white/50" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Tooltip for Msg Details (concept) */}
-                                                        <div className="absolute top-0 right-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[8px] text-white px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap">
-                                                            Delivered by Bird
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                    )}
-                                </div>
-
-                                {/* Chat Input Box */}
-                                <div className="p-6 bg-card/40 backdrop-blur-xl border-t flex items-end gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-10 transition-all focus-within:bg-card/60">
-                                    <div className="flex gap-2 shrink-0 mb-1">
-                                        <Button variant="ghost" size="sm" className="h-11 w-11 text-muted-foreground rounded-2xl hover:bg-primary/5 hover:text-primary transition-all">
-                                            <Smile className="h-6 w-6" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="h-11 w-11 text-muted-foreground rounded-2xl hover:bg-primary/5 hover:text-primary transition-all">
-                                            <Paperclip className="h-5 w-5" />
-                                        </Button>
-                                    </div>
-                                    <div className="flex-1 relative">
-                                        <Textarea
-                                            placeholder="Write your message..."
-                                            className="min-h-[48px] max-h-48 py-3.5 pr-4 pl-5 border-none bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary/10 rounded-[24px] text-[15px] font-medium resize-none overflow-hidden transition-all duration-300 shadow-inner"
-                                            value={newMessage}
-                                            onChange={e => {
-                                                setNewMessage(e.target.value);
-                                                e.target.style.height = 'auto';
-                                                e.target.style.height = e.target.scrollHeight + 'px';
-                                            }}
-                                            rows={1}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) {
-                                                    e.preventDefault();
-                                                    handleSendMessage();
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                    <Button
-                                        size="sm"
-                                        className={`rounded-2xl shadow-xl h-12 w-12 shrink-0 transition-all duration-500 ${newMessage.trim()
-                                            ? 'scale-105 bg-primary shadow-primary/20 hover:scale-110'
-                                            : 'bg-muted text-muted-foreground scale-95 opacity-50'
-                                            }`}
-                                        onClick={handleSendMessage}
-                                        disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                                    >
-                                        {sendMessageMutation.isPending ? (
-                                            <Loader2 className="h-5 w-5 animate-spin" />
-                                        ) : (
-                                            <SendHorizontal className="h-6 w-6" />
-                                        )}
-                                    </Button>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-card/30 backdrop-blur-sm m-4 rounded-[40px] border-4 border-white dark:border-white/5 shadow-2xl overflow-hidden relative group">
-                                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 group-hover:bg-primary/10 transition-all duration-1000" />
-
-                                <div className="h-32 w-32 rounded-3xl bg-card border-2 border-primary/10 flex items-center justify-center mb-8 shadow-2xl rotate-3 group-hover:rotate-0 transition-transform duration-500 relative z-10">
-                                    <div className="absolute -top-4 -right-4 h-12 w-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg animate-bounce">
-                                        <MessageSquare className="h-6 w-6" />
-                                    </div>
-                                    <Mail className="h-16 w-16 text-primary/20" />
-                                </div>
-
-                                <div className="relative z-10">
-                                    <h3 className="text-3xl font-black mb-3 tracking-tight">Your Omni-Channel Dashboard</h3>
-                                    <p className="text-muted-foreground max-w-sm mb-10 leading-relaxed text-sm">
-                                        Experience the future of client communication. Connect via WhatsApp Cloud or SMTP with a single, elegant interface.
-                                    </p>
-
-                                    <div className="flex flex-col gap-4 w-full max-w-xs mx-auto">
-                                        <Button
-                                            className="h-14 rounded-2xl gap-3 font-bold text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all"
-                                            onClick={() => { setComposeType('MESSAGE'); setIsComposeOpen(true); }}
-                                        >
-                                            <Plus className="h-5 w-5" /> Start New Conversation
-                                        </Button>
-                                        <div className="flex items-center gap-4 py-2">
-                                            <Separator className="flex-1" />
-                                            <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/50">or</span>
-                                            <Separator className="flex-1" />
-                                        </div>
-                                        <Button
-                                            variant="outline"
-                                            className="h-12 rounded-2xl gap-2 font-semibold hover:bg-primary/5 border-primary/20"
-                                            onClick={() => router.push('/settings/communication')}
-                                        >
-                                            <Settings className="h-4 w-4" /> Go to Configs
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                    <div className="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-40">
+                        <div className="h-24 w-24 rounded-full bg-slate-100 flex items-center justify-center mb-6">
+                            <Mail className="h-10 w-10 text-slate-300" />
+                        </div>
+                        <h3 className="text-lg font-black uppercase tracking-widest text-slate-400">Invalid Selection</h3>
+                        <p className="text-xs font-bold text-slate-300 max-w-[200px] mt-2">Please select a valid folder or contact from the menu.</p>
                     </div>
                 )}
             </div>
