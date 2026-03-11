@@ -88,7 +88,8 @@ export function OpenAssignmentsView() {
   // Fetch available staff for selected assignment
   const { data: staffData, isLoading: isLoadingStaff } = trpc.callTime.searchStaff.useQuery(
     {
-      callTimeIds: [selectedAssignmentId || ''],
+      callTimeIds: selectedAssignmentId ? [selectedAssignmentId] : [],
+      callTimeId: selectedAssignmentId || '',
       includeAlreadyInvited,
     },
     {

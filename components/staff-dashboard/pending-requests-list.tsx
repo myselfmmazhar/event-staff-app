@@ -100,8 +100,9 @@ export function PendingRequestsList({
   const handleConfirmAction = () => {
     if (!pendingAction) return;
 
-    if (pendingAction.ids.length === 1) {
-      onRespond(pendingAction.ids[0], pendingAction.accept);
+    const firstId = pendingAction.ids[0];
+    if (pendingAction.ids.length === 1 && firstId) {
+      onRespond(firstId, pendingAction.accept);
     } else {
       onBatchRespond?.(pendingAction.ids, pendingAction.accept);
       setSelectedIds(new Set());
