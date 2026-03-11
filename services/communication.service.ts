@@ -89,9 +89,25 @@ export class CommunicationService {
     /**
      * Get distinct conversation recipients (for Messaging list)
      */
-    async getConversations(type: MessageType) {
+    async getConversations(type: MessageType, contactType?: 'STAFF' | 'CLIENT' | 'ALL') {
+        const where: any = { type, isTrashed: false };
+
+        if (contactType === 'STAFF') {
+            const staff = await this.prisma.staff.findMany({
+                select: { email: true, phone: true }
+            });
+            const staffIdentifiers = [...staff.map(s => s.email), ...staff.map(s => s.phone)].filter(Boolean);
+            where.recipient = { in: staffIdentifiers };
+        } else if (contactType === 'CLIENT') {
+            const clients = await this.prisma.client.findMany({
+                select: { email: true, cellPhone: true }
+            });
+            const clientIdentifiers = [...clients.map(c => c.email), ...clients.map(c => c.cellPhone)].filter(Boolean);
+            where.recipient = { in: clientIdentifiers };
+        }
+
         return await (this.prisma as any).communicationLog.findMany({
-            where: { type, isTrashed: false },
+            where,
             orderBy: { createdAt: 'desc' },
             distinct: ['recipient'],
             include: {

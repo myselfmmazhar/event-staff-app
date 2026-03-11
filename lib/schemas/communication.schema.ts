@@ -10,4 +10,10 @@ export const queryCommunicationLogsSchema = z.object({
     showTrashed: z.boolean().default(false).optional(),
 });
 
+export const getConversationsSchema = z.object({
+    type: z.nativeEnum(MessageType),
+    contactType: z.enum(['STAFF', 'CLIENT', 'ALL']).default('ALL').optional(),
+});
+
 export type QueryCommunicationLogsInput = z.infer<typeof queryCommunicationLogsSchema>;
+export type GetConversationsInput = z.infer<typeof getConversationsSchema>;
