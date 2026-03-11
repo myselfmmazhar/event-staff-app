@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../trpc";
 import { CommunicationService } from "@/services/communication.service";
-import { queryCommunicationLogsSchema } from "@/lib/schemas/communication.schema";
+import { queryCommunicationLogsSchema, getConversationsSchema } from "@/lib/schemas/communication.schema";
 import { sendEmail } from "@/lib/utils/email";
 import { sendMessage } from "@/lib/utils/messaging";
 
@@ -221,12 +221,10 @@ export const communicationRouter = router({
      * Get distinct conversation recipients (for Messaging list)
      */
     getConversations: adminProcedure
-        .input(z.object({
-            type: z.enum(['EMAIL', 'SMS', 'MESSAGE'])
-        }))
+        .input(getConversationsSchema)
         .query(async ({ ctx, input }) => {
             const communicationService = new CommunicationService(ctx.prisma);
-            return await communicationService.getConversations(input.type);
+            return await communicationService.getConversations(input.type, input.contactType);
         }),
 
     /**
