@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -186,12 +187,12 @@ export default function LoginPage() {
                   </span>
                 </label>
 
-                <button
-                  type="button"
+                <Link
+                  href="/forgot-password"
                   className="text-sm text-primary hover:text-primary/80 font-medium"
                 >
                   Forgot password?
-                </button>
+                </Link>
               </div>
 
               {/* Submit Button */}

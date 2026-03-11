@@ -136,6 +136,34 @@ export class EmailService {
   }
 
   /**
+   * Send password reset email
+   */
+  async sendPasswordResetEmail(
+    email: string,
+    resetUrl: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const subject = 'Reset your password';
+      const html = `
+        <div style="font-family: sans-serif; max-w-md; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Password Reset Request</h2>
+          <p>Hi there,</p>
+          <p>We received a request to reset your password. Click the button below to set a new password:</p>
+          <div style="margin: 30px 0;">
+            <a href="${resetUrl}" style="background-color: #0F172A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">Reset Password</a>
+          </div>
+          <p style="color: #666; font-size: 14px;">If you didn't request this, you can safely ignore this email. Your password will remain unchanged.</p>
+        </div>
+      `;
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      return { success: false, error: 'Failed to send password reset email' };
+    }
+  }
+
+  /**
    * Send staff invitation email
    */
   async sendStaffInvitation(
