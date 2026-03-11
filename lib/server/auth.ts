@@ -12,6 +12,12 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 128,
     // Using Better Auth's default scrypt hashing (more secure than bcrypt)
+    sendResetPassword: async ({ user, url }) => {
+      const { emailService } = await import('@/services/email.service');
+      // Format the url to be relative to the app base, or just use it if it's correct
+      // Better-auth returns full URL e.g. http://localhost:3000/reset-password?token=...
+      await emailService.sendPasswordResetEmail(user.email, url);
+    },
   },
   databaseHooks: {
     session: {

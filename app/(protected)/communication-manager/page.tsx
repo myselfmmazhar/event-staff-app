@@ -91,7 +91,7 @@ export default function CommunicationManagerPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [contactTypeFilter, setContactTypeFilter] = useState<'CLIENT' | 'STAFF' | 'ALL' | 'TEAM'>('CLIENT');
-    const [inboxContactType, setInboxContactType] = useState<'ALL' | 'STAFF' | 'CLIENT'>('ALL');
+    const [inboxContactType, setInboxContactType] = useState<'ALL' | 'STAFF' | 'CLIENT' | 'CLIENT'>('ALL');
 
     // Compose State
     const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -116,6 +116,17 @@ export default function CommunicationManagerPage() {
     const [contactActionSubject, setContactActionSubject] = useState('');
     const [newMessage, setNewMessage] = useState('');
     const [selectedLogs, setSelectedLogs] = useState<string[]>([]);
+    const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+
+    const toggleLog = (id: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setExpandedLogs(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     // Contact Modal State
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -523,7 +534,8 @@ export default function CommunicationManagerPage() {
                                     <TabsList className="w-full h-8 bg-muted/30 p-0.5 border-none">
                                         <TabsTrigger value="ALL" className="flex-1 text-[10px] font-bold uppercase tracking-wider h-7">All</TabsTrigger>
                                         <TabsTrigger value="CLIENT" className="flex-1 text-[10px] font-bold uppercase tracking-wider h-7">Clients</TabsTrigger>
-                                        <TabsTrigger value="STAFF" className="flex-1 text-[10px] font-bold uppercase tracking-wider h-7">Staff</TabsTrigger>
+                                        <TabsTrigger value="STAFF" className="flex-1 text-[10px] font-bold uppercase tracking-wider h-7">Talent</TabsTrigger>
+                                        <TabsTrigger value="TEAM" className="flex-1 text-[10px] font-bold uppercase tracking-wider h-7">Staff</TabsTrigger>
                                     </TabsList>
                                 </Tabs>
                                 <div className="flex items-center justify-between px-1">
@@ -646,12 +658,17 @@ export default function CommunicationManagerPage() {
                                                         <p className="text-xs font-bold uppercase tracking-widest">No history found</p>
                                                     </div>
                                                 ) : (
-                                                    [...(chatHistory || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((log: any) => (
+                                                    [...(chatHistory || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((log: any) => {
+                                                        const isExpanded = expandedLogs.has(log.id);
+                                                        return (
                                                         <div key={log.id} className="relative pl-10">
                                                             <div className={`absolute left-1.5 top-0 w-3 h-3 rounded-full ring-4 ring-background ${log.type === 'EMAIL' ? 'bg-indigo-500' :
                                                                 log.type === 'WHATSAPP' ? 'bg-emerald-500' : 'bg-primary'
                                                                 }`} />
-                                                            <div className="bg-card p-3 rounded-xl border shadow-sm space-y-1.5 hover:shadow-md transition-shadow">
+                                                            <div 
+                                                                className="bg-card p-3 rounded-xl border shadow-sm space-y-1.5 hover:shadow-md transition-shadow cursor-pointer"
+                                                                onClick={(e) => toggleLog(log.id, e)}
+                                                            >
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex items-center gap-2">
                                                                         <span className={`text-[10px] font-bold uppercase tracking-widest ${log.type === 'EMAIL' ? 'text-indigo-600' :
@@ -663,27 +680,39 @@ export default function CommunicationManagerPage() {
                                                                             <Badge variant="destructive" className="text-[8px] h-3 px-1 leading-none py-0">FAILED</Badge>
                                                                         )}
                                                                     </div>
-                                                                    <span className="text-[9px] font-medium text-muted-foreground whitespace-nowrap">
-                                                                        {format(new Date(log.createdAt), 'MMM d, HH:mm aaa')}
-                                                                    </span>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className="text-[9px] font-medium text-muted-foreground whitespace-nowrap">
+                                                                            {format(new Date(log.createdAt), 'MMM d, HH:mm aaa')}
+                                                                        </span>
+                                                                        <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                                                    </div>
                                                                 </div>
-                                                                <div className="text-sm prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: log.content }} />
-                                                                {log.fileLinks && Array.isArray(log.fileLinks) && (log.fileLinks as any[]).length > 0 && (
-                                                                    <div className="flex flex-wrap gap-2 pt-1.5">
-                                                                        {(log.fileLinks as any[]).map((fl: any, idx: number) => (
-                                                                            <a
-                                                                                key={idx}
-                                                                                href={fl.url}
-                                                                                target="_blank"
-                                                                                rel="noopener noreferrer"
-                                                                                className="flex items-center gap-1 bg-slate-50 border border-slate-200 hover:border-primary/40 hover:bg-primary/5 px-2 py-0.5 rounded transition-all group/att"
-                                                                            >
-                                                                                <Paperclip className="h-2.5 w-2.5 text-slate-400 group-hover/att:text-primary transition-colors" />
-                                                                                <span className="text-[10px] font-bold text-slate-600 group-hover/att:text-primary transition-colors truncate max-w-[120px]">
-                                                                                    {fl.name}
-                                                                                </span>
-                                                                            </a>
-                                                                        ))}
+                                                                {isExpanded ? (
+                                                                    <>
+                                                                        <div className="text-sm prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: log.content }} />
+                                                                        {log.fileLinks && Array.isArray(log.fileLinks) && (log.fileLinks as any[]).length > 0 && (
+                                                                            <div className="flex flex-wrap gap-2 pt-1.5">
+                                                                                {(log.fileLinks as any[]).map((fl: any, idx: number) => (
+                                                                                    <a
+                                                                                        key={idx}
+                                                                                        href={fl.url}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                        className="flex items-center gap-1 bg-slate-50 border border-slate-200 hover:border-primary/40 hover:bg-primary/5 px-2 py-0.5 rounded transition-all group/att"
+                                                                                        onClick={(e) => e.stopPropagation()}
+                                                                                    >
+                                                                                        <Paperclip className="h-2.5 w-2.5 text-slate-400 group-hover/att:text-primary transition-colors" />
+                                                                                        <span className="text-[10px] font-bold text-slate-600 group-hover/att:text-primary transition-colors truncate max-w-[120px]">
+                                                                                            {fl.name}
+                                                                                        </span>
+                                                                                    </a>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                ) : (
+                                                                    <div className="text-xs text-muted-foreground line-clamp-1">
+                                                                        {log.content.replace(new RegExp('<[^>]*>?', 'gm'), ' ')}
                                                                     </div>
                                                                 )}
                                                                 <div className="flex items-center justify-between pt-1.5 border-t border-dashed overflow-hidden">
@@ -692,7 +721,8 @@ export default function CommunicationManagerPage() {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    ))
+                                                    ); })
+
                                                 )}
                                             </div>
                                         </div>
@@ -1049,12 +1079,17 @@ export default function CommunicationManagerPage() {
                                                 <div className="absolute left-3 top-0 bottom-0 w-[1px] bg-border/40" />
 
                                                 {/* Actual Logs */}
-                                                {[...(contactLogs?.logs || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((log: any) => (
+                                                {[...(contactLogs?.logs || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((log: any) => {
+                                                    const isExpanded = expandedLogs.has(log.id);
+                                                    return (
                                                     <div key={log.id} className="relative pl-10">
                                                         <div className={`absolute left-1.5 top-0 w-3 h-3 rounded-full ring-4 ring-background ${log.type === 'EMAIL' ? 'bg-indigo-500' :
                                                             log.type === 'WHATSAPP' ? 'bg-emerald-500' : 'bg-primary'
                                                             }`} />
-                                                        <div className="bg-card p-3 rounded-xl border shadow-sm space-y-1.5 hover:shadow-md transition-shadow">
+                                                        <div 
+                                                            className="bg-card p-3 rounded-xl border shadow-sm space-y-1.5 hover:shadow-md transition-shadow cursor-pointer"
+                                                            onClick={(e) => toggleLog(log.id, e)}
+                                                        >
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className={`text-[10px] font-bold uppercase tracking-widest ${log.type === 'EMAIL' ? 'text-indigo-600' :
@@ -1066,27 +1101,39 @@ export default function CommunicationManagerPage() {
                                                                         <Badge variant="destructive" className="text-[8px] h-3 px-1 leading-none py-0">FAILED</Badge>
                                                                     )}
                                                                 </div>
-                                                                <span className="text-[9px] font-medium text-muted-foreground whitespace-nowrap">
-                                                                    {format(new Date(log.createdAt), 'MMM d, HH:mm aaa')}
-                                                                </span>
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="text-[9px] font-medium text-muted-foreground whitespace-nowrap">
+                                                                        {format(new Date(log.createdAt), 'MMM d, HH:mm aaa')}
+                                                                    </span>
+                                                                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                                                </div>
                                                             </div>
-                                                            <div className="text-sm prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: log.content }} />
-                                                            {log.fileLinks && Array.isArray(log.fileLinks) && (log.fileLinks as any[]).length > 0 && (
-                                                                <div className="flex flex-wrap gap-2 pt-1.5">
-                                                                    {(log.fileLinks as any[]).map((fl: any, idx: number) => (
-                                                                        <a
-                                                                            key={idx}
-                                                                            href={fl.url}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="flex items-center gap-1 bg-slate-50 border border-slate-200 hover:border-primary/40 hover:bg-primary/5 px-2 py-0.5 rounded transition-all group/att"
-                                                                        >
-                                                                            <Paperclip className="h-2.5 w-2.5 text-slate-400 group-hover/att:text-primary transition-colors" />
-                                                                            <span className="text-[10px] font-bold text-slate-600 group-hover/att:text-primary transition-colors truncate max-w-[120px]">
-                                                                                {fl.name}
-                                                                            </span>
-                                                                        </a>
-                                                                    ))}
+                                                            {isExpanded ? (
+                                                                <>
+                                                                    <div className="text-sm prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: log.content }} />
+                                                                    {log.fileLinks && Array.isArray(log.fileLinks) && (log.fileLinks as any[]).length > 0 && (
+                                                                        <div className="flex flex-wrap gap-2 pt-1.5">
+                                                                            {(log.fileLinks as any[]).map((fl: any, idx: number) => (
+                                                                                <a
+                                                                                    key={idx}
+                                                                                    href={fl.url}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="flex items-center gap-1 bg-slate-50 border border-slate-200 hover:border-primary/40 hover:bg-primary/5 px-2 py-0.5 rounded transition-all group/att"
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                >
+                                                                                    <Paperclip className="h-2.5 w-2.5 text-slate-400 group-hover/att:text-primary transition-colors" />
+                                                                                    <span className="text-[10px] font-bold text-slate-600 group-hover/att:text-primary transition-colors truncate max-w-[120px]">
+                                                                                        {fl.name}
+                                                                                    </span>
+                                                                                </a>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            ) : (
+                                                                <div className="text-xs text-muted-foreground line-clamp-1">
+                                                                    {log.content.replace(new RegExp('<[^>]*>?', 'gm'), ' ')}
                                                                 </div>
                                                             )}
                                                             <div className="flex items-center justify-between pt-1.5 border-t border-dashed overflow-hidden">
@@ -1095,7 +1142,7 @@ export default function CommunicationManagerPage() {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                ))}
+                                                ); })}
 
                                                 {/* Initial Outreach Placeholder (if no logs) */}
                                                 {(!contactLogs?.logs || contactLogs.logs.length === 0) && (
