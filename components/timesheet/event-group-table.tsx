@@ -18,6 +18,7 @@ interface EventGroupTableProps {
     sortBy: SortField;
     sortOrder: SortOrder;
     onSort: (field: SortField) => void;
+    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number) => void;
 }
 
 export function EventGroupTable({
@@ -33,6 +34,7 @@ export function EventGroupTable({
     sortBy,
     sortOrder,
     onSort,
+    onSaveTimeEntry,
 }: EventGroupTableProps) {
     const totalStaff = group.callTimes.reduce((s, ct) => s + ct.numberOfStaffRequired, 0);
     const totalConfirmed = group.callTimes.reduce((s, ct) => s + ct.confirmedCount, 0);
@@ -88,40 +90,22 @@ export function EventGroupTable({
                                         })()}
                                     </th>
                                     <th className="w-8 px-2 py-2" />
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Dept</th>
-                                    <th
-                                        className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap cursor-pointer hover:text-foreground"
-                                        onClick={() => onSort('event')}
-                                    >
-                                        <span className="inline-flex items-center gap-1">
-                                            Event Title
-                                            <SortIndicator field="event" activeField={sortBy} order={sortOrder} />
-                                        </span>
-                                    </th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">PO</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Client</th>
-                                    <th
-                                        className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap cursor-pointer hover:text-foreground"
-                                        onClick={() => onSort('startDate')}
-                                    >
-                                        <span className="inline-flex items-center gap-1">
-                                            Start Date
-                                            <SortIndicator field="startDate" activeField={sortBy} order={sortOrder} />
-                                        </span>
-                                    </th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Date</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Time</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Venue/Location</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Staff</th>
-                                    <th
-                                        className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap cursor-pointer hover:text-foreground"
-                                        onClick={() => onSort('position')}
-                                    >
-                                        <span className="inline-flex items-center gap-1">
-                                            Talent
-                                            <SortIndicator field="position" activeField={sortBy} order={sortOrder} />
-                                        </span>
-                                    </th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">First Name</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Last Name</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Payroll ID</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">HR ID</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
+                                    <th className="px-3 py-2" />
                                 </tr>
                             </thead>
                             <tbody>
@@ -134,6 +118,7 @@ export function EventGroupTable({
                                         onToggleExpand={onToggleExpand}
                                         onToggleSelect={onToggleSelect}
                                         onViewEvent={onViewEvent}
+                                        onSaveTimeEntry={onSaveTimeEntry}
                                     />
                                 ))}
                             </tbody>

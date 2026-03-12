@@ -1,0 +1,286 @@
+import { PrismaClient } from '@prisma/client';
+
+export class TimeEntryService {
+    constructor(private prisma: PrismaClient) { }
+
+    /**
+     * Fetch all time entries enriched with staff, callTime, event, service data.
+     * Filters: dateFrom, dateTo, eventId, staffId
+     */
+    async getAll(filters?: {
+        dateFrom?: Date;
+        dateTo?: Date;
+        eventId?: string;
+        staffId?: string;
+        search?: string;
+    }) {
+        const where: any = {};
+
+        if (filters?.eventId) {
+            where.callTime = { eventId: filters.eventId };
+        }
+
+        if (filters?.staffId) {
+            where.staffId = filters.staffId;
+        }
+
+        if (filters?.dateFrom || filters?.dateTo) {
+            where.callTime = {
+                ...where.callTime,
+                startDate: {
+                    ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+                    ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+                },
+            };
+        }
+
+        return await (this.prisma as any).timeEntry.findMany({
+            where,
+            include: {
+                staff: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        payrollId: true,
+                        hrSystemId: true,
+                        email: true,
+                        phone: true,
+                    },
+                },
+                callTime: {
+                    include: {
+                        service: { select: { id: true, title: true } },
+                        event: {
+                            select: {
+                                id: true,
+                                eventId: true,
+                                title: true,
+                                poNumber: true,
+                                client: { select: { id: true, businessName: true } },
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: [
+                { callTime: { startDate: 'asc' } },
+                { staff: { firstName: 'asc' } },
+            ],
+        });
+    }
+
+    /**
+     * Fetch all accepted invitations (with or without a time entry) for the Time Manager.
+     * This is the canonical source — one row per accepted staff per call time.
+     */
+    async getTimeManagerRows(filters?: {
+        dateFrom?: Date;
+        dateTo?: Date;
+        eventId?: string;
+        staffId?: string;
+        search?: string;
+    }) {
+        const invitationWhere: any = {
+            status: 'ACCEPTED',
+            isConfirmed: true,
+        };
+
+        if (filters?.staffId) {
+            invitationWhere.staffId = filters.staffId;
+        }
+
+        const callTimeWhere: any = {};
+        if (filters?.eventId) {
+            callTimeWhere.eventId = filters.eventId;
+        }
+        if (filters?.dateFrom || filters?.dateTo) {
+            callTimeWhere.startDate = {
+                ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+                ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+            };
+        }
+
+        if (Object.keys(callTimeWhere).length > 0) {
+            invitationWhere.callTime = callTimeWhere;
+        }
+
+        const invitations = await (this.prisma as any).callTimeInvitation.findMany({
+            where: invitationWhere,
+            include: {
+                staff: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        payrollId: true,
+                        hrSystemId: true,
+                        email: true,
+                        phone: true,
+                    },
+                },
+                callTime: {
+                    include: {
+                        service: { select: { id: true, title: true } },
+                        event: {
+                            select: {
+                                id: true,
+                                eventId: true,
+                                title: true,
+                                poNumber: true,
+                                client: { select: { id: true, businessName: true } },
+                            },
+                        },
+                    },
+                },
+                timeEntry: true,
+            },
+            orderBy: [
+                { callTime: { startDate: 'asc' } },
+                { staff: { firstName: 'asc' } },
+            ],
+        });
+
+        // Apply search client-side (name, event title, position)
+        if (filters?.search) {
+            const q = filters.search.toLowerCase();
+            return invitations.filter((inv: any) => {
+                const name = `${inv.staff.firstName} ${inv.staff.lastName}`.toLowerCase();
+                const eventTitle = inv.callTime.event.title.toLowerCase();
+                const position = inv.callTime.service?.title?.toLowerCase() ?? '';
+                return name.includes(q) || eventTitle.includes(q) || position.includes(q);
+            });
+        }
+
+        return invitations;
+    }
+
+    /**
+     * Upsert a time entry for a given invitation.
+     */
+    async upsertTimeEntry(data: {
+        invitationId: string;
+        staffId: string;
+        callTimeId: string;
+        clockIn?: Date | null;
+        clockOut?: Date | null;
+        breakMinutes?: number;
+        notes?: string;
+        createdBy: string;
+    }) {
+        return await (this.prisma as any).timeEntry.upsert({
+            where: { invitationId: data.invitationId },
+            update: {
+                clockIn: data.clockIn,
+                clockOut: data.clockOut,
+                breakMinutes: data.breakMinutes ?? 0,
+                notes: data.notes,
+            },
+            create: {
+                invitationId: data.invitationId,
+                staffId: data.staffId,
+                callTimeId: data.callTimeId,
+                clockIn: data.clockIn,
+                clockOut: data.clockOut,
+                breakMinutes: data.breakMinutes ?? 0,
+                notes: data.notes,
+                createdBy: data.createdBy,
+            },
+        });
+    }
+
+    /**
+     * Delete a time entry
+     */
+    async deleteTimeEntry(invitationId: string) {
+        return await (this.prisma as any).timeEntry.delete({
+            where: { invitationId },
+        });
+    }
+
+    /**
+     * Generate Invoices from selected invitations.
+     * Groups by Event and creates one Draft Invoice per Event.
+     */
+    async generateInvoices(invitationIds: string[], userId: string) {
+        const invitations = await (this.prisma as any).callTimeInvitation.findMany({
+            where: { id: { in: invitationIds } },
+            include: {
+                staff: { select: { firstName: true, lastName: true } },
+                callTime: {
+                    include: {
+                        service: { select: { title: true } },
+                        event: { select: { id: true, title: true, clientId: true } },
+                    },
+                },
+            },
+        });
+
+        if (invitations.length === 0) return { count: 0 };
+
+        // Group by event
+        const byEvent = new Map<string, any[]>();
+        invitations.forEach((inv: any) => {
+            const eid = inv.callTime.event.id;
+            if (!byEvent.has(eid)) byEvent.set(eid, []);
+            byEvent.get(eid)!.push(inv);
+        });
+
+        let invoiceCount = 0;
+        for (const [eventId, group] of byEvent.entries()) {
+            const first = group[0];
+            const clientId = first.callTime.event.clientId;
+            if (!clientId) continue;
+
+            const invoiceNo = `INV-${Math.floor(Date.now() / 1000)}-${Math.floor(Math.random() * 1000)}`;
+
+            const items = group.map((inv: any) => {
+                // Calculate hours scheduled (replicate logic from helpers for service-side use)
+                let hours = 1;
+                if (inv.callTime.startDate && inv.callTime.startTime && inv.callTime.endTime) {
+                    const start = new Date(inv.callTime.startDate);
+                    const [sh, sm] = inv.callTime.startTime.split(':').map(Number);
+                    start.setHours(sh ?? 0, sm ?? 0, 0, 0);
+
+                    const end = new Date(inv.callTime.endDate || inv.callTime.startDate);
+                    const [eh, em] = inv.callTime.endTime.split(':').map(Number);
+                    end.setHours(eh ?? 0, em ?? 0, 0, 0);
+
+                    if (end > start) {
+                        const diffMs = end.getTime() - start.getTime();
+                        hours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
+                    }
+                }
+
+                const rate = Number(inv.callTime.billRate) || 0;
+                const isPerHour = inv.callTime.billRateType === 'PER_HOUR';
+                const quantity = isPerHour ? hours : 1;
+
+                return {
+                    description: `${inv.callTime.service?.title || 'Staff'} - ${inv.staff.firstName} ${inv.staff.lastName}`,
+                    quantity,
+                    price: rate,
+                    amount: quantity * rate,
+                    serviceId: inv.callTime.serviceId,
+                    date: inv.callTime.startDate,
+                };
+            });
+
+            await (this.prisma as any).invoice.create({
+                data: {
+                    invoiceNo,
+                    clientId: clientId,
+                    status: 'DRAFT',
+                    invoiceDate: new Date(),
+                    createdBy: userId,
+                    items: {
+                        create: items,
+                    },
+                },
+            });
+            invoiceCount++;
+        }
+
+        return { count: invoiceCount };
+    }
+}
