@@ -35,8 +35,23 @@ export type CallTimeRow = {
         id: string;
         status: string;
         isConfirmed: boolean;
-        staff: { id: string; firstName: string; lastName: string };
+        staff: { id: string; firstName: string; lastName: string; payrollId?: string; hrSystemId?: string };
     }>;
+    // New fields for Time Manager
+    staff?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        payrollId: string | null;
+        hrSystemId: string | null;
+    };
+    timeEntry?: {
+        id: string;
+        clockIn: Date | string | null;
+        clockOut: Date | string | null;
+        breakMinutes: number;
+        notes?: string | null;
+    } | null;
 };
 
 export interface EventGroup {
@@ -46,6 +61,6 @@ export interface EventGroup {
     callTimes: CallTimeRow[];
 }
 
-export type SortField = 'startDate' | 'position' | 'event';
+export type SortField = 'startDate' | 'position' | 'event' | 'staffName';
 export type SortOrder = 'asc' | 'desc';
 export type StaffingFilter = 'all' | 'needsStaff' | 'fullyStaffed';

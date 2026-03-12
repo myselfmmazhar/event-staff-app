@@ -11,6 +11,7 @@ interface TimesheetHeaderProps {
     callTimes: CallTimeRow[];
     selectedCallTimes: CallTimeRow[];
     selectedCount: number;
+    onGenerateInvoices?: () => void;
 }
 
 export function TimesheetHeader({
@@ -21,6 +22,7 @@ export function TimesheetHeader({
     callTimes,
     selectedCallTimes,
     selectedCount,
+    onGenerateInvoices,
 }: TimesheetHeaderProps) {
     return (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -36,6 +38,16 @@ export function TimesheetHeader({
                 </div>
             </div>
             <div className="flex items-center gap-2">
+                {selectedCount > 0 && onGenerateInvoices && (
+                    <Button 
+                        variant="default" 
+                        size="sm" 
+                        onClick={onGenerateInvoices}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                        Generate Invoice ({selectedCount})
+                    </Button>
+                )}
                 <Button
                     variant="outline"
                     size="sm"
