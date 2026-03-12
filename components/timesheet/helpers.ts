@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import type { RateType } from '@prisma/client';
 import type { CallTimeRow } from './types';
@@ -28,6 +28,36 @@ export function formatTimeRange(start: string | null, end: string | null): strin
     return `${formatTime(start)} – ${formatTime(end)}`;
 }
 
+export function combineDateTime(date: Date | string | null, time: string | null): Date | null {
+    if (!date) return null;
+    const d = typeof date === 'string' ? parseISO(date) : date;
+    if (!time) return d;
+    const [h, m] = time.split(':').map(Number);
+    const result = new Date(d);
+    result.setHours(h ?? 0, m ?? 0, 0, 0);
+    return result;
+}
+
+export function hoursFromMinutes(mins: number): number {
+    return Math.round((mins / 60) * 100) / 100;
+}
+
+export function calcScheduledHours(ct: CallTimeRow): number {
+    const start = combineDateTime(ct.startDate, ct.startTime);
+    const end = combineDateTime(ct.endDate ?? ct.startDate, ct.endTime);
+    if (!start || !end || end <= start) return 0;
+    return hoursFromMinutes(differenceInMinutes(end, start));
+}
+
+export function calcClockedHours(timeEntry: CallTimeRow['timeEntry']): number {
+    if (!timeEntry?.clockIn || !timeEntry?.clockOut) return 0;
+    const ci = new Date(timeEntry.clockIn);
+    const co = new Date(timeEntry.clockOut);
+    const rawMins = differenceInMinutes(co, ci);
+    const breakMins = timeEntry.breakMinutes ?? 0;
+    return hoursFromMinutes(Math.max(0, rawMins - breakMins));
+}
+
 export function toNumber(val: number | { toNumber?: () => number } | string | null): number {
     if (val === null || val === undefined) return 0;
     if (typeof val === 'number') return val;
@@ -36,11 +66,55 @@ export function toNumber(val: number | { toNumber?: () => number } | string | nu
     return 0;
 }
 
+export function calcScheduledCost(ct: CallTimeRow): number {
+    const rate = toNumber(ct.payRate);
+    const type = ct.payRateType as RateType;
+    if (type === 'PER_HOUR') return calcScheduledHours(ct) * rate;
+    return rate;
+}
+
+export function calcClockedCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    const rate = toNumber(ct.payRate);
+    const type = ct.payRateType as RateType;
+    const hours = calcClockedHours(timeEntry);
+    if (type === 'PER_HOUR') return hours * rate;
+    return rate;
+}
+
+export function calcBillAmount(ct: CallTimeRow): number {
+    const billRate = toNumber(ct.billRate);
+    const type = ct.billRateType as RateType;
+    if (type === 'PER_HOUR') return calcScheduledHours(ct) * billRate;
+    return billRate;
+}
+
 export function formatRate(rate: CallTimeRow['payRate'], rateType: string): string {
     const num = toNumber(rate);
     if (!num) return '—';
     const label = RATE_TYPE_LABELS[rateType as RateType] || rateType;
     return `$${num.toFixed(2)} ${label}`;
+}
+
+export function fmtCurrency(n: number) {
+    return n.toFixed(2);
+}
+
+export function fmtDateTime(d: Date | string | null): string {
+    if (!d) return '—';
+    try {
+        return format(typeof d === 'string' ? parseISO(d) : d, 'MMM d, h:mma');
+    } catch {
+        return '—';
+    }
+}
+
+export function toInputDatetime(d: Date | string | null): string {
+    if (!d) return '';
+    try {
+        return format(typeof d === 'string' ? parseISO(d) : d, "yyyy-MM-dd'T'HH:mm");
+    } catch {
+        return '';
+    }
 }
 
 export function getAcceptedStaff(invitations: CallTimeRow['invitations']) {
