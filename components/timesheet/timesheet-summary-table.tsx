@@ -1,0 +1,103 @@
+'use client';
+
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { format, parseISO } from 'date-fns';
+import type { EventGroup } from './types';
+
+interface TimesheetSummaryTableProps {
+    eventGroups: EventGroup[];
+    onEventClick: (eventId: string) => void;
+}
+
+export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSummaryTableProps) {
+    const formatDate = (date: Date | string | null) => {
+        if (!date) return 'TBD';
+        const d = typeof date === 'string' ? parseISO(date) : date;
+        return format(d, 'MMM d, yyyy (EEE)');
+    };
+
+    const formatTime = (time: string | null) => {
+        if (!time) return '';
+        return time;
+    };
+
+    return (
+        <Card className="overflow-hidden border border-border shadow-sm">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-muted/50 border-b border-border">
+                        <tr>
+                            <th className="px-4 py-3 font-semibold text-foreground">Event</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">Event ID</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">Client</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-center">Shift Count</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">Date / Time</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border bg-card">
+                        {eventGroups.map((group) => {
+                            const firstRow = group.callTimes[0];
+                            const event = firstRow?.event;
+                            
+                            // Calculate date range for the group
+                            let minDate: Date | null = null;
+                            let maxDate: Date | null = null;
+                            
+                            group.callTimes.forEach(ct => {
+                                if (ct.startDate) {
+                                    const d = typeof ct.startDate === 'string' ? parseISO(ct.startDate) : ct.startDate;
+                                    if (!minDate || d < minDate) minDate = d;
+                                    if (!maxDate || d > maxDate) maxDate = d;
+                                }
+                            });
+
+                            return (
+                                <tr 
+                                    key={group.eventId} 
+                                    className="hover:bg-muted/30 transition-colors"
+                                >
+                                    <td className="px-4 py-4">
+                                        <button 
+                                            onClick={() => onEventClick(group.eventId)}
+                                            className="font-medium text-primary hover:underline text-left"
+                                        >
+                                            {group.eventTitle}
+                                        </button>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        <Badge variant="outline" className="font-mono text-xs">
+                                            {group.eventDisplayId}
+                                        </Badge>
+                                    </td>
+                                    <td className="px-4 py-4 text-muted-foreground">
+                                        {event?.client?.businessName || 'No Client'}
+                                    </td>
+                                    <td className="px-4 py-4 text-center">
+                                        <Badge variant="secondary">
+                                            {group.callTimes.length}
+                                        </Badge>
+                                    </td>
+                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
+                                        <div className="flex flex-col">
+                                            <span>
+                                                {minDate ? formatDate(minDate) : 'TBD'}
+                                                {firstRow?.startTime && ` ${firstRow.startTime}`}
+                                            </span>
+                                            {maxDate && (minDate?.getTime() !== maxDate.getTime()) && (
+                                                <span className="text-xs">
+                                                    to {formatDate(maxDate)}
+                                                    {firstRow?.endTime && ` ${firstRow.endTime}`}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </Card>
+    );
+}

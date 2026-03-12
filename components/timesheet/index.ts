@@ -5,6 +5,7 @@ export { SortIndicator } from './sort-indicator';
 export { TimesheetFilters } from './timesheet-filters';
 export { TimesheetHeader } from './timesheet-header';
 export { TimesheetTableRow } from './timesheet-table-row';
+export { TimesheetSummaryTable } from './timesheet-summary-table';
 
 export type {
     CallTimeRow,
