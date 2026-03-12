@@ -1,18 +1,58 @@
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
-import { formatDate, formatTimeRange, getAcceptedStaff } from './helpers';
+import { ChevronDownIcon, ChevronUpIcon, EditIcon, CheckIcon, CloseIcon } from '@/components/ui/icons';
+import { 
+    getAcceptedStaff, 
+    combineDateTime, 
+    fmtDateTime, 
+    calcScheduledHours, 
+    calcClockedHours, 
+    toNumber, 
+    calcScheduledCost, 
+    calcClockedCost, 
+    calcBillAmount, 
+    fmtCurrency,
+    toInputDatetime
+} from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
 
-export function TimesheetTableRow({ ct, isExpanded, isSelected, onToggleExpand, onToggleSelect, onViewEvent }: {
+export function TimesheetTableRow({ 
+    ct, 
+    isExpanded, 
+    isSelected, 
+    onToggleExpand, 
+    onToggleSelect, 
+    onViewEvent,
+    onSaveTimeEntry,
+}: {
     ct: CallTimeRow;
     isExpanded: boolean;
     isSelected: boolean;
     onToggleExpand: (id: string, e: React.MouseEvent) => void;
     onToggleSelect: (id: string, e: React.MouseEvent) => void;
     onViewEvent: (id: string) => void;
+    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number) => void;
 }) {
-    const accepted = getAcceptedStaff(ct.invitations);
+    const [isEditing, setIsEditing] = useState(false);
+    const te = ct.timeEntry;
+    const [clockIn, setClockIn] = useState(toInputDatetime(te?.clockIn ?? null));
+    const [clockOut, setClockOut] = useState(toInputDatetime(te?.clockOut ?? null));
+    const [breakMins, setBreakMins] = useState(te?.breakMinutes ?? 0);
+
+    const hoursScheduled = calcScheduledHours(ct);
+    const hoursClocked = calcClockedHours(te);
+    const scheduledCost = calcScheduledCost(ct);
+    const clockedCostVal = calcClockedCost(te, ct);
+    const billAmount = calcBillAmount(ct);
+
+    const handleSave = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onSaveTimeEntry) {
+            onSaveTimeEntry(ct.id, clockIn || null, clockOut || null, breakMins);
+        }
+        setIsEditing(false);
+    };
 
     return (
         <>
@@ -44,73 +84,113 @@ export function TimesheetTableRow({ ct, isExpanded, isSelected, onToggleExpand, 
                     </button>
                 </td>
 
-                {/* Dept */}
+                {/* First Name */}
+                <td className="px-3 py-2.5 font-bold text-primary">{ct.staff?.firstName || '—'}</td>
+
+                {/* Last Name */}
+                <td className="px-3 py-2.5 font-bold text-primary">{ct.staff?.lastName || '—'}</td>
+
+                {/* Payroll ID */}
+                <td className="px-3 py-2.5 text-muted-foreground">{ct.staff?.payrollId || '—'}</td>
+
+                {/* HR ID */}
+                <td className="px-3 py-2.5 text-muted-foreground">{ct.staff?.hrSystemId || '—'}</td>
+
+                {/* Position */}
                 <td className="px-3 py-2.5">
-                    <Badge variant="primary" className="text-xs font-medium whitespace-nowrap">
+                    <Badge variant="primary" className="text-[10px] whitespace-nowrap">
                         {ct.service?.title || 'Unassigned'}
                     </Badge>
                 </td>
 
-                {/* Event Title */}
-                <td className="px-3 py-2.5">
-                    <span className="text-foreground font-medium truncate max-w-[180px] block">{ct.event.title}</span>
+                {/* Start Time */}
+                <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
+                    {fmtDateTime(combineDateTime(ct.startDate, ct.startTime))}
                 </td>
 
-                {/* PO */}
-                <td className="px-3 py-2.5 text-muted-foreground text-xs">{ct.event.poNumber || ''}</td>
-
-                {/* Client */}
-                <td className="px-3 py-2.5">
-                    {ct.event.client ? (
-                        <Badge variant="secondary" className="text-xs whitespace-nowrap">{ct.event.client.businessName}</Badge>
-                    ) : null}
+                {/* End Time */}
+                <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
+                    {fmtDateTime(combineDateTime(ct.endDate || ct.startDate, ct.endTime))}
                 </td>
 
-                {/* Start Date */}
-                <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{formatDate(ct.startDate)}</td>
-
-                {/* End Date */}
-                <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{formatDate(ct.endDate || ct.event.endDate)}</td>
-
-                {/* Time Range */}
-                <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">
-                    {formatTimeRange(ct.startTime, ct.endTime)}
+                {/* Hrs Sched */}
+                <td className="px-3 py-2.5 text-center tabular-nums font-semibold">
+                    {hoursScheduled > 0 ? hoursScheduled.toFixed(2) : '—'}
                 </td>
 
-                {/* Venue */}
-                <td className="px-3 py-2.5">
-                    <span className="text-muted-foreground text-xs truncate max-w-[160px] block">
-                        {ct.event.venueName || ''}
-                        {ct.event.city ? `, ${ct.event.city}` : ''}
-                    </span>
+                {/* Pay Rate */}
+                <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
+                    ${toNumber(ct.payRate).toFixed(2)}/{ct.payRateType.replace('PER_', '')}
                 </td>
 
-                {/* Staff Status */}
-                <td className="px-3 py-2.5">
-                    <Badge
-                        variant={ct.needsStaff ? 'warning' : 'success'}
-                        className="text-xs whitespace-nowrap"
-                    >
-                        {ct.confirmedCount}/{ct.numberOfStaffRequired}
-                    </Badge>
-                </td>
-
-                {/* Talent */}
-                <td className="px-3 py-2.5">
-                    {accepted.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                            {accepted.slice(0, 2).map((inv) => (
-                                <Badge key={inv.id} variant="outline" className="text-xs">
-                                    {inv.staff.firstName} {inv.staff.lastName.charAt(0)}.
-                                </Badge>
-                            ))}
-                            {accepted.length > 2 && (
-                                <Badge variant="outline" className="text-xs">+{accepted.length - 2}</Badge>
-                            )}
+                {/* Clock In / Out Editor or Display */}
+                {isEditing ? (
+                    <td colSpan={3} className="px-3 py-1" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="datetime-local"
+                                value={clockIn}
+                                onChange={e => setClockIn(e.target.value)}
+                                className="h-7 text-[10px] border border-border rounded px-1"
+                            />
+                            <input
+                                type="datetime-local"
+                                value={clockOut}
+                                onChange={e => setClockOut(e.target.value)}
+                                className="h-7 text-[10px] border border-border rounded px-1"
+                            />
+                            <input
+                                type="number"
+                                value={breakMins}
+                                onChange={e => setBreakMins(parseInt(e.target.value) || 0)}
+                                className="h-7 w-12 text-[10px] border border-border rounded px-1"
+                                placeholder="Brk"
+                            />
+                            <button onClick={handleSave} className="p-1 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="p-1 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
                         </div>
-                    ) : ct.needsStaff ? (
-                        <span className="text-xs text-muted-foreground italic">Unassigned</span>
-                    ) : null}
+                    </td>
+                ) : (
+                    <>
+                        {/* Clock In */}
+                        <td className="px-3 py-2.5 whitespace-nowrap text-[10px]">
+                            {te?.clockIn ? <span className="text-emerald-600 font-medium">{fmtDateTime(te.clockIn)}</span> : <span className="text-slate-300 italic">Not clocked</span>}
+                        </td>
+                        {/* Clock Out */}
+                        <td className="px-3 py-2.5 whitespace-nowrap text-[10px]">
+                            {te?.clockOut ? <span className="text-red-500 font-medium">{fmtDateTime(te.clockOut)}</span> : '—'}
+                        </td>
+                        {/* Hrs Clo */}
+                        <td className="px-3 py-2.5 text-center tabular-nums font-semibold">
+                            {hoursClocked > 0 ? hoursClocked.toFixed(2) : '—'}
+                        </td>
+                    </>
+                )}
+
+                {/* Sched Cost */}
+                <td className="px-3 py-2.5 text-right tabular-nums">
+                    {scheduledCost > 0 ? fmtCurrency(scheduledCost) : '—'}
+                </td>
+
+                {/* Clo Cost */}
+                <td className="px-3 py-2.5 text-right tabular-nums">
+                    {clockedCostVal > 0 ? fmtCurrency(clockedCostVal) : '—'}
+                </td>
+
+                {/* Bill Amount */}
+                <td className="px-3 py-2.5 text-right tabular-nums font-bold text-primary">
+                    {billAmount > 0 ? fmtCurrency(billAmount) : '0.00'}
+                </td>
+
+                {/* Actions */}
+                <td className="px-3 py-2.5">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setIsEditing(!isEditing); }}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors bg-primary/5 hover:bg-primary/10 px-2 py-1 rounded-md"
+                    >
+                        <EditIcon className="h-3 w-3" />
+                        {te ? 'Edit' : 'Clock'}
+                    </button>
                 </td>
             </tr>
 

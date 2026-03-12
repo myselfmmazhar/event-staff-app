@@ -1,0 +1,74 @@
+import { z } from 'zod';
+import { router, managerProcedure } from '../trpc';
+import { TimeEntryService } from '@/services/time-entry.service';
+
+export const timeEntryRouter = router({
+    /**
+     * Get all Time Manager rows (one per accepted staff per call time)
+     */
+    getTimeManagerRows: managerProcedure
+        .input(z.object({
+            dateFrom: z.string().optional(),
+            dateTo: z.string().optional(),
+            eventId: z.string().uuid().optional(),
+            staffId: z.string().uuid().optional(),
+            search: z.string().optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const service = new TimeEntryService(ctx.prisma);
+            return await service.getTimeManagerRows({
+                dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
+                dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+                eventId: input.eventId,
+                staffId: input.staffId,
+                search: input.search,
+            });
+        }),
+
+    /**
+     * Upsert a time entry (clock in / clock out)
+     */
+    upsert: managerProcedure
+        .input(z.object({
+            invitationId: z.string().uuid(),
+            staffId: z.string().uuid(),
+            callTimeId: z.string().uuid(),
+            clockIn: z.string().optional().nullable(),
+            clockOut: z.string().optional().nullable(),
+            breakMinutes: z.number().int().min(0).default(0),
+            notes: z.string().optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const service = new TimeEntryService(ctx.prisma);
+            return await service.upsertTimeEntry({
+                invitationId: input.invitationId,
+                staffId: input.staffId,
+                callTimeId: input.callTimeId,
+                clockIn: input.clockIn ? new Date(input.clockIn) : null,
+                clockOut: input.clockOut ? new Date(input.clockOut) : null,
+                breakMinutes: input.breakMinutes,
+                notes: input.notes,
+                createdBy: ctx.userId as string,
+            });
+        }),
+
+    /**
+     * Delete a time entry
+     */
+    delete: managerProcedure
+        .input(z.object({ invitationId: z.string().uuid() }))
+        .mutation(async ({ ctx, input }) => {
+            const service = new TimeEntryService(ctx.prisma);
+            return await service.deleteTimeEntry(input.invitationId);
+        }),
+
+    /**
+     * Generate invoices for selected assignments
+     */
+    generateInvoices: managerProcedure
+        .input(z.object({ invitationIds: z.array(z.string().uuid()) }))
+        .mutation(async ({ ctx, input }) => {
+            const service = new TimeEntryService(ctx.prisma);
+            return await service.generateInvoices(input.invitationIds, ctx.userId as string);
+        }),
+});
