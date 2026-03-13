@@ -44,11 +44,13 @@ export class EventService {
     this.settingsService = new SettingsService(prisma);
   }
 
-  private async getOwnedEventMeta(id: string, userId: string) {
+  private async getOwnedEventMeta(id: string, userId: string, userRole?: string) {
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
     const event = await this.prisma.event.findFirst({
       where: {
         id,
-        createdBy: userId,
+        ...(isAdminPlus ? {} : { createdBy: userId }),
       },
       select: {
         id: true,
@@ -200,16 +202,18 @@ export class EventService {
    * Get all events with pagination, search, and filters
    * Users can only see their own events (ownership check)
    */
-  async findAll(query: QueryEventsInput, userId: string): Promise<PaginatedEvents> {
+  async findAll(query: QueryEventsInput, userId: string, userRole?: string): Promise<PaginatedEvents> {
     const page = query.page ?? 1;
     const limit = Math.min(query.limit ?? 10, 100); // Max 100 items per page
     const skip = (page - 1) * limit;
     const sortBy = query.sortBy ?? "createdAt";
     const sortOrder = query.sortOrder ?? "desc";
 
-    // Build where clause - IMPORTANT: Only show user's own events
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
+    // Build where clause - IMPORTANT: Only show user's own events unless ADMIN/SUPER_ADMIN
     const where: Prisma.EventWhereInput = {
-      createdBy: userId,
+      ...(isAdminPlus ? {} : { createdBy: userId }),
       isArchived: false,
     };
 
@@ -394,11 +398,13 @@ export class EventService {
    * Get a single event by ID
    * Includes ownership check
    */
-  async findOne(id: string, userId: string) {
+  async findOne(id: string, userId: string, userRole?: string) {
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
     const event = await this.prisma.event.findFirst({
       where: {
         id,
-        createdBy: userId, // Ownership check
+        ...(isAdminPlus ? {} : { createdBy: userId }), // Ownership check
       },
       select: {
         id: true,
@@ -529,9 +535,9 @@ export class EventService {
    * Update an event
    * Includes ownership check
    */
-  async update(id: string, data: UpdateEventInput, userId: string) {
+  async update(id: string, data: UpdateEventInput, userId: string, userRole?: string) {
     try {
-      const eventMeta = await this.getOwnedEventMeta(id, userId);
+      const eventMeta = await this.getOwnedEventMeta(id, userId, userRole);
       if (eventMeta.isArchived) {
         const terminology = await this.settingsService.getTerminology();
         throw new TRPCError({
@@ -680,8 +686,8 @@ export class EventService {
    * Delete an event (hard delete)
    * Includes ownership check
    */
-  async remove(id: string, userId: string) {
-    const event = await this.getOwnedEventMeta(id, userId);
+  async remove(id: string, userId: string, userRole?: string) {
+    const event = await this.getOwnedEventMeta(id, userId, userRole);
     if (!event.isArchived) {
       const terminology = await this.settingsService.getTerminology();
       throw new TRPCError({
@@ -731,8 +737,8 @@ export class EventService {
    * Update event status
    * Includes ownership check
    */
-  async updateStatus(id: string, status: EventStatus, userId: string) {
-    const eventMeta = await this.getOwnedEventMeta(id, userId);
+  async updateStatus(id: string, status: EventStatus, userId: string, userRole?: string) {
+    const eventMeta = await this.getOwnedEventMeta(id, userId, userRole);
     if (eventMeta.isArchived) {
       const terminology = await this.settingsService.getTerminology();
       throw new TRPCError({
@@ -801,17 +807,15 @@ export class EventService {
     return event;
   }
 
-  /**
-   * Get upcoming events (starting in next 30 days)
-   */
-  async getUpcoming(userId: string) {
+  async getUpcoming(userId: string, userRole?: string) {
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
     const today = new Date();
     const thirtyDaysLater = new Date();
     thirtyDaysLater.setDate(today.getDate() + 30);
 
     const events = await this.prisma.event.findMany({
       where: {
-        createdBy: userId,
+        ...(isAdminPlus ? {} : { createdBy: userId }),
         isArchived: false,
         startDate: {
           gte: today,
@@ -850,19 +854,17 @@ export class EventService {
     return events;
   }
 
-  /**
-   * Get event statistics for dashboard
-   */
-  async getStats(userId: string): Promise<EventStats> {
+  async getStats(userId: string, userRole?: string): Promise<EventStats> {
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
     const today = new Date();
     const thirtyDaysLater = new Date();
     thirtyDaysLater.setDate(today.getDate() + 30);
 
     const [total, upcoming, byStatus] = await Promise.all([
-      this.prisma.event.count({ where: { createdBy: userId, isArchived: false } }),
+      this.prisma.event.count({ where: { ...(isAdminPlus ? {} : { createdBy: userId }), isArchived: false } }),
       this.prisma.event.count({
         where: {
-          createdBy: userId,
+          ...(isAdminPlus ? {} : { createdBy: userId }),
           isArchived: false,
           startDate: {
             gte: today,
@@ -874,12 +876,12 @@ export class EventService {
         },
       }),
       Promise.all([
-        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.DRAFT } }),
-        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.PUBLISHED } }),
-        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.ASSIGNED } }),
-        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.IN_PROGRESS } }),
-        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.COMPLETED } }),
-        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.CANCELLED } }),
+        this.prisma.event.count({ where: { ...(isAdminPlus ? {} : { createdBy: userId }), isArchived: false, status: EventStatus.DRAFT } }),
+        this.prisma.event.count({ where: { ...(isAdminPlus ? {} : { createdBy: userId }), isArchived: false, status: EventStatus.PUBLISHED } }),
+        this.prisma.event.count({ where: { ...(isAdminPlus ? {} : { createdBy: userId }), isArchived: false, status: EventStatus.ASSIGNED } }),
+        this.prisma.event.count({ where: { ...(isAdminPlus ? {} : { createdBy: userId }), isArchived: false, status: EventStatus.IN_PROGRESS } }),
+        this.prisma.event.count({ where: { ...(isAdminPlus ? {} : { createdBy: userId }), isArchived: false, status: EventStatus.COMPLETED } }),
+        this.prisma.event.count({ where: { ...(isAdminPlus ? {} : { createdBy: userId }), isArchived: false, status: EventStatus.CANCELLED } }),
       ]),
     ]);
 
@@ -897,13 +899,10 @@ export class EventService {
     };
   }
 
-  /**
-   * Get events by date range (for calendar view)
-   * Returns events that overlap with the specified date range
-   */
-  async getByDateRange(input: DateRangeInput, userId: string) {
+  async getByDateRange(input: DateRangeInput, userId: string, userRole?: string) {
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
     const where: Prisma.EventWhereInput = {
-      createdBy: userId,
+      ...(isAdminPlus ? {} : { createdBy: userId }),
       isArchived: false,
       // Event overlaps with the date range if:
       // - Event starts before or on range end AND
@@ -977,13 +976,10 @@ export class EventService {
     return events;
   }
 
-  /**
-   * Get all events for export (no pagination)
-   * Returns all events owned by the user
-   */
-  async findAllForExport(userId: string) {
+  async findAllForExport(userId: string, userRole?: string) {
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
     const events = await this.prisma.event.findMany({
-      where: { createdBy: userId, isArchived: false },
+      where: { ...(isAdminPlus ? {} : { createdBy: userId }), isArchived: false },
       select: {
         id: true,
         eventId: true,
@@ -1040,8 +1036,8 @@ export class EventService {
     return events;
   }
 
-  async archive(id: string, userId: string) {
-    const event = await this.getOwnedEventMeta(id, userId);
+  async archive(id: string, userId: string, userRole?: string) {
+    const event = await this.getOwnedEventMeta(id, userId, userRole);
     if (event.isArchived) {
       return await this.prisma.event.findUniqueOrThrow({
         where: { id },
@@ -1060,11 +1056,12 @@ export class EventService {
     });
   }
 
-  async archiveMany(ids: string[], userId: string): Promise<{ count: number }> {
+  async archiveMany(ids: string[], userId: string, userRole?: string): Promise<{ count: number }> {
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
     const result = await this.prisma.event.updateMany({
       where: {
         id: { in: ids },
-        createdBy: userId,
+        ...(isAdminPlus ? {} : { createdBy: userId }),
         isArchived: false,
       },
       data: {
@@ -1077,8 +1074,8 @@ export class EventService {
     return { count: result.count };
   }
 
-  async restore(id: string, userId: string) {
-    const event = await this.getOwnedEventMeta(id, userId);
+  async restore(id: string, userId: string, userRole?: string) {
+    const event = await this.getOwnedEventMeta(id, userId, userRole);
     if (!event.isArchived) {
       return await this.prisma.event.findUniqueOrThrow({
         where: { id },
@@ -1240,12 +1237,13 @@ export class EventService {
     }
   }
 
-  async restoreMany(ids: string[], userId: string): Promise<{ count: number }> {
+  async restoreMany(ids: string[], userId: string, userRole?: string): Promise<{ count: number }> {
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
     // For bulk restore, we need to determine status for each event individually
     const events = await this.prisma.event.findMany({
       where: {
         id: { in: ids },
-        createdBy: userId,
+        ...(isAdminPlus ? {} : { createdBy: userId }),
         isArchived: true,
       },
       select: { id: true },
@@ -1268,15 +1266,17 @@ export class EventService {
     return { count: restoredCount };
   }
 
-  async findAllArchived(query: QueryEventsInput, userId: string): Promise<PaginatedEvents> {
+  async findAllArchived(query: QueryEventsInput, userId: string, userRole?: string): Promise<PaginatedEvents> {
     const page = query.page ?? 1;
     const limit = Math.min(query.limit ?? 10, 100);
     const skip = (page - 1) * limit;
     const sortBy = query.sortBy ?? "createdAt";
     const sortOrder = query.sortOrder ?? "desc";
 
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
     const where: Prisma.EventWhereInput = {
-      createdBy: userId,
+      ...(isAdminPlus ? {} : { createdBy: userId }),
       isArchived: true,
     };
 
@@ -1427,10 +1427,11 @@ export class EventService {
     };
   }
 
-  async getArchivedCount(userId: string): Promise<number> {
+  async getArchivedCount(userId: string, userRole?: string): Promise<number> {
+    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
     return await this.prisma.event.count({
       where: {
-        createdBy: userId,
+        ...(isAdminPlus ? {} : { createdBy: userId }),
         isArchived: true,
       },
     });
