@@ -164,7 +164,7 @@ export const clientRouter = router({
    * Get client statistics for dashboard
    */
   getStats: protectedProcedure.query(async ({ ctx }) => {
-    return await ctx.clientService.getStats();
+    return await ctx.clientService.getStats(ctx.userId!, ctx.userRole as string);
   }),
 
   /**
