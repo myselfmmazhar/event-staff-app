@@ -137,7 +137,17 @@ export class ClientService {
     userRole?: string
   ): Promise<{ client: ClientSelect; invitationToken: string }> {
     try {
-      const client = await this.findOne(clientId, userId, userRole);
+      const client = await this.prisma.client.findUnique({
+        where: { id: clientId },
+        select: this.clientSelect,
+      });
+
+      if (!client) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Client with ID ${clientId} not found`,
+        });
+      }
 
       if (client.hasLoginAccess && client.userId) {
         throw new TRPCError({
@@ -466,7 +476,17 @@ export class ClientService {
     userRole?: string
   ): Promise<ClientSelect> {
     try {
-      const client = await this.findOne(clientId, userId, userRole);
+      const client = await this.prisma.client.findUnique({
+        where: { id: clientId },
+        select: this.clientSelect,
+      });
+
+      if (!client) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Client with ID ${clientId} not found`,
+        });
+      }
 
       if (!client.hasLoginAccess || !client.userId) {
         throw new TRPCError({
@@ -643,7 +663,17 @@ export class ClientService {
     userRole?: string
   ): Promise<{ client: ClientSelect; invitationToken: string | null }> {
     try {
-      const client = await this.findOne(id, userId, userRole);
+      const client = await this.prisma.client.findUnique({
+        where: { id },
+        select: this.clientSelect,
+      });
+
+      if (!client) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Client with ID ${id} not found`,
+        });
+      }
 
       // Handle login access changes - only send invite on FIRST time access enabled
       if (data.hasLoginAccess !== undefined && data.hasLoginAccess !== client.hasLoginAccess) {
@@ -740,7 +770,17 @@ export class ClientService {
     userRole?: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const client = await this.findOne(id, userId, userRole);
+      const client = await this.prisma.client.findUnique({
+        where: { id },
+        select: this.clientSelect,
+      });
+
+      if (!client) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Client with ID ${id} not found`,
+        });
+      }
 
       if (client.userId) {
         await this.prisma.user.update({

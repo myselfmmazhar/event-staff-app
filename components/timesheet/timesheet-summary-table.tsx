@@ -44,16 +44,19 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                             const event = firstRow?.event;
 
                             // Calculate date range for the group
-                            let minDate: Date | null = null;
-                            let maxDate: Date | null = null;
-
-                            group.callTimes.forEach(ct => {
-                                if (ct.startDate) {
-                                    const d = typeof ct.startDate === 'string' ? parseISO(ct.startDate) : ct.startDate;
-                                    if (!minDate || d < minDate) minDate = d;
-                                    if (!maxDate || d > maxDate) maxDate = d;
-                                }
-                            });
+                            const dateRange = group.callTimes.reduce<{ min: Date | null; max: Date | null }>(
+                                (acc, ct) => {
+                                    if (ct.startDate) {
+                                        const d = typeof ct.startDate === 'string' ? parseISO(ct.startDate) : ct.startDate;
+                                        if (!acc.min || d < acc.min) acc.min = d;
+                                        if (!acc.max || d > acc.max) acc.max = d;
+                                    }
+                                    return acc;
+                                },
+                                { min: null, max: null }
+                            );
+                            const minDate = dateRange.min;
+                            const maxDate = dateRange.max;
 
                             const totalOvertimeCost = group.callTimes.reduce((acc, ct) => acc + calcOvertimeCost(ct.timeEntry, ct), 0);
                             const totalOvertimePrice = group.callTimes.reduce((acc, ct) => acc + calcOvertimePrice(ct.timeEntry, ct), 0);
