@@ -2,13 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/client/trpc';
-import { 
-    TimesheetHeader, 
-    TimesheetFilters, 
-    EventGroupTable 
-} from '@/components/timesheet';
+import { TimesheetHeader, TimesheetFilters, EventGroupTable, TimesheetSummaryTable, TimesheetTableRow } from '@/components/timesheet';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ChevronLeftIcon } from '@/components/ui/icons';
 import type { SortField, SortOrder, StaffingFilter, EventGroup, CallTimeRow } from '@/components/timesheet/types';
 
 export default function TimeManagerPage() {
@@ -22,6 +21,7 @@ export default function TimeManagerPage() {
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [staffingFilter, setStaffingFilter] = useState<StaffingFilter>('all');
+    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortField>('startDate');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
@@ -168,23 +168,39 @@ export default function TimeManagerPage() {
                     onGenerateInvoices={handleGenerateInvoices}
                 />
 
-                <TimesheetFilters
-                    search={search}
-                    onSearchChange={setSearch}
-                    showFilters={showFilters}
-                    onToggleFilters={() => setShowFilters(!showFilters)}
-                    dateFrom={dateFrom}
-                    onDateFromChange={setDateFrom}
-                    dateTo={dateTo}
-                    onDateToChange={setDateTo}
-                    staffingFilter={staffingFilter}
-                    onStaffingFilterChange={setStaffingFilter}
-                    hasActiveFilters={dateFrom || dateTo || search}
-                    onClearFilters={() => { setDateFrom(''); setDateTo(''); setSearch(''); }}
-                    totalAssignments={assignments.length}
-                    totalEvents={eventGroups.length}
-                    eventPluralLabel="Events"
-                />
+                {selectedEventId && (
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setSelectedEventId(null)}
+                            className="flex items-center gap-1"
+                        >
+                            <ChevronLeftIcon className="h-4 w-4" />
+                            Back to Summary
+                        </Button>
+                    </div>
+                )}
+
+                {!selectedEventId && (
+                    <TimesheetFilters
+                        search={search}
+                        onSearchChange={setSearch}
+                        showFilters={showFilters}
+                        onToggleFilters={() => setShowFilters(!showFilters)}
+                        dateFrom={dateFrom}
+                        onDateFromChange={setDateFrom}
+                        dateTo={dateTo}
+                        onDateToChange={setDateTo}
+                        staffingFilter={staffingFilter}
+                        onStaffingFilterChange={setStaffingFilter}
+                        hasActiveFilters={dateFrom || dateTo || search}
+                        onClearFilters={() => { setDateFrom(''); setDateTo(''); setSearch(''); }}
+                        totalAssignments={assignments.length}
+                        totalEvents={eventGroups.length}
+                        eventPluralLabel="Events"
+                    />
+                )}
 
                 {isLoading ? (
                     <div className="h-48 flex items-center justify-center rounded-lg border border-dashed border-border bg-muted/20">
@@ -195,26 +211,83 @@ export default function TimeManagerPage() {
                         <span className="text-sm font-semibold text-foreground">No records found</span>
                         <p className="text-xs text-muted-foreground">Try adjusting your filters or inviting staff in the Events module.</p>
                     </div>
+                ) : !selectedEventId ? (
+                    <TimesheetSummaryTable 
+                        eventGroups={eventGroups} 
+                        onEventClick={(id) => setSelectedEventId(id)} 
+                    />
                 ) : (
                     <div className="space-y-4">
-                        {eventGroups.map((group) => (
-                            <EventGroupTable
-                                key={group.eventId}
-                                group={group}
-                                isCollapsed={collapsedGroups.has(group.eventId)}
-                                onToggleGroup={toggleGroup}
-                                expandedRows={expandedRows}
-                                selectedRows={selectedRows}
-                                onToggleExpand={toggleExpand}
-                                onToggleSelect={toggleSelect}
-                                onToggleSelectAll={toggleSelectAll}
-                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                sortBy={sortBy}
-                                sortOrder={sortOrder}
-                                onSort={handleSort}
-                                onSaveTimeEntry={handleSaveTimeEntry}
-                            />
-                        ))}
+                        {eventGroups
+                            .filter(g => g.eventId === selectedEventId)
+                            .map((group) => (
+                                <div key={group.eventId} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
+                                    <div className="px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/20 border-b border-border flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-semibold text-lg text-foreground">{group.eventTitle}</span>
+                                            <Badge variant="outline">{group.eventDisplayId}</Badge>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="secondary">
+                                                {group.callTimes.length} positions
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-border bg-muted/15">
+                                                    <th className="w-8 px-2 py-2">
+                                                        {(() => {
+                                                            const groupIds = group.callTimes.map((ct) => ct.id);
+                                                            const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                            return (
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isGroupAllSelected}
+                                                                    onChange={() => toggleSelectAll(groupIds)}
+                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                />
+                                                            );
+                                                        })()}
+                                                    </th>
+                                                    <th className="w-8 px-2 py-2" />
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">First Name</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Last Name</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Payroll ID</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">HR ID</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
+                                                    <th className="px-3 py-2" />
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {group.callTimes.map((ct) => (
+                                                    <TimesheetTableRow
+                                                        key={ct.id}
+                                                        ct={ct}
+                                                        isExpanded={expandedRows.has(ct.id)}
+                                                        isSelected={selectedRows.has(ct.id)}
+                                                        onToggleExpand={toggleExpand}
+                                                        onToggleSelect={toggleSelect}
+                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                    />
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ))}
                     </div>
                 )}
             </div>
