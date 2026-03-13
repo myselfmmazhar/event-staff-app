@@ -769,10 +769,20 @@ export class ClientService {
   /**
    * Get client statistics
    */
-  async getStats(): Promise<ClientStats> {
+  async getStats(userId?: string, userRole?: string): Promise<ClientStats> {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
+    const visibilityWhere: Prisma.ClientWhereInput = 
+        isSuperAdmin ? {} : 
+        isAdmin ? { users_clients_createdByTousers: { role: { not: 'SUPER_ADMIN' } } } : 
+        userId ? { createdBy: userId } : {};
+
     const [total, withLoginAccess] = await Promise.all([
-      this.prisma.client.count(),
-      this.prisma.client.count({ where: { hasLoginAccess: true } }),
+      this.prisma.client.count({ where: visibilityWhere }),
+      this.prisma.client.count({ 
+        where: { ...visibilityWhere, hasLoginAccess: true } 
+      }),
     ]);
 
     return {
