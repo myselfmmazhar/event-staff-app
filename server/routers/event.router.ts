@@ -203,11 +203,14 @@ export const eventRouter = router({
       }).optional()
     )
     .query(async ({ ctx, input }) => {
-      const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
+      const isSuperAdmin = ctx.userRole === 'SUPER_ADMIN';
+      const isAdmin = ctx.userRole === 'ADMIN';
 
       // Build where clause
       const where: any = {
-        ...(isAdminPlus ? {} : { createdBy: ctx.userId! }),
+        ...(isSuperAdmin ? {} : 
+           isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } : 
+           { createdBy: ctx.userId! }),
         isArchived: false,
         AND: [
           // Only events with coordinates
@@ -280,11 +283,14 @@ export const eventRouter = router({
       }).optional()
     )
     .query(async ({ ctx, input }) => {
-      const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
+      const isSuperAdmin = ctx.userRole === 'SUPER_ADMIN';
+      const isAdmin = ctx.userRole === 'ADMIN';
 
       // Build where clause
       const where: any = {
-        ...(isAdminPlus ? {} : { createdBy: ctx.userId! }),
+        ...(isSuperAdmin ? {} : 
+           isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } : 
+           { createdBy: ctx.userId! }),
         isArchived: false,
         latitude: { not: null },
         longitude: { not: null },
@@ -324,11 +330,14 @@ export const eventRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
+      const isSuperAdmin = ctx.userRole === 'SUPER_ADMIN';
+      const isAdmin = ctx.userRole === 'ADMIN';
 
       const events = await ctx.prisma.event.findMany({
         where: {
-          ...(isAdminPlus ? {} : { createdBy: ctx.userId! }),
+          ...(isSuperAdmin ? {} : 
+           isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } : 
+           { createdBy: ctx.userId! }),
           isArchived: false,
           state: input.state,
           latitude: { not: null },

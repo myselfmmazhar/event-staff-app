@@ -486,6 +486,58 @@ export class EmailService {
       );
     }
   }
+
+  /**
+   * Send call invitation batch email
+   */
+  async sendCallInvitationBatch(
+    email: string,
+    firstName: string,
+    eventDetails: {
+      eventTitle: string;
+      eventVenue: string;
+      eventLocation: string;
+      startDate: Date | null;
+      endDate: Date | null;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const dashboardUrl = `${this.appUrl}/my-schedule`;
+
+    const formatDate = (date: Date | null) => {
+      if (!date || date.getFullYear() === 1970) return 'TBD';
+      return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    };
+
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'CALL_INVITATION_BATCH',
+        {
+          firstName,
+          email,
+          eventTitle: eventDetails.eventTitle,
+          eventVenue: eventDetails.eventVenue,
+          eventLocation: eventDetails.eventLocation,
+          startDate: formatDate(eventDetails.startDate),
+          endDate: formatDate(eventDetails.endDate),
+          dashboardUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering call invitation batch template:', error);
+      return this.sendEmail(
+        email,
+        `Call Invitation Batch: ${eventDetails.eventTitle}`,
+        `<p>Hi ${firstName}, we have several positions available for ${eventDetails.eventTitle}.</p><p><a href="${dashboardUrl}">View & Respond</a></p>`
+      );
+    }
+  }
 }
 
 // Singleton instance

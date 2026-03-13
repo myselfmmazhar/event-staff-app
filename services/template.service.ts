@@ -65,9 +65,17 @@ export class TemplateService {
    * Get email template by type (with fallback to default)
    */
   async getEmailTemplate(type: EmailTemplateType): Promise<EmailTemplateWithMeta> {
-    const customTemplate = await this.prisma.emailTemplate.findUnique({
-      where: { type },
-    });
+    let customTemplate = null;
+    try {
+      // Don't query DB for batch until it's synced
+      if (type !== 'CALL_INVITATION_BATCH' as any) {
+        customTemplate = await this.prisma.emailTemplate.findUnique({
+          where: { type },
+        });
+      }
+    } catch (e) {
+      console.warn(`Could not fetch custom email template for ${type}:`, e);
+    }
 
     const defaultTemplate = getDefaultEmailTemplate(type);
     if (!defaultTemplate) {
@@ -182,9 +190,17 @@ export class TemplateService {
    * Get SMS template by type (with fallback to default)
    */
   async getSmsTemplate(type: SmsTemplateType): Promise<SmsTemplateWithMeta> {
-    const customTemplate = await this.prisma.smsTemplate.findUnique({
-      where: { type },
-    });
+    let customTemplate = null;
+    try {
+      // Don't query DB for batch until it's synced
+      if (type !== 'CALL_INVITATION_BATCH' as any) {
+        customTemplate = await this.prisma.smsTemplate.findUnique({
+          where: { type },
+        });
+      }
+    } catch (e) {
+      console.warn(`Could not fetch custom SMS template for ${type}:`, e);
+    }
 
     const defaultTemplate = getDefaultSmsTemplate(type);
     if (!defaultTemplate) {

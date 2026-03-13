@@ -18,8 +18,7 @@ export const staffRouter = router({
         .input(StaffSchema.query)
         .query(async ({ ctx, input }) => {
             const staffService = new StaffService(ctx.prisma);
-            const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
-            return await staffService.findAll(input, isAdminPlus ? undefined : ctx.userId!);
+            return await staffService.findAll(input, ctx.userId!, ctx.userRole as string);
         }),
 
     /**
@@ -30,7 +29,7 @@ export const staffRouter = router({
         .input(StaffSchema.id)
         .query(async ({ ctx, input }) => {
             const staffService = new StaffService(ctx.prisma);
-            return await staffService.findOne(input.id);
+            return await staffService.findOne(input.id, ctx.userId!, ctx.userRole as string);
         }),
 
     /**
@@ -233,7 +232,7 @@ export const staffRouter = router({
      */
     getStats: protectedProcedure.query(async ({ ctx }) => {
         const staffService = new StaffService(ctx.prisma);
-        return await staffService.getStats();
+        return await staffService.getStats(ctx.userId!, ctx.userRole as string);
     }),
 
     /**
@@ -242,7 +241,7 @@ export const staffRouter = router({
      */
     getCompanies: protectedProcedure.query(async ({ ctx }) => {
         const staffService = new StaffService(ctx.prisma);
-        return await staffService.getCompanies();
+        return await staffService.getCompanies(ctx.userId!, ctx.userRole as string);
     }),
 
     /**
