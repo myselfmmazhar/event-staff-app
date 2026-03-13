@@ -18,7 +18,8 @@ export const staffRouter = router({
         .input(StaffSchema.query)
         .query(async ({ ctx, input }) => {
             const staffService = new StaffService(ctx.prisma);
-            return await staffService.findAll(input, ctx.userId!);
+            const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
+            return await staffService.findAll(input, isAdminPlus ? undefined : ctx.userId!);
         }),
 
     /**

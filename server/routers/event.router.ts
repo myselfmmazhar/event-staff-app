@@ -18,7 +18,7 @@ export const eventRouter = router({
     .input(EventSchema.query)
     .query(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.findAll(input, ctx.userId!);
+      return await eventService.findAll(input, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -30,7 +30,7 @@ export const eventRouter = router({
     .input(EventSchema.id)
     .query(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.findOne(input.id, ctx.userId!);
+      return await eventService.findOne(input.id, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -54,7 +54,7 @@ export const eventRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const eventService = new EventService(ctx.prisma);
-      return await eventService.update(id, data, ctx.userId!);
+      return await eventService.update(id, data, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -66,7 +66,7 @@ export const eventRouter = router({
     .input(EventSchema.id)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.remove(input.id, ctx.userId!);
+      return await eventService.remove(input.id, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -78,7 +78,7 @@ export const eventRouter = router({
     .input(EventSchema.deleteMany)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.deleteMany(input.ids, ctx.userId!);
+      return await eventService.deleteMany(input.ids, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -90,7 +90,7 @@ export const eventRouter = router({
     .input(EventSchema.archive)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.archive(input.id, ctx.userId!);
+      return await eventService.archive(input.id, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -100,7 +100,7 @@ export const eventRouter = router({
     .input(EventSchema.archiveMany)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.archiveMany(input.ids, ctx.userId!);
+      return await eventService.archiveMany(input.ids, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -110,7 +110,7 @@ export const eventRouter = router({
     .input(EventSchema.restore)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.restore(input.id, ctx.userId!);
+      return await eventService.restore(input.id, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -120,7 +120,7 @@ export const eventRouter = router({
     .input(EventSchema.restoreMany)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.restoreMany(input.ids, ctx.userId!);
+      return await eventService.restoreMany(input.ids, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -130,7 +130,7 @@ export const eventRouter = router({
     .input(EventSchema.query)
     .query(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.findAllArchived(input, ctx.userId!);
+      return await eventService.findAllArchived(input, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -138,7 +138,7 @@ export const eventRouter = router({
    */
   getArchivedCount: protectedProcedure.query(async ({ ctx }) => {
     const eventService = new EventService(ctx.prisma);
-    return await eventService.getArchivedCount(ctx.userId!);
+    return await eventService.getArchivedCount(ctx.userId!, ctx.userRole as string);
   }),
 
   /**
@@ -150,7 +150,7 @@ export const eventRouter = router({
     .input(EventSchema.updateStatus)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.updateStatus(input.id, input.status, ctx.userId!);
+      return await eventService.updateStatus(input.id, input.status, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -160,7 +160,7 @@ export const eventRouter = router({
    */
   getUpcoming: protectedProcedure.query(async ({ ctx }) => {
     const eventService = new EventService(ctx.prisma);
-    return await eventService.getUpcoming(ctx.userId!);
+    return await eventService.getUpcoming(ctx.userId!, ctx.userRole as string);
   }),
 
   /**
@@ -170,7 +170,7 @@ export const eventRouter = router({
    */
   getStats: protectedProcedure.query(async ({ ctx }) => {
     const eventService = new EventService(ctx.prisma);
-    return await eventService.getStats(ctx.userId!);
+    return await eventService.getStats(ctx.userId!, ctx.userRole as string);
   }),
 
   /**
@@ -183,7 +183,7 @@ export const eventRouter = router({
     .input(EventSchema.dateRange)
     .query(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.getByDateRange(input, ctx.userId!);
+      return await eventService.getByDateRange(input, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -203,11 +203,11 @@ export const eventRouter = router({
       }).optional()
     )
     .query(async ({ ctx, input }) => {
-      const eventService = new EventService(ctx.prisma);
+      const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
 
       // Build where clause
       const where: any = {
-        createdBy: ctx.userId!,
+        ...(isAdminPlus ? {} : { createdBy: ctx.userId! }),
         isArchived: false,
         AND: [
           // Only events with coordinates
@@ -280,9 +280,11 @@ export const eventRouter = router({
       }).optional()
     )
     .query(async ({ ctx, input }) => {
+      const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
+
       // Build where clause
       const where: any = {
-        createdBy: ctx.userId!,
+        ...(isAdminPlus ? {} : { createdBy: ctx.userId! }),
         isArchived: false,
         latitude: { not: null },
         longitude: { not: null },
@@ -322,9 +324,11 @@ export const eventRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
+      const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
+
       const events = await ctx.prisma.event.findMany({
         where: {
-          createdBy: ctx.userId!,
+          ...(isAdminPlus ? {} : { createdBy: ctx.userId! }),
           isArchived: false,
           state: input.state,
           latitude: { not: null },
@@ -356,7 +360,7 @@ export const eventRouter = router({
    */
   getAllForExport: protectedProcedure.query(async ({ ctx }) => {
     const eventService = new EventService(ctx.prisma);
-    return await eventService.findAllForExport(ctx.userId!);
+    return await eventService.findAllForExport(ctx.userId!, ctx.userRole as string);
   }),
 
   /**
@@ -454,7 +458,7 @@ export const eventRouter = router({
 
       // 1. Update status if provided
       if (input.statusToUpdate) {
-        await eventService.updateStatus(input.eventId, input.statusToUpdate, ctx.userId!);
+        await eventService.updateStatus(input.eventId, input.statusToUpdate, ctx.userId!, ctx.userRole as string);
       }
 
       // 2. Send messages
