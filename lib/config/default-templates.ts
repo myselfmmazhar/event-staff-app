@@ -200,6 +200,21 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
 <p class="note">If you didn't expect this invitation, you can safely ignore this email.</p>
 <p class="note">If the button doesn't work, copy and paste this link into your browser: {{inviteUrl}}</p>`,
   },
+  {
+    type: 'CALL_INVITATION_BATCH',
+    subject: "Call Invitation Batch: {{eventTitle}}",
+    headerTitle: "Call Invitation Batch, {{firstName}}!",
+    description: 'Sent when staff is invited to multiple positions or a batch of call times',
+    availableVariables: [...TEMPLATE_VARIABLES.common, ...TEMPLATE_VARIABLES.callTime],
+    bodyHtml: `<p>We have several positions available for <strong>{{eventTitle}}</strong> that might interest you. Click the button below to view all available shifts and respond.</p>
+
+{{button:View Available Shifts|{{dashboardUrl}}}}
+
+<p class="note">Location: {{eventVenue}}, {{eventLocation}}</p>
+<p class="note">Dates: {{startDate}} - {{endDate}}</p>
+
+<p class="note">Please respond as soon as possible. Positions are filled on a first-come, first-served basis.</p>`,
+  },
 ];
 
 /**
@@ -256,6 +271,13 @@ export const DEFAULT_SMS_TEMPLATES: DefaultSmsTemplate[] = [
     availableVariables: [...TEMPLATE_VARIABLES.common, ...TEMPLATE_VARIABLES.user],
     maxLength: 160,
   },
+  {
+    type: 'CALL_INVITATION_BATCH',
+    body: "Call Invitation Batch: Hi {{firstName}}, we have several positions available for {{eventTitle}}. View and respond here: {{dashboardUrl}}",
+    description: 'SMS notification for batch call time invitation',
+    availableVariables: ['{{firstName}}', '{{eventTitle}}', '{{dashboardUrl}}'],
+    maxLength: 160,
+  },
 ];
 
 /**
@@ -269,6 +291,7 @@ export const TEMPLATE_TYPE_LABELS: Record<EmailTemplateType | SmsTemplateType, s
   CALL_TIME_CONFIRMATION: 'Call Time Confirmation',
   CALL_TIME_WAITLISTED: 'Call Time Waitlisted',
   USER_INVITATION: 'User Invitation',
+  CALL_INVITATION_BATCH: 'Call Invitation Batch',
 };
 
 /**
@@ -297,6 +320,7 @@ export function getAllTemplateTypes(): (EmailTemplateType | SmsTemplateType)[] {
     'CALL_TIME_CONFIRMATION',
     'CALL_TIME_WAITLISTED',
     'USER_INVITATION',
+    'CALL_INVITATION_BATCH',
   ];
 }
 
@@ -368,6 +392,8 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
         role: 'Manager',
         inviteUrl: 'https://example.com/accept-invitation/user?token=abc123',
       };
+    case 'CALL_INVITATION_BATCH':
+      return callTimeCommon;
     default:
       return common;
   }

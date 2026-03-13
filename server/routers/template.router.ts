@@ -9,6 +9,28 @@ import {
   smsTemplateTypeSchema,
 } from '@/lib/schemas/template.schema';
 
+const emailTemplateWithBatch = z.enum([
+  'STAFF_INVITATION',
+  'CLIENT_INVITATION',
+  'CALL_TIME_INVITATION',
+  'CALL_TIME_CONFIRMATION',
+  'CALL_TIME_WAITLISTED',
+  'STAFF_CREDENTIALS',
+  'USER_INVITATION',
+  'CALL_INVITATION_BATCH',
+]);
+
+const smsTemplateWithBatch = z.enum([
+  'STAFF_INVITATION',
+  'CLIENT_INVITATION',
+  'CALL_TIME_INVITATION',
+  'CALL_TIME_CONFIRMATION',
+  'CALL_TIME_WAITLISTED',
+  'STAFF_CREDENTIALS',
+  'USER_INVITATION',
+  'CALL_INVITATION_BATCH',
+]);
+
 /**
  * Template Router - Email and SMS template management
  * All endpoints are admin-only
@@ -69,6 +91,7 @@ export const templateRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
+      console.log('Previewing email template:', input.type);
       const templateService = new TemplateService(ctx.prisma);
       return await templateService.renderEmailPreview(
         input.type,

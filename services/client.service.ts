@@ -501,7 +501,8 @@ export class ClientService {
    */
   async findAll(
     query: QueryClientsInput,
-    createdByUserId?: string
+    userId: string,
+    userRole?: string
   ): Promise<PaginatedClients> {
     const page = query.page ?? 1;
     const limit = Math.min(query.limit ?? 10, 100);
@@ -509,10 +510,21 @@ export class ClientService {
     const sortBy = query.sortBy ?? "createdAt";
     const sortOrder = query.sortOrder ?? "desc";
 
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     const where: Prisma.ClientWhereInput = {};
 
-    if (createdByUserId) {
-      where.createdBy = createdByUserId;
+    if (isSuperAdmin) {
+      // Super Admin sees everything
+    } else if (isAdmin) {
+      // Admin sees everything EXCEPT what was created by a SUPER_ADMIN
+      where.users_clients_createdByTousers = {
+        role: { not: 'SUPER_ADMIN' }
+      };
+    } else {
+      // Others see only their own
+      where.createdBy = userId;
     }
 
     if (query.hasLoginAccess !== undefined) {
@@ -579,9 +591,17 @@ export class ClientService {
   /**
    * Get a single client by ID
    */
-  async findOne(id: string): Promise<ClientSelect> {
-    const client = await this.prisma.client.findUnique({
-      where: { id },
+  async findOne(id: string, userId: string, userRole?: string): Promise<ClientSelect> {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
+    const client = await this.prisma.client.findFirst({
+      where: {
+        id,
+        ...(isSuperAdmin ? {} : 
+           isAdmin ? { users_clients_createdByTousers: { role: { not: 'SUPER_ADMIN' } } } : 
+           { createdBy: userId }),
+      },
       select: this.clientSelect,
     });
 
@@ -766,9 +786,26 @@ export class ClientService {
    * Get all clients for export (no pagination)
    * Excludes security-sensitive fields like hasLoginAccess, userId, invitationToken
    */
-  async findAllForExport(userId: string) {
+  async findAllForExport(userId: string, userRole?: string) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
+    const where: Prisma.ClientWhereInput = {};
+
+    if (isSuperAdmin) {
+      // Super Admin sees everything
+    } else if (isAdmin) {
+      // Admin sees everything EXCEPT what was created by a SUPER_ADMIN
+      where.users_clients_createdByTousers = {
+        role: { not: 'SUPER_ADMIN' }
+      };
+    } else {
+      // Others see only their own
+      where.createdBy = userId;
+    }
+
     const clients = await this.prisma.client.findMany({
-      where: { createdBy: userId },
+      where,
       select: {
         id: true,
         clientId: true,

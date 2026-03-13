@@ -1055,7 +1055,8 @@ export class StaffService {
      */
     async findAll(
         query: QueryStaffInput,
-        createdByUserId?: string
+        userId: string,
+        userRole?: string
     ): Promise<PaginatedStaff> {
         const {
             page = 1,
@@ -1073,9 +1074,14 @@ export class StaffService {
             createdTo,
         } = query;
 
+        const isSuperAdmin = userRole === 'SUPER_ADMIN';
+        const isAdmin = userRole === 'ADMIN';
+
         // Build where clause
         const where: Prisma.StaffWhereInput = {
-            ...(createdByUserId && { createdBy: createdByUserId }),
+            ...(isSuperAdmin ? {} : 
+               isAdmin ? { users_staff_createdByTousers: { role: { not: 'SUPER_ADMIN' } } } : 
+               { createdBy: userId }),
             ...(search && {
                 OR: [
                     { firstName: { contains: search, mode: "insensitive" } },
@@ -1142,9 +1148,17 @@ export class StaffService {
     /**
      * Get a single staff member by ID
      */
-    async findOne(id: string): Promise<StaffSelect> {
-        const staff = await this.prisma.staff.findUnique({
-            where: { id },
+    async findOne(id: string, userId: string, userRole?: string): Promise<StaffSelect> {
+        const isSuperAdmin = userRole === 'SUPER_ADMIN';
+        const isAdmin = userRole === 'ADMIN';
+
+        const staff = await this.prisma.staff.findFirst({
+            where: {
+                id,
+                ...(isSuperAdmin ? {} : 
+                   isAdmin ? { users_staff_createdByTousers: { role: { not: 'SUPER_ADMIN' } } } : 
+                   { createdBy: userId }),
+            },
             select: this.staffSelect,
         });
 
@@ -1508,27 +1522,35 @@ export class StaffService {
     /**
      * Get staff statistics for dashboard
      */
-    async getStats(): Promise<StaffStats> {
+    async getStats(userId?: string, userRole?: string): Promise<StaffStats> {
+        const isSuperAdmin = userRole === 'SUPER_ADMIN';
+        const isAdmin = userRole === 'ADMIN';
+
+        const visibilityWhere: Prisma.StaffWhereInput = 
+            isSuperAdmin ? {} : 
+            isAdmin ? { users_staff_createdByTousers: { role: { not: 'SUPER_ADMIN' } } } : 
+            userId ? { createdBy: userId } : {};
+
         const [total, active, disabled, pending, employees, contractors, companies] =
             await Promise.all([
-                this.prisma.staff.count(),
+                this.prisma.staff.count({ where: visibilityWhere }),
                 this.prisma.staff.count({
-                    where: { accountStatus: "ACTIVE" },
+                    where: { ...visibilityWhere, accountStatus: "ACTIVE" },
                 }),
                 this.prisma.staff.count({
-                    where: { accountStatus: "DISABLED" },
+                    where: { ...visibilityWhere, accountStatus: "DISABLED" },
                 }),
                 this.prisma.staff.count({
-                    where: { accountStatus: "PENDING" },
+                    where: { ...visibilityWhere, accountStatus: "PENDING" },
                 }),
                 this.prisma.staff.count({
-                    where: { staffType: "EMPLOYEE" },
+                    where: { ...visibilityWhere, staffType: "EMPLOYEE" },
                 }),
                 this.prisma.staff.count({
-                    where: { staffType: "CONTRACTOR" },
+                    where: { ...visibilityWhere, staffType: "CONTRACTOR" },
                 }),
                 this.prisma.staff.count({
-                    where: { staffType: "COMPANY" },
+                    where: { ...visibilityWhere, staffType: "COMPANY" },
                 }),
             ]);
 
