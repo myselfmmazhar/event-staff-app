@@ -16,6 +16,7 @@ export const emailTemplateTypeSchema = z.enum([
   'CALL_TIME_WAITLISTED',
   'STAFF_CREDENTIALS',
   'USER_INVITATION',
+  'CALL_INVITATION_BATCH',
 ]);
 
 /**
@@ -29,6 +30,7 @@ export const smsTemplateTypeSchema = z.enum([
   'CALL_TIME_WAITLISTED',
   'STAFF_CREDENTIALS',
   'USER_INVITATION',
+  'CALL_INVITATION_BATCH',
 ]);
 
 /**

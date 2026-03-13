@@ -17,8 +17,7 @@ export const clientRouter = router({
   getAll: protectedProcedure
     .input(ClientSchema.query)
     .query(async ({ ctx, input }) => {
-      const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
-      return await ctx.clientService.findAll(input, isAdminPlus ? undefined : ctx.userId!);
+      return await ctx.clientService.findAll(input, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -27,7 +26,7 @@ export const clientRouter = router({
   getById: protectedProcedure
     .input(ClientSchema.id)
     .query(async ({ ctx, input }) => {
-      return await ctx.clientService.findOne(input.id);
+      return await ctx.clientService.findOne(input.id, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -165,7 +164,7 @@ export const clientRouter = router({
    * Get client statistics for dashboard
    */
   getStats: protectedProcedure.query(async ({ ctx }) => {
-    return await ctx.clientService.getStats();
+    return await ctx.clientService.getStats(ctx.userId!, ctx.userRole as string);
   }),
 
   /**
@@ -173,8 +172,7 @@ export const clientRouter = router({
    * Returns all clients owned by the user with exportable fields only
    */
   getAllForExport: protectedProcedure.query(async ({ ctx }) => {
-    const isAdminPlus = ctx.userRole === 'SUPER_ADMIN' || ctx.userRole === 'ADMIN';
-    return await ctx.clientService.findAllForExport(isAdminPlus ? undefined : ctx.userId!);
+    return await ctx.clientService.findAllForExport(ctx.userId!, ctx.userRole as string);
   }),
 
   /**

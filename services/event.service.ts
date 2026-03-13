@@ -45,12 +45,15 @@ export class EventService {
   }
 
   private async getOwnedEventMeta(id: string, userId: string, userRole?: string) {
-    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
 
     const event = await this.prisma.event.findFirst({
       where: {
         id,
-        ...(isAdminPlus ? {} : { createdBy: userId }),
+        ...(isSuperAdmin ? {} : 
+           isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } : 
+           { createdBy: userId }),
       },
       select: {
         id: true,
@@ -209,13 +212,25 @@ export class EventService {
     const sortBy = query.sortBy ?? "createdAt";
     const sortOrder = query.sortOrder ?? "desc";
 
-    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
 
-    // Build where clause - IMPORTANT: Only show user's own events unless ADMIN/SUPER_ADMIN
+    // Build where clause
     const where: Prisma.EventWhereInput = {
-      ...(isAdminPlus ? {} : { createdBy: userId }),
       isArchived: false,
     };
+
+    if (isSuperAdmin) {
+      // Super Admin sees everything
+    } else if (isAdmin) {
+      // Admin sees everything EXCEPT what was created by a SUPER_ADMIN
+      where.createdByUser = {
+        role: { not: 'SUPER_ADMIN' }
+      };
+    } else {
+      // Others see only their own
+      where.createdBy = userId;
+    }
 
     // Status filter - support both single and array
     if (query.statuses && query.statuses.length > 0) {
@@ -399,12 +414,15 @@ export class EventService {
    * Includes ownership check
    */
   async findOne(id: string, userId: string, userRole?: string) {
-    const isAdminPlus = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
 
     const event = await this.prisma.event.findFirst({
       where: {
         id,
-        ...(isAdminPlus ? {} : { createdBy: userId }), // Ownership check
+        ...(isSuperAdmin ? {} : 
+           isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } : 
+           { createdBy: userId }),
       },
       select: {
         id: true,
