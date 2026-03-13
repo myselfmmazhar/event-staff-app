@@ -241,7 +241,7 @@ export const staffRouter = router({
      */
     getCompanies: protectedProcedure.query(async ({ ctx }) => {
         const staffService = new StaffService(ctx.prisma);
-        return await staffService.getCompanies();
+        return await staffService.getCompanies(ctx.userId!, ctx.userRole as string);
     }),
 
     /**

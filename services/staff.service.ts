@@ -1568,14 +1568,23 @@ export class StaffService {
     /**
      * Get all companies (for dropdown selection when assigning contractors/employees)
      */
-    async getCompanies(): Promise<Array<{
+    async getCompanies(userId?: string, userRole?: string): Promise<Array<{
         id: string;
         staffId: string;
         firstName: string;
         lastName: string;
     }>> {
+        const isSuperAdmin = userRole === 'SUPER_ADMIN';
+        const isAdmin = userRole === 'ADMIN';
+
+        const visibilityWhere: Prisma.StaffWhereInput = 
+            isSuperAdmin ? {} : 
+            isAdmin ? { users_staff_createdByTousers: { role: { not: 'SUPER_ADMIN' } } } : 
+            userId ? { createdBy: userId } : {};
+
         return await this.prisma.staff.findMany({
             where: {
+                ...visibilityWhere,
                 staffType: "COMPANY",
                 // Include both ACTIVE and PENDING companies
                 accountStatus: { in: ["ACTIVE", "PENDING"] },
