@@ -102,7 +102,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
     dateTo: dateTo ? new Date(dateTo) : undefined,
     sortBy: sortBy as 'startDate' | 'position' | 'event',
     sortOrder,
-    staffingStatus: 'all',
+    staffingStatus: 'accepted',
     eventStatuses: selectedEventStatuses as any[],
   });
 

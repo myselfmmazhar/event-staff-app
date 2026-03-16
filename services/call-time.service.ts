@@ -1303,7 +1303,7 @@ export class CallTimeService {
       search?: string;
       dateFrom?: Date;
       dateTo?: Date;
-      staffingStatus?: 'needsStaff' | 'fullyStaffed' | 'all';
+      staffingStatus?: 'needsStaff' | 'fullyStaffed' | 'pending' | 'accepted' | 'all';
       eventStatuses?: EventStatus[];
     }
   ) {
@@ -1352,6 +1352,10 @@ export class CallTimeService {
       orderBy = { event: { title: sortOrder } };
     }
 
+    const fetchingAll = input.staffingStatus && input.staffingStatus !== 'all';
+    const dbSkip = fetchingAll ? undefined : skip;
+    const dbTake = fetchingAll ? undefined : limit;
+
     const [callTimes, total] = await Promise.all([
       this.prisma.callTime.findMany({
         where,
@@ -1385,11 +1389,13 @@ export class CallTimeService {
               id: true,
               status: true,
               isConfirmed: true,
+              createdAt: true,
               staff: {
                 select: {
                   id: true,
                   firstName: true,
                   lastName: true,
+                  phone: true,
                 },
               },
             },
@@ -1399,10 +1405,10 @@ export class CallTimeService {
           },
         },
         orderBy,
-        skip,
-        take: limit,
+        skip: dbSkip,
+        take: dbTake,
       }),
-      this.prisma.callTime.count({ where }),
+      fetchingAll ? Promise.resolve(0) : this.prisma.callTime.count({ where }),
     ]);
 
     // Calculate staffing status and filter if needed
@@ -1411,11 +1417,34 @@ export class CallTimeService {
         (inv) => inv.status === 'ACCEPTED' && inv.isConfirmed
       ).length;
       const needsStaff = confirmedCount < ct.numberOfStaffRequired;
+      const hasPending = ct.invitations.some(inv => inv.status === 'PENDING');
+      const hasAccepted = ct.invitations.some(inv => inv.status === 'ACCEPTED' && inv.isConfirmed);
 
+      // Create a clean object for the frontend
       return {
-        ...ct,
+        id: ct.id,
+        callTimeId: ct.callTimeId,
+        serviceId: ct.serviceId,
+        numberOfStaffRequired: ct.numberOfStaffRequired,
+        skillLevel: ct.skillLevel,
+        startDate: ct.startDate,
+        startTime: ct.startTime,
+        endDate: ct.endDate,
+        endTime: ct.endTime,
+        payRate: ct.payRate,
+        payRateType: ct.payRateType,
+        billRate: ct.billRate,
+        billRateType: ct.billRateType,
+        notes: ct.notes,
+        eventId: ct.eventId,
         confirmedCount,
         needsStaff,
+        hasPending,
+        hasAccepted,
+        service: ct.service,
+        event: ct.event,
+        invitations: ct.invitations,
+        _count: ct._count,
       };
     });
 
@@ -1424,15 +1453,26 @@ export class CallTimeService {
       filteredData = filteredData.filter((ct) => ct.needsStaff);
     } else if (input.staffingStatus === 'fullyStaffed') {
       filteredData = filteredData.filter((ct) => !ct.needsStaff);
+    } else if (input.staffingStatus === 'pending') {
+      filteredData = filteredData.filter((ct) => ct.hasPending);
+    } else if (input.staffingStatus === 'accepted') {
+      filteredData = filteredData.filter((ct) => ct.hasAccepted);
+    }
+
+    const finalTotal = fetchingAll ? filteredData.length : total;
+
+    // Apply pagination if we fetched all
+    if (fetchingAll) {
+      filteredData = filteredData.slice(skip, skip + limit);
     }
 
     return {
       data: filteredData,
       meta: {
-        total: input.staffingStatus === 'all' ? total : filteredData.length,
+        total: finalTotal,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(finalTotal / limit),
       },
     };
   }

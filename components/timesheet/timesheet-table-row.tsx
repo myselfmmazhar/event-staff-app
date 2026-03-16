@@ -1,28 +1,30 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDownIcon, ChevronUpIcon, EditIcon, CheckIcon, CloseIcon } from '@/components/ui/icons';
-import { 
-    getAcceptedStaff, 
-    combineDateTime, 
-    fmtDateTime, 
-    calcScheduledHours, 
-    calcClockedHours, 
-    toNumber, 
-    calcScheduledCost, 
-    calcClockedCost, 
-    calcBillAmount, 
+import {
+    getAcceptedStaff,
+    combineDateTime,
+    fmtDateTime,
+    formatDate,
+    formatTime,
+    calcScheduledHours,
+    calcClockedHours,
+    toNumber,
+    calcScheduledCost,
+    calcClockedCost,
+    calcBillAmount,
     fmtCurrency,
     toInputDatetime
 } from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
 
-export function TimesheetTableRow({ 
-    ct, 
-    isExpanded, 
-    isSelected, 
-    onToggleExpand, 
-    onToggleSelect, 
+export function TimesheetTableRow({
+    ct,
+    isExpanded,
+    isSelected,
+    onToggleExpand,
+    onToggleSelect,
     onViewEvent,
     onSaveTimeEntry,
 }: {
@@ -91,10 +93,10 @@ export function TimesheetTableRow({
                 <td className="px-3 py-2.5 font-bold text-primary">{ct.staff?.lastName || '—'}</td>
 
                 {/* Payroll ID */}
-                <td className="px-3 py-2.5 text-muted-foreground">{ct.staff?.payrollId || '—'}</td>
+                {/* <td className="px-3 py-2.5 text-muted-foreground">{ct.staff?.payrollId || '—'}</td> */}
 
                 {/* HR ID */}
-                <td className="px-3 py-2.5 text-muted-foreground">{ct.staff?.hrSystemId || '—'}</td>
+                {/* <td className="px-3 py-2.5 text-muted-foreground">{ct.staff?.hrSystemId || '—'}</td> */}
 
                 {/* Position */}
                 <td className="px-3 py-2.5">
@@ -103,14 +105,24 @@ export function TimesheetTableRow({
                     </Badge>
                 </td>
 
+                {/* Start Date */}
+                <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
+                    {formatDate(ct.startDate)}
+                </td>
+
                 {/* Start Time */}
                 <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
-                    {fmtDateTime(combineDateTime(ct.startDate, ct.startTime))}
+                    {formatTime(ct.startTime)}
+                </td>
+
+                {/* End Date */}
+                <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
+                    {formatDate(ct.endDate || ct.startDate)}
                 </td>
 
                 {/* End Time */}
                 <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
-                    {fmtDateTime(combineDateTime(ct.endDate || ct.startDate, ct.endTime))}
+                    {formatTime(ct.endTime)}
                 </td>
 
                 {/* Hrs Sched */}
@@ -120,7 +132,12 @@ export function TimesheetTableRow({
 
                 {/* Pay Rate */}
                 <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
-                    ${toNumber(ct.payRate).toFixed(2)}/{ct.payRateType.replace('PER_', '')}
+                    ${toNumber(ct.payRate).toFixed(2)}
+                </td>
+
+                {/* Rate Type */}
+                <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap text-[10px] uppercase">
+                    {ct.payRateType.replace('PER_', '')}
                 </td>
 
                 {/* Clock In / Out Editor or Display */}
@@ -153,15 +170,24 @@ export function TimesheetTableRow({
                 ) : (
                     <>
                         {/* Clock In */}
-                        <td className="px-3 py-2.5 whitespace-nowrap text-[10px]">
+                        <td 
+                            className="px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-emerald-50 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+                        >
                             {te?.clockIn ? <span className="text-emerald-600 font-medium">{fmtDateTime(te.clockIn)}</span> : <span className="text-slate-300 italic">Not clocked</span>}
                         </td>
                         {/* Clock Out */}
-                        <td className="px-3 py-2.5 whitespace-nowrap text-[10px]">
+                        <td 
+                            className="px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-red-50 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+                        >
                             {te?.clockOut ? <span className="text-red-500 font-medium">{fmtDateTime(te.clockOut)}</span> : '—'}
                         </td>
                         {/* Hrs Clo */}
-                        <td className="px-3 py-2.5 text-center tabular-nums font-semibold">
+                        <td 
+                            className="px-3 py-2.5 text-center tabular-nums font-semibold hover:bg-slate-50 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+                        >
                             {hoursClocked > 0 ? hoursClocked.toFixed(2) : '—'}
                         </td>
                     </>

@@ -127,7 +127,7 @@ export function ClientTable({
         </div>
       ),
     },
-    {
+    /* {
       key: 'clientId',
       label: columnLabels.clientId,
       sortable: true,
@@ -137,7 +137,7 @@ export function ClientTable({
           {client.clientId}
         </span>
       ),
-    },
+    }, */
     {
       key: 'businessName',
       label: columnLabels.businessName,
@@ -192,9 +192,9 @@ export function ClientTable({
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="font-mono text-xs text-muted-foreground mb-1">
+          {/* <div className="font-mono text-xs text-muted-foreground mb-1">
             {client.clientId}
-          </div>
+          </div> */}
           <h3 className="font-semibold text-card-foreground">
             {client.businessName}
           </h3>
