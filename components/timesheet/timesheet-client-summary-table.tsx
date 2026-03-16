@@ -32,20 +32,21 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
                         {clientGroups.map((group) => {
-                            let minDate: any = null;
-                            let maxDate: any = null;
+                            const dates: Date[] = [];
                             let completedCount = 0;
 
                             group.callTimes.forEach(ct => {
                                 if (ct.startDate) {
                                     const d = typeof ct.startDate === 'string' ? parseISO(ct.startDate) : ct.startDate;
-                                    if (!minDate || d < minDate) minDate = d;
-                                    if (!maxDate || d > maxDate) maxDate = d;
+                                    dates.push(d);
                                 }
                                 if (ct.timeEntry?.clockIn && ct.timeEntry?.clockOut) {
                                     completedCount++;
                                 }
                             });
+
+                            const minDate = dates.length > 0 ? new Date(Math.min(...dates.map(d => d.getTime()))) : null;
+                            const maxDate = dates.length > 0 ? new Date(Math.max(...dates.map(d => d.getTime()))) : null;
 
                             return (
                                 <tr key={group.clientId} className="hover:bg-muted/30 transition-colors">
@@ -70,8 +71,8 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                         )}
                                     </td>
                                     <td className="px-4 py-4 text-muted-foreground whitespace-nowrap text-xs">
-                                        {minDate ? formatDate(minDate) : 'TBD'} 
-                                        {maxDate && minDate?.getTime() !== maxDate.getTime() ? ` - ${formatDate(maxDate)}` : ''}
+                                        {minDate ? formatDate(minDate) : 'TBD'}
+                                        {maxDate && minDate && minDate.getTime() !== maxDate.getTime() ? ` - ${formatDate(maxDate)}` : ''}
                                     </td>
                                 </tr>
                             );
