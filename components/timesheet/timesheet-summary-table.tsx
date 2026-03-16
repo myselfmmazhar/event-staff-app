@@ -28,10 +28,10 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted/50 border-b border-border">
                         <tr>
-                            <th className="px-4 py-3 font-semibold text-foreground">Event</th>
-                            <th className="px-4 py-3 font-semibold text-foreground">Event ID</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">Task</th>
+                            {/* <th className="px-4 py-3 font-semibold text-foreground">Task ID</th> */}
                             <th className="px-4 py-3 font-semibold text-foreground">Client</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-center">Shift Count</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">Total Assignments</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Date / Time</th>
                         </tr>
                     </thead>
@@ -39,11 +39,11 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                         {eventGroups.map((group) => {
                             const firstRow = group.callTimes[0];
                             const event = firstRow?.event;
-                            
+
                             // Calculate date range for the group
                             let minDate: Date | null = null;
                             let maxDate: Date | null = null;
-                            
+
                             group.callTimes.forEach(ct => {
                                 if (ct.startDate) {
                                     const d = typeof ct.startDate === 'string' ? parseISO(ct.startDate) : ct.startDate;
@@ -53,27 +53,27 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                             });
 
                             return (
-                                <tr 
-                                    key={group.eventId} 
+                                <tr
+                                    key={group.eventId}
                                     className="hover:bg-muted/30 transition-colors"
                                 >
                                     <td className="px-4 py-4">
-                                        <button 
+                                        <button
                                             onClick={() => onEventClick(group.eventId)}
                                             className="font-medium text-primary hover:underline text-left"
                                         >
                                             {group.eventTitle}
                                         </button>
                                     </td>
-                                    <td className="px-4 py-4">
+                                    {/* <td className="px-4 py-4">
                                         <Badge variant="outline" className="font-mono text-xs">
                                             {group.eventDisplayId}
                                         </Badge>
-                                    </td>
+                                    </td> */}
                                     <td className="px-4 py-4 text-muted-foreground">
                                         {event?.client?.businessName || 'No Client'}
                                     </td>
-                                    <td className="px-4 py-4 text-center">
+                                    <td className="px-4 py-4">
                                         <Badge variant="secondary">
                                             {group.callTimes.length}
                                         </Badge>
