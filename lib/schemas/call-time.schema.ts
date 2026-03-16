@@ -318,7 +318,7 @@ export class CallTimeSchema {
     search: z.string().optional(),
     dateFrom: z.coerce.date().optional(),
     dateTo: z.coerce.date().optional(),
-    staffingStatus: z.enum(['needsStaff', 'fullyStaffed', 'all']).default('all').optional(),
+    staffingStatus: z.enum(['needsStaff', 'fullyStaffed', 'pending', 'accepted', 'all']).default('all').optional(),
     eventStatuses: z.array(z.nativeEnum(EventStatus)).optional(),
   });
 

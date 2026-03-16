@@ -93,7 +93,7 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
         dateTo: dateTo ? new Date(dateTo) : undefined,
         sortBy: sortBy as 'startDate' | 'position' | 'event',
         sortOrder,
-        staffingStatus: 'all',
+        staffingStatus: 'pending',
         eventStatuses: selectedEventStatuses as any[],
     });
 

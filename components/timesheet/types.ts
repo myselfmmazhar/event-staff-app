@@ -61,6 +61,20 @@ export interface EventGroup {
     callTimes: CallTimeRow[];
 }
 
+export interface ClientGroup {
+    clientId: string;
+    clientName: string;
+    callTimes: CallTimeRow[];
+}
+
+export interface TalentGroup {
+    staffId: string;
+    staffName: string;
+    callTimes: CallTimeRow[];
+}
+
+export type TimesheetTab = 'task' | 'client' | 'talent';
+
 export type SortField = 'startDate' | 'position' | 'event' | 'staffName';
 export type SortOrder = 'asc' | 'desc';
 export type StaffingFilter = 'all' | 'needsStaff' | 'fullyStaffed';

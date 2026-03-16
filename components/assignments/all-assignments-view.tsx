@@ -102,11 +102,11 @@ export function AllAssignmentsView({
     numberOfStaffRequired: item.numberOfStaffRequired,
     payRate: item.payRate,
     payRateType: item.payRateType,
-    service: item.service,
-    event: item.event,
+    service: item.service as any,
+    event: item.event as any,
     confirmedCount: item.confirmedCount,
     needsStaff: item.needsStaff,
-    invitations: item.invitations,
+    invitations: item.invitations as any,
   }));
 
   // Group assignments by position + call time

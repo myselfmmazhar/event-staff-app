@@ -405,7 +405,7 @@ export default function ClientsPage() {
                 description: 'Customize table column headers',
                 prefix: 'columns',
                 labels: [
-                  { key: 'clientId', label: 'Client ID', defaultLabel: 'Client ID' },
+                  // { key: 'clientId', label: 'Client ID', defaultLabel: 'Client ID' },
                   { key: 'businessName', label: 'Business Name', defaultLabel: 'Business Name' },
                   { key: 'contact', label: 'Contact Person', defaultLabel: 'Contact Person' },
                   { key: 'email', label: 'Email', defaultLabel: 'Email' },

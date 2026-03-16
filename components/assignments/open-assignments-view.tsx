@@ -131,7 +131,7 @@ export function OpenAssignmentsView() {
     setSelectedStaffIds([]);
   };
 
-  const openAssignments: AssignmentData[] = (data?.data || []).filter((item) => item.needsStaff);
+  const openAssignments: AssignmentData[] = (data?.data || []).filter((item) => item.needsStaff === true);
   const selectedAssignment = openAssignments.find((a) => a.id === selectedAssignmentId);
 
   if (openAssignments.length === 0 && !isLoading) {

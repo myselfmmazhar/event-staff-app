@@ -562,7 +562,7 @@ export const DEFAULT_PAGE_LABELS: PageLabels = {
       title: 'Title',
       client: 'Client',
       venueName: 'Location',
-      startDate: 'Start Date',
+      startDate: 'Date',
       endDate: 'End Date',
       status: 'Status',
       staffCount: '{Staff} Count',

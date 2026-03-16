@@ -363,7 +363,7 @@ export function EventTable({
     {
       key: 'assignmentProgress',
       label: columnLabels.assignmentProgress,
-      className: 'py-4 px-4',
+      className: 'py-4 px-4 align-top min-w-[240px]',
       render: (event) => {
         const { totalRequired, totalAccepted, totalPending, totalOpen, allGroups } = getAssignmentSummary(event);
 
@@ -390,20 +390,20 @@ export function EventTable({
               {!isExpanded && (
                 <div className="flex flex-col gap-1 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Open:</span>
-                    <Badge variant={totalOpen > 0 ? 'danger' : 'secondary'} size="sm">
+                    <span className="text-muted-foreground text-xs">Open:</span>
+                    <Badge variant="danger" size="sm" className="w-[72px] justify-center tabular-nums">
                       {totalOpen} of {totalRequired}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Pending:</span>
-                    <Badge variant={totalPending > 0 ? 'warning' : 'secondary'} size="sm">
+                    <span className="text-muted-foreground text-xs">Pending:</span>
+                    <Badge variant="warning" size="sm" className="w-[72px] justify-center tabular-nums">
                       {totalPending} of {totalRequired}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Accepted:</span>
-                    <Badge variant={totalAccepted > 0 ? 'success' : 'secondary'} size="sm">
+                    <span className="text-muted-foreground text-xs">Accepted:</span>
+                    <Badge variant="success" size="sm" className="w-[72px] justify-center tabular-nums">
                       {totalAccepted} of {totalRequired}
                     </Badge>
                   </div>
@@ -425,116 +425,6 @@ export function EventTable({
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
                   <Badge variant="default" size="sm">{totalRequired} Required</Badge>
                   <Badge variant="info" size="sm">{allInvitations.length} Sent</Badge>
-                </div>
-
-                {/* Status sections */}
-                <div className="space-y-3">
-                  {/* Open Positions */}
-                  {totalOpen > 0 && (
-                    <button
-                      type="button"
-                      className="w-full text-left group"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/assignments?eventId=${event.id}&status=open`);
-                      }}
-                    >
-                      <div className="flex items-center gap-3 p-3 rounded-lg border border-danger/30 bg-gradient-to-r from-danger/5 to-transparent hover:from-danger/10 transition-all">
-                        <div className="h-10 w-10 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
-                          <span className="text-danger font-bold text-lg">{totalOpen}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm group-hover:text-danger transition-colors">Open Positions</p>
-                          <p className="text-xs text-muted-foreground">Needs staffing</p>
-                        </div>
-                        <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </button>
-                  )}
-
-                  {/* Pending */}
-                  {pendingInvitations.length > 0 && (
-                    <button
-                      type="button"
-                      className="w-full text-left group"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/assignments?eventId=${event.id}&status=pending`);
-                      }}
-                    >
-                      <div className="p-3 rounded-lg border border-warning/30 bg-gradient-to-r from-warning/5 to-transparent hover:from-warning/10 transition-all">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="h-10 w-10 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
-                            <span className="text-warning font-bold text-lg">{pendingInvitations.length}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm group-hover:text-warning transition-colors">Pending Response</p>
-                            <p className="text-xs text-muted-foreground">Awaiting confirmation</p>
-                          </div>
-                          <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
-                        </div>
-                        <div className="flex flex-wrap gap-1 pl-[52px]">
-                          {pendingInvitations.slice(0, 4).map((inv) => (
-                            <div key={inv.id} className="h-6 w-6 rounded-full bg-warning/20 border border-warning/30 flex items-center justify-center text-[9px] font-medium" title={`${inv.staff.firstName} ${inv.staff.lastName}`}>
-                              {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
-                            </div>
-                          ))}
-                          {pendingInvitations.length > 4 && (
-                            <div className="h-6 px-2 rounded-full bg-warning/10 flex items-center justify-center text-[10px] text-warning font-medium">
-                              +{pendingInvitations.length - 4}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  )}
-
-                  {/* Accepted */}
-                  {acceptedInvitations.length > 0 && (
-                    <button
-                      type="button"
-                      className="w-full text-left group"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/assignments?eventId=${event.id}&status=accepted`);
-                      }}
-                    >
-                      <div className="p-3 rounded-lg border border-success/30 bg-gradient-to-r from-success/5 to-transparent hover:from-success/10 transition-all">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-                            <span className="text-success font-bold text-lg">{acceptedInvitations.length}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm group-hover:text-success transition-colors">Accepted</p>
-                            <p className="text-xs text-muted-foreground">
-                              {acceptedInvitations.filter(i => i.isConfirmed).length} confirmed
-                            </p>
-                          </div>
-                          <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
-                        </div>
-                        <div className="flex flex-wrap gap-1 pl-[52px]">
-                          {acceptedInvitations.slice(0, 4).map((inv) => (
-                            <div
-                              key={inv.id}
-                              className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-medium ${inv.isConfirmed
-                                ? 'bg-success/30 border-2 border-success'
-                                : 'bg-success/20 border border-success/30'
-                                }`}
-                              title={`${inv.staff.firstName} ${inv.staff.lastName}${inv.isConfirmed ? ' (Confirmed)' : ''}`}
-                            >
-                              {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
-                            </div>
-                          ))}
-                          {acceptedInvitations.length > 4 && (
-                            <div className="h-6 px-2 rounded-full bg-success/10 flex items-center justify-center text-[10px] text-success font-medium">
-                              +{acceptedInvitations.length - 4}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  )}
-
                   {/* Declined - more subtle */}
                   {declinedInvitations.length > 0 && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30">
@@ -554,6 +444,112 @@ export function EventTable({
                     </div>
                   )}
                 </div>
+
+                {/* Status sections */}                  <div className="space-y-2 h-fit">
+                    {/* Open Positions */}
+                    <button
+                      type="button"
+                      className="w-full text-left group transition-all h-fit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/assignments?eventId=${event.id}&status=open`);
+                      }}
+                    >
+                      <div className="flex items-center gap-3 p-2.5 rounded-lg border border-destructive/40 bg-gradient-to-r from-destructive/10 to-transparent hover:from-destructive/20 transition-all shadow-sm group-hover:shadow transition-all">
+                        <div className="h-9 w-9 rounded-full bg-destructive/20 flex items-center justify-center shrink-0 border border-destructive/30">
+                          <span className="text-destructive font-bold text-base">{totalOpen}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-destructive group-hover:text-destructive/80 transition-colors">Open Positions</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Needs staffing</p>
+                        </div>
+                        <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+
+                    {/* Pending */}
+                    <button
+                      type="button"
+                      className="w-full text-left group transition-all h-fit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/assignments?eventId=${event.id}&status=pending`);
+                      }}
+                    >
+                      <div className="p-2.5 rounded-lg border border-warning/40 bg-gradient-to-r from-warning/10 to-transparent hover:from-warning/20 transition-all shadow-sm group-hover:shadow transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-warning/20 flex items-center justify-center shrink-0 border border-warning/30">
+                            <span className="text-warning font-bold text-base">{totalPending}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-warning group-hover:text-warning/80 transition-colors">Pending Response</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Awaiting confirmation</p>
+                          </div>
+                          <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                        {pendingInvitations.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2 pl-[48px]">
+                            {pendingInvitations.slice(0, 5).map((inv) => (
+                              <div key={inv.id} className="h-5 w-5 rounded-full bg-warning/20 border border-warning/30 flex items-center justify-center text-[8px] font-medium" title={`${inv.staff.firstName} ${inv.staff.lastName}`}>
+                                {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
+                              </div>
+                            ))}
+                            {pendingInvitations.length > 5 && (
+                              <div className="h-5 px-1.5 rounded-full bg-warning/10 flex items-center justify-center text-[9px] text-warning font-medium">
+                                +{pendingInvitations.length - 5}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Accepted */}
+                    <button
+                      type="button"
+                      className="w-full text-left group transition-all h-fit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/assignments?eventId=${event.id}&status=accepted`);
+                      }}
+                    >
+                      <div className="p-2.5 rounded-lg border border-success/40 bg-gradient-to-r from-success/10 to-transparent hover:from-success/20 transition-all shadow-sm group-hover:shadow transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-success/20 flex items-center justify-center shrink-0 border border-success/30">
+                            <span className="text-success font-bold text-base">{totalAccepted}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-success group-hover:text-success/80 transition-colors">Accepted</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                              {acceptedInvitations.filter(i => i.isConfirmed).length} confirmed
+                            </p>
+                          </div>
+                          <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                        {acceptedInvitations.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2 pl-[48px]">
+                            {acceptedInvitations.slice(0, 5).map((inv) => (
+                              <div
+                                key={inv.id}
+                                className={`h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-medium ${inv.isConfirmed
+                                  ? 'bg-success/30 border-2 border-success'
+                                  : 'bg-success/20 border border-success/30'
+                                  }`}
+                                title={`${inv.staff.firstName} ${inv.staff.lastName}${inv.isConfirmed ? ' (Confirmed)' : ''}`}
+                              >
+                                {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
+                              </div>
+                            ))}
+                            {acceptedInvitations.length > 5 && (
+                              <div className="h-5 px-1.5 rounded-full bg-success/10 flex items-center justify-center text-[9px] text-success font-medium">
+                                +{acceptedInvitations.length - 5}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  </div>
 
               </div>
             )}
@@ -611,9 +607,9 @@ export function EventTable({
               </div> */}
               <div className="flex flex-col gap-1 text-sm min-w-[160px]">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground shrink-0">Open:</span>
+                  <span className="text-muted-foreground shrink-0 text-xs">Open:</span>
                   <Badge
-                    variant={totalOpen > 0 ? 'danger' : 'secondary'}
+                    variant="danger"
                     size="sm"
                     className="w-[72px] justify-center tabular-nums whitespace-nowrap shrink-0"
                   >
@@ -621,9 +617,9 @@ export function EventTable({
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground shrink-0">Pending:</span>
+                  <span className="text-muted-foreground shrink-0 text-xs">Pending:</span>
                   <Badge
-                    variant={totalPending > 0 ? 'warning' : 'secondary'}
+                    variant="warning"
                     size="sm"
                     className="w-[72px] justify-center tabular-nums whitespace-nowrap shrink-0"
                   >
@@ -631,9 +627,9 @@ export function EventTable({
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground shrink-0">Accepted:</span>
+                  <span className="text-muted-foreground shrink-0 text-xs">Accepted:</span>
                   <Badge
-                    variant={totalAccepted > 0 ? 'success' : 'secondary'}
+                    variant="success"
                     size="sm"
                     className="w-[72px] justify-center tabular-nums whitespace-nowrap shrink-0"
                   >
