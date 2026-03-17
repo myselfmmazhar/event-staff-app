@@ -213,12 +213,23 @@ export default function CommunicationManagerPage() {
         }
     });
 
+    const updateContactNotesMutation = trpc.contacts.updateNotes.useMutation({
+        onSuccess: (data, variables) => {
+            toast({ title: 'Comment saved successfully' });
+            setSelectedContact(prev => prev && prev.id === data.id ? { ...prev, internalNotes: variables.internalNotes ?? null } : prev);
+            refetchContacts();
+        },
+        onError: (error) => {
+            toast({ title: 'Failed to save comment', description: error.message, variant: 'error' });
+        }
+    });
+
     const deleteContactMutation = trpc.contacts.delete.useMutation({
         onSuccess: () => {
             toast({ title: 'Contact deleted successfully' });
             setIsDeleteDialogOpen(false);
             setContactToDelete(null);
-            if (selectedContact && selectedContact.id === contactToDelete?.id) {
+            if (selectedContact && selectedContact.id === contactToDelete) {
                 setSelectedContact(null);
                 setIsDetailView(false);
             }
@@ -384,7 +395,7 @@ export default function CommunicationManagerPage() {
                 configId: contactActionMsgConfigId === 'default' ? undefined : contactActionMsgConfigId
             });
         } else if (contactActionTab === 'COMMENT') {
-            updateContactMutation.mutate({
+            updateContactNotesMutation.mutate({
                 id: selectedContact.id,
                 internalNotes: content,
                 contactType: selectedContact.contactType,

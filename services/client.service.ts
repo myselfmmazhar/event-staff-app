@@ -682,7 +682,7 @@ export class ClientService {
           // and doesn't have a valid pending invitation
           if (!client.userId && !client.invitationToken) {
             // First time enabling access - generate and return invitation
-            return await this.grantLoginAccess(id);
+            return await this.grantLoginAccess(id, userId, userRole);
           }
           // If already has userId or invitationToken, just update the flag
           const updatedClient = await this.prisma.client.update({
@@ -693,7 +693,7 @@ export class ClientService {
           return { client: updatedClient, invitationToken: null };
         } else {
           // Return revoked client with null invitationToken
-          const revokedClient = await this.revokeLoginAccess(id);
+          const revokedClient = await this.revokeLoginAccess(id, userId, userRole);
           return { client: revokedClient, invitationToken: null };
         }
       }
@@ -966,7 +966,7 @@ export class ClientService {
 
         if (existingId) {
           // Update existing client (don't touch hasLoginAccess)
-          await this.update(existingId, clientData);
+          await this.update(existingId, clientData, userId);
           results.updated++;
         } else {
           // Create new client

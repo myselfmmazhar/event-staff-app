@@ -596,6 +596,7 @@ export function EventFormModal({
           billRate: ct.billRate ? Number(ct.billRate) : null,
           rateType: ct.payRateType ?? null,
           notes: ct.notes ?? null,
+          instructions: ct.instructions ?? null,
         };
       });
 

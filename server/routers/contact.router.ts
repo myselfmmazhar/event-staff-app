@@ -27,6 +27,13 @@ export const contactRouter = router({
             return await ctx.contactService.update(id, data);
         }),
 
+    updateNotes: protectedProcedure
+        .input(ContactSchema.updateNotes)
+        .mutation(async ({ ctx, input }) => {
+            const { id, ...data } = input;
+            return await ctx.contactService.update(id, data);
+        }),
+
     delete: protectedProcedure
         .input(ContactSchema.id)
         .mutation(async ({ ctx, input }) => {

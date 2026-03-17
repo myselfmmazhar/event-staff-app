@@ -147,7 +147,6 @@ export const callTimeRouter = router({
               requirements: (invitation.callTime.event as any).requirements,
               preEventInstructions: (invitation.callTime.event as any).preEventInstructions,
               privateComments: (invitation.callTime.event as any).privateComments,
-              internalNotes: (invitation.callTime.event as any).internalNotes,
               instructions: invitation.callTime.instructions,
             }
           );
@@ -183,7 +182,7 @@ export const callTimeRouter = router({
               callTime: {
                 include: {
                   service: { select: { title: true } },
-                  event: { select: { title: true, venueName: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true, internalNotes: true } },
+                  event: { select: { title: true, venueName: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true } },
                 },
               },
             },
@@ -204,7 +203,6 @@ export const callTimeRouter = router({
                 requirements: staffRecord.callTime.event.requirements,
                 preEventInstructions: staffRecord.callTime.event.preEventInstructions,
                 privateComments: staffRecord.callTime.event.privateComments,
-                internalNotes: (staffRecord.callTime.event as any).internalNotes,
                 instructions: staffRecord.callTime.instructions,
               }
             );
