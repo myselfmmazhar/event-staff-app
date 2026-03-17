@@ -64,6 +64,7 @@ export const serviceAssignmentSchema = z.object({
   billRate: z.number().min(0).nullable().optional(),
   rateType: rateTypeSchema.nullable().optional(),
   notes: z.string().max(5000, 'Notes too long').nullable().optional(),
+  instructions: z.string().max(5000, 'Instructions too long').nullable().optional(),
 });
 
 /**

@@ -26,6 +26,7 @@ export class ContactService {
         createdBy: true,
         createdAt: true,
         updatedAt: true,
+        internalNotes: true,
     } as const;
 
     async create(data: CreateContactInput, createdByUserId: string) {
@@ -54,9 +55,71 @@ export class ContactService {
 
     async update(id: string, data: Partial<UpdateContactInput>): Promise<ContactSelect> {
         try {
+            const { contactType, ...updateData } = data;
+
+            if (contactType === 'CLIENT') {
+                const client = await this.prisma.client.update({
+                    where: { id },
+                    data: {
+                        firstName: updateData.firstName,
+                        lastName: updateData.lastName,
+                        email: updateData.email,
+                        cellPhone: updateData.phone,
+                        internalNotes: updateData.internalNotes,
+                    }
+                });
+                return {
+                    id: client.id,
+                    contactId: client.clientId,
+                    firstName: client.firstName,
+                    lastName: client.lastName,
+                    email: client.email,
+                    phone: client.cellPhone,
+                    dateOfBirth: null,
+                    transactionType: 'CLIENT',
+                    ricsSurveyAccount: false,
+                    correspondingAddress: client.businessName || client.businessAddress || 'Business Client',
+                    contactSource: 'Client Manager',
+                    contactType: 'CLIENT',
+                    createdBy: client.createdBy,
+                    createdAt: client.createdAt,
+                    updatedAt: client.updatedAt,
+                    internalNotes: client.internalNotes,
+                } as ContactSelect;
+            } else if (contactType === 'STAFF') {
+                const staff = await this.prisma.staff.update({
+                    where: { id },
+                    data: {
+                        firstName: updateData.firstName,
+                        lastName: updateData.lastName,
+                        email: updateData.email,
+                        phone: updateData.phone,
+                        internalNotes: updateData.internalNotes,
+                    }
+                });
+                return {
+                    id: staff.id,
+                    contactId: staff.staffId,
+                    firstName: staff.firstName,
+                    lastName: staff.lastName,
+                    email: staff.email,
+                    phone: staff.phone,
+                    dateOfBirth: staff.dateOfBirth,
+                    transactionType: 'STAFF',
+                    ricsSurveyAccount: false,
+                    correspondingAddress: staff.staffType || 'Staff Member',
+                    contactSource: 'Staff Manager',
+                    contactType: 'STAFF',
+                    createdBy: staff.createdBy,
+                    createdAt: staff.createdAt,
+                    updatedAt: staff.updatedAt,
+                    internalNotes: staff.internalNotes,
+                } as ContactSelect;
+            }
+
             return await this.prisma.contact.update({
                 where: { id },
-                data,
+                data: updateData,
                 select: this.contactSelect,
             });
         } catch (error) {
@@ -118,6 +181,7 @@ export class ContactService {
                 createdBy: c.createdBy,
                 createdAt: c.createdAt,
                 updatedAt: c.updatedAt,
+                internalNotes: c.internalNotes,
             }));
             total = count;
         } else if (filterType === 'TEAM') {
@@ -169,6 +233,7 @@ export class ContactService {
                 createdBy: 'SYSTEM',
                 createdAt: u.createdAt,
                 updatedAt: u.updatedAt,
+                internalNotes: null,
             }));
             total = count;
         } else if (filterType === 'STAFF') {
@@ -208,6 +273,7 @@ export class ContactService {
                 createdBy: s.createdBy,
                 createdAt: s.createdAt,
                 updatedAt: s.updatedAt,
+                internalNotes: s.internalNotes,
             }));
             total = count;
         } else {
@@ -264,6 +330,7 @@ export class ContactService {
                     contactSource: 'Client Manager',
                     contactType: 'CLIENT',
                     createdAt: c.createdAt,
+                    internalNotes: c.internalNotes,
                 })),
                 ...staff.map(s => ({
                     id: s.id,
@@ -277,6 +344,7 @@ export class ContactService {
                     contactSource: 'Staff Manager',
                     contactType: 'STAFF',
                     createdAt: s.createdAt,
+                    internalNotes: s.internalNotes,
                 })),
                 ...users.map(u => ({
                     id: u.id,
@@ -290,6 +358,7 @@ export class ContactService {
                     contactSource: 'Internal',
                     contactType: 'TEAM',
                     createdAt: u.createdAt,
+                    internalNotes: null,
                 }))
             ];
 

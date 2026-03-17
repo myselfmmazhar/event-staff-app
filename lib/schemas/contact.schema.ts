@@ -22,6 +22,7 @@ export const ContactSchema = {
         correspondingAddress: z.preprocess((val) => (val === "" ? null : val), z.string().max(500).optional().nullable()),
         contactSource: z.preprocess((val) => (val === "" ? null : val), z.string().max(100).optional().nullable()),
         contactType: z.preprocess((val) => (val === "" ? null : val), z.string().max(100).optional().nullable()),
+        internalNotes: z.string().optional().nullable(),
     }),
 
     update: z.object({
@@ -36,6 +37,7 @@ export const ContactSchema = {
         correspondingAddress: z.preprocess((val) => (val === "" ? null : val), z.string().max(500).optional().nullable()),
         contactSource: z.preprocess((val) => (val === "" ? null : val), z.string().max(100).optional().nullable()),
         contactType: z.preprocess((val) => (val === "" ? null : val), z.string().max(100).optional().nullable()),
+        internalNotes: z.string().optional().nullable(),
     }),
 
     query: z.object({

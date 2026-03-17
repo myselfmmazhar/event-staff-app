@@ -114,7 +114,6 @@ export function AssignmentForm({
         commissionAmount: assignment.commissionAmount ?? null,
         commissionAmountType: assignment.commissionAmountType ?? null,
         description: assignment.type === 'PRODUCT' ? assignment.description : undefined,
-        instructions: assignment.type === 'PRODUCT' ? assignment.instructions : undefined,
         startDate: assignment.type === 'SERVICE' ? assignment.startDate : undefined,
         startTime: assignment.type === 'SERVICE' ? assignment.startTime : undefined,
         endDate: assignment.type === 'SERVICE' ? assignment.endDate : undefined,
@@ -128,6 +127,7 @@ export function AssignmentForm({
         billRate: assignment.type === 'SERVICE' ? assignment.billRate : null,
         rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
         notes: assignment.type === 'SERVICE' ? assignment.notes : null,
+        instructions: assignment.instructions ?? null,
       }
       : {
         type: defaultType,
@@ -144,6 +144,7 @@ export function AssignmentForm({
         billRate: null,
         rateType: null,
         notes: null,
+        instructions: null,
       },
   });
 
@@ -187,7 +188,6 @@ export function AssignmentForm({
         commissionAmount: assignment.commissionAmount ?? null,
         commissionAmountType: assignment.commissionAmountType ?? null,
         description: assignment.type === 'PRODUCT' ? assignment.description : undefined,
-        instructions: assignment.type === 'PRODUCT' ? assignment.instructions : undefined,
         startDate: assignment.type === 'SERVICE' ? assignment.startDate : undefined,
         startTime: assignment.type === 'SERVICE' ? assignment.startTime : undefined,
         endDate: assignment.type === 'SERVICE' ? assignment.endDate : undefined,
@@ -201,6 +201,7 @@ export function AssignmentForm({
         billRate: assignment.type === 'SERVICE' ? assignment.billRate : null,
         rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
         notes: assignment.type === 'SERVICE' ? assignment.notes : null,
+        instructions: assignment.instructions ?? null,
       });
       // Re-enable auto-sync after reset completes
       setTimeout(() => { isInitialMount.current = false; }, 0);
@@ -359,6 +360,7 @@ export function AssignmentForm({
           billRate: data.billRate ?? null,
           rateType: data.rateType ?? null,
           notes: data.notes ?? null,
+          instructions: data.instructions ?? null,
         };
         onLiveChange(liveAssignment);
       }
@@ -422,6 +424,7 @@ export function AssignmentForm({
           billRate: data.billRate ?? null,
           rateType: data.rateType ?? null,
           notes: data.notes ?? null,
+          instructions: data.instructions ?? null,
         };
         onSave(serviceAssignment, action);
       }
@@ -1077,17 +1080,29 @@ export function AssignmentForm({
           </div>
         )}
 
-        {/* Notes - Service only, at end */}
+        {/* Instructions & Notes - Service only, at end */}
         {assignmentType === 'SERVICE' && (
-          <div>
-            <Label htmlFor="notes" className="text-sm font-medium mb-2 block">Notes</Label>
-            <Textarea
-              id="notes"
-              {...register('notes')}
-              disabled={disabled}
-              placeholder="Internal notes for this assignment..."
-              rows={3}
-            />
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="instructions" className="text-sm font-medium mb-2 block">Assignment Instructions</Label>
+              <Textarea
+                id="instructions"
+                {...register('instructions')}
+                disabled={disabled}
+                placeholder="Instructions sent to staff for this assignment..."
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="notes" className="text-sm font-medium mb-2 block">Internal Notes</Label>
+              <Textarea
+                id="notes"
+                {...register('notes')}
+                disabled={disabled}
+                placeholder="Internal notes for this assignment (not sent to staff)..."
+                rows={3}
+              />
+            </div>
           </div>
         )}
 

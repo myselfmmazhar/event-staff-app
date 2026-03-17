@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { ClientGroup } from './types';
 
@@ -25,14 +26,14 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                         <tr>
                             <th className="px-4 py-3 font-semibold text-foreground">Client Name</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-center">Open Tasks</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-center">Completed</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">Status</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Date Range</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
                         {clientGroups.map((group) => {
-                            let minDate: Date | null = null;
-                            let maxDate: Date | null = null;
+                            let minDate: any = null;
+                            let maxDate: any = null;
                             let completedCount = 0;
 
                             group.callTimes.forEach(ct => {
@@ -61,10 +62,12 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                             {group.callTimes.length}
                                         </Badge>
                                     </td>
-                                    <td className="px-4 py-4 text-center">
-                                        <Badge variant={completedCount === group.callTimes.length ? 'success' : 'outline'}>
-                                            {completedCount} / {group.callTimes.length}
-                                        </Badge>
+                                    <td className="px-4 py-4">
+                                        {completedCount === group.callTimes.length && group.callTimes.length > 0 ? (
+                                            <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Completed</Badge>
+                                        ) : (
+                                            <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
+                                        )}
                                     </td>
                                     <td className="px-4 py-4 text-muted-foreground whitespace-nowrap text-xs">
                                         {minDate ? formatDate(minDate) : 'TBD'} 

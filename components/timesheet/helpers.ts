@@ -58,7 +58,7 @@ export function calcClockedHours(timeEntry: CallTimeRow['timeEntry']): number {
     return hoursFromMinutes(Math.max(0, rawMins - breakMins));
 }
 
-export function toNumber(val: number | { toNumber?: () => number } | string | null): number {
+export function toNumber(val: number | { toNumber?: () => number } | string | null | undefined): number {
     if (val === null || val === undefined) return 0;
     if (typeof val === 'number') return val;
     if (typeof val === 'string') return parseFloat(val) || 0;
@@ -79,6 +79,51 @@ export function calcClockedCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTim
     const hours = calcClockedHours(timeEntry);
     if (type === 'PER_HOUR') return hours * rate;
     return rate;
+}
+
+export function calcOvertimeHours(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    if (!ct.approveOvertime || !timeEntry?.clockIn || !timeEntry?.clockOut) return 0;
+    const clocked = calcClockedHours(timeEntry);
+    const scheduled = calcScheduledHours(ct);
+    return Math.max(0, clocked - scheduled);
+}
+
+export function calcOvertimeCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    if (timeEntry?.overtimeCost !== undefined && timeEntry?.overtimeCost !== null) {
+        return toNumber(timeEntry.overtimeCost);
+    }
+    const otHours = calcOvertimeHours(timeEntry, ct);
+    if (otHours <= 0) return 0;
+
+    const rate = toNumber(ct.payRate);
+    const otRate = toNumber(ct.overtimeRate);
+    const otType = ct.overtimeRateType;
+
+    if (otType === 'MULTIPLIER') {
+        return otHours * (rate * (otRate || 1.5));
+    } else if (otType === 'FIXED') {
+        return otHours * otRate;
+    }
+    return 0;
+}
+
+export function calcOvertimePrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    if (timeEntry?.overtimePrice !== undefined && timeEntry?.overtimePrice !== null) {
+        return toNumber(timeEntry.overtimePrice);
+    }
+    const otHours = calcOvertimeHours(timeEntry, ct);
+    if (otHours <= 0) return 0;
+
+    const billRate = toNumber(ct.billRate);
+    const otRate = toNumber(ct.overtimeRate);
+    const otType = ct.overtimeRateType;
+
+    if (otType === 'MULTIPLIER') {
+        return otHours * (billRate * (otRate || 1.5));
+    } else if (otType === 'FIXED') {
+        return otHours * otRate;
+    }
+    return 0;
 }
 
 export function calcBillAmount(ct: CallTimeRow): number {

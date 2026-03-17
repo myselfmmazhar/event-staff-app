@@ -105,6 +105,8 @@ export function EventGroupTable({
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
                                     <th className="px-3 py-2" />
                                 </tr>
                             </thead>

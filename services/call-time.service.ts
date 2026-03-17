@@ -93,7 +93,7 @@ export class CallTimeService {
       },
       include: {
         service: true,
-        event: { select: { id: true, eventId: true, title: true, venueName: true, city: true, state: true } },
+        event: { select: { id: true, eventId: true, title: true, venueName: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true, internalNotes: true } },
         _count: { select: { invitations: true } },
       },
     });
@@ -129,6 +129,11 @@ export class CallTimeService {
               endTime: result.endTime,
               payRate: Number(result.payRate),
               payRateType: result.payRateType,
+              description: result.event.description,
+              requirements: result.event.requirements,
+              preEventInstructions: result.event.preEventInstructions,
+              privateComments: result.event.privateComments,
+              internalNotes: (result.event as any).internalNotes,
             }
           );
           console.log(`Email result for ${member.email}:`, emailResult);
@@ -290,6 +295,11 @@ export class CallTimeService {
             state: true,
             latitude: true,
             longitude: true,
+            description: true,
+            requirements: true,
+            preEventInstructions: true,
+            privateComments: true,
+            internalNotes: true,
           },
         },
         invitations: {
@@ -405,7 +415,7 @@ export class CallTimeService {
     }
 
     // Use the first call time for primary context (distance, location match)
-    const primaryCallTime = callTimes[0];
+    const primaryCallTime = callTimes[0]!;
 
     // When distance filter is active, we need to fetch more and post-filter
     const hasDistanceFilter =
@@ -678,7 +688,7 @@ export class CallTimeService {
    * Send invitations to staff
    */
   async sendInvitations(input: SendInvitationsInput, userId: string) {
-    const callTimeIds = input.callTimeIds || [input.callTimeId!];
+    const callTimeIds = input.callTimeIds;
     const callTimes = await this.findManyByIds(callTimeIds, userId);
 
     if (callTimes.length === 0) {
@@ -734,6 +744,10 @@ export class CallTimeService {
                       venueName: true,
                       city: true,
                       state: true,
+                      description: true,
+                      requirements: true,
+                      preEventInstructions: true,
+                      privateComments: true,
                     },
                   },
                 },

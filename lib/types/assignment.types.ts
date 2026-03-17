@@ -117,6 +117,8 @@ export interface ServiceAssignment extends BaseAssignment {
   rateType: RateType | null;
   /** Internal notes */
   notes: string | null;
+  /** Special instructions for staff */
+  instructions: string | null;
 }
 
 /**

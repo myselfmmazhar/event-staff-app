@@ -132,10 +132,12 @@ export class ClientService {
    * Sends an invitation email for the client to complete account setup
    */
   async grantLoginAccess(
-    clientId: string
+    clientId: string,
+    userId: string,
+    userRole?: string
   ): Promise<{ client: ClientSelect; invitationToken: string }> {
     try {
-      const client = await this.findOne(clientId);
+      const client = await this.findOne(clientId, userId, userRole);
 
       if (client.hasLoginAccess && client.userId) {
         throw new TRPCError({
@@ -458,9 +460,13 @@ export class ClientService {
    * Revoke login access from a client
    * Deactivates the associated User account
    */
-  async revokeLoginAccess(clientId: string): Promise<ClientSelect> {
+  async revokeLoginAccess(
+    clientId: string,
+    userId: string,
+    userRole?: string
+  ): Promise<ClientSelect> {
     try {
-      const client = await this.findOne(clientId);
+      const client = await this.findOne(clientId, userId, userRole);
 
       if (!client.hasLoginAccess || !client.userId) {
         throw new TRPCError({
@@ -632,10 +638,12 @@ export class ClientService {
    */
   async update(
     id: string,
-    data: Omit<UpdateClientInput, 'id'>
+    data: Omit<UpdateClientInput, 'id'>,
+    userId: string,
+    userRole?: string
   ): Promise<{ client: ClientSelect; invitationToken: string | null }> {
     try {
-      const client = await this.findOne(id);
+      const client = await this.findOne(id, userId, userRole);
 
       // Handle login access changes - only send invite on FIRST time access enabled
       if (data.hasLoginAccess !== undefined && data.hasLoginAccess !== client.hasLoginAccess) {
@@ -726,9 +734,13 @@ export class ClientService {
    * Delete a client
    * Deactivates associated User if exists
    */
-  async remove(id: string): Promise<{ success: boolean; message: string }> {
+  async remove(
+    id: string,
+    userId: string,
+    userRole?: string
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const client = await this.findOne(id);
+      const client = await this.findOne(id, userId, userRole);
 
       if (client.userId) {
         await this.prisma.user.update({
