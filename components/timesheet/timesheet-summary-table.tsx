@@ -2,8 +2,10 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { EventGroup } from './types';
+import { calcOvertimeCost, calcOvertimePrice, fmtCurrency } from './helpers';
 
 interface TimesheetSummaryTableProps {
     eventGroups: EventGroup[];
@@ -31,7 +33,8 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                             <th className="px-4 py-3 font-semibold text-foreground">Task</th>
                             {/* <th className="px-4 py-3 font-semibold text-foreground">Task ID</th> */}
                             <th className="px-4 py-3 font-semibold text-foreground">Client</th>
-                            <th className="px-4 py-3 font-semibold text-foreground">Total Assignments</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">Assignments</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">Status</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Date / Time</th>
                         </tr>
                     </thead>
@@ -51,6 +54,14 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                     if (!maxDate || d > maxDate) maxDate = d;
                                 }
                             });
+
+                            const totalOvertimeCost = group.callTimes.reduce((acc, ct) => acc + calcOvertimeCost(ct.timeEntry, ct), 0);
+                            const totalOvertimePrice = group.callTimes.reduce((acc, ct) => acc + calcOvertimePrice(ct.timeEntry, ct), 0);
+
+                            const completedCount = group.callTimes.filter(ct => ct.timeEntry?.clockIn && ct.timeEntry?.clockOut).length;
+                            const progress = group.callTimes.length > 0 ? (completedCount / group.callTimes.length) * 100 : 0;
+
+
 
                             return (
                                 <tr
@@ -77,6 +88,13 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                         <Badge variant="secondary">
                                             {group.callTimes.length}
                                         </Badge>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        {completedCount === group.callTimes.length && group.callTimes.length > 0 ? (
+                                            <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Completed</Badge>
+                                        ) : (
+                                            <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
+                                        )}
                                     </td>
                                     <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
                                         <div className="flex flex-col">

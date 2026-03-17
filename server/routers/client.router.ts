@@ -40,7 +40,11 @@ export const clientRouter = router({
 
       // If hasLoginAccess is enabled, grant login access and send invitation
       if (input.hasLoginAccess) {
-        const accessResult = await ctx.clientService.grantLoginAccess(result.client.id);
+        const accessResult = await ctx.clientService.grantLoginAccess(
+          result.client.id,
+          ctx.userId!,
+          ctx.userRole as string
+        );
 
         // Send invitation email
         await emailService.sendClientInvitation(
@@ -63,7 +67,7 @@ export const clientRouter = router({
     .input(ClientSchema.update)
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      const result = await ctx.clientService.update(id, data);
+      const result = await ctx.clientService.update(id, data, ctx.userId!, ctx.userRole as string);
 
       // Send invitation email if a new invitation was generated
       if (result.invitationToken) {
@@ -83,7 +87,7 @@ export const clientRouter = router({
   delete: protectedProcedure
     .input(ClientSchema.id)
     .mutation(async ({ ctx, input }) => {
-      return await ctx.clientService.remove(input.id);
+      return await ctx.clientService.remove(input.id, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -102,7 +106,7 @@ export const clientRouter = router({
   grantLoginAccess: protectedProcedure
     .input(ClientSchema.id)
     .mutation(async ({ ctx, input }) => {
-      const result = await ctx.clientService.grantLoginAccess(input.id);
+      const result = await ctx.clientService.grantLoginAccess(input.id, ctx.userId!, ctx.userRole as string);
 
       // Send invitation email
       await emailService.sendClientInvitation(
@@ -121,7 +125,7 @@ export const clientRouter = router({
   revokeLoginAccess: protectedProcedure
     .input(ClientSchema.id)
     .mutation(async ({ ctx, input }) => {
-      return await ctx.clientService.revokeLoginAccess(input.id);
+      return await ctx.clientService.revokeLoginAccess(input.id, ctx.userId!, ctx.userRole as string);
     }),
 
   /**

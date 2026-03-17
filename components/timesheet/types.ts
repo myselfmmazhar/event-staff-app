@@ -13,6 +13,9 @@ export type CallTimeRow = {
     payRateType: string;
     billRate: number | { toNumber?: () => number } | string;
     billRateType: string;
+    approveOvertime?: boolean;
+    overtimeRate?: number | { toNumber?: () => number } | string | null;
+    overtimeRateType?: string | null;
     notes: string | null;
     confirmedCount: number;
     needsStaff: boolean;
@@ -35,6 +38,7 @@ export type CallTimeRow = {
         id: string;
         status: string;
         isConfirmed: boolean;
+        internalReviewRating?: string | null;
         staff: { id: string; firstName: string; lastName: string; payrollId?: string; hrSystemId?: string };
     }>;
     // New fields for Time Manager
@@ -42,6 +46,15 @@ export type CallTimeRow = {
         id: string;
         firstName: string;
         lastName: string;
+        email: string;
+        phone: string;
+        accountStatus: string;
+        staffRating: string;
+        skillLevel: string;
+        streetAddress: string;
+        city: string;
+        state: string;
+        zipCode: string;
         payrollId: string | null;
         hrSystemId: string | null;
     };
@@ -50,7 +63,20 @@ export type CallTimeRow = {
         clockIn: Date | string | null;
         clockOut: Date | string | null;
         breakMinutes: number;
+        overtimeCost?: number | string | null;
+        overtimePrice?: number | string | null;
         notes?: string | null;
+        revisions?: Array<{
+            id: string;
+            clockIn: Date | string | null;
+            clockOut: Date | string | null;
+            breakMinutes: number;
+            overtimeCost: number | string | null;
+            overtimePrice: number | string | null;
+            notes: string | null;
+            editedBy: string;
+            editedAt: Date | string;
+        }>;
     } | null;
 };
 

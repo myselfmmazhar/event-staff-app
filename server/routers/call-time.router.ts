@@ -143,6 +143,12 @@ export const callTimeRouter = router({
               endTime: invitation.callTime.endTime,
               payRate: Number(invitation.callTime.payRate),
               payRateType: invitation.callTime.payRateType,
+              description: (invitation.callTime.event as any).description,
+              requirements: (invitation.callTime.event as any).requirements,
+              preEventInstructions: (invitation.callTime.event as any).preEventInstructions,
+              privateComments: (invitation.callTime.event as any).privateComments,
+              internalNotes: (invitation.callTime.event as any).internalNotes,
+              instructions: invitation.callTime.instructions,
             }
           );
         } catch (error) {
@@ -177,7 +183,7 @@ export const callTimeRouter = router({
               callTime: {
                 include: {
                   service: { select: { title: true } },
-                  event: { select: { title: true, venueName: true, city: true, state: true } },
+                  event: { select: { title: true, venueName: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true, internalNotes: true } },
                 },
               },
             },
@@ -194,6 +200,12 @@ export const callTimeRouter = router({
                 eventLocation: `${staffRecord.callTime.event.city}, ${staffRecord.callTime.event.state}`,
                 startDate: staffRecord.callTime.startDate,
                 startTime: staffRecord.callTime.startTime,
+                description: staffRecord.callTime.event.description,
+                requirements: staffRecord.callTime.event.requirements,
+                preEventInstructions: staffRecord.callTime.event.preEventInstructions,
+                privateComments: staffRecord.callTime.event.privateComments,
+                internalNotes: (staffRecord.callTime.event as any).internalNotes,
+                instructions: staffRecord.callTime.instructions,
               }
             );
           }

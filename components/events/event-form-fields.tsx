@@ -114,7 +114,27 @@ export function EventFormFields({
         />
       </div>
 
-      {/* === ROW 2: Venue Information (full width) === */}
+      {/* === ROW 2: Pre-Task Instructions + Private Notes (after description/requirements) === */}
+      <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
+        <PreEventSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+        <PrivateNotesSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+      </div>
+
+      {/* === ROW 3: Venue Information (full width) === */}
       <VenueSection
         register={register}
         control={control}
@@ -125,7 +145,7 @@ export function EventFormFields({
         className={spacing}
       />
 
-      {/* === ROW 3: Request Information + Onsite Contact === */}
+      {/* === ROW 4: Request Information + Onsite Contact === */}
       <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
         <RequestInfoSection
           register={register}
@@ -145,36 +165,19 @@ export function EventFormFields({
         />
       </div>
 
-      {/* === ROW 4: Pre-Event Instructions + Private Notes + Custom Fields === */}
-      <div className={`grid grid-cols-1 lg:grid-cols-3 ${gridGap} ${spacing}`}>
-        <PreEventSection
-          register={register}
-          control={control}
-          errors={errors}
-          watch={watch}
-          setValue={setValue}
-          disabled={disabled}
-        />
-        <PrivateNotesSection
-          register={register}
-          control={control}
-          errors={errors}
-          watch={watch}
-          setValue={setValue}
-          disabled={disabled}
-        />
-        <CustomFieldsSection
-          register={register}
-          control={control}
-          errors={errors}
-          watch={watch}
-          setValue={setValue}
-          customFieldsFieldArray={customFieldsFieldArray}
-          disabled={disabled}
-        />
-      </div>
+      {/* === ROW 5: Custom Fields === */}
+      <CustomFieldsSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        customFieldsFieldArray={customFieldsFieldArray}
+        disabled={disabled}
+        className={spacing}
+      />
 
-      {/* === ROW 5: Documents + File Links === */}
+      {/* === ROW 6: Documents + File Links === */}
       <DocumentsSection
         register={register}
         control={control}
@@ -186,7 +189,7 @@ export function EventFormFields({
         className={spacing}
       />
 
-      {/* === ROW 6: Assignments (full width) === */}
+      {/* === ROW 7: Assignments (full width) === */}
       {onAssignmentsChange ? (
         <AssignmentsSection
           assignments={assignments}
@@ -205,7 +208,7 @@ export function EventFormFields({
         </div>
       )}
 
-      {/* === ROW 7: Task Settings (Billing & Rates) === */}
+      {/* === ROW 8: Task Settings (Billing & Rates) === */}
       <BillingSection
         register={register}
         control={control}

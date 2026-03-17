@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDownIcon, ChevronUpIcon, EditIcon, CheckIcon, CloseIcon } from '@/components/ui/icons';
 import {
@@ -12,6 +12,8 @@ import {
     toNumber,
     calcScheduledCost,
     calcClockedCost,
+    calcOvertimeCost,
+    calcOvertimePrice,
     calcBillAmount,
     fmtCurrency,
     toInputDatetime
@@ -27,6 +29,9 @@ export function TimesheetTableRow({
     onToggleSelect,
     onViewEvent,
     onSaveTimeEntry,
+    showEventName = false,
+    onApprove,
+    onReject,
 }: {
     ct: CallTimeRow;
     isExpanded: boolean;
@@ -34,26 +39,53 @@ export function TimesheetTableRow({
     onToggleExpand: (id: string, e: React.MouseEvent) => void;
     onToggleSelect: (id: string, e: React.MouseEvent) => void;
     onViewEvent: (id: string) => void;
-    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number) => void;
+    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null) => void;
+    showEventName?: boolean;
+    onApprove?: (invitationId: string) => void;
+    onReject?: (invitationId: string) => void;
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const te = ct.timeEntry;
     const [clockIn, setClockIn] = useState(toInputDatetime(te?.clockIn ?? null));
     const [clockOut, setClockOut] = useState(toInputDatetime(te?.clockOut ?? null));
     const [breakMins, setBreakMins] = useState(te?.breakMinutes ?? 0);
+    const [otCostManual, setOtCostManual] = useState<string>(te?.overtimeCost !== undefined && te?.overtimeCost !== null ? toNumber(te.overtimeCost).toString() : '');
+    const [otPriceManual, setOtPriceManual] = useState<string>(te?.overtimePrice !== undefined && te?.overtimePrice !== null ? toNumber(te.overtimePrice).toString() : '');
+    const [isEditingOtCost, setIsEditingOtCost] = useState(false);
+    const [isEditingOtPrice, setIsEditingOtPrice] = useState(false);
 
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
     const scheduledCost = calcScheduledCost(ct);
     const clockedCostVal = calcClockedCost(te, ct);
+    const otCost = calcOvertimeCost(te, ct);
+    const otPrice = calcOvertimePrice(te, ct);
     const billAmount = calcBillAmount(ct);
+
+    const reviewRating = useMemo(() => ct.invitations?.[0]?.internalReviewRating ?? null, [ct.invitations]);
+    const isRejected = reviewRating === 'DID_NOT_MEET' || reviewRating === 'NO_CALL_NO_SHOW';
+
+    const revisionCount = te?.revisions?.length ?? 0;
+    const isEdited = revisionCount > 0;
 
     const handleSave = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (onSaveTimeEntry) {
-            onSaveTimeEntry(ct.id, clockIn || null, clockOut || null, breakMins);
+            const parsedOtCost = otCostManual !== '' ? parseFloat(otCostManual) : null;
+            const parsedOtPrice = otPriceManual !== '' ? parseFloat(otPriceManual) : null;
+
+            onSaveTimeEntry(
+                ct.id, 
+                clockIn || null, 
+                clockOut || null, 
+                breakMins, 
+                parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
+                parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined)
+            );
         }
         setIsEditing(false);
+        setIsEditingOtCost(false);
+        setIsEditingOtPrice(false);
     };
 
     return (
@@ -67,6 +99,7 @@ export function TimesheetTableRow({
                     <input
                         type="checkbox"
                         checked={isSelected}
+                        disabled={isRejected}
                         onClick={(e) => onToggleSelect(ct.id, e)}
                         onChange={() => { }}
                         className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
@@ -86,11 +119,19 @@ export function TimesheetTableRow({
                     </button>
                 </td>
 
-                {/* First Name */}
-                <td className="px-3 py-2.5 font-bold text-primary">{ct.staff?.firstName || '—'}</td>
-
-                {/* Last Name */}
-                <td className="px-3 py-2.5 font-bold text-primary">{ct.staff?.lastName || '—'}</td>
+                {/* Staff Name or Event Name */}
+                {showEventName ? (
+                    <td colSpan={2} className="px-3 py-2.5 font-bold text-primary max-w-[200px] truncate">
+                        {ct.event?.title || '—'}
+                    </td>
+                ) : (
+                    <>
+                        {/* First Name */}
+                        <td className="px-3 py-2.5 font-bold text-primary">{ct.staff?.firstName || '—'}</td>
+                        {/* Last Name */}
+                        <td className="px-3 py-2.5 font-bold text-primary">{ct.staff?.lastName || '—'}</td>
+                    </>
+                )}
 
                 {/* Payroll ID */}
                 {/* <td className="px-3 py-2.5 text-muted-foreground">{ct.staff?.payrollId || '—'}</td> */}
@@ -171,14 +212,25 @@ export function TimesheetTableRow({
                     <>
                         {/* Clock In */}
                         <td 
-                            className="px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-emerald-50 transition-colors"
+                            className={`px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-emerald-50 transition-colors ${isEdited ? 'text-amber-700' : ''}`}
                             onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                         >
-                            {te?.clockIn ? <span className="text-emerald-600 font-medium">{fmtDateTime(te.clockIn)}</span> : <span className="text-slate-300 italic">Not clocked</span>}
+                            <div className="flex items-center gap-2">
+                                {te?.clockIn ? (
+                                    <span className="text-emerald-600 font-medium">{fmtDateTime(te.clockIn)}</span>
+                                ) : (
+                                    <span className="text-slate-300 italic">Not clocked</span>
+                                )}
+                                {isEdited && (
+                                    <Badge variant="warning" className="text-[8px] h-3 px-1 leading-none py-0">
+                                        Edited
+                                    </Badge>
+                                )}
+                            </div>
                         </td>
                         {/* Clock Out */}
                         <td 
-                            className="px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-red-50 transition-colors"
+                            className={`px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-red-50 transition-colors ${isEdited ? 'text-amber-700' : ''}`}
                             onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                         >
                             {te?.clockOut ? <span className="text-red-500 font-medium">{fmtDateTime(te.clockOut)}</span> : '—'}
@@ -208,15 +260,86 @@ export function TimesheetTableRow({
                     {billAmount > 0 ? fmtCurrency(billAmount) : '0.00'}
                 </td>
 
+                {/* Overtime Cost */}
+                <td 
+                    className="px-3 py-2.5 text-right tabular-nums text-muted-foreground whitespace-nowrap hover:bg-slate-50 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setIsEditingOtCost(true); }}
+                >
+                    {isEditingOtCost ? (
+                        <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+                            <input
+                                type="number"
+                                value={otCostManual}
+                                onChange={e => setOtCostManual(e.target.value)}
+                                className="h-7 w-16 text-[10px] border border-border rounded px-1"
+                                autoFocus
+                            />
+                            <button onClick={handleSave} className="p-0.5 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setIsEditingOtCost(false); }} className="p-0.5 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
+                        </div>
+                    ) : (
+                        otCost > 0 ? fmtCurrency(otCost) : '—'
+                    )}
+                </td>
+
+                {/* Overtime Price */}
+                <td 
+                    className="px-3 py-2.5 text-right tabular-nums font-semibold text-primary/80 whitespace-nowrap hover:bg-slate-50 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setIsEditingOtPrice(true); }}
+                >
+                    {isEditingOtPrice ? (
+                        <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+                            <input
+                                type="number"
+                                value={otPriceManual}
+                                onChange={e => setOtPriceManual(e.target.value)}
+                                className="h-7 w-16 text-[10px] border border-border rounded px-1"
+                                autoFocus
+                            />
+                            <button onClick={handleSave} className="p-0.5 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setIsEditingOtPrice(false); }} className="p-0.5 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
+                        </div>
+                    ) : (
+                        otPrice > 0 ? fmtCurrency(otPrice) : '—'
+                    )}
+                </td>
+
                 {/* Actions */}
                 <td className="px-3 py-2.5">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setIsEditing(!isEditing); }}
-                        className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors bg-primary/5 hover:bg-primary/10 px-2 py-1 rounded-md"
-                    >
-                        <EditIcon className="h-3 w-3" />
-                        {te ? 'Edit' : 'Clock'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {(onApprove || onReject) && (
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                    onClick={() => onApprove?.(ct.id)}
+                                    disabled={isRejected}
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 hover:text-emerald-800 transition-colors bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Approve
+                                </button>
+                                <button
+                                    onClick={() => onReject?.(ct.id)}
+                                    disabled={isRejected}
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-700 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Reject
+                                </button>
+                                <button
+                                    onClick={() => { /* hold no-op for now */ }}
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-700 hover:text-slate-800 transition-colors bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-md"
+                                >
+                                    Hold
+                                </button>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setIsEditing(!isEditing); }}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors bg-primary/5 hover:bg-primary/10 px-2 py-1 rounded-md"
+                        >
+                            <EditIcon className="h-3 w-3" />
+                            {te ? 'Edit' : 'Clock'}
+                        </button>
+                    </div>
                 </td>
             </tr>
 

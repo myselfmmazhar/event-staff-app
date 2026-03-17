@@ -88,7 +88,7 @@ export function OpenAssignmentsView() {
   // Fetch available staff for selected assignment
   const { data: staffData, isLoading: isLoadingStaff } = trpc.callTime.searchStaff.useQuery(
     {
-      callTimeId: selectedAssignmentId || '',
+      callTimeIds: [selectedAssignmentId || ''],
       includeAlreadyInvited,
     },
     {
@@ -106,7 +106,7 @@ export function OpenAssignmentsView() {
       setSelectedStaffIds([]);
       if (selectedAssignmentId) {
         utils.callTime.getAll.invalidate();
-        utils.callTime.searchStaff.invalidate({ callTimeId: selectedAssignmentId });
+        utils.callTime.searchStaff.invalidate({ callTimeIds: [selectedAssignmentId] });
       }
     },
     onError: (error) => {
@@ -121,7 +121,7 @@ export function OpenAssignmentsView() {
   const handleSendInvitations = () => {
     if (selectedStaffIds.length === 0 || !selectedAssignmentId) return;
     sendInvitations.mutate({
-      callTimeId: selectedAssignmentId,
+      callTimeIds: [selectedAssignmentId],
       staffIds: selectedStaffIds,
     });
   };

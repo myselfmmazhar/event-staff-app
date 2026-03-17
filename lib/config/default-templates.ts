@@ -21,6 +21,12 @@ export const TEMPLATE_VARIABLES = {
     '{{payRate}}',
     '{{payRateType}}',
     '{{dashboardUrl}}',
+    '{{description}}',
+    '{{requirements}}',
+    '{{preEventInstructions}}',
+    '{{privateNotes}}',
+    '{{internalNotes}}',
+    '{{assignmentInstructions}}',
   ],
 } as const;
 
@@ -46,6 +52,12 @@ export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{payRate}}': 'Pay rate amount',
   '{{payRateType}}': 'Pay rate type (per hour, per shift, etc.)',
   '{{dashboardUrl}}': 'URL to the user\'s dashboard/schedule',
+  '{{description}}': 'Event description',
+  '{{requirements}}': 'Event requirements',
+  '{{preEventInstructions}}': 'Pre-event task instructions',
+  '{{privateNotes}}': 'Private notes/comments for the event',
+  '{{internalNotes}}': 'Internal notes (admin-only) for the event',
+  '{{assignmentInstructions}}': 'Specific instructions for this assignment',
 };
 
 export interface DefaultEmailTemplate {
@@ -80,7 +92,15 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
     subject: "You've been invited to join as {{staffTermLabel}}",
     headerTitle: 'Welcome, {{firstName}}!',
     description: 'Sent when a new staff member is invited to create their account',
-    availableVariables: [...TEMPLATE_VARIABLES.common, ...TEMPLATE_VARIABLES.staff],
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      ...TEMPLATE_VARIABLES.staff,
+      '{{description}}',
+      '{{requirements}}',
+      '{{preEventInstructions}}',
+      '{{privateNotes}}',
+      '{{internalNotes}}',
+    ],
     bodyHtml: `<p>You've been invited to join the team as <strong>{{staffTermLabel}}</strong>. Click the button below to create your account and complete your profile.</p>
 
 {{button:Accept Invitation|{{inviteUrl}}}}
@@ -134,6 +154,10 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
   <p><strong>Date:</strong> {{startDate}} - {{endDate}}</p>
   <p><strong>Time:</strong> {{startTime}} - {{endTime}}</p>
   <p><strong>Pay Rate:</strong> {{payRate}} {{payRateType}}</p>
+  <p><strong>Instructions:</strong> {{assignmentInstructions}}</p>
+  <p><strong>Event Description:</strong> {{description}}</p>
+  <p><strong>Requirements:</strong> {{requirements}}</p>
+  <p><strong>Pre-Event Instructions:</strong> {{preEventInstructions}}</p>
 </div>
 
 {{button:View & Respond|{{dashboardUrl}}}}
@@ -155,6 +179,11 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
       '{{startDate}}',
       '{{startTime}}',
       '{{dashboardUrl}}',
+      '{{description}}',
+      '{{requirements}}',
+      '{{preEventInstructions}}',
+      '{{privateNotes}}',
+      '{{assignmentInstructions}}',
     ],
     bodyHtml: `<p>Great news! You've been confirmed for <strong>{{positionName}}</strong> at the following event:</p>
 
@@ -163,6 +192,10 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
   <p><strong>Location:</strong> {{eventVenue}}, {{eventLocation}}</p>
   <p><strong>Date:</strong> {{startDate}}</p>
   <p><strong>Time:</strong> {{startTime}}</p>
+  <p><strong>Instructions:</strong> {{assignmentInstructions}}</p>
+  <p><strong>Event Description:</strong> {{description}}</p>
+  <p><strong>Requirements:</strong> {{requirements}}</p>
+  <p><strong>Pre-Event Instructions:</strong> {{preEventInstructions}}</p>
 </div>
 
 {{button:View My Schedule|{{dashboardUrl}}}}
@@ -179,6 +212,11 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
       '{{positionName}}',
       '{{eventTitle}}',
       '{{dashboardUrl}}',
+      '{{description}}',
+      '{{requirements}}',
+      '{{preEventInstructions}}',
+      '{{privateNotes}}',
+      '{{assignmentInstructions}}',
     ],
     bodyHtml: `<p>Thank you for accepting the invitation for <strong>{{positionName}}</strong> at <strong>{{eventTitle}}</strong>.</p>
 
@@ -226,7 +264,16 @@ export const DEFAULT_SMS_TEMPLATES: DefaultSmsTemplate[] = [
     type: 'STAFF_INVITATION',
     body: "Hi {{firstName}}, you've been invited to join as {{staffTermLabel}}. Check your email for the full invitation or visit: {{inviteUrl}}",
     description: 'SMS notification for staff invitation',
-    availableVariables: [...TEMPLATE_VARIABLES.common, ...TEMPLATE_VARIABLES.staff],
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      ...TEMPLATE_VARIABLES.staff,
+      '{{description}}',
+      '{{requirements}}',
+      '{{preEventInstructions}}',
+      '{{privateNotes}}',
+      '{{internalNotes}}',
+      '{{assignmentInstructions}}',
+    ],
     maxLength: 160,
   },
   {
@@ -247,21 +294,21 @@ export const DEFAULT_SMS_TEMPLATES: DefaultSmsTemplate[] = [
     type: 'CALL_TIME_INVITATION',
     body: "Hi {{firstName}}, you're invited to work as {{positionName}} at {{eventTitle}} on {{startDate}}. View details: {{dashboardUrl}}",
     description: 'SMS notification for call time invitation',
-    availableVariables: ['{{firstName}}', '{{positionName}}', '{{eventTitle}}', '{{startDate}}', '{{dashboardUrl}}'],
+    availableVariables: [...TEMPLATE_VARIABLES.common, ...TEMPLATE_VARIABLES.callTime],
     maxLength: 160,
   },
   {
     type: 'CALL_TIME_CONFIRMATION',
     body: "Confirmed! {{firstName}}, you're booked for {{positionName}} at {{eventTitle}} on {{startDate}}. View schedule: {{dashboardUrl}}",
     description: 'SMS notification for call time confirmation',
-    availableVariables: ['{{firstName}}', '{{positionName}}', '{{eventTitle}}', '{{startDate}}', '{{dashboardUrl}}'],
+    availableVariables: [...TEMPLATE_VARIABLES.common, ...TEMPLATE_VARIABLES.callTime],
     maxLength: 160,
   },
   {
     type: 'CALL_TIME_WAITLISTED',
     body: "Hi {{firstName}}, you're on the waitlist for {{positionName}} at {{eventTitle}}. We'll notify you if a spot opens. View: {{dashboardUrl}}",
     description: 'SMS notification for waitlist status',
-    availableVariables: ['{{firstName}}', '{{positionName}}', '{{eventTitle}}', '{{dashboardUrl}}'],
+    availableVariables: [...TEMPLATE_VARIABLES.common, ...TEMPLATE_VARIABLES.callTime],
     maxLength: 160,
   },
   {
@@ -275,7 +322,7 @@ export const DEFAULT_SMS_TEMPLATES: DefaultSmsTemplate[] = [
     type: 'CALL_INVITATION_BATCH',
     body: "Call Invitation Batch: Hi {{firstName}}, we have several positions available for {{eventTitle}}. View and respond here: {{dashboardUrl}}",
     description: 'SMS notification for batch call time invitation',
-    availableVariables: ['{{firstName}}', '{{eventTitle}}', '{{dashboardUrl}}'],
+    availableVariables: [...TEMPLATE_VARIABLES.common, ...TEMPLATE_VARIABLES.callTime],
     maxLength: 160,
   },
 ];
@@ -361,6 +408,12 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
     payRate: '$25.00',
     payRateType: 'per hour',
     dashboardUrl: 'https://example.com/my-schedule',
+    description: 'This is a sample event description.',
+    requirements: 'Sample requirements: Must be on time.',
+    preEventInstructions: 'Please check in at the front desk.',
+    privateNotes: 'Sample private notes.',
+    internalNotes: 'Sample internal notes (admin-only).',
+    assignmentInstructions: 'Sample assignment instructions: Wear black uniform.',
   };
 
   switch (type) {
@@ -368,6 +421,11 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
       return {
         ...common,
         inviteUrl: 'https://example.com/accept-invitation/staff?token=abc123',
+        description: '',
+        requirements: '',
+        preEventInstructions: '',
+        privateNotes: '',
+        internalNotes: '',
       };
     case 'CLIENT_INVITATION':
       return {
