@@ -78,7 +78,7 @@ export const eventRouter = router({
     .input(EventSchema.deleteMany)
     .mutation(async ({ ctx, input }) => {
       const eventService = new EventService(ctx.prisma);
-      return await eventService.deleteMany(input.ids, ctx.userId!, ctx.userRole as string);
+      return await eventService.deleteMany(input.ids, ctx.userId!);
     }),
 
   /**

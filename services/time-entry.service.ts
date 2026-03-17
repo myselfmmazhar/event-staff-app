@@ -113,8 +113,13 @@ export class TimeEntryService {
                         id: true,
                         firstName: true,
                         lastName: true,
-                        // payrollId: true,
-                        // hrSystemId: true,
+                        accountStatus: true,
+                        staffRating: true,
+                        skillLevel: true,
+                        streetAddress: true,
+                        city: true,
+                        state: true,
+                        zipCode: true,
                         email: true,
                         phone: true,
                     },
@@ -133,7 +138,13 @@ export class TimeEntryService {
                         },
                     },
                 },
-                // timeEntry: true,
+                timeEntry: {
+                    include: {
+                        revisions: {
+                            orderBy: { editedAt: 'desc' },
+                        },
+                    },
+                },
             },
             orderBy: [
                 { callTime: { startDate: 'asc' } },
@@ -165,27 +176,77 @@ export class TimeEntryService {
         clockIn?: Date | null;
         clockOut?: Date | null;
         breakMinutes?: number;
+        overtimeCost?: number | null;
+        overtimePrice?: number | null;
         notes?: string;
         createdBy: string;
     }) {
-        return await (this.prisma as any).timeEntry.upsert({
-            where: { invitationId: data.invitationId },
-            update: {
-                clockIn: data.clockIn,
-                clockOut: data.clockOut,
-                breakMinutes: data.breakMinutes ?? 0,
-                notes: data.notes,
-            },
-            create: {
-                invitationId: data.invitationId,
-                staffId: data.staffId,
-                callTimeId: data.callTimeId,
-                clockIn: data.clockIn,
-                clockOut: data.clockOut,
-                breakMinutes: data.breakMinutes ?? 0,
-                notes: data.notes,
-                createdBy: data.createdBy,
-            },
+        const breakMinutes = data.breakMinutes ?? 0;
+
+        return await (this.prisma as any).$transaction(async (tx: any) => {
+            const existing = await tx.timeEntry.findUnique({
+                where: { invitationId: data.invitationId },
+                include: { revisions: { orderBy: { editedAt: 'desc' } } },
+            });
+
+            if (existing) {
+                const hasChanged =
+                    (existing.clockIn?.toISOString?.() ?? existing.clockIn) !== (data.clockIn?.toISOString?.() ?? data.clockIn) ||
+                    (existing.clockOut?.toISOString?.() ?? existing.clockOut) !== (data.clockOut?.toISOString?.() ?? data.clockOut) ||
+                    (existing.breakMinutes ?? 0) !== breakMinutes ||
+                    (existing.overtimeCost?.toString?.() ?? existing.overtimeCost) !== (data.overtimeCost?.toString?.() ?? data.overtimeCost) ||
+                    (existing.overtimePrice?.toString?.() ?? existing.overtimePrice) !== (data.overtimePrice?.toString?.() ?? data.overtimePrice) ||
+                    (existing.notes ?? '') !== (data.notes ?? '');
+
+                const updated = await tx.timeEntry.update({
+                    where: { id: existing.id },
+                    data: {
+                        clockIn: data.clockIn,
+                        clockOut: data.clockOut,
+                        breakMinutes,
+                        overtimeCost: data.overtimeCost,
+                        overtimePrice: data.overtimePrice,
+                        notes: data.notes,
+                    },
+                    include: { revisions: { orderBy: { editedAt: 'desc' } } },
+                });
+
+                if (hasChanged) {
+                    await tx.timeEntryRevision.create({
+                        data: {
+                            timeEntryId: updated.id,
+                            clockIn: updated.clockIn,
+                            clockOut: updated.clockOut,
+                            breakMinutes: updated.breakMinutes,
+                            overtimeCost: updated.overtimeCost,
+                            overtimePrice: updated.overtimePrice,
+                            notes: updated.notes,
+                            editedBy: data.createdBy,
+                        },
+                    });
+                }
+
+                return await tx.timeEntry.findUnique({
+                    where: { id: existing.id },
+                    include: { revisions: { orderBy: { editedAt: 'desc' } } },
+                });
+            }
+
+            return await tx.timeEntry.create({
+                data: {
+                    invitationId: data.invitationId,
+                    staffId: data.staffId,
+                    callTimeId: data.callTimeId,
+                    clockIn: data.clockIn,
+                    clockOut: data.clockOut,
+                    breakMinutes,
+                    overtimeCost: data.overtimeCost,
+                    overtimePrice: data.overtimePrice,
+                    notes: data.notes,
+                    createdBy: data.createdBy,
+                },
+                include: { revisions: { orderBy: { editedAt: 'desc' } } },
+            });
         });
     }
 
@@ -204,7 +265,17 @@ export class TimeEntryService {
      */
     async generateInvoices(invitationIds: string[], userId: string) {
         const invitations = await (this.prisma as any).callTimeInvitation.findMany({
-            where: { id: { in: invitationIds } },
+            where: {
+                id: { in: invitationIds },
+                status: 'ACCEPTED',
+                isConfirmed: true,
+                // Rejects should not be counted/invoiced
+                OR: [
+                    { internalReviewRating: null },
+                    { internalReviewRating: 'MET_EXPECTATIONS' },
+                    { internalReviewRating: 'NEEDS_IMPROVEMENT' },
+                ],
+            },
             include: {
                 staff: { select: { firstName: true, lastName: true } },
                 callTime: {
@@ -282,5 +353,28 @@ export class TimeEntryService {
         }
 
         return { count: invoiceCount };
+    }
+
+    /**
+     * Persist an approve/reject decision for a call time invitation.
+     * APPROVE: invoice-eligible
+     * REJECT: excluded from invoicing/counting
+     */
+    async reviewInvitation(data: {
+        invitationId: string;
+        decision: 'APPROVE' | 'REJECT';
+        reviewerId: string;
+    }) {
+        const internalReviewRating =
+            data.decision === 'APPROVE' ? 'MET_EXPECTATIONS' : 'DID_NOT_MEET';
+
+        return await (this.prisma as any).callTimeInvitation.update({
+            where: { id: data.invitationId },
+            data: {
+                internalReviewRating,
+                reviewedBy: data.reviewerId,
+                reviewedAt: new Date(),
+            },
+        });
     }
 }

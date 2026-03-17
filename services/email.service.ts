@@ -183,6 +183,12 @@ export class EmailService {
           email,
           staffTermLabel,
           inviteUrl,
+          // Not available in staff-invitation context; keep replacements safe.
+          description: '',
+          requirements: '',
+          preEventInstructions: '',
+          privateNotes: '',
+          internalNotes: '',
         }
       );
 
@@ -319,6 +325,12 @@ export class EmailService {
       endTime?: string | null;
       payRate: number;
       payRateType: string;
+      description?: string | null;
+      requirements?: string | null;
+      preEventInstructions?: string | null;
+      privateComments?: string | null;
+      internalNotes?: string | null;
+      instructions?: string | null;
     }
   ): Promise<{ success: boolean; error?: string }> {
     const dashboardUrl = `${this.appUrl}/my-schedule`;
@@ -374,6 +386,12 @@ export class EmailService {
           payRate: `$${callTimeDetails.payRate.toFixed(2)}`,
           payRateType: formatRateType(callTimeDetails.payRateType),
           dashboardUrl,
+          description: callTimeDetails.description || '',
+          requirements: callTimeDetails.requirements || '',
+          preEventInstructions: callTimeDetails.preEventInstructions || '',
+          privateNotes: callTimeDetails.privateComments || '',
+          internalNotes: callTimeDetails.internalNotes || '',
+          assignmentInstructions: callTimeDetails.instructions || '',
         }
       );
 
@@ -401,6 +419,12 @@ export class EmailService {
       eventLocation: string;
       startDate: Date | null;
       startTime?: string | null;
+      description?: string | null;
+      requirements?: string | null;
+      preEventInstructions?: string | null;
+      privateComments?: string | null;
+      internalNotes?: string | null;
+      instructions?: string | null;
     }
   ): Promise<{ success: boolean; error?: string }> {
     const dashboardUrl = `${this.appUrl}/my-schedule`;
@@ -437,6 +461,12 @@ export class EmailService {
           startDate: formatDate(callTimeDetails.startDate),
           startTime: formatTime(callTimeDetails.startTime),
           dashboardUrl,
+          description: callTimeDetails.description || '',
+          requirements: callTimeDetails.requirements || '',
+          preEventInstructions: callTimeDetails.preEventInstructions || '',
+          privateNotes: callTimeDetails.privateComments || '',
+          internalNotes: callTimeDetails.internalNotes || '',
+          assignmentInstructions: callTimeDetails.instructions || '',
         }
       );
 

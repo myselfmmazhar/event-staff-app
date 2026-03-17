@@ -62,6 +62,8 @@ model TimeEntry {
   clockIn        DateTime?           @db.Timestamp(6)
   clockOut       DateTime?           @db.Timestamp(6)
   breakMinutes   Int                 @default(0)
+  overtimeCost   Decimal?            @db.Decimal(10, 2)
+  overtimePrice  Decimal?            @db.Decimal(10, 2)
   notes          String?
   createdBy      String
   createdAt      DateTime            @default(now()) @db.Timestamp(6)
@@ -71,10 +73,34 @@ model TimeEntry {
   staff          Staff               @relation(fields: [staffId], references: [id], onDelete: Cascade)
   callTime       CallTime            @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
   createdByUser  User                @relation("time_entries_created", fields: [createdBy], references: [id], onDelete: Cascade)
+  revisions      TimeEntryRevision[]
 
   @@index([staffId])
   @@index([callTimeId])
   @@map("time_entries")
+}
+
+model TimeEntryRevision {
+  id           String    @id @default(uuid()) @db.Uuid
+  timeEntryId  String    @db.Uuid
+
+  clockIn       DateTime? @db.Timestamp(6)
+  clockOut      DateTime? @db.Timestamp(6)
+  breakMinutes  Int       @default(0)
+  overtimeCost  Decimal?  @db.Decimal(10, 2)
+  overtimePrice Decimal?  @db.Decimal(10, 2)
+  notes         String?
+
+  editedBy      String
+  editedAt      DateTime  @default(now()) @db.Timestamp(6)
+
+  timeEntry     TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  editedByUser  User      @relation("time_entry_revisions_edited_by", fields: [editedBy], references: [id], onDelete: Cascade)
+
+  @@index([timeEntryId])
+  @@index([editedBy])
+  @@index([editedAt])
+  @@map("time_entry_revisions")
 }
 
 model CallTime {
@@ -92,6 +118,7 @@ model CallTime {
   billRate              Decimal                 @db.Decimal(10, 2)
   billRateType          RateType
   notes                 String?
+  instructions          String?
   eventId               String                  @db.Uuid
 
   // Billing overrides (separate from pay/bill rates for Event Form assignments)
@@ -159,6 +186,8 @@ model Client {
   updatedAt                      DateTime  @updatedAt @db.Timestamp(6)
   invitationExpiresAt            DateTime? @db.Timestamp(6)
   invitationToken                String?   @unique
+
+  internalNotes                  String?
 
   // Relations
   users_clients_createdByTousers User             @relation("clients_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
@@ -761,6 +790,7 @@ model User {
   contacts                         Contact[]                 @relation("contacts_created")
   invitationReviews                CallTimeInvitation[]      @relation("invitation_reviews")
   timeEntriesCreated               TimeEntry[]               @relation("time_entries_created")
+  timeEntryRevisionsEdited         TimeEntryRevision[]       @relation("time_entry_revisions_edited_by")
   @@map("users")
 }
 
@@ -777,6 +807,8 @@ model Contact {
   correspondingAddress String?
   contactSource        String?
   contactType          String?
+  
+  internalNotes        String?
   
   createdBy            String
   createdAt            DateTime  @default(now()) @db.Timestamp(6)

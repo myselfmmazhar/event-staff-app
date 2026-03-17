@@ -36,6 +36,8 @@ export const timeEntryRouter = router({
             clockIn: z.string().optional().nullable(),
             clockOut: z.string().optional().nullable(),
             breakMinutes: z.number().int().min(0).default(0),
+            overtimeCost: z.number().optional().nullable(),
+            overtimePrice: z.number().optional().nullable(),
             notes: z.string().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
@@ -47,6 +49,8 @@ export const timeEntryRouter = router({
                 clockIn: input.clockIn ? new Date(input.clockIn) : null,
                 clockOut: input.clockOut ? new Date(input.clockOut) : null,
                 breakMinutes: input.breakMinutes,
+                overtimeCost: input.overtimeCost,
+                overtimePrice: input.overtimePrice,
                 notes: input.notes,
                 createdBy: ctx.userId as string,
             });
@@ -70,5 +74,23 @@ export const timeEntryRouter = router({
         .mutation(async ({ ctx, input }) => {
             const service = new TimeEntryService(ctx.prisma);
             return await service.generateInvoices(input.invitationIds, ctx.userId as string);
+        }),
+
+    /**
+     * Approve / reject an invitation for invoicing/time manager.
+     * Uses CallTimeInvitation.internalReviewRating as the persisted decision.
+     */
+    reviewInvitation: managerProcedure
+        .input(z.object({
+            invitationId: z.string().uuid(),
+            decision: z.enum(['APPROVE', 'REJECT']),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const service = new TimeEntryService(ctx.prisma);
+            return await service.reviewInvitation({
+                invitationId: input.invitationId,
+                decision: input.decision,
+                reviewerId: ctx.userId as string,
+            });
         }),
 });

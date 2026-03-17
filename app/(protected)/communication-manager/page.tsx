@@ -52,6 +52,7 @@ import {
     List,
     ChevronDown,
     Star,
+    FileText,
 } from 'lucide-react';
 import { MessageType, MessageStatus, Contact } from '@prisma/client';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -198,10 +199,13 @@ export default function CommunicationManagerPage() {
     });
 
     const updateContactMutation = trpc.contacts.update.useMutation({
-        onSuccess: () => {
+        onSuccess: (data) => {
             toast({ title: 'Contact updated successfully' });
             setIsContactModalOpen(false);
             setContactToEdit(null);
+            if (selectedContact && selectedContact.id === data.id) {
+                setSelectedContact(prev => prev ? { ...prev, internalNotes: (data as any).internalNotes } : null);
+            }
             refetchContacts();
         },
         onError: (error) => {
@@ -214,6 +218,10 @@ export default function CommunicationManagerPage() {
             toast({ title: 'Contact deleted successfully' });
             setIsDeleteDialogOpen(false);
             setContactToDelete(null);
+            if (selectedContact && selectedContact.id === contactToDelete?.id) {
+                setSelectedContact(null);
+                setIsDetailView(false);
+            }
             refetchContacts();
         },
         onError: (error) => {
@@ -374,6 +382,12 @@ export default function CommunicationManagerPage() {
                 content: content,
                 type: contactActionTab as 'SMS' | 'WHATSAPP',
                 configId: contactActionMsgConfigId === 'default' ? undefined : contactActionMsgConfigId
+            });
+        } else if (contactActionTab === 'COMMENT') {
+            updateContactMutation.mutate({
+                id: selectedContact.id,
+                internalNotes: content,
+                contactType: selectedContact.contactType,
             });
         }
         setNewMessage('');
@@ -608,7 +622,7 @@ export default function CommunicationManagerPage() {
                                         <div className="bg-white border-b border-slate-200 z-10 flex flex-col shrink-0">
                                             {/* Action Header Tabs */}
                                             <div className="flex items-center justify-between px-4 h-12 border-b border-slate-100 shrink-0">
-                                                <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar">
+                                                <div className="flex items-center gap-0.5 overflow-x-auto overflow-y-hidden scrollbar-hide">
                                                     {['EMAIL', 'SMS', 'WHATSAPP'].map((tab) => (
                                                         <button
                                                             key={tab}
@@ -1015,6 +1029,14 @@ export default function CommunicationManagerPage() {
                                                             <span className="text-xs font-semibold">{format(new Date(selectedContact.createdAt), 'MMM d, yyyy')}</span>
                                                         </div>
                                                     </div>
+                                                    {selectedContact.internalNotes && (
+                                                        <div className="pt-2">
+                                                            <Label className="text-[10px] uppercase font-bold text-amber-600/60 tracking-wider">Internal Notes</Label>
+                                                            <div className="mt-1 p-2 bg-amber-50 rounded-lg border border-amber-100 shadow-sm">
+                                                                <p className="text-[11px] font-medium text-amber-900 italic leading-relaxed">{selectedContact.internalNotes}</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 {/* <Separator /> */}
                                                 {/* <div className="space-y-2">
@@ -1037,7 +1059,7 @@ export default function CommunicationManagerPage() {
                                         <div className="bg-white border-b border-slate-200 z-10 flex flex-col shrink-0">
                                             {/* Action Header Tabs */}
                                             <div className="flex items-center justify-between px-4 h-12 border-b border-slate-100 shrink-0">
-                                                <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar">
+                                                <div className="flex items-center gap-0.5 overflow-x-auto overflow-y-hidden scrollbar-hide">
                                                     {['EMAIL', 'SMS', 'WHATSAPP'].map((tab) => (
                                                         <button
                                                             key={tab}
@@ -1293,12 +1315,12 @@ export default function CommunicationManagerPage() {
                                                         </Button>
                                                         <div className="flex items-center">
                                                             <Button
-                                                                disabled={isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || (!newMessage.trim() && attachments.length === 0)}
+                                                                disabled={isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || updateContactMutation.isPending || (!newMessage.trim() && attachments.length === 0)}
                                                                 onClick={handleContactActionSubmit}
-                                                                className="h-10 px-6 text-xs font-bold uppercase tracking-widest shadow-lg shadow-primary/20 rounded-l-xl rounded-r-none gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] bg-primary hover:bg-primary/95"
+                                                                className={`h-10 px-6 text-xs font-bold uppercase tracking-widest shadow-lg rounded-l-xl rounded-r-none gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] ${contactActionTab === 'COMMENT' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 'bg-primary hover:bg-primary/95 shadow-primary/20'}`}
                                                             >
-                                                                {(isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                                                {isUploadingAttachments ? 'Uploading...' : 'Send'}
+                                                                {(isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || updateContactMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : contactActionTab === 'COMMENT' ? <FileText className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                                                                {isUploadingAttachments ? 'Uploading...' : contactActionTab === 'COMMENT' ? 'Save Note' : 'Send'}
                                                             </Button>
                                                             <div className="h-10 w-[1px] bg-white/20" />
                                                             <Button

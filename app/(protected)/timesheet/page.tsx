@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import type React from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { TimesheetHeader, TimesheetFilters, EventGroupTable, TimesheetSummaryTable, TimesheetTableRow } from '@/components/timesheet';
 import { useToast } from '@/components/ui/use-toast';
@@ -27,6 +28,7 @@ export default function TimeManagerPage() {
     const [staffingFilter, setStaffingFilter] = useState<StaffingFilter>('all');
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortField>('startDate');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
@@ -62,6 +64,13 @@ export default function TimeManagerPage() {
         onError: (e) => toast({ title: 'Error generating invoices', description: e.message, variant: 'error' }),
     });
 
+    const reviewInvitationMutation = trpc.timeEntry.reviewInvitation.useMutation({
+        onSuccess: () => {
+            utils.timeEntry.getTimeManagerRows.invalidate();
+        },
+        onError: (e) => toast({ title: 'Error updating row', description: e.message, variant: 'error' }),
+    });
+
     // ── Helpers ──
     const toggleExpand = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -74,6 +83,7 @@ export default function TimeManagerPage() {
 
     const toggleSelect = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        if (isRejectedInvitation(id)) return;
         setSelectedRows((prev) => {
             const next = new Set(prev);
             next.has(id) ? next.delete(id) : next.add(id);
@@ -81,11 +91,18 @@ export default function TimeManagerPage() {
         });
     };
 
+    const isRejectedInvitation = (invitationId: string) => {
+        const inv = assignments.find((a: any) => a.id === invitationId);
+        const rating = inv?.internalReviewRating ?? inv?.invitations?.[0]?.internalReviewRating ?? null;
+        return rating === 'DID_NOT_MEET' || rating === 'NO_CALL_NO_SHOW';
+    };
+
     const toggleSelectAll = (ids: string[]) => {
-        const allInIdsSelected = ids.every((id) => selectedRows.has(id));
+        const selectableIds = ids.filter((id) => !isRejectedInvitation(id));
+        const allInIdsSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedRows.has(id));
         setSelectedRows((prev) => {
             const next = new Set(prev);
-            ids.forEach((id) => (allInIdsSelected ? next.delete(id) : next.add(id)));
+            selectableIds.forEach((id) => (allInIdsSelected ? next.delete(id) : next.add(id)));
             return next;
         });
     };
@@ -107,7 +124,14 @@ export default function TimeManagerPage() {
         }
     };
 
-    const handleSaveTimeEntry = (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number) => {
+    const handleSaveTimeEntry = (
+        invitationId: string, 
+        clockIn: string | null, 
+        clockOut: string | null, 
+        breakMins: number,
+        otCost?: number | null,
+        otPrice?: number | null
+    ) => {
         // Find the matching assignment to get staffId/callTimeId
         const assignment = assignments.find((a: any) => a.id === invitationId);
         if (!assignment) return;
@@ -119,12 +143,35 @@ export default function TimeManagerPage() {
             clockIn,
             clockOut,
             breakMinutes: breakMins,
+            overtimeCost: otCost,
+            overtimePrice: otPrice,
         });
     };
 
     const handleGenerateInvoices = () => {
         if (selectedRows.size === 0) return;
         generateInvoicesMutation.mutate({ invitationIds: Array.from(selectedRows) });
+    };
+
+    const handleApprove = async (invitationId: string) => {
+        reviewInvitationMutation.mutate(
+            { invitationId, decision: 'APPROVE' },
+            {
+                onSuccess: () => {
+                    generateInvoicesMutation.mutate({ invitationIds: [invitationId] });
+                },
+            }
+        );
+    };
+
+    const handleReject = (invitationId: string) => {
+        // Remove from current selection (if selected) and persist decision.
+        setSelectedRows((prev) => {
+            const next = new Set(prev);
+            next.delete(invitationId);
+            return next;
+        });
+        reviewInvitationMutation.mutate({ invitationId, decision: 'REJECT' });
     };
 
     // ── Data Transformation (Assignments -> Grouped rows for components) ──
@@ -149,7 +196,7 @@ export default function TimeManagerPage() {
                 id: inv.id, 
                 staff: inv.staff,
                 timeEntry: inv.timeEntry,
-                invitations: [inv], 
+                invitations: [inv],
             };
 
             groupsMap.get(eid)!.callTimes.push(row);
@@ -235,10 +282,11 @@ export default function TimeManagerPage() {
                         setActiveTab(tab);
                         setSelectedEventId(null); // Reset detail view when switching tabs
                         setSelectedClientId(null);
+                        setSelectedStaffId(null);
                     }}
                 />
 
-                {(selectedEventId || selectedClientId) && (
+                {(selectedEventId || selectedClientId || selectedStaffId) && (
                     <div className="flex items-center gap-2">
                         <Button
                             variant="ghost"
@@ -246,6 +294,7 @@ export default function TimeManagerPage() {
                             onClick={() => {
                                 setSelectedEventId(null);
                                 setSelectedClientId(null);
+                                setSelectedStaffId(null);
                             }}
                             className="flex items-center gap-1"
                         >
@@ -255,7 +304,7 @@ export default function TimeManagerPage() {
                     </div>
                 )}
 
-                {!selectedEventId && !selectedClientId && (
+                {!selectedEventId && !selectedClientId && !selectedStaffId && (
                     <TimesheetFilters
                         search={search}
                         onSearchChange={setSearch}
@@ -284,7 +333,7 @@ export default function TimeManagerPage() {
                         <span className="text-sm font-semibold text-foreground">No records found</span>
                         <p className="text-xs text-muted-foreground">Try adjusting your filters or inviting staff in the Events module.</p>
                     </div>
-                ) : !selectedEventId ? (
+                ) : !selectedEventId && !selectedClientId && !selectedStaffId ? (
                     <>
                         {activeTab === 'task' && (
                             <TimesheetSummaryTable
@@ -301,9 +350,7 @@ export default function TimeManagerPage() {
                         {activeTab === 'talent' && (
                             <TimesheetTalentSummaryTable
                                 talentGroups={talentGroups}
-                                onTalentClick={(id) => {
-                                    // Future: talent detail view
-                                }}
+                                onTalentClick={(id) => setSelectedStaffId(id)}
                             />
                         )}
                     </>
@@ -357,7 +404,9 @@ export default function TimeManagerPage() {
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
-                                                    <th className="px-3 py-2" />
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -371,6 +420,8 @@ export default function TimeManagerPage() {
                                                         onToggleSelect={toggleSelect}
                                                         onViewEvent={(id) => router.push(`/projects/${id}`)}
                                                         onSaveTimeEntry={handleSaveTimeEntry}
+                                                        onApprove={handleApprove}
+                                                        onReject={handleReject}
                                                     />
                                                 ))}
                                             </tbody>
@@ -378,6 +429,83 @@ export default function TimeManagerPage() {
                                     </div>
                                 </div>
                             ))}
+                    </div>
+                ) : selectedStaffId ? (
+                    <div className="space-y-4">
+                        {talentGroups
+                            .filter(g => g.staffId === selectedStaffId)
+                            .map((group) => (
+                                <div key={group.staffId} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
+                                    <div className="px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/20 border-b border-border flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-semibold text-lg text-foreground">{group.staffName}</span>
+                                            <Badge variant="outline">Assignments</Badge>
+                                        </div>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-border bg-muted/15">
+                                                    <th className="w-8 px-2 py-2">
+                                                        {(() => {
+                                                            const groupIds = group.callTimes.map((ct) => ct.id);
+                                                            const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                            return (
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isGroupAllSelected}
+                                                                    onChange={() => toggleSelectAll(groupIds)}
+                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                />
+                                                             );
+                                                         })()}
+                                                     </th>
+                                                     <th className="w-8 px-2 py-2" />
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Event / Task</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Date</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Date</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
+                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
+                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
+                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
+                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
+                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
+                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
+                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
+                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                 </tr>
+                                             </thead>
+                                             <tbody>
+                                                 {group.callTimes.map((ct) => (
+                                                     <TimesheetTableRow
+                                                         key={ct.id}
+                                                         ct={{
+                                                             ...ct,
+                                                             // Use event title for the name columns if possible, but TableRow expects first/last name
+                                                             // Actually, TableRow might need adjustment if used for Talent view
+                                                         }}
+                                                         isExpanded={expandedRows.has(ct.id)}
+                                                         isSelected={selectedRows.has(ct.id)}
+                                                         onToggleExpand={toggleExpand}
+                                                         onToggleSelect={toggleSelect}
+                                                         onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                         onSaveTimeEntry={handleSaveTimeEntry}
+                                                         showEventName={true}
+                                                         onApprove={handleApprove}
+                                                         onReject={handleReject}
+                                                     />
+                                                 ))}
+                                             </tbody>
+                                         </table>
+                                     </div>
+                                 </div>
+                             ))}
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -433,7 +561,9 @@ export default function TimeManagerPage() {
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
-                                                    <th className="px-3 py-2" />
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -447,6 +577,8 @@ export default function TimeManagerPage() {
                                                         onToggleSelect={toggleSelect}
                                                         onViewEvent={(id) => router.push(`/projects/${id}`)}
                                                         onSaveTimeEntry={handleSaveTimeEntry}
+                                                        onApprove={handleApprove}
+                                                        onReject={handleReject}
                                                     />
                                                 ))}
                                             </tbody>
