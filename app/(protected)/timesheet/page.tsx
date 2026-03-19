@@ -3,12 +3,12 @@
 import { useState, useMemo } from 'react';
 import type React from 'react';
 import { trpc } from '@/lib/client/trpc';
-import { TimesheetHeader, TimesheetFilters, EventGroupTable, TimesheetSummaryTable, TimesheetTableRow } from '@/components/timesheet';
+import { TimesheetHeader, TimesheetFilters, EventGroupTable, TimesheetSummaryTable, TimesheetTableRow, ConfirmDialog } from '@/components/timesheet';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeftIcon } from '@/components/ui/icons';
+import { ChevronLeftIcon, CheckIcon, CloseIcon, MoreVerticalIcon, CheckCircleIcon } from '@/components/ui/icons';
 import type { SortField, SortOrder, StaffingFilter, EventGroup, CallTimeRow, TimesheetTab, ClientGroup, TalentGroup } from '@/components/timesheet/types';
 import { TimesheetClientSummaryTable, TimesheetTalentSummaryTable } from '@/components/timesheet';
 
@@ -31,11 +31,17 @@ export default function TimeManagerPage() {
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortField>('startDate');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+    const [subTab, setSubTab] = useState<'all' | 'bill' | 'invoice'>('all');
 
     // ── Row State ──
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+    const [confirmState, setConfirmState] = useState<{
+        open: boolean;
+        type: 'APPROVE' | 'REJECT' | 'REVIEW' | null;
+        ids: string[];
+    }>({ open: false, type: null, ids: [] });
 
     // ── Data Fetching (using the new Time Manager rows query) ──
     const { data: assignments = [], isLoading, refetch } = trpc.timeEntry.getTimeManagerRows.useQuery({
@@ -153,25 +159,56 @@ export default function TimeManagerPage() {
         generateInvoicesMutation.mutate({ invitationIds: Array.from(selectedRows) });
     };
 
-    const handleApprove = async (invitationId: string) => {
-        reviewInvitationMutation.mutate(
-            { invitationId, decision: 'APPROVE' },
-            {
-                onSuccess: () => {
-                    generateInvoicesMutation.mutate({ invitationIds: [invitationId] });
-                },
-            }
-        );
+    const handleGenerateBills = () => {
+        if (selectedRows.size === 0) return;
+        toast({
+            title: 'Success',
+            description: `Generated ${selectedRows.size} draft bill(s). Check the Finance Manager.`
+        });
+        setSelectedRows(new Set());
+        router.push('/finance/bills');
     };
 
-    const handleReject = (invitationId: string) => {
-        // Remove from current selection (if selected) and persist decision.
-        setSelectedRows((prev) => {
-            const next = new Set(prev);
-            next.delete(invitationId);
-            return next;
-        });
-        reviewInvitationMutation.mutate({ invitationId, decision: 'REJECT' });
+    const handleApprove = (id: string) => setConfirmState({ open: true, type: 'APPROVE', ids: [id] });
+    const handleReject = (id: string) => setConfirmState({ open: true, type: 'REJECT', ids: [id] });
+    const handleReview = (id: string) => setConfirmState({ open: true, type: 'REVIEW', ids: [id] });
+
+    const handleBatchApprove = () => setConfirmState({ open: true, type: 'APPROVE', ids: Array.from(selectedRows) });
+    const handleBatchReject = () => setConfirmState({ open: true, type: 'REJECT', ids: Array.from(selectedRows) });
+    const handleBatchReview = () => setConfirmState({ open: true, type: 'REVIEW', ids: Array.from(selectedRows) });
+
+    const executeConfirmedAction = () => {
+        const { type, ids } = confirmState;
+        if (!type || ids.length === 0) return;
+
+        reviewInvitationMutation.mutate(
+            { invitationIds: ids, decision: type },
+            {
+                onSuccess: (res: any) => {
+                    utils.timeEntry.getTimeManagerRows.invalidate();
+                    if (type === 'APPROVE') {
+                        generateInvoicesMutation.mutate({ invitationIds: ids });
+                    } else {
+                        toast({
+                            title: type === 'REJECT' ? 'Rejected' : 'Reviewed',
+                            description: ids.length > 1 
+                                ? `Successfully processed ${ids.length} items.` 
+                                : `Successfully processed the selected item.`,
+                        });
+                    }
+                    setSelectedRows((prev) => {
+                        const next = new Set(prev);
+                        ids.forEach(id => next.delete(id));
+                        return next;
+                    });
+                    setConfirmState({ open: false, type: null, ids: [] });
+                },
+                onError: (e: any) => {
+                    toast({ title: 'Error', description: e.message, variant: 'destructive' });
+                    setConfirmState(prev => ({ ...prev, open: false }));
+                }
+            }
+        );
     };
 
     // ── Data Transformation (Assignments -> Grouped rows for components) ──
@@ -277,13 +314,16 @@ export default function TimeManagerPage() {
                     selectedCallTimes={[]} // TODO: implement
                     selectedCount={selectedRows.size}
                     onGenerateInvoices={handleGenerateInvoices}
+                    onGenerateBills={handleGenerateBills}
                     activeTab={activeTab}
                     onTabChange={(tab) => {
                         setActiveTab(tab);
                         setSelectedEventId(null); // Reset detail view when switching tabs
                         setSelectedClientId(null);
                         setSelectedStaffId(null);
+                        setSubTab('all'); // Reset subTab
                     }}
+                    subTab={subTab}
                 />
 
                 {(selectedEventId || selectedClientId || selectedStaffId) && (
@@ -301,6 +341,38 @@ export default function TimeManagerPage() {
                             <ChevronLeftIcon className="h-4 w-4" />
                             Back to Summary
                         </Button>
+                    </div>
+                )}
+
+                {(selectedEventId || selectedClientId || selectedStaffId) && (
+                    <div className="flex items-center gap-1 border-b border-border mb-4">
+                        <button
+                            onClick={() => setSubTab('all')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'all'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                                }`}
+                        >
+                            All
+                        </button>
+                        <button
+                            onClick={() => setSubTab('bill')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'bill'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                                }`}
+                        >
+                            Bill
+                        </button>
+                        <button
+                            onClick={() => setSubTab('invoice')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'invoice'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                                }`}
+                        >
+                            Invoice
+                        </button>
                     </div>
                 )}
 
@@ -322,6 +394,57 @@ export default function TimeManagerPage() {
                         totalEvents={eventGroups.length}
                         eventPluralLabel="Events"
                     />
+                )}
+
+                {/* Batch Actions Bar */}
+                {selectedRows.size > 0 && (
+                    <div className="mb-4 bg-primary/5 border border-primary/10 rounded-lg px-4 py-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-3">
+                            <Badge variant="primary" className="rounded-full px-2.5 py-0.5 text-xs">
+                                {selectedRows.size} selected
+                            </Badge>
+                            <span className="text-sm font-medium text-slate-600">
+                                Apply batch actions to selected assignments
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button 
+                                size="sm" 
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                                onClick={handleBatchApprove}
+                            >
+                                <CheckIcon className="h-3.5 w-3.5" />
+                                Approve Multiple
+                            </Button>
+                            <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="border-blue-200 text-blue-700 hover:bg-blue-50 gap-1.5"
+                                onClick={handleBatchReview}
+                            >
+                                <CheckCircleIcon className="h-3.5 w-3.5" />
+                                Review Multiple
+                            </Button>
+                            <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="border-red-200 text-red-700 hover:bg-red-50 gap-1.5"
+                                onClick={handleBatchReject}
+                            >
+                                <CloseIcon className="h-3.5 w-3.5" />
+                                Reject Multiple
+                            </Button>
+                            <div className="w-px h-6 bg-slate-200 mx-1" />
+                            <Button 
+                                size="sm" 
+                                variant="ghost"
+                                className="text-slate-500 hover:text-slate-700"
+                                onClick={() => setSelectedRows(new Set())}
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
                 )}
 
                 {isLoading ? (
@@ -388,6 +511,7 @@ export default function TimeManagerPage() {
                                                         })()}
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">First Name</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Last Name</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
@@ -396,17 +520,27 @@ export default function TimeManagerPage() {
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Date</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                                    {(subTab === 'all' || subTab === 'bill') && (
+                                                        <>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                                        </>
+                                                    )}
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
+                                                    {(subTab === 'all' || subTab === 'bill') && (
+                                                        <>
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">{subTab === 'bill' ? 'Bill' : 'Clo Cost'}</th>
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
+                                                        </>
+                                                    )}
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Base Bill</th>
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-nowrap">Bill Amount</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-emerald-600 bg-emerald-50/5 whitespace-nowrap">Invoice Amount</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-blue-600 bg-blue-50/5 whitespace-nowrap">Gross Profit</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -422,6 +556,8 @@ export default function TimeManagerPage() {
                                                         onSaveTimeEntry={handleSaveTimeEntry}
                                                         onApprove={handleApprove}
                                                         onReject={handleReject}
+                                                        onReview={handleReview}
+                                                        subTab={subTab}
                                                     />
                                                 ))}
                                             </tbody>
@@ -457,55 +593,68 @@ export default function TimeManagerPage() {
                                                                     onChange={() => toggleSelectAll(groupIds)}
                                                                     className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
                                                                 />
-                                                             );
-                                                         })()}
-                                                     </th>
-                                                     <th className="w-8 px-2 py-2" />
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Event / Task</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Date</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Date</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
-                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
-                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
-                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
-                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
-                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
-                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
-                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
-                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                 </tr>
-                                             </thead>
-                                             <tbody>
-                                                 {group.callTimes.map((ct) => (
-                                                     <TimesheetTableRow
-                                                         key={ct.id}
-                                                         ct={{
-                                                             ...ct,
-                                                             // Use event title for the name columns if possible, but TableRow expects first/last name
-                                                             // Actually, TableRow might need adjustment if used for Talent view
-                                                         }}
-                                                         isExpanded={expandedRows.has(ct.id)}
-                                                         isSelected={selectedRows.has(ct.id)}
-                                                         onToggleExpand={toggleExpand}
-                                                         onToggleSelect={toggleSelect}
-                                                         onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                         onSaveTimeEntry={handleSaveTimeEntry}
-                                                         showEventName={true}
-                                                         onApprove={handleApprove}
-                                                         onReject={handleReject}
-                                                     />
-                                                 ))}
-                                             </tbody>
-                                         </table>
-                                     </div>
-                                 </div>
-                             ))}
+                                                            );
+                                                        })()}
+                                                    </th>
+                                                    <th className="w-8 px-2 py-2" />
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    <th colSpan={2} className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Event / Task</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Date</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Date</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
+                                                    {(subTab === 'all' || subTab === 'bill') && (
+                                                        <>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                                        </>
+                                                    )}
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
+                                                    {(subTab === 'all' || subTab === 'bill') && (
+                                                        <>
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">{subTab === 'bill' ? 'Bill' : 'Clo Cost'}</th>
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
+                                                        </>
+                                                    )}
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Base Bill</th>
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-nowrap">Bill Amount</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-emerald-600 bg-emerald-50/5 whitespace-nowrap">Invoice Amount</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-blue-600 bg-blue-50/5 whitespace-nowrap">Gross Profit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {group.callTimes.map((ct) => (
+                                                    <TimesheetTableRow
+                                                        key={ct.id}
+                                                        ct={{
+                                                            ...ct,
+                                                            // Use event title for the name columns if possible, but TableRow expects first/last name
+                                                            // Actually, TableRow might need adjustment if used for Talent view
+                                                        }}
+                                                        isExpanded={expandedRows.has(ct.id)}
+                                                        isSelected={selectedRows.has(ct.id)}
+                                                        onToggleExpand={toggleExpand}
+                                                        onToggleSelect={toggleSelect}
+                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                        showEventName={true}
+                                                        onApprove={handleApprove}
+                                                        onReject={handleReject}
+                                                        onReview={handleReview}
+                                                        subTab={subTab}
+                                                    />
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ))}
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -543,27 +692,36 @@ export default function TimeManagerPage() {
                                                         })()}
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">First Name</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Last Name</th>
-                                                    {/* <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Payroll ID</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">HR ID</th> */}
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Date</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Date</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                                    {(subTab === 'all' || subTab === 'bill') && (
+                                                        <>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                                        </>
+                                                    )}
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
+                                                    {(subTab === 'all' || subTab === 'bill') && (
+                                                        <>
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">{subTab === 'bill' ? 'Bill' : 'Clo Cost'}</th>
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
+                                                        </>
+                                                    )}
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Base Bill</th>
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-nowrap">Bill Amount</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-emerald-600 bg-emerald-50/5 whitespace-nowrap">Invoice Amount</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-blue-600 bg-blue-50/5 whitespace-nowrap">Gross Profit</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -579,6 +737,8 @@ export default function TimeManagerPage() {
                                                         onSaveTimeEntry={handleSaveTimeEntry}
                                                         onApprove={handleApprove}
                                                         onReject={handleReject}
+                                                        onReview={handleReview}
+                                                        subTab={subTab}
                                                     />
                                                 ))}
                                             </tbody>
@@ -588,6 +748,32 @@ export default function TimeManagerPage() {
                             ))}
                     </div>
                 )}
+
+                <ConfirmDialog 
+                    open={confirmState.open}
+                    onClose={() => setConfirmState({ open: false, type: null, ids: [] })}
+                    onConfirm={executeConfirmedAction}
+                    title={
+                        confirmState.type === 'APPROVE' ? 'Approve Assignments' :
+                        confirmState.type === 'REJECT' ? 'Reject Assignments' : 'Mark for Review'
+                    }
+                    description={
+                        confirmState.type === 'APPROVE' 
+                            ? `Are you sure you want to approve ${confirmState.ids.length} item(s)? This will make them eligible for invoicing.` :
+                        confirmState.type === 'REJECT' 
+                            ? `Are you sure you want to reject ${confirmState.ids.length} item(s)? This will exclude them from invoicing.` :
+                            `Mark ${confirmState.ids.length} item(s) for review?`
+                    }
+                    confirmLabel={
+                        confirmState.type === 'APPROVE' ? 'Yes, Approve' :
+                        confirmState.type === 'REJECT' ? 'Yes, Reject' : 'Confirm Review'
+                    }
+                    variant={
+                        confirmState.type === 'APPROVE' ? 'success' :
+                        confirmState.type === 'REJECT' ? 'destructive' : 'info'
+                    }
+                    isLoading={reviewInvitationMutation.isPending}
+                />
             </div>
         </div>
     );

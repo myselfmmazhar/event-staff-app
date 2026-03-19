@@ -133,6 +133,32 @@ export function calcBillAmount(ct: CallTimeRow): number {
     return billRate;
 }
 
+export function calcClockedPrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    const rate = toNumber(ct.billRate);
+    const type = ct.billRateType as RateType;
+    const hours = calcClockedHours(timeEntry);
+    if (type === 'PER_HOUR') return hours * rate;
+    return rate;
+}
+
+export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    const base = calcClockedCost(timeEntry, ct);
+    const ot = calcOvertimeCost(timeEntry, ct);
+    return base + ot;
+}
+
+export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    const base = calcClockedPrice(timeEntry, ct);
+    const ot = calcOvertimePrice(timeEntry, ct);
+    return base + ot;
+}
+
+export function calcGrossProfit(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    const bill = calcTotalBill(timeEntry, ct);
+    const invoice = calcTotalInvoice(timeEntry, ct);
+    return invoice - bill;
+}
+
 export function formatRate(rate: CallTimeRow['payRate'], rateType: string): string {
     const num = toNumber(rate);
     if (!num) return '—';

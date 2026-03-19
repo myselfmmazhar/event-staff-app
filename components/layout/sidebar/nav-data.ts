@@ -151,16 +151,17 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           label: 'Finance Manager',
           icon: CurrencyDollarIcon,
           subItems: [
+            // {
+            //   label: 'Proposals',
+            //   href: '/finance/proposals',
+            //   icon: DocumentTextIcon,
+            //   comingSoon: true,
+            // },
             {
-              label: 'Proposals',
-              href: '/finance/proposals',
-              icon: DocumentTextIcon,
+              label: 'Bills',
+              href: '/finance/bills',
+              icon: BanknotesIcon,
               comingSoon: true,
-            },
-            {
-              label: 'Invoices',
-              href: '/invoices',
-              icon: DocumentTextIcon,
             },
             {
               label: 'Estimates',
@@ -168,10 +169,9 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
               icon: DocumentTextIcon,
             },
             {
-              label: 'Bills',
-              href: '/finance/bills',
-              icon: BanknotesIcon,
-              comingSoon: true,
+              label: 'Invoices',
+              href: '/invoices',
+              icon: DocumentTextIcon,
             },
           ],
         },
@@ -179,7 +179,7 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
     },
     {
       label: 'Communication Manager',
-      href: '/communication-manager?tab=contacts',
+      href: '/communication-manager?tab=email',
       icon: ChatBubbleLeftRightIcon,
       requiresAdmin: true,
     },

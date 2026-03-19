@@ -361,15 +361,16 @@ export class TimeEntryService {
      * REJECT: excluded from invoicing/counting
      */
     async reviewInvitation(data: {
-        invitationId: string;
-        decision: 'APPROVE' | 'REJECT';
+        invitationIds: string[];
+        decision: 'APPROVE' | 'REJECT' | 'REVIEW';
         reviewerId: string;
     }) {
         const internalReviewRating =
-            data.decision === 'APPROVE' ? 'MET_EXPECTATIONS' : 'DID_NOT_MEET';
+            data.decision === 'APPROVE' ? 'MET_EXPECTATIONS' :
+                data.decision === 'REJECT' ? 'DID_NOT_MEET' : 'NEEDS_IMPROVEMENT';
 
-        return await (this.prisma as any).callTimeInvitation.update({
-            where: { id: data.invitationId },
+        return await (this.prisma as any).callTimeInvitation.updateMany({
+            where: { id: { in: data.invitationIds } },
             data: {
                 internalReviewRating,
                 reviewedBy: data.reviewerId,

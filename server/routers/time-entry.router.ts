@@ -82,13 +82,13 @@ export const timeEntryRouter = router({
      */
     reviewInvitation: managerProcedure
         .input(z.object({
-            invitationId: z.string().uuid(),
-            decision: z.enum(['APPROVE', 'REJECT']),
+            invitationIds: z.array(z.string().uuid()),
+            decision: z.enum(['APPROVE', 'REJECT', 'REVIEW']),
         }))
         .mutation(async ({ ctx, input }) => {
             const service = new TimeEntryService(ctx.prisma);
             return await service.reviewInvitation({
-                invitationId: input.invitationId,
+                invitationIds: input.invitationIds,
                 decision: input.decision,
                 reviewerId: ctx.userId as string,
             });

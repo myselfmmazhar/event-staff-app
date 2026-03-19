@@ -21,17 +21,35 @@ export async function POST(request: NextRequest) {
 
         // On Vercel: use Blob storage (persistent, no local filesystem)
         if (process.env.VERCEL) {
-            const blob = await put(filename, file, {
-                access: 'public',
-                addRandomSuffix: false,
-            });
+            console.log('Vercel environment detected. Using @vercel/blob.');
+            
+            if (!process.env.BLOB_READ_WRITE_TOKEN) {
+                console.error('CRITICAL: BLOB_READ_WRITE_TOKEN is not set in Vercel environment variables.');
+                return NextResponse.json(
+                    { error: 'Storage not configured', details: 'BLOB_READ_WRITE_TOKEN is missing' },
+                    { status: 500 }
+                );
+            }
 
-            return NextResponse.json({
-                url: blob.url,
-                name: file.name,
-                type: file.type,
-                size: file.size,
-            });
+            try {
+                const blob = await put(filename, file, {
+                    access: 'public',
+                    addRandomSuffix: false,
+                });
+
+                return NextResponse.json({
+                    url: blob.url,
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                });
+            } catch (blobError: any) {
+                console.error('Vercel Blob upload error:', blobError);
+                return NextResponse.json(
+                    { error: 'Blob upload failed', details: blobError.message },
+                    { status: 500 }
+                );
+            }
         }
 
         // Local / non-serverless: save to disk in public/uploads
