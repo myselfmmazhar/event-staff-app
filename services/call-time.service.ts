@@ -24,6 +24,7 @@ import type {
 import { generateCallTimeId } from '@/lib/utils/id-generator';
 import { getNotificationTriggerService } from '@/services/notification-trigger.service';
 import { calculateDistance } from '@/services/mapbox.service';
+import type { CallTimeWithDetailsAndConfirmedCount } from '@/lib/types/prisma-types';
 
 // Skill level order for comparison (higher = more skilled)
 const SKILL_LEVEL_ORDER: Record<SkillLevel, number> = {
@@ -93,7 +94,7 @@ export class CallTimeService {
       },
       include: {
         service: true,
-        event: { select: { id: true, eventId: true, title: true, venueName: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true, internalNotes: true } },
+        event: { select: { id: true, eventId: true, title: true, venueName: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true } },
         _count: { select: { invitations: true } },
       },
     });
@@ -133,7 +134,6 @@ export class CallTimeService {
               requirements: result.event.requirements,
               preEventInstructions: result.event.preEventInstructions,
               privateComments: result.event.privateComments,
-              internalNotes: (result.event as any).internalNotes,
             }
           );
           console.log(`Email result for ${member.email}:`, emailResult);
@@ -276,7 +276,7 @@ export class CallTimeService {
   /**
    * Get multiple call times with details
    */
-  async findManyByIds(ids: string[], userId: string) {
+  async findManyByIds(ids: string[], userId: string): Promise<CallTimeWithDetailsAndConfirmedCount[]> {
     const callTimes = await this.prisma.callTime.findMany({
       where: {
         id: { in: ids },
@@ -299,7 +299,6 @@ export class CallTimeService {
             requirements: true,
             preEventInstructions: true,
             privateComments: true,
-            internalNotes: true,
           },
         },
         invitations: {

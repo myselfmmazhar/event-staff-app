@@ -101,7 +101,9 @@ export function PendingRequestsList({
     if (!pendingAction) return;
 
     if (pendingAction.ids.length === 1) {
-      onRespond(pendingAction.ids[0], pendingAction.accept);
+      const invitationId = pendingAction.ids[0];
+      if (!invitationId) return;
+      onRespond(invitationId, pendingAction.accept);
     } else {
       onBatchRespond?.(pendingAction.ids, pendingAction.accept);
       setSelectedIds(new Set());

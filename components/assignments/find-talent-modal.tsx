@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { inferRouterOutputs } from '@trpc/server';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,6 +18,10 @@ import { ConfirmModal } from '@/components/common/confirm-modal';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
 import { formatDateTime } from '@/lib/utils/date-formatter';
+import type { AppRouter } from '@/server/routers/_app';
+
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type CallTimesByIds = RouterOutputs['callTime']['getManyByIds'];
 
 interface FindTalentModalProps {
   callTimeId?: string | null;
@@ -79,10 +84,12 @@ export function FindTalentModal({
   const hasActiveFilters = maxDistance || skillLevel || rating || availabilityStatuses.length > 0;
 
   // Fetch call time details
-  const { data: callTimes, isLoading } = trpc.callTime.getManyByIds.useQuery(
+  const callTimesQuery = trpc.callTime.getManyByIds.useQuery(
     { ids: effectiveCallTimeIds },
     { enabled: hasCallTimeIds && open }
   );
+  const callTimes: CallTimesByIds | undefined = callTimesQuery.data;
+  const isLoading = callTimesQuery.isLoading;
 
   // Fetch available staff with filters
   const { data: staffData, isLoading: isLoadingStaff } =

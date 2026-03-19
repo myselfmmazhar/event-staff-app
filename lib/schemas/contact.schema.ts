@@ -40,6 +40,12 @@ export const ContactSchema = {
         internalNotes: z.string().optional().nullable(),
     }),
 
+    updateNotes: z.object({
+        id: z.string().uuid("Invalid contact ID"),
+        contactType: z.preprocess((val) => (val === "" ? null : val), z.string().max(100).optional().nullable()),
+        internalNotes: z.string().optional().nullable(),
+    }),
+
     query: z.object({
         page: z.number().int().min(1).default(1).optional(),
         limit: z.number().int().min(1).max(100).default(10).optional(),
@@ -56,4 +62,5 @@ export const ContactSchema = {
 
 export type CreateContactInput = z.infer<typeof ContactSchema.create>;
 export type UpdateContactInput = z.infer<typeof ContactSchema.update>;
+export type UpdateContactNotesInput = z.infer<typeof ContactSchema.updateNotes>;
 export type QueryContactsInput = z.infer<typeof ContactSchema.query>;

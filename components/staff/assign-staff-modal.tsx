@@ -85,7 +85,7 @@ export function AssignStaffModal({ staff, open, onClose }: AssignStaffModalProps
     }
 
     sendInvitationMutation.mutate({
-      callTimeId: selectedCallTimeId,
+      callTimeIds: [selectedCallTimeId],
       staffIds: [staff.id],
     });
   };

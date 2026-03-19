@@ -82,11 +82,13 @@ export function EventDocumentUpload({
       const errors: string[] = [];
 
       results.forEach((result, index) => {
+        const sourceFile = filesToUpload[index];
         if (result.status === 'fulfilled') {
           newUploadedDocs.push(result.value);
         } else {
-          console.error(`Upload error for ${filesToUpload[index].name}:`, result.reason);
-          errors.push(result.reason.message || `Failed to upload ${filesToUpload[index].name}`);
+          const fileName = sourceFile?.name || `file ${index + 1}`;
+          console.error(`Upload error for ${fileName}:`, result.reason);
+          errors.push(result.reason.message || `Failed to upload ${fileName}`);
         }
       });
 
@@ -95,7 +97,7 @@ export function EventDocumentUpload({
         toast({
           title: 'Upload complete',
           description: `Successfully uploaded ${newUploadedDocs.length} document(s).${errors.length > 0 ? ` (${errors.length} failed)` : ''}`,
-          variant: errors.length > 0 ? 'warning' : 'success',
+          variant: errors.length > 0 ? 'info' : 'success',
         });
       }
 

@@ -351,6 +351,41 @@ export type CallTimeSelect = Prisma.CallTimeGetPayload<{
   };
 }>;
 
+export type CallTimeWithDetails = Prisma.CallTimeGetPayload<{
+  include: {
+    service: true;
+    event: {
+      select: {
+        id: true;
+        eventId: true;
+        title: true;
+        createdBy: true;
+        venueName: true;
+        city: true;
+        state: true;
+        latitude: true;
+        longitude: true;
+        description: true;
+        requirements: true;
+        preEventInstructions: true;
+        privateComments: true;
+      };
+    };
+    invitations: {
+      select: {
+        id: true;
+        staffId: true;
+        status: true;
+        isConfirmed: true;
+      };
+    };
+  };
+}>;
+
+export type CallTimeWithDetailsAndConfirmedCount = CallTimeWithDetails & {
+  confirmedCount: number;
+};
+
 /**
  * User Select Type
  * Used by UserService for all query return types

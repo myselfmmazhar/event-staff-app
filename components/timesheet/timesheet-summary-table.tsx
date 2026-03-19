@@ -46,17 +46,18 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                             const firstRow = group.callTimes[0];
                             const event = firstRow?.event;
 
-                            // Calculate date range for the group
-                            let minDate: Date | null = null;
-                            let maxDate: Date | null = null;
-
-                            group.callTimes.forEach(ct => {
-                                if (ct.startDate) {
-                                    const d = typeof ct.startDate === 'string' ? parseISO(ct.startDate) : ct.startDate;
-                                    if (!minDate || d < minDate) minDate = d;
-                                    if (!maxDate || d > maxDate) maxDate = d;
-                                }
+                            const groupDates = group.callTimes.flatMap((ct) => {
+                                if (!ct.startDate) return [];
+                                return [typeof ct.startDate === 'string' ? parseISO(ct.startDate) : ct.startDate];
                             });
+
+                            const minDate = groupDates.length > 0
+                                ? new Date(Math.min(...groupDates.map((date) => date.getTime())))
+                                : null;
+                            const maxDate = groupDates.length > 0
+                                ? new Date(Math.max(...groupDates.map((date) => date.getTime())))
+                                : null;
+                            const hasDateRange = !!minDate && !!maxDate && minDate.getTime() !== maxDate.getTime();
 
                             const totalOvertimeCost = group.callTimes.reduce((acc, ct) => acc + calcOvertimeCost(ct.timeEntry, ct), 0);
                             const totalOvertimePrice = group.callTimes.reduce((acc, ct) => acc + calcOvertimePrice(ct.timeEntry, ct), 0);
@@ -128,7 +129,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                                 {minDate ? formatDate(minDate) : 'TBD'}
                                                 {firstRow?.startTime && ` ${firstRow.startTime}`}
                                             </span>
-                                            {maxDate && (minDate?.getTime() !== maxDate.getTime()) && (
+                                            {hasDateRange && maxDate && (
                                                 <span className="text-xs">
                                                     to {formatDate(maxDate)}
                                                     {firstRow?.endTime && ` ${firstRow.endTime}`}

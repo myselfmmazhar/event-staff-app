@@ -98,6 +98,7 @@ export function TimesheetTableRow({
             document.addEventListener('mousedown', handleClickOutside);
             return () => document.removeEventListener('mousedown', handleClickOutside);
         }
+        return undefined;
     }, [isActionsOpen]);
 
     const handleSave = (e: React.MouseEvent) => {

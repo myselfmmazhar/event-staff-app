@@ -213,12 +213,23 @@ export default function CommunicationManagerPage() {
         }
     });
 
+    const updateContactNotesMutation = trpc.contacts.updateNotes.useMutation({
+        onSuccess: (data, variables) => {
+            toast({ title: 'Comment saved successfully' });
+            setSelectedContact(prev => prev && prev.id === data.id ? { ...prev, internalNotes: variables.internalNotes ?? null } : prev);
+            refetchContacts();
+        },
+        onError: (error) => {
+            toast({ title: 'Failed to save comment', description: error.message, variant: 'error' });
+        }
+    });
+
     const deleteContactMutation = trpc.contacts.delete.useMutation({
         onSuccess: () => {
             toast({ title: 'Contact deleted successfully' });
             setIsDeleteDialogOpen(false);
             setContactToDelete(null);
-            if (selectedContact && selectedContact.id === contactToDelete?.id) {
+            if (selectedContact && selectedContact.id === contactToDelete) {
                 setSelectedContact(null);
                 setIsDetailView(false);
             }
@@ -384,10 +395,10 @@ export default function CommunicationManagerPage() {
                 configId: contactActionMsgConfigId === 'default' ? undefined : contactActionMsgConfigId
             });
         } else if (contactActionTab === 'COMMENT') {
-            updateContactMutation.mutate({
+            updateContactNotesMutation.mutate({
                 id: selectedContact.id,
-                internalNotes: content,
                 contactType: selectedContact.contactType,
+                internalNotes: content,
             });
         }
         setNewMessage('');
@@ -1321,11 +1332,11 @@ export default function CommunicationManagerPage() {
                                                         </Button>
                                                         <div className="flex items-center">
                                                             <Button
-                                                                disabled={isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || updateContactMutation.isPending || (!newMessage.trim() && attachments.length === 0)}
+                                                                disabled={isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || updateContactMutation.isPending || updateContactNotesMutation.isPending || (!newMessage.trim() && attachments.length === 0)}
                                                                 onClick={handleContactActionSubmit}
                                                                 className={`h-10 px-6 text-xs font-bold uppercase tracking-widest shadow-lg rounded-l-xl rounded-r-none gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] ${contactActionTab === 'COMMENT' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 'bg-primary hover:bg-primary/95 shadow-primary/20'}`}
                                                             >
-                                                                {(isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || updateContactMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : contactActionTab === 'COMMENT' ? <FileText className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                                                                {(isUploadingAttachments || sendEmailMutation.isPending || sendMessageMutation.isPending || updateContactMutation.isPending || updateContactNotesMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : contactActionTab === 'COMMENT' ? <FileText className="h-4 w-4" /> : <Send className="h-4 w-4" />}
                                                                 {isUploadingAttachments ? 'Uploading...' : contactActionTab === 'COMMENT' ? 'Save Note' : 'Send'}
                                                             </Button>
                                                             <div className="h-10 w-[1px] bg-white/20" />
