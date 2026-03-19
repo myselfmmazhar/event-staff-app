@@ -8,6 +8,7 @@ export { TimesheetTableRow } from './timesheet-table-row';
 export { TimesheetSummaryTable } from './timesheet-summary-table';
 export { TimesheetClientSummaryTable } from './timesheet-client-summary-table';
 export { TimesheetTalentSummaryTable } from './timesheet-talent-summary-table';
+export { ConfirmDialog } from './confirm-dialog';
 
 export type {
     CallTimeRow,

@@ -50,9 +50,8 @@ export function EventDocumentUpload({
     setUploading(true);
 
     try {
-      const uploadedDocs: EventDocument[] = [];
-
-      for (const file of filesToUpload) {
+      // Parallel upload for better performance with multiple files
+      const uploadPromises = filesToUpload.map(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('bucket', 'event-documents');
@@ -64,29 +63,54 @@ export function EventDocumentUpload({
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || `Failed to upload ${file.name}`);
+          throw new Error(errorData.error || `Failed to upload ${file.name}: ${errorData.details || ''}`);
         }
 
         const data = await response.json();
-        uploadedDocs.push({
+        return {
           name: data.name || file.name,
           url: data.url,
           type: data.type || file.type,
           size: data.size || file.size,
+        };
+      });
+
+      // Using allSettled to allow some files to succeed even if others fail
+      const results = await Promise.allSettled(uploadPromises);
+      
+      const newUploadedDocs: EventDocument[] = [];
+      const errors: string[] = [];
+
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          newUploadedDocs.push(result.value);
+        } else {
+          console.error(`Upload error for ${filesToUpload[index].name}:`, result.reason);
+          errors.push(result.reason.message || `Failed to upload ${filesToUpload[index].name}`);
+        }
+      });
+
+      if (newUploadedDocs.length > 0) {
+        onChange([...documents, ...newUploadedDocs]);
+        toast({
+          title: 'Upload complete',
+          description: `Successfully uploaded ${newUploadedDocs.length} document(s).${errors.length > 0 ? ` (${errors.length} failed)` : ''}`,
+          variant: errors.length > 0 ? 'warning' : 'success',
         });
       }
 
-      onChange([...documents, ...uploadedDocs]);
-      toast({
-        title: 'Documents uploaded',
-        description: `Successfully uploaded ${uploadedDocs.length} document(s).`,
-        variant: 'success',
-      });
+      if (errors.length > 0) {
+        toast({
+          title: 'Some uploads failed',
+          description: errors[0], // Show the first error
+          variant: 'error',
+        });
+      }
     } catch (error: any) {
-      console.error('Upload error:', error);
+      console.error('Batch upload error:', error);
       toast({
-        title: 'Upload failed',
-        description: error.message || 'Failed to upload documents.',
+        title: 'Upload error',
+        description: 'An unexpected error occurred during upload.',
         variant: 'error',
       });
     } finally {

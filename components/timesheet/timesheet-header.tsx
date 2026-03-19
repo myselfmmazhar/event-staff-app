@@ -12,8 +12,10 @@ interface TimesheetHeaderProps {
     selectedCallTimes: CallTimeRow[];
     selectedCount: number;
     onGenerateInvoices?: () => void;
+    onGenerateBills?: () => void;
     activeTab: 'task' | 'client' | 'talent';
     onTabChange: (tab: 'task' | 'client' | 'talent') => void;
+    subTab?: 'all' | 'bill' | 'invoice';
 }
 
 export function TimesheetHeader({
@@ -25,8 +27,10 @@ export function TimesheetHeader({
     selectedCallTimes,
     selectedCount,
     onGenerateInvoices,
+    onGenerateBills,
     activeTab,
     onTabChange,
+    subTab = 'all',
 }: TimesheetHeaderProps) {
     return (
         <div className="space-y-4">
@@ -42,17 +46,30 @@ export function TimesheetHeader({
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    {selectedCount > 0 && onGenerateInvoices && (
-                        <Button
-                            variant="default"
-                            size="sm"
-                            onClick={onGenerateInvoices}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                            Generate Invoice ({selectedCount})
-                        </Button>
-                    )}
+
+                <div className="flex items-center gap-3 ml-auto">
+                    <div className="flex items-center gap-2">
+                        {selectedCount > 0 && onGenerateInvoices && (subTab === 'all' || subTab === 'invoice') && (
+                            <Button
+                                variant="default"
+                                size="sm"
+                                onClick={onGenerateInvoices}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                                Generate Invoice ({selectedCount})
+                            </Button>
+                        )}
+                        {selectedCount > 0 && onGenerateBills && (subTab === 'all' || subTab === 'bill') && (
+                            <Button
+                                variant="default"
+                                size="sm"
+                                onClick={onGenerateBills}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            >
+                                Generate Bill ({selectedCount})
+                            </Button>
+                        )}
+                    </div>
                     <Button
                         variant="outline"
                         size="sm"

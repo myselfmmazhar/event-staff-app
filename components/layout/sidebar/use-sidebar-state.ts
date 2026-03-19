@@ -30,14 +30,30 @@ export function useSidebarState() {
   }, [expandedItems, collapsedItems]);
 
   const toggle = useCallback((path: string, hasActiveChildFlag?: boolean) => {
+    const isTopLevel = !path.includes('.');
+
     if (hasActiveChildFlag) {
-      setCollapsedItems(prev =>
-        prev.includes(path) ? prev.filter(item => item !== path) : [...prev, path]
-      );
+      setCollapsedItems(prev => {
+        const isClosing = !prev.includes(path);
+        if (!isClosing && isTopLevel) {
+          // If we are actually opening a top-level pod that has an active child
+          return prev.filter(item => item === path); 
+        }
+        return prev.includes(path) ? prev.filter(item => item !== path) : [...prev, path];
+      });
     } else {
-      setExpandedItems(prev =>
-        prev.includes(path) ? prev.filter(item => item !== path) : [...prev, path]
-      );
+      setExpandedItems(prev => {
+        const isOpening = !prev.includes(path);
+        if (isOpening && isTopLevel) {
+          // Accordion behavior: close other top-level items when opening a new one
+          return [path];
+        }
+        return prev.includes(path) ? prev.filter(item => item !== path) : [...prev, path];
+      });
+      // Also clear collapsed items if we are switching top-level focus
+      if (!path.includes('.')) {
+        setCollapsedItems([]);
+      }
     }
   }, []);
 

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { ClientGroup } from './types';
+import { calcOvertimeCost, calcOvertimePrice, calcClockedHours, calcScheduledHours, toNumber, fmtCurrency } from './helpers';
 
 interface TimesheetClientSummaryTableProps {
     clientGroups: ClientGroup[];
@@ -27,6 +28,9 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                             <th className="px-4 py-3 font-semibold text-foreground">Client Name</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-center">Open Tasks</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Status</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right border-l border-border">Total Bill</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Inv</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Profit</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Date Range</th>
                         </tr>
                     </thead>
@@ -46,6 +50,20 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                     completedCount++;
                                 }
                             });
+
+                            const totalBill = group.callTimes.reduce((acc, ct) => {
+                                const base = ct.payRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.payRate)) : (calcScheduledHours(ct) * toNumber(ct.payRate))) : toNumber(ct.payRate);
+                                const ot = calcOvertimeCost(ct.timeEntry, ct);
+                                return acc + base + ot;
+                            }, 0);
+
+                            const totalInvoice = group.callTimes.reduce((acc, ct) => {
+                                const base = ct.billRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.billRate)) : (calcScheduledHours(ct) * toNumber(ct.billRate))) : toNumber(ct.billRate);
+                                const ot = calcOvertimePrice(ct.timeEntry, ct);
+                                return acc + base + ot;
+                            }, 0);
+
+                            const profit = totalInvoice - totalBill;
 
                             return (
                                 <tr key={group.clientId} className="hover:bg-muted/30 transition-colors">
@@ -68,6 +86,15 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                         ) : (
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
                                         )}
+                                    </td>
+                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600 border-l border-border">
+                                        {fmtCurrency(totalBill)}
+                                    </td>
+                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-emerald-600">
+                                        {fmtCurrency(totalInvoice)}
+                                    </td>
+                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-700'}`}>
+                                        {fmtCurrency(profit)}
                                     </td>
                                     <td className="px-4 py-4 text-muted-foreground whitespace-nowrap text-xs">
                                         {minDate ? formatDate(minDate) : 'TBD'} 

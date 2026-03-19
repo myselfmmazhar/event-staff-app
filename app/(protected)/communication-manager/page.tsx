@@ -81,7 +81,7 @@ export default function CommunicationManagerPage() {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // UI State
-    const activeTab = searchParams.get('tab') || 'contacts';
+    const activeTab = searchParams.get('tab') || 'email';
     const [selectedRecipient, setSelectedRecipient] = useState<string | null>(null);
     const [emailFolder, setEmailFolder] = useState<'SENT' | 'TRASH'>('SENT');
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -517,15 +517,21 @@ export default function CommunicationManagerPage() {
                         <TabsList className="bg-transparent h-14 p-0 gap-8">
                             <TabsTrigger
                                 value="inbox"
-                                className="h-14 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary shadow-none px-0 font-bold uppercase tracking-widest text-[11px] transition-all"
+                                className={`h-14 rounded-none border-b-2 shadow-none px-4 text-sm font-medium transition-all ${(activeTab === 'email' || activeTab === 'messages')
+                                    ? 'border-primary text-primary bg-transparent'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                    }`}
                             >
                                 Inbox
                             </TabsTrigger>
                             <TabsTrigger
                                 value="contacts"
-                                className="h-14 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary shadow-none px-0 font-bold uppercase tracking-widest text-[11px] transition-all"
+                                className={`h-14 rounded-none border-b-2 shadow-none px-4 text-sm font-medium transition-all ${activeTab === 'contacts'
+                                    ? 'border-primary text-primary bg-transparent'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                    }`}
                             >
-                                Contact
+                                Contacts
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
