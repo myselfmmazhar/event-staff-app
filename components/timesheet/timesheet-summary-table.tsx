@@ -5,7 +5,16 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { EventGroup } from './types';
-import { calcOvertimeCost, calcOvertimePrice, calcClockedHours, calcScheduledHours, toNumber, fmtCurrency } from './helpers';
+import { 
+    calcOvertimeCost, 
+    calcOvertimePrice, 
+    calcClockedHours, 
+    calcScheduledHours, 
+    toNumber, 
+    fmtCurrency,
+    calcTotalBill,
+    calcTotalInvoice 
+} from './helpers';
 
 interface TimesheetSummaryTableProps {
     eventGroups: EventGroup[];
@@ -59,21 +68,8 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                 : null;
                             const hasDateRange = !!minDate && !!maxDate && minDate.getTime() !== maxDate.getTime();
 
-                            const totalOvertimeCost = group.callTimes.reduce((acc, ct) => acc + calcOvertimeCost(ct.timeEntry, ct), 0);
-                            const totalOvertimePrice = group.callTimes.reduce((acc, ct) => acc + calcOvertimePrice(ct.timeEntry, ct), 0);
-
-                            const totalBill = group.callTimes.reduce((acc, ct) => {
-                                const base = ct.payRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.payRate)) : (calcScheduledHours(ct) * toNumber(ct.payRate))) : toNumber(ct.payRate);
-                                const ot = calcOvertimeCost(ct.timeEntry, ct);
-                                return acc + base + ot;
-                            }, 0);
-
-                            const totalInvoice = group.callTimes.reduce((acc, ct) => {
-                                const base = ct.billRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.billRate)) : (calcScheduledHours(ct) * toNumber(ct.billRate))) : toNumber(ct.billRate);
-                                const ot = calcOvertimePrice(ct.timeEntry, ct);
-                                return acc + base + ot;
-                            }, 0);
-
+                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
+                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
                             const profit = totalInvoice - totalBill;
 
                             const completedCount = group.callTimes.filter(ct => ct.timeEntry?.clockIn && ct.timeEntry?.clockOut).length;
@@ -136,20 +132,6 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                     </td>
                                     <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-700'}`}>
                                         {fmtCurrency(profit)}
-                                    </td>
-                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
-                                        <div className="flex flex-col">
-                                            <span>
-                                                {minDate ? formatDate(minDate) : 'TBD'}
-                                                {firstRow?.startTime && ` ${firstRow.startTime}`}
-                                            </span>
-                                            {hasDateRange && maxDate && (
-                                                <span className="text-xs">
-                                                    to {formatDate(maxDate)}
-                                                    {firstRow?.endTime && ` ${firstRow.endTime}`}
-                                                </span>
-                                            )}
-                                        </div>
                                     </td>
                                 </tr>
                             );

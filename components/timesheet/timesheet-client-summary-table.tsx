@@ -5,7 +5,16 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { ClientGroup } from './types';
-import { calcOvertimeCost, calcOvertimePrice, calcClockedHours, calcScheduledHours, toNumber, fmtCurrency } from './helpers';
+import { 
+    calcOvertimeCost, 
+    calcOvertimePrice, 
+    calcClockedHours, 
+    calcScheduledHours, 
+    toNumber, 
+    fmtCurrency,
+    calcTotalBill,
+    calcTotalInvoice 
+} from './helpers';
 
 interface TimesheetClientSummaryTableProps {
     clientGroups: ClientGroup[];
@@ -51,18 +60,8 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                 }
                             });
 
-                            const totalBill = group.callTimes.reduce((acc, ct) => {
-                                const base = ct.payRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.payRate)) : (calcScheduledHours(ct) * toNumber(ct.payRate))) : toNumber(ct.payRate);
-                                const ot = calcOvertimeCost(ct.timeEntry, ct);
-                                return acc + base + ot;
-                            }, 0);
-
-                            const totalInvoice = group.callTimes.reduce((acc, ct) => {
-                                const base = ct.billRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.billRate)) : (calcScheduledHours(ct) * toNumber(ct.billRate))) : toNumber(ct.billRate);
-                                const ot = calcOvertimePrice(ct.timeEntry, ct);
-                                return acc + base + ot;
-                            }, 0);
-
+                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
+                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
                             const profit = totalInvoice - totalBill;
 
                             return (
