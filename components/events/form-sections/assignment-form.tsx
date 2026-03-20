@@ -47,6 +47,10 @@ interface AssignmentFormProps {
   minDate?: string | null;
   /** Max date allowed (e.g. event end date) */
   maxDate?: string | null;
+  /** Start time of the event */
+  eventStartTime?: string | null;
+  /** End time of the event */
+  eventEndTime?: string | null;
   /** Callback when a date is out of range */
   onInvalidDate?: (message: string) => void;
   /** Whether form is disabled */
@@ -63,6 +67,8 @@ export function AssignmentForm({
   onCreateProduct,
   minDate,
   maxDate,
+  eventStartTime,
+  eventEndTime,
   onInvalidDate,
   disabled = false,
 }: AssignmentFormProps) {
@@ -149,6 +155,46 @@ export function AssignmentForm({
   });
 
   const { register, control, watch, setValue, handleSubmit, formState: { errors }, trigger, reset } = form;
+  const [useTaskDateTime, setUseTaskDateTime] = useState(false);
+
+  // Sync with event date/time when useTaskDateTime is toggled
+  useEffect(() => {
+    if (useTaskDateTime) {
+      if (minDate) {
+        setValue('startDate', minDate);
+        setStartDateUBD(false);
+      } else {
+        setStartDateUBD(true);
+      }
+
+      if (eventStartTime) {
+        if (eventStartTime === 'TBD') {
+          setStartTimeTBD(true);
+          setValue('startTime', '');
+        } else {
+          setStartTimeTBD(false);
+          setValue('startTime', eventStartTime);
+        }
+      }
+
+      if (maxDate) {
+        setValue('endDate', maxDate);
+        setEndDateUBD(false);
+      } else {
+        setEndDateUBD(true);
+      }
+
+      if (eventEndTime) {
+        if (eventEndTime === 'TBD') {
+          setEndTimeTBD(true);
+          setValue('endTime', '');
+        } else {
+          setEndTimeTBD(false);
+          setValue('endTime', eventEndTime);
+        }
+      }
+    }
+  }, [useTaskDateTime, minDate, maxDate, eventStartTime, eventEndTime, setValue]);
   const assignmentType = watch('type');
   const startDate = watch('startDate');
 
@@ -716,7 +762,21 @@ export function AssignmentForm({
               </div>
             </div>
 
-            {/* Date & Time Fields */}
+            <div className="flex items-center justify-between mb-4 mt-2">
+              <Label className="text-sm font-semibold uppercase tracking-wider text-slate-500">Date &amp; Time</Label>
+              {(minDate || eventStartTime) && (
+                <label className="flex items-center gap-2 cursor-pointer bg-blue-50 px-3 py-1 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={useTaskDateTime}
+                    onChange={(e) => setUseTaskDateTime(e.target.checked)}
+                    disabled={disabled}
+                    className="accent-blue-600 h-3.5 w-3.5"
+                  />
+                  <span className="text-[10px] font-bold text-blue-600 uppercase">Use Event Date &amp; Time</span>
+                </label>
+              )}
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <div className="flex items-center justify-between mb-2">

@@ -8,6 +8,7 @@ import { CallTimeInvitationStatus, EventStatus } from '@prisma/client';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from '@/lib/constants';
 import { formatDateTime } from '@/lib/utils/date-formatter';
 import { format } from 'date-fns';
@@ -176,39 +177,30 @@ export function ArchivedEventTable({
     {
       key: 'actions',
       label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-left py-3 px-4',
-      render: (event) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onView(event)}
-            title={`View ${terminology.event.lower} details`}
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onRestore(event)}
-            title={`Restore ${terminology.event.lower}`}
-          >
-            <RefreshCwIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(event)}
-            title={`Permanently delete ${terminology.event.lower}`}
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
+      headerClassName: 'text-left py-3 px-4 w-10',
+      className: 'w-10 py-4 px-4',
+      render: (event) => {
+        const actions: ActionItem[] = [
+          {
+            label: `View ${terminology.event.lower} details`,
+            icon: <EyeIcon className="h-3.5 w-3.5" />,
+            onClick: () => onView(event),
+          },
+          {
+            label: `Restore ${terminology.event.lower}`,
+            icon: <RefreshCwIcon className="h-3.5 w-3.5" />,
+            onClick: () => onRestore(event),
+          },
+          {
+            label: `Permanently delete ${terminology.event.lower}`,
+            icon: <TrashIcon className="h-3.5 w-3.5" />,
+            onClick: () => onDelete(event),
+            variant: 'destructive',
+          },
+        ];
+
+        return <ActionDropdown actions={actions} />;
+      },
     },
     {
       key: 'archivedAt',

@@ -1,12 +1,13 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { 
-    ChevronDownIcon, 
-    ChevronUpIcon, 
-    EditIcon, 
-    CheckIcon, 
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon, ClockIcon } from '@/components/ui/icons';
+import {
+    ChevronDownIcon,
+    ChevronUpIcon,
+    EditIcon,
+    CheckIcon,
     CloseIcon,
-    MoreVerticalIcon,
     CheckCircleIcon
 } from '@/components/ui/icons';
 import {
@@ -29,6 +30,7 @@ import {
 } from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 export function TimesheetTableRow({
     ct,
@@ -58,9 +60,7 @@ export function TimesheetTableRow({
     subTab?: 'all' | 'bill' | 'invoice';
 }) {
     const [isEditing, setIsEditing] = useState(false);
-    const [isActionsOpen, setIsActionsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-    
+
     const te = ct.timeEntry;
     const [clockIn, setClockIn] = useState(toInputDatetime(te?.clockIn ?? null));
     const [clockOut, setClockOut] = useState(toInputDatetime(te?.clockOut ?? null));
@@ -69,17 +69,19 @@ export function TimesheetTableRow({
     const [otPriceManual, setOtPriceManual] = useState<string>(te?.overtimePrice !== undefined && te?.overtimePrice !== null ? toNumber(te.overtimePrice).toString() : '');
     const [isEditingOtCost, setIsEditingOtCost] = useState(false);
     const [isEditingOtPrice, setIsEditingOtPrice] = useState(false);
+    const [isMinApp, setIsMinApp] = useState(!!ct.minimum);
+    const [isCommApp, setIsCommApp] = useState(!!ct.commission);
 
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
     const scheduledCost = calcScheduledCost(ct);
-    const clockedCostVal = calcClockedCost(te, ct);
+    const clockedCostVal = calcClockedCost(te, ct, isMinApp);
     const otCost = calcOvertimeCost(te, ct);
     const otPrice = calcOvertimePrice(te, ct);
     const billAmount = calcBillAmount(ct);
-    const totalBill = calcTotalBill(te, ct);
-    const totalInvoice = calcTotalInvoice(te, ct);
-    const grossProfit = calcGrossProfit(te, ct);
+    const totalBill = calcTotalBill(te, ct, isMinApp, isCommApp);
+    const totalInvoice = calcTotalInvoice(te, ct, isMinApp, isCommApp);
+    const grossProfit = totalInvoice - totalBill;
 
     const reviewRating = useMemo(() => ct.invitations?.[0]?.internalReviewRating ?? null, [ct.invitations]);
     const isRejected = reviewRating === 'DID_NOT_MEET' || reviewRating === 'NO_CALL_NO_SHOW';
@@ -87,19 +89,6 @@ export function TimesheetTableRow({
     const revisionCount = te?.revisions?.length ?? 0;
     const isEdited = revisionCount > 0;
 
-    // Close dropdown on click outside
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsActionsOpen(false);
-            }
-        }
-        if (isActionsOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }
-        return undefined;
-    }, [isActionsOpen]);
 
     const handleSave = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -108,10 +97,10 @@ export function TimesheetTableRow({
             const parsedOtPrice = otPriceManual !== '' ? parseFloat(otPriceManual) : null;
 
             onSaveTimeEntry(
-                ct.id, 
-                clockIn || null, 
-                clockOut || null, 
-                breakMins, 
+                ct.id,
+                clockIn || null,
+                clockOut || null,
+                breakMins,
                 parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
                 parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined)
             );
@@ -120,6 +109,33 @@ export function TimesheetTableRow({
         setIsEditingOtCost(false);
         setIsEditingOtPrice(false);
     };
+
+    const actions: ActionItem[] = [
+        {
+            label: 'Edit',
+            icon: <EditIcon className="h-3.5 w-3.5" />,
+            onClick: () => setIsEditing(true),
+        },
+        {
+            label: 'Approve',
+            icon: <CheckIcon className="h-3.5 w-3.5" />,
+            onClick: () => onApprove?.(ct.id),
+            disabled: isRejected,
+            variant: 'info',
+        },
+        {
+            label: 'Review',
+            icon: <CheckCircleIcon className="h-3.5 w-3.5 text-blue-500" />,
+            onClick: () => onReview?.(ct.id),
+        },
+        {
+            label: 'Rejected',
+            icon: <CloseIcon className="h-3.5 w-3.5" />,
+            onClick: () => onReject?.(ct.id),
+            disabled: isRejected,
+            variant: 'destructive',
+        }
+    ];
 
     return (
         <>
@@ -154,52 +170,7 @@ export function TimesheetTableRow({
 
                 {/* Actions Dropdown */}
                 <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
-                    <div ref={dropdownRef}>
-                        <button
-                            onClick={() => setIsActionsOpen(!isActionsOpen)}
-                            className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted text-muted-foreground transition-colors"
-                        >
-                            <MoreVerticalIcon className="h-4 w-4" />
-                        </button>
-
-                        {isActionsOpen && (
-                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-32 rounded-lg border border-border bg-card shadow-lg z-[100] p-1">
-                                <button
-                                    onClick={() => { setIsEditing(true); setIsActionsOpen(false); }}
-                                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-                                >
-                                    <EditIcon className="h-3.5 w-3.5" />
-                                    <span>Edit</span>
-                                </button>
-                                <button
-                                    onClick={() => { onApprove?.(ct.id); setIsActionsOpen(false); }}
-                                    disabled={isRejected}
-                                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    <CheckIcon className="h-3.5 w-3.5" />
-                                    <span>Approve</span>
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setIsActionsOpen(false);
-                                        onReview?.(ct.id);
-                                    }}
-                                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                                >
-                                    <CheckCircleIcon className="h-3.5 w-3.5 text-blue-500" />
-                                    <span>Review</span>
-                                </button>
-                                <button
-                                    onClick={() => { onReject?.(ct.id); setIsActionsOpen(false); }}
-                                    disabled={isRejected}
-                                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    <CloseIcon className="h-3.5 w-3.5" />
-                                    <span>Rejected</span>
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    <ActionDropdown actions={actions} align="start" />
                 </td>
 
                 {/* Staff Name or Event Name */}
@@ -209,44 +180,90 @@ export function TimesheetTableRow({
                     </td>
                 ) : (
                     <>
-                        {/* First Name */}
-                        <td className="px-3 py-2.5 font-bold text-primary">{ct.staff?.firstName || '—'}</td>
-                        {/* Last Name */}
-                        <td className="px-3 py-2.5 font-bold text-primary">{ct.staff?.lastName || '—'}</td>
+                        {/* Full Name */}
+                        <td className="px-3 py-2.5 font-bold text-primary">
+                            {ct.staff ? `${ct.staff.firstName} ${ct.staff.lastName}` : '—'}
+                        </td>
                     </>
                 )}
 
-                {/* Position */}
+                {/* Scheduled Shift + Time Dropdown */}
                 <td className="px-3 py-2.5">
-                    <Badge variant="primary" className="text-[10px] whitespace-nowrap">
-                        {ct.service?.title || 'Unassigned'}
-                    </Badge>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <div className="cursor-pointer group flex flex-col items-start gap-1">
+                                <Badge variant="primary" className="text-[10px] whitespace-nowrap group-hover:bg-primary/90 transition-colors">
+                                    {ct.service?.title || 'Unassigned'}
+                                </Badge>
+                                <span className="text-[9px] text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1">
+                                    <ClockIcon className="h-2.5 w-2.5" />
+                                    {formatDate(ct.startDate)} @ {formatTime(ct.startTime)}
+                                </span>
+                            </div>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-3 z-[120]" align="start">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between border-b pb-1.5">
+                                    <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider">Scheduled Shift</h4>
+                                    <Badge variant="outline" className="text-[9px]">{ct.service?.title}</Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-medium">Start</p>
+                                        <div className="flex flex-col text-xs font-semibold">
+                                            <span>{formatDate(ct.startDate)}</span>
+                                            <span className="text-primary">{formatTime(ct.startTime)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-medium">End</p>
+                                        <div className="flex flex-col text-xs font-semibold">
+                                            <span>{formatDate(ct.endDate || ct.startDate)}</span>
+                                            <span className="text-primary">{formatTime(ct.endTime)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="pt-2 border-t flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">Total Duration:</span>
+                                    <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100 italic">
+                                        {hoursScheduled.toFixed(2)} hrs
+                                    </span>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                 </td>
 
-                {/* Start Date */}
-                <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
-                    {formatDate(ct.startDate)}
+                <td className="px-3 py-2.5 text-center">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsMinApp(prev => !prev);
+                        }}
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold transition-all border ${isMinApp
+                                ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
+                                : 'bg-muted text-muted-foreground border-border'
+                            }`}
+                    >
+                        {isMinApp ? 'YES' : 'NO'}
+                    </button>
                 </td>
 
-                {/* Start Time */}
-                <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
-                    {formatTime(ct.startTime)}
+                <td className="px-3 py-2.5 text-center">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsCommApp(prev => !prev);
+                        }}
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold transition-all border ${isCommApp
+                                ? 'bg-indigo-500 text-white border-indigo-600 shadow-sm'
+                                : 'bg-muted text-muted-foreground border-border'
+                            }`}
+                    >
+                        {isCommApp ? 'YES' : 'NO'}
+                    </button>
                 </td>
 
-                {/* End Date */}
-                <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
-                    {formatDate(ct.endDate || ct.startDate)}
-                </td>
-
-                {/* End Time */}
-                <td className="px-3 py-2.5 text-muted-foreground text-[10px] whitespace-nowrap">
-                    {formatTime(ct.endTime)}
-                </td>
-
-                {/* Hrs Sched */}
-                <td className="px-3 py-2.5 text-center tabular-nums font-semibold">
-                    {hoursScheduled > 0 ? hoursScheduled.toFixed(2) : '—'}
-                </td>
 
                 {/* Pay Rate / Type - Only show in All or Bill tab */}
                 {(subTab === 'all' || subTab === 'bill') && (
@@ -290,7 +307,7 @@ export function TimesheetTableRow({
                 ) : (
                     <>
                         {/* Clock In */}
-                        <td 
+                        <td
                             className={`px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-emerald-50 transition-colors ${isEdited ? 'text-amber-700' : ''}`}
                             onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                         >
@@ -308,14 +325,14 @@ export function TimesheetTableRow({
                             </div>
                         </td>
                         {/* Clock Out */}
-                        <td 
+                        <td
                             className={`px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-red-50 transition-colors ${isEdited ? 'text-amber-700' : ''}`}
                             onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                         >
                             {te?.clockOut ? <span className="text-red-500 font-medium">{fmtDateTime(te.clockOut)}</span> : '—'}
                         </td>
                         {/* Hrs Clo */}
-                        <td 
+                        <td
                             className="px-3 py-2.5 text-center tabular-nums font-semibold hover:bg-slate-50 transition-colors"
                             onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                         >
@@ -338,7 +355,7 @@ export function TimesheetTableRow({
                         </td>
 
                         {/* Overtime Cost */}
-                        <td 
+                        <td
                             className="px-3 py-2.5 text-right tabular-nums text-muted-foreground whitespace-nowrap hover:bg-slate-50 transition-colors"
                             onClick={(e) => { e.stopPropagation(); setIsEditingOtCost(true); }}
                         >

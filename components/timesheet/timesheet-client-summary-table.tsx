@@ -25,13 +25,13 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted/50 border-b border-border">
                         <tr>
+                            <th className="px-4 py-3 font-semibold text-foreground">Date Range</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Client Name</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-center">Open Tasks</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Status</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right border-l border-border">Total Bill</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Total Inv</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Profit</th>
-                            <th className="px-4 py-3 font-semibold text-foreground">Date Range</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
@@ -67,6 +67,12 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
 
                             return (
                                 <tr key={group.clientId} className="hover:bg-muted/30 transition-colors">
+                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap text-xs font-medium">
+                                        <span className="text-foreground">
+                                            {minDate ? formatDate(minDate) : 'TBD'} 
+                                            {maxDate && minDate?.getTime() !== maxDate.getTime() ? ` - ${formatDate(maxDate)}` : ''}
+                                        </span>
+                                    </td>
                                     <td className="px-4 py-4">
                                         <button
                                             onClick={() => onClientClick(group.clientId)}
@@ -87,7 +93,7 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
                                         )}
                                     </td>
-                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600 border-l border-border">
+                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
                                         {fmtCurrency(totalBill)}
                                     </td>
                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-emerald-600">
@@ -95,10 +101,6 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                     </td>
                                     <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-700'}`}>
                                         {fmtCurrency(profit)}
-                                    </td>
-                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap text-xs">
-                                        {minDate ? formatDate(minDate) : 'TBD'} 
-                                        {maxDate && minDate?.getTime() !== maxDate.getTime() ? ` - ${formatDate(maxDate)}` : ''}
                                     </td>
                                 </tr>
                             );

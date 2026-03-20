@@ -8,3 +8,5 @@ export { FilterBar } from './filter-bar';
 export { Pagination } from './pagination';
 export { SearchBar } from './search-bar';
 export { SortableHeader } from './sortable-header';
+export { ActionDropdown } from './action-dropdown';
+export type { ActionItem } from './action-dropdown';

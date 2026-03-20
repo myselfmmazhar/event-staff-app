@@ -40,6 +40,7 @@ const formSchema = z.object({
     .default(null),
   cost: z.number().positive('Cost must be a positive number').nullable().default(null),
   price: z.number().positive('Price must be a positive number').nullable().default(null),
+  minimum: z.number().min(0, 'Minimum must be a non-negative number').nullable().default(null),
 });
 
 type FormInput = z.input<typeof formSchema>;
@@ -80,6 +81,7 @@ export function ServiceFormModal({
       description: null,
       cost: null,
       price: null,
+      minimum: null,
     },
   });
 
@@ -93,12 +95,32 @@ export function ServiceFormModal({
           costValue = Number(service.cost);
         }
       }
+
+      let priceValue: number | null = null;
+      if (service.price != null) {
+        if (typeof service.price === 'object' && 'toNumber' in service.price) {
+          priceValue = (service.price as { toNumber: () => number }).toNumber();
+        } else {
+          priceValue = Number(service.price);
+        }
+      }
+
+      let minimumValue: number | null = null;
+      if (service.minimum != null) {
+        if (typeof service.minimum === 'object' && 'toNumber' in service.minimum) {
+          minimumValue = (service.minimum as { toNumber: () => number }).toNumber();
+        } else {
+          minimumValue = Number(service.minimum);
+        }
+      }
+
       reset({
         title: service.title,
         costUnitType: service.costUnitType ?? 'ASSIGNMENT',
         description: service.description ?? null,
         cost: costValue,
-        price: service.price != null ? (typeof service.price === 'object' && 'toNumber' in service.price ? (service.price as { toNumber: () => number }).toNumber() : Number(service.price)) : null,
+        price: priceValue,
+        minimum: minimumValue,
       });
     } else if (!service && open) {
       reset({
@@ -107,6 +129,7 @@ export function ServiceFormModal({
         description: null,
         cost: null,
         price: null,
+        minimum: null,
       });
     }
   }, [service, open, reset]);
@@ -129,6 +152,7 @@ export function ServiceFormModal({
       description: data.description || null,
       cost: data.cost,
       price: data.price,
+      minimum: data.minimum,
     });
   };
 
@@ -195,7 +219,7 @@ export function ServiceFormModal({
             </div>
 
             <div>
-              <Label htmlFor="costUnitType">Cost Unit Type</Label>
+              <Label htmlFor="costUnitType">Rate Type</Label>
               <Controller
                 name="costUnitType"
                 control={control}
@@ -206,7 +230,7 @@ export function ServiceFormModal({
                     disabled={isSubmitting}
                   >
                     <SelectTrigger id="costUnitType">
-                      <SelectValue placeholder="Select unit type" />
+                      <SelectValue placeholder="Select rate type" />
                     </SelectTrigger>
                     <SelectContent>
                       {COST_UNIT_TYPE_OPTIONS.map((opt) => (
@@ -276,6 +300,34 @@ export function ServiceFormModal({
               />
               {errors.price && (
                 <p className="text-sm text-destructive mt-1">{errors.price.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="minimum">Minimum</Label>
+              <Controller
+                name="minimum"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    id="minimum"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={field.value ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      field.onChange(val === '' ? null : parseFloat(val));
+                    }}
+                    error={!!errors.minimum}
+                    disabled={isSubmitting}
+                    placeholder="e.g., 4.00"
+                  />
+                )}
+              />
+              {errors.minimum && (
+                <p className="text-sm text-destructive mt-1">{errors.minimum.message}</p>
               )}
             </div>
           </div>

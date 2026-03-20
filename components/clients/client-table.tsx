@@ -7,6 +7,7 @@ import { EditIcon, TrashIcon } from '@/components/ui/icons';
 import type { ClientTableRow } from '@/lib/types/client';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 interface ClientTableProps {
   clients: ClientTableRow[];
@@ -102,30 +103,25 @@ export function ClientTable({
     {
       key: 'actions',
       label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-left py-3 px-4',
-      render: (client) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onEdit(client.id)}
-            title="Edit client"
-          >
-            <EditIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(client.id)}
-            title="Delete client"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
+      headerClassName: 'text-left py-3 px-4 w-10',
+      className: 'w-10 py-4 px-4',
+      render: (client) => {
+        const actions: ActionItem[] = [
+          {
+            label: 'Edit client',
+            icon: <EditIcon className="h-3.5 w-3.5" />,
+            onClick: () => onEdit(client.id),
+          },
+          {
+            label: 'Delete client',
+            icon: <TrashIcon className="h-3.5 w-3.5" />,
+            onClick: () => onDelete(client.id),
+            variant: 'destructive',
+          },
+        ];
+
+        return <ActionDropdown actions={actions} />;
+      },
     },
     /* {
       key: 'clientId',

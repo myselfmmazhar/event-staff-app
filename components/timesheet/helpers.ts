@@ -73,13 +73,6 @@ export function calcScheduledCost(ct: CallTimeRow): number {
     return rate;
 }
 
-export function calcClockedCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
-    const rate = toNumber(ct.payRate);
-    const type = ct.payRateType as RateType;
-    const hours = calcClockedHours(timeEntry);
-    if (type === 'PER_HOUR') return hours * rate;
-    return rate;
-}
 
 export function calcOvertimeHours(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
     if (!ct.approveOvertime || !timeEntry?.clockIn || !timeEntry?.clockOut) return 0;
@@ -133,24 +126,64 @@ export function calcBillAmount(ct: CallTimeRow): number {
     return billRate;
 }
 
-export function calcClockedPrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+export function calcClockedCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false): number {
+    const rate = toNumber(ct.payRate);
+    const type = ct.payRateType as RateType;
+    const hours = calcClockedHours(timeEntry);
+    let base = type === 'PER_HOUR' ? hours * rate : rate;
+
+    if (isMinApplied && ct.minimum) {
+        base = Math.max(base, toNumber(ct.minimum));
+    }
+
+    return base;
+}
+
+export function calcClockedPrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false): number {
     const rate = toNumber(ct.billRate);
     const type = ct.billRateType as RateType;
     const hours = calcClockedHours(timeEntry);
-    if (type === 'PER_HOUR') return hours * rate;
-    return rate;
+    let base = type === 'PER_HOUR' ? hours * rate : rate;
+
+    if (isMinApplied && ct.minimum) {
+        base = Math.max(base, toNumber(ct.minimum));
+    }
+
+    return base;
 }
 
-export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
-    const base = calcClockedCost(timeEntry, ct);
+export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false, isCommApplied = false): number {
+    const base = calcClockedCost(timeEntry, ct, isMinApplied);
     const ot = calcOvertimeCost(timeEntry, ct);
-    return base + ot;
+    let total = base + ot;
+
+    if (isCommApplied && ct.commissionAmount) {
+        const comm = toNumber(ct.commissionAmount);
+        if (ct.commissionAmountType === 'FIXED') {
+            total += comm;
+        } else if (ct.commissionAmountType === 'MULTIPLIER') {
+            total += total * comm;
+        }
+    }
+
+    return total;
 }
 
-export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
-    const base = calcClockedPrice(timeEntry, ct);
+export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false, isCommApplied = false): number {
+    const base = calcClockedPrice(timeEntry, ct, isMinApplied);
     const ot = calcOvertimePrice(timeEntry, ct);
-    return base + ot;
+    let total = base + ot;
+
+    if (isCommApplied && ct.commissionAmount) {
+        const comm = toNumber(ct.commissionAmount);
+        if (ct.commissionAmountType === 'FIXED') {
+            total += comm;
+        } else if (ct.commissionAmountType === 'MULTIPLIER') {
+            total += total * comm;
+        }
+    }
+
+    return total;
 }
 
 export function calcGrossProfit(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {

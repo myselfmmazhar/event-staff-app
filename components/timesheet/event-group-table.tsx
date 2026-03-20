@@ -90,8 +90,7 @@ export function EventGroupTable({
                                         })()}
                                     </th>
                                     <th className="w-8 px-2 py-2" />
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">First Name</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Last Name</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Payroll ID</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">HR ID</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>

@@ -16,6 +16,13 @@ export type CallTimeRow = {
     approveOvertime?: boolean;
     overtimeRate?: number | { toNumber?: () => number } | string | null;
     overtimeRateType?: string | null;
+    commission?: boolean;
+    commissionAmount?: number | { toNumber?: () => number } | string | null;
+    commissionAmountType?: string | null;
+    minimum?: number | { toNumber?: () => number } | string | null;
+    expenditure?: boolean;
+    expenditureAmount?: number | { toNumber?: () => number } | string | null;
+    expenditureAmountType?: string | null;
     notes: string | null;
     confirmedCount: number;
     needsStaff: boolean;

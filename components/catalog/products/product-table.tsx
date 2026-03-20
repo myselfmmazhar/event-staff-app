@@ -9,6 +9,7 @@ import type { ProductTableRow } from '@/lib/types/product';
 import { MINIMUM_PURCHASE_LABELS, PRICE_UNIT_TYPE_LABELS } from '@/lib/constants/enums';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { formatDollarOrPlaceholder } from '@/lib/utils/currency-formatter';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 interface ProductTableProps {
   products: ProductTableRow[];
@@ -107,38 +108,29 @@ export function ProductTable({
     {
       key: 'actions',
       label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-left py-3 px-4',
-      render: (product) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onEdit(product.id)}
-            title="Edit product"
-          >
-            <EditIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(product.id)}
-            title="Delete product"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onToggleActive(product.id, !product.isActive)}
-            title={product.isActive ? 'Deactivate product' : 'Activate product'}
-          >
-            {product.isActive ? 'Deactivate' : 'Activate'}
-          </Button>
-        </div>
-      ),
+      headerClassName: 'text-left py-3 px-4 w-10',
+      className: 'w-10 py-4 px-4',
+      render: (product) => {
+        const actions: ActionItem[] = [
+          {
+            label: 'Edit product',
+            icon: <EditIcon className="h-3.5 w-3.5" />,
+            onClick: () => onEdit(product.id),
+          },
+          {
+            label: 'Delete product',
+            icon: <TrashIcon className="h-3.5 w-3.5" />,
+            onClick: () => onDelete(product.id),
+            variant: 'destructive',
+          },
+          {
+            label: product.isActive ? 'Deactivate product' : 'Activate product',
+            onClick: () => onToggleActive(product.id, !product.isActive),
+          },
+        ];
+
+        return <ActionDropdown actions={actions} />;
+      },
     },
     {
       key: 'status',

@@ -7,7 +7,8 @@ import { EstimateStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/common/data-table";
 import { format } from "date-fns";
-import { Pencil, Eye, Archive, RotateCcw, Trash2 } from "lucide-react";
+import { ActionDropdown, type ActionItem } from "@/components/common/action-dropdown";
+import { EditIcon, EyeIcon, ArchiveBoxIcon, RefreshCwIcon, TrashIcon } from "@/components/ui/icons";
 
 interface Estimate {
     id: string;
@@ -122,50 +123,46 @@ export function EstimateTable({
         {
             key: "actions",
             label: "Actions",
-            className: "py-4 px-4",
-            headerClassName: "text-left py-3 px-4",
-            render: (estimate) => (
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onEdit?.(estimate)}
-                    >
-                        <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onView?.(estimate)}
-                    >
-                        <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onArchive?.(estimate)}
-                    >
-                        {showArchived ? (
-                            <RotateCcw className="h-4 w-4 text-blue-600" />
-                        ) : (
-                            <Archive className="h-4 w-4 text-blue-500" />
-                        )}
-                    </Button>
-                    {showArchived && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="px-0"
-                            onClick={() => onDelete?.(estimate)}
-                        >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                    )}
-                </div>
-            ),
+            headerClassName: "text-left py-3 px-4 w-10",
+            className: "w-10 py-4 px-4",
+            render: (estimate) => {
+                const actions: ActionItem[] = [];
+
+                if (onEdit) {
+                    actions.push({
+                        label: 'Edit',
+                        icon: <EditIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onEdit(estimate),
+                    });
+                }
+
+                if (onView) {
+                    actions.push({
+                        label: 'View',
+                        icon: <EyeIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onView(estimate),
+                    });
+                }
+
+                if (onArchive) {
+                    actions.push({
+                        label: showArchived ? 'Restore' : 'Archive',
+                        icon: showArchived ? <RefreshCwIcon className="h-3.5 w-3.5" /> : <ArchiveBoxIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onArchive(estimate),
+                    });
+                }
+
+                if (showArchived && onDelete) {
+                    actions.push({
+                        label: 'Delete',
+                        icon: <TrashIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onDelete(estimate),
+                        variant: 'destructive',
+                    });
+                }
+
+                return <ActionDropdown actions={actions} />;
+            },
         },
         {
             key: "status",

@@ -161,9 +161,6 @@ export const COST_UNIT_TYPE_LABELS: Record<CostUnitType, string> = {
 export const COST_UNIT_TYPE_OPTIONS: Array<{ value: CostUnitType; label: string }> = [
   { value: 'HOURLY', label: 'Per Hour' },
   { value: 'ASSIGNMENT', label: 'Per Assignment' },
-  { value: 'SHIFT', label: 'Per Shift' },
-  { value: 'DAY', label: 'Per Day' },
-  { value: 'JOB', label: 'Per Job' },
 ];
 
 /**
