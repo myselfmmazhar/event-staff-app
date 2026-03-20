@@ -349,6 +349,7 @@ export function CallTimeFormModal({
             setEndTimeTBD={setEndTimeTBD}
             selectedService={selectedService}
             setSelectedService={setSelectedService}
+            eventId={eventId}
           />
         </DialogContent>
 

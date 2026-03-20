@@ -10,6 +10,11 @@ export type ServiceTableRow = Pick<
   | 'costUnitType'
   | 'cost'
   | 'price'
+  | 'minimum'
+  | 'expenditure'
+  | 'expenditureAmount'
+  | 'expenditureAmountType'
+  | 'travelInMinimum'
   | 'isActive'
   | 'createdAt'
 >;

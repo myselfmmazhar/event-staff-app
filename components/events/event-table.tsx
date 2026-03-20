@@ -13,6 +13,7 @@ import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from '@/lib/constants';
 import { formatDateTime, isDateNullOrUBD } from '@/lib/utils/date-formatter';
 import { InvitationSummaryModal } from './invitation-summary-modal';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 interface Event {
   id: string;
@@ -227,33 +228,24 @@ export function EventTable({
     {
       key: 'actions',
       label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-left py-3 px-4',
-      render: (event) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onEdit(event)}
-            title={`Edit ${terminology.event.lower}`}
-          >
-            <EditIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onMessage(event)}
-            title="Send Message"
-          >
-            <ChatBubbleLeftRightIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => {
+      headerClassName: 'text-left py-3 px-4 w-10',
+      className: 'w-10 py-4 px-4',
+      render: (event) => {
+        const actions: ActionItem[] = [
+          {
+            label: `Edit ${terminology.event.lower}`,
+            icon: <EditIcon className="h-3.5 w-3.5" />,
+            onClick: () => onEdit(event),
+          },
+          {
+            label: "Send Message",
+            icon: <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />,
+            onClick: () => onMessage(event),
+          },
+          {
+            label: "Manage Assignments",
+            icon: <UsersIcon className="h-3.5 w-3.5" />,
+            onClick: () => {
               const { allGroups } = getAssignmentSummary(event);
               const serviceIds = allGroups
                 .map(g => g.serviceId)
@@ -262,22 +254,18 @@ export function EventTable({
                 ? `&serviceIds=${serviceIds.join(',')}`
                 : '';
               router.push(`/assignments?eventId=${event.id}${serviceParam}`);
-            }}
-            title="Manage Assignments"
-          >
-            <UsersIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onArchive(event)}
-            title={`Archive ${terminology.event.lower}`}
-          >
-            <ArchiveBoxIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
+            },
+          },
+          {
+            label: `Archive ${terminology.event.lower}`,
+            icon: <ArchiveBoxIcon className="h-3.5 w-3.5" />,
+            onClick: () => onArchive(event),
+            variant: 'destructive',
+          },
+        ];
+
+        return <ActionDropdown actions={actions} />;
+      },
     },
     {
       key: 'status',

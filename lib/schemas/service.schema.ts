@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CostUnitType } from '@prisma/client';
+import { CostUnitType, AmountType } from '@prisma/client';
 
 export const ServiceSchema = {
   create: z.object({
@@ -27,6 +27,21 @@ export const ServiceSchema = {
       .transform((value) => Number.parseFloat(value.toFixed(2)))
       .optional()
       .nullable(),
+    minimum: z
+      .number()
+      .min(0, 'Minimum must be a non-negative number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
+    expenditure: z.boolean().default(false).optional(),
+    expenditureAmount: z
+      .number()
+      .min(0, 'Expenditure amount must be a non-negative number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
+    expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    travelInMinimum: z.boolean().default(false).optional(),
   }),
 
   update: z.object({
@@ -56,6 +71,21 @@ export const ServiceSchema = {
       .transform((value) => Number.parseFloat(value.toFixed(2)))
       .optional()
       .nullable(),
+    minimum: z
+      .number()
+      .min(0, 'Minimum must be a non-negative number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
+    expenditure: z.boolean().optional(),
+    expenditureAmount: z
+      .number()
+      .min(0, 'Expenditure amount must be a non-negative number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
+    expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    travelInMinimum: z.boolean().optional(),
   }),
 
   query: z.object({

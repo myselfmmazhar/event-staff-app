@@ -11,6 +11,7 @@ import type { GroupedAssignment } from '@/lib/utils/call-time-grouping';
 import { AssignmentExpandedRow } from './assignment-expanded-row';
 import { GroupedAssignmentMobileCard } from './grouped-assignment-mobile-card';
 import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 interface GroupedAssignmentTableProps {
   data: GroupedAssignment[];
@@ -152,66 +153,54 @@ export function GroupedAssignmentTable({
     {
       key: 'actions',
       label: 'Actions',
-      headerClassName: 'text-left py-3 px-4 w-28',
-      render: (item) => (
-        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          {onManage && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => onManage(item.primaryCallTimeId)}
-              title="Manage Assignment"
-            >
-              <SettingsIcon className="h-4 w-4" />
-            </Button>
-          )}
-          {onFindTalent && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => onFindTalent(item.primaryCallTimeId)}
-              title="Find Talent"
-            >
-              <SearchIcon className="h-4 w-4" />
-            </Button>
-          )}
-          {onDuplicate && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => onDuplicate(item)}
-              title="Duplicate Assignment"
-            >
-              <DocumentDuplicateIcon className="h-4 w-4" />
-            </Button>
-          )}
-          {onSendReminder && item.confirmedCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => onSendReminder(item)}
-              title="Send Reminder"
-            >
-              <BellIcon className="h-4 w-4" />
-            </Button>
-          )}
-          {onDelete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-              onClick={() => onDelete(item)}
-              title="Delete Assignment"
-            >
-              <TrashIcon className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      ),
+      headerClassName: 'text-left py-3 px-4 w-10',
+      className: 'w-10 py-4 px-4',
+      render: (item) => {
+        const actions: ActionItem[] = [];
+
+        if (onManage) {
+          actions.push({
+            label: 'Manage Assignment',
+            icon: <SettingsIcon className="h-3.5 w-3.5" />,
+            onClick: () => onManage(item.primaryCallTimeId),
+          });
+        }
+
+        if (onFindTalent) {
+          actions.push({
+            label: 'Find Talent',
+            icon: <SearchIcon className="h-3.5 w-3.5" />,
+            onClick: () => onFindTalent(item.primaryCallTimeId),
+          });
+        }
+
+        if (onDuplicate) {
+          actions.push({
+            label: 'Duplicate Assignment',
+            icon: <DocumentDuplicateIcon className="h-3.5 w-3.5" />,
+            onClick: () => onDuplicate(item),
+          });
+        }
+
+        if (onSendReminder && item.confirmedCount > 0) {
+          actions.push({
+            label: 'Send Reminder',
+            icon: <BellIcon className="h-3.5 w-3.5" />,
+            onClick: () => onSendReminder(item),
+          });
+        }
+
+        if (onDelete) {
+          actions.push({
+            label: 'Delete Assignment',
+            icon: <TrashIcon className="h-3.5 w-3.5" />,
+            onClick: () => onDelete(item),
+            variant: 'destructive',
+          });
+        }
+
+        return <ActionDropdown actions={actions} />;
+      },
     },
     {
       key: 'startDate',

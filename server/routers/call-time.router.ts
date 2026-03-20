@@ -15,7 +15,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.create)
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.create(input, ctx.userId!);
+      return await service.create(input, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -26,7 +26,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.query)
     .query(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.findByEvent(input, ctx.userId!);
+      return await service.findByEvent(input, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -37,7 +37,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.id)
     .query(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.findOne(input.id, ctx.userId!);
+      return await service.findOne(input.id, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -49,7 +49,7 @@ export const callTimeRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const service = new CallTimeService(ctx.prisma);
-      return await service.update(id, data, ctx.userId!);
+      return await service.update(id, data, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -60,7 +60,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.id)
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.remove(input.id, ctx.userId!);
+      return await service.remove(input.id, ctx.userId!, ctx.userRole);
     }),
   /**
    * Get upcoming call times for timeline view
@@ -70,7 +70,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.getUpcoming.optional())
     .query(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.getUpcoming(ctx.userId!, input?.limit ?? 50);
+      return await service.getUpcoming(ctx.userId!, input?.limit ?? 50, ctx.userRole);
     }),
 
   /**
@@ -81,7 +81,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.getAll.optional())
     .query(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.getAll(ctx.userId!, input ?? {});
+      return await service.getAll(ctx.userId!, input ?? {}, ctx.userRole);
     }),
 
   /**
@@ -90,7 +90,7 @@ export const callTimeRouter = router({
    */
   getAllForExport: protectedProcedure.query(async ({ ctx }) => {
     const service = new CallTimeService(ctx.prisma);
-    const result = await service.getAll(ctx.userId!, { limit: 10000 });
+    const result = await service.getAll(ctx.userId!, { limit: 10000 }, ctx.userRole);
     return result.data;
   }),
 
@@ -102,7 +102,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.staffSearch)
     .query(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.searchAvailableStaff(input, ctx.userId!);
+      return await service.searchAvailableStaff(input, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -113,7 +113,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.getManyByIds)
     .query(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.findManyByIds(input.ids, ctx.userId!);
+      return await service.findManyByIds(input.ids, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -124,7 +124,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.sendInvitations)
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      const result = await service.sendInvitations(input, ctx.userId!);
+      const result = await service.sendInvitations(input, ctx.userId!, ctx.userRole);
 
       // Send emails to all invited staff
       for (const invitation of result.invitations) {
@@ -265,7 +265,8 @@ export const callTimeRouter = router({
       const service = new CallTimeService(ctx.prisma);
       const invitation = await service.resendInvitation(
         input.invitationId,
-        ctx.userId!
+        ctx.userId!,
+        ctx.userRole
       );
 
       // Send email
@@ -304,7 +305,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.cancelInvitation)
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.acceptInvitationOnBehalf(input.invitationId, ctx.userId!);
+      return await service.acceptInvitationOnBehalf(input.invitationId, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -315,7 +316,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.cancelInvitation)
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.cancelInvitation(input.invitationId, ctx.userId!);
+      return await service.cancelInvitation(input.invitationId, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -326,7 +327,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.batchAccept)
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.batchAcceptInvitations(input.invitationIds, ctx.userId!);
+      return await service.batchAcceptInvitations(input.invitationIds, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -337,7 +338,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.batchCancel)
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.batchCancelInvitations(input.invitationIds, ctx.userId!);
+      return await service.batchCancelInvitations(input.invitationIds, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -371,7 +372,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.bulkSyncForEvent)
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.bulkSyncForEvent(input, ctx.userId!);
+      return await service.bulkSyncForEvent(input, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -383,7 +384,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.getByEventForBilling)
     .query(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.getByEventForBilling(input.eventId, ctx.userId!);
+      return await service.getByEventForBilling(input.eventId, ctx.userId!, ctx.userRole);
     }),
 
   /**
@@ -395,7 +396,7 @@ export const callTimeRouter = router({
     .input(CallTimeSchema.submitReview)
     .mutation(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
-      return await service.submitReview(input, ctx.userId!);
+      return await service.submitReview(input, ctx.userId!, ctx.userRole);
     }),
 
   /**

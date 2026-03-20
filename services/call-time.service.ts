@@ -42,10 +42,18 @@ export class CallTimeService {
   /**
    * Create a new call time
    */
-  async create(data: CreateCallTimeInput, userId: string) {
+  async create(data: CreateCallTimeInput, userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     // Verify event exists and user owns it
     const event = await this.prisma.event.findFirst({
-      where: { id: data.eventId, createdBy: userId },
+      where: {
+        id: data.eventId,
+        ...(isSuperAdmin ? {} :
+          isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+            { createdBy: userId }),
+      },
     });
 
     if (!event) {
@@ -89,6 +97,11 @@ export class CallTimeService {
         commission: data.commission ?? false,
         commissionAmount: data.commissionAmount ?? null,
         commissionAmountType: data.commissionAmountType ?? null,
+        minimum: data.minimum ?? null,
+        expenditure: data.expenditure ?? false,
+        expenditureAmount: data.expenditureAmount ?? null,
+        expenditureAmountType: data.expenditureAmountType ?? null,
+        travelInMinimum: data.travelInMinimum ?? false,
         notes: data.notes,
         eventId: data.eventId,
       },
@@ -156,10 +169,18 @@ export class CallTimeService {
   /**
    * Get all call times for an event
    */
-  async findByEvent(input: QueryCallTimesInput, userId: string) {
+  async findByEvent(input: QueryCallTimesInput, userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     // Verify event ownership
     const event = await this.prisma.event.findFirst({
-      where: { id: input.eventId, createdBy: userId },
+      where: {
+        id: input.eventId,
+        ...(isSuperAdmin ? {} :
+          isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+            { createdBy: userId }),
+      },
     });
 
     if (!event) {
@@ -217,10 +238,7 @@ export class CallTimeService {
     };
   }
 
-  /**
-   * Get single call time with full details
-   */
-  async findOne(id: string, userId: string) {
+  async findOne(id: string, userId: string, userRole?: string | null) {
     const callTime = await this.prisma.callTime.findUnique({
       where: { id },
       include: {
@@ -231,6 +249,7 @@ export class CallTimeService {
             eventId: true,
             title: true,
             createdBy: true,
+            createdByUser: { select: { role: true } },
             venueName: true,
             city: true,
             state: true,
@@ -258,10 +277,25 @@ export class CallTimeService {
       },
     });
 
-    if (!callTime || callTime.event.createdBy !== userId) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
+    if (!callTime) {
       throw new TRPCError({
         code: 'NOT_FOUND',
-        message: 'Call time not found or you do not have permission',
+        message: 'Call time not found',
+      });
+    }
+
+    // Verify ownership
+    const hasPermission = isSuperAdmin ||
+      (isAdmin && (callTime as any).event.createdByUser?.role !== 'SUPER_ADMIN') ||
+      callTime.event.createdBy === userId;
+
+    if (!hasPermission) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to access this call time',
       });
     }
 
@@ -273,14 +307,18 @@ export class CallTimeService {
     return { ...callTime, confirmedCount };
   }
 
-  /**
-   * Get multiple call times with details
-   */
-  async findManyByIds(ids: string[], userId: string): Promise<CallTimeWithDetailsAndConfirmedCount[]> {
+  async findManyByIds(ids: string[], userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     const callTimes = await this.prisma.callTime.findMany({
       where: {
         id: { in: ids },
-        event: { createdBy: userId },
+        event: {
+          ...(isSuperAdmin ? {} :
+            isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+              { createdBy: userId }),
+        },
       },
       include: {
         service: true,
@@ -326,9 +364,10 @@ export class CallTimeService {
   async update(
     id: string,
     data: Omit<UpdateCallTimeInput, 'id'>,
-    userId: string
+    userId: string,
+    userRole?: string | null
   ) {
-    await this.findOne(id, userId); // Verify ownership
+    await this.findOne(id, userId, userRole); // Verify ownership
 
     // Transform serviceId to Prisma relation syntax
     const { serviceId, ...restData } = data;
@@ -362,8 +401,8 @@ export class CallTimeService {
   /**
    * Delete call time
    */
-  async remove(id: string, userId: string) {
-    const callTime = await this.findOne(id, userId); // Verify ownership
+  async remove(id: string, userId: string, userRole?: string | null) {
+    const callTime = await this.findOne(id, userId, userRole); // Verify ownership
 
     // Check if any staff have accepted offers - notify them before deletion
     const acceptedInvitations = callTime.invitations.filter(
@@ -397,14 +436,9 @@ export class CallTimeService {
     return { success: true, message: 'Call time deleted successfully' };
   }
 
-  /**
-   * Search available staff for a call time
-   * Supports filters: distance, skill level, rating, availability status
-   * Returns invitation status when includeAlreadyInvited is true
-   */
-  async searchAvailableStaff(input: StaffSearchInput, userId: string) {
+  async searchAvailableStaff(input: StaffSearchInput, userId: string, userRole?: string | null) {
     const callTimeIds = input.callTimeIds || [input.callTimeId!];
-    const callTimes = await this.findManyByIds(callTimeIds, userId);
+    const callTimes = await this.findManyByIds(callTimeIds, userId, userRole);
 
     if (callTimes.length === 0) {
       throw new TRPCError({
@@ -683,12 +717,9 @@ export class CallTimeService {
     return score;
   }
 
-  /**
-   * Send invitations to staff
-   */
-  async sendInvitations(input: SendInvitationsInput, userId: string) {
+  async sendInvitations(input: SendInvitationsInput, userId: string, userRole?: string | null) {
     const callTimeIds = input.callTimeIds;
-    const callTimes = await this.findManyByIds(callTimeIds, userId);
+    const callTimes = await this.findManyByIds(callTimeIds, userId, userRole);
 
     if (callTimes.length === 0) {
       throw new TRPCError({
@@ -918,27 +949,45 @@ export class CallTimeService {
     }
   }
 
-  /**
-   * Resend invitation (admin action)
-   */
-  async resendInvitation(invitationId: string, userId: string) {
+  async resendInvitation(invitationId: string, userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     const invitation = await this.prisma.callTimeInvitation.findUnique({
       where: { id: invitationId },
       include: {
         callTime: {
           include: {
             service: true,
-            event: { select: { id: true, title: true, createdBy: true } },
+            event: {
+              select: {
+                id: true,
+                title: true,
+                createdBy: true,
+                createdByUser: { select: { role: true } }
+              }
+            },
           },
         },
         staff: { select: { id: true, firstName: true, lastName: true, email: true, userId: true } },
       },
     });
 
-    if (!invitation || invitation.callTime.event.createdBy !== userId) {
+    if (!invitation) {
       throw new TRPCError({
         code: 'NOT_FOUND',
         message: 'Invitation not found',
+      });
+    }
+
+    const hasPermission = isSuperAdmin ||
+      (isAdmin && (invitation.callTime.event as any).createdByUser?.role !== 'SUPER_ADMIN') ||
+      invitation.callTime.event.createdBy === userId;
+
+    if (!hasPermission) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to resend this invitation',
       });
     }
 
@@ -982,21 +1031,32 @@ export class CallTimeService {
     return updated;
   }
 
-  /**
-   * Accept invitation on behalf of user (admin action)
-   */
-  async acceptInvitationOnBehalf(invitationId: string, userId: string) {
+  async acceptInvitationOnBehalf(invitationId: string, userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     const invitation = await this.prisma.callTimeInvitation.findUnique({
       where: { id: invitationId },
       include: {
-        callTime: { include: { event: { select: { id: true, createdBy: true } } } },
+        callTime: { include: { event: { select: { id: true, createdBy: true, createdByUser: { select: { role: true } } } } } },
       },
     });
 
-    if (!invitation || invitation.callTime.event.createdBy !== userId) {
+    if (!invitation) {
       throw new TRPCError({
         code: 'NOT_FOUND',
         message: 'Invitation not found',
+      });
+    }
+
+    const hasPermission = isSuperAdmin ||
+      (isAdmin && (invitation.callTime.event as any).createdByUser?.role !== 'SUPER_ADMIN') ||
+      invitation.callTime.event.createdBy === userId;
+
+    if (!hasPermission) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to perform this action',
       });
     }
 
@@ -1013,21 +1073,32 @@ export class CallTimeService {
     return updated;
   }
 
-  /**
-   * Cancel invitation (admin action)
-   */
-  async cancelInvitation(invitationId: string, userId: string) {
+  async cancelInvitation(invitationId: string, userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     const invitation = await this.prisma.callTimeInvitation.findUnique({
       where: { id: invitationId },
       include: {
-        callTime: { include: { event: { select: { id: true, createdBy: true } } } },
+        callTime: { include: { event: { select: { id: true, createdBy: true, createdByUser: { select: { role: true } } } } } },
       },
     });
 
-    if (!invitation || invitation.callTime.event.createdBy !== userId) {
+    if (!invitation) {
       throw new TRPCError({
         code: 'NOT_FOUND',
         message: 'Invitation not found',
+      });
+    }
+
+    const hasPermission = isSuperAdmin ||
+      (isAdmin && (invitation.callTime.event as any).createdByUser?.role !== 'SUPER_ADMIN') ||
+      invitation.callTime.event.createdBy === userId;
+
+    if (!hasPermission) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to cancel this invitation',
       });
     }
 
@@ -1065,15 +1136,21 @@ export class CallTimeService {
     return { count: results.length };
   }
 
-  /**
-   * Batch Accept invitations on behalf of users (admin action)
-   */
-  async batchAcceptInvitations(invitationIds: string[], userId: string) {
-    // Verify each invitation belongs to an event created by the user
+  async batchAcceptInvitations(invitationIds: string[], userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
+    // Verify each invitation belongs to an event created by the user or an accessible event
     const invitations = await this.prisma.callTimeInvitation.findMany({
       where: {
         id: { in: invitationIds },
-        callTime: { event: { createdBy: userId } }
+        callTime: {
+          event: {
+            ...(isSuperAdmin ? {} :
+              isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+                { createdBy: userId }),
+          }
+        }
       },
       select: { id: true, callTime: { select: { id: true, eventId: true } } }
     });
@@ -1095,14 +1172,20 @@ export class CallTimeService {
     return { count: result.count };
   }
 
-  /**
-   * Batch Cancel invitations (admin action)
-   */
-  async batchCancelInvitations(invitationIds: string[], userId: string) {
+  async batchCancelInvitations(invitationIds: string[], userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     const invitations = await this.prisma.callTimeInvitation.findMany({
       where: {
         id: { in: invitationIds },
-        callTime: { event: { createdBy: userId } }
+        callTime: {
+          event: {
+            ...(isSuperAdmin ? {} :
+              isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+                { createdBy: userId }),
+          }
+        }
       },
       select: { id: true, callTime: { select: { id: true, eventId: true } }, status: true, isConfirmed: true }
     });
@@ -1235,13 +1318,12 @@ export class CallTimeService {
     return invitation;
   }
 
-  /**
-   * Get upcoming call times for timeline view
-   * Returns call times from today onwards with event and staff details
-   */
-  async getUpcoming(userId: string, limit: number = 50) {
+  async getUpcoming(userId: string, limit: number = 50, userRole?: string | null) {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
+
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
 
     const callTimes = await this.prisma.callTime.findMany({
       where: {
@@ -1250,9 +1332,11 @@ export class CallTimeService {
           { startDate: { gte: startOfToday } },
           { endDate: { gte: startOfToday } },
         ],
-        // Only events created by this user
+        // Role-based visibility
         event: {
-          createdBy: userId,
+          ...(isSuperAdmin ? {} :
+            isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+              { createdBy: userId }),
         },
       },
       include: {
@@ -1300,10 +1384,6 @@ export class CallTimeService {
     };
   }
 
-  /**
-   * Get all call times for shifts table view
-   * Supports pagination, sorting, filtering
-   */
   async getAll(
     userId: string,
     input: {
@@ -1318,17 +1398,23 @@ export class CallTimeService {
       dateTo?: Date;
       staffingStatus?: 'needsStaff' | 'fullyStaffed' | 'pending' | 'accepted' | 'all';
       eventStatuses?: EventStatus[];
-    }
+    },
+    userRole?: string | null
   ) {
     const page = input.page ?? 1;
     const limit = input.limit ?? 20;
     const skip = (page - 1) * limit;
     const sortOrder = input.sortOrder ?? 'asc';
 
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     // Build where clause
     const where: any = {
       event: {
-        createdBy: userId,
+        ...(isSuperAdmin ? {} :
+          isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+            { createdBy: userId }),
       },
     };
 
@@ -1521,14 +1607,18 @@ export class CallTimeService {
     return RateType.PER_HOUR;
   }
 
-  /**
-   * Bulk sync CallTimes for an event from Event Form
-   * Replaces all existing CallTimes for the event with new ones from assignments
-   */
-  async bulkSyncForEvent(input: BulkSyncForEventInput, userId: string) {
+  async bulkSyncForEvent(input: BulkSyncForEventInput, userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     // Verify event exists and user owns it
     const event = await this.prisma.event.findFirst({
-      where: { id: input.eventId, createdBy: userId },
+      where: {
+        id: input.eventId,
+        ...(isSuperAdmin ? {} :
+          isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+            { createdBy: userId }),
+      },
     });
 
     if (!event) {
@@ -1621,6 +1711,11 @@ export class CallTimeService {
           commission: assignment.commission,
           commissionAmount: assignment.commissionAmount ?? null,
           commissionAmountType: assignment.commissionAmountType ?? null,
+          minimum: assignment.minimum ?? (service.minimum ? Number(service.minimum) : null),
+          expenditure: assignment.expenditure ?? service.expenditure ?? false,
+          expenditureAmount: assignment.expenditureAmount ?? (service.expenditureAmount ? Number(service.expenditureAmount) : null),
+          expenditureAmountType: assignment.expenditureAmountType ?? (service.expenditureAmountType as any) ?? null,
+          travelInMinimum: assignment.travelInMinimum ?? service.travelInMinimum ?? false,
           notes: assignment.notes,
         };
       });
@@ -1650,15 +1745,18 @@ export class CallTimeService {
     return createdCallTimes;
   }
 
-  /**
-   * Auto-create or update an Estimate for an event based on its tasks (call times).
-   * Uses event's client and eventId as the Estimate client/number, and builds
-   * line items from call time bill rates (Price) and required staff.
-   */
-  private async syncEstimateForEvent(eventId: string, userId: string): Promise<void> {
+  private async syncEstimateForEvent(eventId: string, userId: string, userRole?: string | null): Promise<void> {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     // Load event with billing settings
     const event = await this.prisma.event.findFirst({
-      where: { id: eventId, createdBy: userId },
+      where: {
+        id: eventId,
+        ...(isSuperAdmin ? {} :
+          isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+            { createdBy: userId }),
+      },
       select: {
         id: true,
         eventId: true,
@@ -1807,14 +1905,18 @@ export class CallTimeService {
     return ids;
   }
 
-  /**
-   * Get CallTimes for an event for billing display
-   * Returns CallTimes with service details for Event Form edit mode
-   */
-  async getByEventForBilling(eventId: string, userId: string) {
+  async getByEventForBilling(eventId: string, userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     // Verify event exists and user owns it
     const event = await this.prisma.event.findFirst({
-      where: { id: eventId, createdBy: userId },
+      where: {
+        id: eventId,
+        ...(isSuperAdmin ? {} :
+          isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } :
+            { createdBy: userId }),
+      },
     });
 
     if (!event) {
@@ -1938,7 +2040,10 @@ export class CallTimeService {
    * Submit or update internal review for a call time invitation
    * Reviews can be edited after submission
    */
-  async submitReview(input: SubmitReviewInput, userId: string) {
+  async submitReview(input: SubmitReviewInput, userId: string, userRole?: string | null) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+
     // Get the invitation with call time and event details
     const invitation = await this.prisma.callTimeInvitation.findUnique({
       where: { id: input.invitationId },
@@ -1946,7 +2051,7 @@ export class CallTimeService {
         callTime: {
           include: {
             event: {
-              select: { createdBy: true },
+              select: { createdBy: true, createdByUser: { select: { role: true } } },
             },
           },
         },
@@ -1960,8 +2065,12 @@ export class CallTimeService {
       });
     }
 
-    // Verify user owns the event
-    if (invitation.callTime.event.createdBy !== userId) {
+    // Verify ownership
+    const hasPermission = isSuperAdmin ||
+      (isAdmin && (invitation.callTime.event as any).createdByUser?.role !== 'SUPER_ADMIN') ||
+      invitation.callTime.event.createdBy === userId;
+
+    if (!hasPermission) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'You do not have permission to review this assignment',

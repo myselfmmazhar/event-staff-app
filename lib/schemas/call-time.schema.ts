@@ -90,6 +90,11 @@ export class CallTimeSchema {
       commission: z.boolean().default(false),
       commissionAmount: z.number().min(0).optional().nullable(),
       commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
+      minimum: z.number().min(0).optional().nullable(),
+      expenditure: z.boolean().default(false),
+      expenditureAmount: z.number().min(0).optional().nullable(),
+      expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
+      travelInMinimum: z.boolean().default(false),
     })
     .refine((data) => data.payRateType === data.billRateType, {
       message: FieldErrors.rateTypeMismatch,
@@ -160,6 +165,11 @@ export class CallTimeSchema {
       commission: z.boolean().optional(),
       commissionAmount: z.number().min(0).optional().nullable(),
       commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
+      minimum: z.number().min(0).optional().nullable(),
+      expenditure: z.boolean().optional(),
+      expenditureAmount: z.number().min(0).optional().nullable(),
+      expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
+      travelInMinimum: z.boolean().optional(),
     })
     .refine(
       (data) => {
@@ -353,6 +363,13 @@ export class CallTimeSchema {
     payRate: z.number().min(0).optional().nullable(),
     billRate: z.number().min(0).optional().nullable(),
     rateType: z.nativeEnum(RateType).optional().nullable(),
+    
+    minimum: z.number().min(0).optional().nullable(),
+    expenditure: z.boolean().default(false).optional(),
+    expenditureAmount: z.number().min(0).optional().nullable(),
+    expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    travelInMinimum: z.boolean().default(false).optional(),
+
     notes: z.string().max(5000).optional().nullable(),
   });
 

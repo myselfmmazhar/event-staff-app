@@ -50,13 +50,25 @@ export function ViewServiceModal({ service, open, onClose }: ViewServiceModalPro
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div>
-              <div className="text-muted-foreground">Cost</div>
+              <div className="text-muted-foreground mb-1">Cost</div>
               <div className="text-foreground font-medium">{formatDollarOrPlaceholder(service.cost)}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Cost Unit</div>
+              <div className="text-muted-foreground mb-1">Price</div>
+              <div className="text-foreground font-medium">{formatDollarOrPlaceholder(service.price)}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground mb-1">Minimum</div>
+              <div className="text-foreground font-medium">
+                {service.minimum != null 
+                  ? `${(typeof service.minimum === 'object' && 'toNumber' in service.minimum ? (service.minimum as { toNumber: () => number }).toNumber() : Number(service.minimum))}${service.costUnitType === 'HOURLY' ? ' hrs' : ''}`
+                  : '-'}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground mb-1">Rate Type</div>
               <div className="text-foreground font-medium">
                 {service.costUnitType ? COST_UNIT_TYPE_LABELS[service.costUnitType] : '-'}
               </div>

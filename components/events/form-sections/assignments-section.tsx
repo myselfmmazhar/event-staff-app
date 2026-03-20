@@ -232,12 +232,12 @@ export function AssignmentsSection({
   const minDate = formatDateForInput(eventStartDate);
   const maxDate = formatDateForInput(eventEndDate);
 
+  const eventStartTime = eventWatch('startTime');
+  const eventEndTime = eventWatch('endTime');
+
   // Sync event dates to a new service assignment when form is first opened
   useEffect(() => {
     if (showForm && !editingAssignment && !repeatAssignment && defaultType === 'SERVICE') {
-      const eventStartTime = eventWatch('startTime');
-      const eventEndTime = eventWatch('endTime');
-
       // Use a small timeout to ensure the form is mounted and registered before we try to set values
       // Note: AssignmentForm has its own internal reset/defaultValues logic, but it takes an optional 'assignment' prop.
       // We'll create a "prefill" assignment if dates are present.
@@ -254,7 +254,7 @@ export function AssignmentsSection({
         setRepeatAssignment(prefill as Assignment);
       }
     }
-  }, [showForm, editingAssignment, repeatAssignment, defaultType, eventWatch, minDate, maxDate]);
+  }, [showForm, editingAssignment, repeatAssignment, defaultType, minDate, maxDate, eventStartTime, eventEndTime]);
 
 
   return (
@@ -296,6 +296,8 @@ export function AssignmentsSection({
                   onCreateProduct={() => setShowCreateProduct(true)}
                   minDate={minDate}
                   maxDate={maxDate}
+                  eventStartTime={eventStartTime}
+                  eventEndTime={eventEndTime}
                   onInvalidDate={handleInvalidDate}
                   disabled={disabled}
                 />
@@ -330,6 +332,8 @@ export function AssignmentsSection({
                 onCreateProduct={() => setShowCreateProduct(true)}
                 minDate={minDate}
                 maxDate={maxDate}
+                eventStartTime={eventStartTime}
+                eventEndTime={eventEndTime}
                 onInvalidDate={handleInvalidDate}
                 disabled={disabled}
               />
