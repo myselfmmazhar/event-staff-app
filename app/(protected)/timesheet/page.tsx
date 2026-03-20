@@ -131,9 +131,9 @@ export default function TimeManagerPage() {
     };
 
     const handleSaveTimeEntry = (
-        invitationId: string, 
-        clockIn: string | null, 
-        clockOut: string | null, 
+        invitationId: string,
+        clockIn: string | null,
+        clockOut: string | null,
         breakMins: number,
         otCost?: number | null,
         otPrice?: number | null
@@ -191,8 +191,8 @@ export default function TimeManagerPage() {
                     } else {
                         toast({
                             title: type === 'REJECT' ? 'Rejected' : 'Reviewed',
-                            description: ids.length > 1 
-                                ? `Successfully processed ${ids.length} items.` 
+                            description: ids.length > 1
+                                ? `Successfully processed ${ids.length} items.`
                                 : `Successfully processed the selected item.`,
                         });
                     }
@@ -212,7 +212,7 @@ export default function TimeManagerPage() {
     };
 
     // ── Data Transformation (Assignments -> Grouped rows for components) ──
-    
+
     // 1. Group by Task (Event)
     const eventGroups: EventGroup[] = useMemo(() => {
         const groupsMap = new Map<string, EventGroup>();
@@ -229,8 +229,8 @@ export default function TimeManagerPage() {
             }
 
             const row: CallTimeRow = {
-                ...inv.callTime, 
-                id: inv.id, 
+                ...inv.callTime,
+                id: inv.id,
                 staff: inv.staff,
                 timeEntry: inv.timeEntry,
                 invitations: [inv],
@@ -249,7 +249,7 @@ export default function TimeManagerPage() {
         assignments.forEach((inv: any) => {
             const client = inv.callTime.event.client;
             if (!client) return;
-            
+
             if (!groupsMap.has(client.id)) {
                 groupsMap.set(client.id, {
                     clientId: client.id,
@@ -279,7 +279,7 @@ export default function TimeManagerPage() {
         assignments.forEach((inv: any) => {
             const staff = inv.staff;
             if (!staff) return;
-            
+
             if (!groupsMap.has(staff.id)) {
                 groupsMap.set(staff.id, {
                     staffId: staff.id,
@@ -408,16 +408,16 @@ export default function TimeManagerPage() {
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button 
-                                size="sm" 
+                            <Button
+                                size="sm"
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
                                 onClick={handleBatchApprove}
                             >
                                 <CheckIcon className="h-3.5 w-3.5" />
                                 Approve Multiple
                             </Button>
-                            <Button 
-                                size="sm" 
+                            <Button
+                                size="sm"
                                 variant="outline"
                                 className="border-blue-200 text-blue-700 hover:bg-blue-50 gap-1.5"
                                 onClick={handleBatchReview}
@@ -425,8 +425,8 @@ export default function TimeManagerPage() {
                                 <CheckCircleIcon className="h-3.5 w-3.5" />
                                 Review Multiple
                             </Button>
-                            <Button 
-                                size="sm" 
+                            <Button
+                                size="sm"
                                 variant="outline"
                                 className="border-red-200 text-red-700 hover:bg-red-50 gap-1.5"
                                 onClick={handleBatchReject}
@@ -435,8 +435,8 @@ export default function TimeManagerPage() {
                                 Reject Multiple
                             </Button>
                             <div className="w-px h-6 bg-slate-200 mx-1" />
-                            <Button 
-                                size="sm" 
+                            <Button
+                                size="sm"
                                 variant="ghost"
                                 className="text-slate-500 hover:text-slate-700"
                                 onClick={() => setSelectedRows(new Set())}
@@ -512,14 +512,10 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">First Name</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Last Name</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Date</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Date</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
                                                     {(subTab === 'all' || subTab === 'bill') && (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
@@ -598,13 +594,10 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    <th colSpan={2} className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Event / Task</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Date</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Date</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Event / Task</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
                                                     {(subTab === 'all' || subTab === 'bill') && (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
@@ -693,14 +686,10 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">First Name</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Last Name</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Date</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Date</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
                                                     {(subTab === 'all' || subTab === 'bill') && (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
@@ -749,28 +738,28 @@ export default function TimeManagerPage() {
                     </div>
                 )}
 
-                <ConfirmDialog 
+                <ConfirmDialog
                     open={confirmState.open}
                     onClose={() => setConfirmState({ open: false, type: null, ids: [] })}
                     onConfirm={executeConfirmedAction}
                     title={
                         confirmState.type === 'APPROVE' ? 'Approve Assignments' :
-                        confirmState.type === 'REJECT' ? 'Reject Assignments' : 'Mark for Review'
+                            confirmState.type === 'REJECT' ? 'Reject Assignments' : 'Mark for Review'
                     }
                     description={
-                        confirmState.type === 'APPROVE' 
+                        confirmState.type === 'APPROVE'
                             ? `Are you sure you want to approve ${confirmState.ids.length} item(s)? This will make them eligible for invoicing.` :
-                        confirmState.type === 'REJECT' 
-                            ? `Are you sure you want to reject ${confirmState.ids.length} item(s)? This will exclude them from invoicing.` :
-                            `Mark ${confirmState.ids.length} item(s) for review?`
+                            confirmState.type === 'REJECT'
+                                ? `Are you sure you want to reject ${confirmState.ids.length} item(s)? This will exclude them from invoicing.` :
+                                `Mark ${confirmState.ids.length} item(s) for review?`
                     }
                     confirmLabel={
                         confirmState.type === 'APPROVE' ? 'Yes, Approve' :
-                        confirmState.type === 'REJECT' ? 'Yes, Reject' : 'Confirm Review'
+                            confirmState.type === 'REJECT' ? 'Yes, Reject' : 'Confirm Review'
                     }
                     variant={
                         confirmState.type === 'APPROVE' ? 'success' :
-                        confirmState.type === 'REJECT' ? 'destructive' : 'info'
+                            confirmState.type === 'REJECT' ? 'destructive' : 'info'
                     }
                     isLoading={reviewInvitationMutation.isPending}
                 />

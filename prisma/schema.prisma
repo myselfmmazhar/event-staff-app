@@ -136,6 +136,12 @@ model CallTime {
   commissionAmount      Decimal?                @db.Decimal(10, 2)
   commissionAmountType  AmountType?
 
+  minimum               Decimal?                @db.Decimal(10, 2)
+  expenditure           Boolean                 @default(false)
+  expenditureAmount     Decimal?                @db.Decimal(10, 2)
+  expenditureAmountType AmountType?
+  travelInMinimum       Boolean                 @default(false)
+
   createdAt             DateTime                @default(now()) @db.Timestamp(6)
   updatedAt             DateTime                @updatedAt @db.Timestamp(6)
   invitations           CallTimeInvitation[]
@@ -397,6 +403,11 @@ model Service {
   description           String?                @db.VarChar(1000)
   cost                  Decimal?               @db.Decimal(10, 2)
   price                 Decimal?               @db.Decimal(10, 2)
+  minimum               Decimal?               @db.Decimal(10, 2)
+  expenditure           Boolean                @default(false)
+  expenditureAmount     Decimal?               @db.Decimal(10, 2)
+  expenditureAmountType AmountType?
+  travelInMinimum       Boolean                @default(false)
   isActive              Boolean                @default(true)
   createdBy             String
   createdAt             DateTime               @default(now()) @db.Timestamp(6)

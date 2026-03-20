@@ -54,6 +54,11 @@ export const assignmentFieldsSchema = z
     commission: z.boolean().default(false),
     commissionAmount: z.coerce.number().min(0).optional().nullable(),
     commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    minimum: z.coerce.number().min(0).optional().nullable(),
+    expenditure: z.boolean().default(false),
+    expenditureAmount: z.coerce.number().min(0).optional().nullable(),
+    expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    travelInMinimum: z.boolean().default(false),
     notes: z.string().optional(),
   })
   .refine((data) => data.payRateType === data.billRateType, {
@@ -113,6 +118,8 @@ export interface AssignmentFormFieldsProps {
   /** Selected service (for display in popover) */
   selectedService: ServiceOption | null;
   setSelectedService: (service: ServiceOption | null) => void;
+  /** Parent event ID to fetch task date/time */
+  eventId?: string;
 }
 
 export function AssignmentFormFields({
@@ -132,12 +139,64 @@ export function AssignmentFormFields({
   setEndTimeTBD,
   selectedService,
   setSelectedService,
+  eventId,
 }: AssignmentFormFieldsProps) {
   const staffTerm = useStaffTerm();
   const [serviceSelectorOpen, setServiceSelectorOpen] = useState(false);
   const [serviceSearch, setServiceSearch] = useState('');
 
   const { register, control, watch, setValue, getValues, formState: { errors } } = form;
+
+  const [useTaskDateTime, setUseTaskDateTime] = useState(false);
+
+  // Fetch event details if eventId is provided
+  const { data: eventData } = trpc.event.getById.useQuery(
+    { id: eventId as string },
+    { enabled: !!eventId && useTaskDateTime }
+  );
+
+  // Sync with task date/time when useTaskDateTime is toggled on or event data changes
+  useEffect(() => {
+    if (useTaskDateTime && eventData) {
+      if (eventData.startDate) {
+        const dateStr = new Date(eventData.startDate).toISOString().split('T')[0];
+        setValue('startDate', dateStr);
+        setValue('startDateUBD', false);
+        setStartDateUBD(false);
+      } else {
+        setValue('startDateUBD', true);
+        setStartDateUBD(true);
+      }
+
+      if (eventData.startTime) {
+        setValue('startTime', eventData.startTime);
+        setValue('startTimeTBD', false);
+        setStartTimeTBD(false);
+      } else {
+        setValue('startTimeTBD', true);
+        setStartTimeTBD(true);
+      }
+
+      if (eventData.endDate) {
+        const dateStr = new Date(eventData.endDate).toISOString().split('T')[0];
+        setValue('endDate', dateStr);
+        setValue('endDateUBD', false);
+        setEndDateUBD(false);
+      } else {
+        setValue('endDateUBD', true);
+        setEndDateUBD(true);
+      }
+
+      if (eventData.endTime) {
+        setValue('endTime', eventData.endTime);
+        setValue('endTimeTBD', false);
+        setEndTimeTBD(false);
+      } else {
+        setValue('endTimeTBD', true);
+        setEndTimeTBD(true);
+      }
+    }
+  }, [useTaskDateTime, eventData, setValue, setStartDateUBD, setEndDateUBD, setStartTimeTBD, setEndTimeTBD]);
 
   // Fetch services internally if not provided externally
   const { data: internalServicesData, isLoading: internalServicesLoading } = trpc.staff.getServices.useQuery(
@@ -375,9 +434,23 @@ export function AssignmentFormFields({
 
       {/* Date & Time Section */}
       <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-          Date &amp; Time
-        </h3>
+        <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
+          <h3 className="text-lg font-semibold">
+            Date &amp; Time
+          </h3>
+          {eventId && (
+            <label className="flex items-center gap-2 cursor-pointer bg-primary/5 px-3 py-1 rounded-full border border-primary/20 hover:bg-primary/10 transition-colors">
+              <input
+                type="checkbox"
+                checked={useTaskDateTime}
+                onChange={(e) => setUseTaskDateTime(e.target.checked)}
+                disabled={disabled}
+                className="accent-primary h-4 w-4"
+              />
+              <span className="text-xs font-medium text-primary">Use Task Date &amp; Time</span>
+            </label>
+          )}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -658,6 +731,116 @@ export function AssignmentFormFields({
                   <Label className="text-sm font-medium mb-2 block">Amount Type</Label>
                   <Controller
                     name="commissionAmountType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(val) => field.onChange(val || null)}
+                        disabled={disabled}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AMOUNT_TYPE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Minimum & Expenditure */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                {...register('minimum')}
+                onFocus={() => {
+                  const current = getValues('minimum') as any;
+                  if (current === 0 || current === '0') {
+                    setValue('minimum', '' as any);
+                  }
+                }}
+                disabled={disabled}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="flex flex-col justify-end pb-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register('travelInMinimum')}
+                  disabled={disabled}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm font-medium">Travel added in min?</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Expenditure?</Label>
+              <div className="flex items-center gap-4 h-10">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={watch('expenditure') === true}
+                    onChange={() => setValue('expenditure', true)}
+                    disabled={disabled}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">Yes</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={watch('expenditure') === false}
+                    onChange={() => {
+                      setValue('expenditure', false);
+                      setValue('expenditureAmount', null);
+                      setValue('expenditureAmountType', null);
+                    }}
+                    disabled={disabled}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">No</span>
+                </label>
+              </div>
+            </div>
+            {watch('expenditure') && (
+              <>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    {...register('expenditureAmount')}
+                    onFocus={() => {
+                      const current = getValues('expenditureAmount') as any;
+                      if (current === 0 || current === '0') {
+                        setValue('expenditureAmount', '' as any);
+                      }
+                    }}
+                    disabled={disabled}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Amount Type</Label>
+                  <Controller
+                    name="expenditureAmountType"
                     control={control}
                     render={({ field }) => (
                       <Select

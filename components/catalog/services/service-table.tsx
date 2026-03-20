@@ -11,6 +11,7 @@ import {
 } from '@/lib/constants/enums';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { formatDollarOrPlaceholder } from '@/lib/utils/currency-formatter';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 interface ServiceTableProps {
   services: ServiceTableRow[];
@@ -43,7 +44,8 @@ export function ServiceTable({
     title: 'Title',
     cost: 'Cost',
     price: 'Price',
-    costUnitType: 'Unit',
+    minimum: 'Minimum',
+    costUnitType: 'Rate Type',
     status: 'Status',
     actions: 'Actions',
   });
@@ -106,38 +108,29 @@ export function ServiceTable({
     {
       key: 'actions',
       label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-left py-3 px-4',
-      render: (service) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0"
-            onClick={() => onEdit(service.id)}
-            title="Edit service"
-          >
-            <EditIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(service.id)}
-            title="Delete service"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onToggleActive(service.id, !service.isActive)}
-            title={service.isActive ? 'Deactivate service' : 'Activate service'}
-          >
-            {service.isActive ? 'Deactivate' : 'Activate'}
-          </Button>
-        </div>
-      ),
+      headerClassName: 'text-left py-3 px-4 w-10',
+      className: 'w-10 py-4 px-4',
+      render: (service) => {
+        const actions: ActionItem[] = [
+          {
+            label: 'Edit service',
+            icon: <EditIcon className="h-3.5 w-3.5" />,
+            onClick: () => onEdit(service.id),
+          },
+          {
+            label: 'Delete service',
+            icon: <TrashIcon className="h-3.5 w-3.5" />,
+            onClick: () => onDelete(service.id),
+            variant: 'destructive',
+          },
+          {
+            label: service.isActive ? 'Deactivate service' : 'Activate service',
+            onClick: () => onToggleActive(service.id, !service.isActive),
+          },
+        ];
+
+        return <ActionDropdown actions={actions} />;
+      },
     },
     {
       key: 'status',
@@ -179,6 +172,20 @@ export function ServiceTable({
       render: (service) => formatDollarOrPlaceholder(service.price),
     },
     {
+      key: 'minimum',
+      label: columnLabels.minimum,
+      className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
+      render: (service) => {
+        if (service.minimum == null) return '-';
+        const val = typeof service.minimum === 'object' && 'toNumber' in service.minimum
+          ? (service.minimum as { toNumber: () => number }).toNumber()
+          : Number(service.minimum);
+
+        const suffix = service.costUnitType === 'HOURLY' ? ' hrs' : '';
+        return `${val}${suffix}`;
+      },
+    },
+    {
       key: 'costUnitType',
       label: columnLabels.costUnitType,
       className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
@@ -198,7 +205,8 @@ export function ServiceTable({
             <div className="font-mono text-xs text-muted-foreground mb-1">{service.serviceId}</div>
             <h3 className="font-semibold text-card-foreground">{service.title}</h3>
             <div className="text-sm text-muted-foreground mt-1">
-              Cost: {formatDollarOrPlaceholder(service.cost)} | Price: {formatDollarOrPlaceholder(service.price)}
+              Cost: {formatDollarOrPlaceholder(service.cost)} | Price: {formatDollarOrPlaceholder(service.price)} 
+              {service.minimum != null && ` | Min: ${(typeof service.minimum === 'object' && 'toNumber' in service.minimum ? (service.minimum as { toNumber: () => number }).toNumber() : Number(service.minimum))}${service.costUnitType === 'HOURLY' ? ' hrs' : ''}`}
             </div>
           </div>
           <Badge variant={service.isActive ? 'success' : 'secondary'} asSpan>

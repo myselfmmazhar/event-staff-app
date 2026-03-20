@@ -8,6 +8,7 @@ import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { AvailabilityStatus, AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating } from '@prisma/client';
 import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 export type StaffWithRelations = {
     id: string;
@@ -238,52 +239,35 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
         {
             key: 'actions',
             label: columnLabels.actions,
-            className: 'py-4 px-4',
-            headerClassName: 'text-left py-3 px-4',
-            render: (member) => (
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onEdit(member)}
-                        title={`Edit ${staffTerm.lower}`}
-                    >
-                        <Edit2Icon className="h-4 w-4" />
-                    </Button>
-                    {onMessage && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="px-0"
-                            onClick={() => onMessage(member)}
-                            title={`Message ${staffTerm.lower}`}
-                        >
-                            <MessageSquareIcon className="h-4 w-4" />
-                        </Button>
-                    )}
-                    {onViewDetails && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="px-0"
-                            onClick={() => onViewDetails(member)}
-                            title={`View ${staffTerm.lower} details`}
-                        >
-                            <EyeIcon className="h-4 w-4" />
-                        </Button>
-                    )}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDelete(member)}
-                        title={`Delete ${staffTerm.lower}`}
-                        className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                        <Trash2Icon className="h-4 w-4" />
-                    </Button>
-                </div>
-            ),
+            className: 'w-10 py-4 px-4',
+            headerClassName: 'text-left py-3 px-4 w-10',
+            render: (member) => {
+                const actions: ActionItem[] = [
+                    {
+                        label: `Edit ${staffTerm.lower}`,
+                        icon: <Edit2Icon className="h-3.5 w-3.5" />,
+                        onClick: () => onEdit(member),
+                    },
+                    ...(onMessage ? [{
+                        label: `Message ${staffTerm.lower}`,
+                        icon: <MessageSquareIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onMessage(member),
+                    }] : []),
+                    ...(onViewDetails ? [{
+                        label: `View ${staffTerm.lower} details`,
+                        icon: <EyeIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onViewDetails(member),
+                    }] : []),
+                    {
+                        label: `Delete ${staffTerm.lower}`,
+                        icon: <Trash2Icon className="h-3.5 w-3.5" />,
+                        onClick: () => onDelete(member),
+                        variant: 'destructive',
+                    },
+                ];
+
+                return <ActionDropdown actions={actions} />;
+            },
         },
         {
             key: 'status',

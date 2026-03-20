@@ -43,7 +43,7 @@ export function MobileRowCard({ ct, onRowClick }: { ct: CallTimeRow; onRowClick:
                     <UsersIcon className="h-3.5 w-3.5 text-muted-foreground" />
                     {accepted.length > 0 ? (
                         <span className="text-xs text-muted-foreground">
-                            {accepted.map((inv) => `${inv.staff.firstName} ${inv.staff.lastName.charAt(0)}.`).join(', ')}
+                            {accepted.map((inv) => `${inv.staff.firstName} ${inv.staff.lastName}`).join(', ')}
                         </span>
                     ) : (
                         <Badge variant="warning" className="text-xs">Need {ct.numberOfStaffRequired}</Badge>

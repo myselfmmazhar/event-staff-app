@@ -5,7 +5,16 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { TalentGroup } from './types';
-import { calcOvertimeCost, calcOvertimePrice, calcClockedHours, calcScheduledHours, toNumber, fmtCurrency } from './helpers';
+import { 
+    calcOvertimeCost, 
+    calcOvertimePrice, 
+    calcClockedHours, 
+    calcScheduledHours, 
+    toNumber, 
+    fmtCurrency,
+    calcTotalBill,
+    calcTotalInvoice 
+} from './helpers';
 
 interface TimesheetTalentSummaryTableProps {
     talentGroups: TalentGroup[];
@@ -25,13 +34,13 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted/50 border-b border-border">
                         <tr>
+                            <th className="px-4 py-3 font-semibold text-foreground">Date / Time</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Talent Name</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-center">Tasks</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Status</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right border-l border-border">Total Bill</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Total Inv</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Profit</th>
-                            <th className="px-4 py-3 font-semibold text-foreground">Date / Time</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
@@ -52,18 +61,8 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                                 }
                             }
 
-                            const totalBill = group.callTimes.reduce((acc, ct) => {
-                                const base = ct.payRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.payRate)) : (calcScheduledHours(ct) * toNumber(ct.payRate))) : toNumber(ct.payRate);
-                                const ot = calcOvertimeCost(ct.timeEntry, ct);
-                                return acc + base + ot;
-                            }, 0);
-
-                            const totalInvoice = group.callTimes.reduce((acc, ct) => {
-                                const base = ct.billRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.billRate)) : (calcScheduledHours(ct) * toNumber(ct.billRate))) : toNumber(ct.billRate);
-                                const ot = calcOvertimePrice(ct.timeEntry, ct);
-                                return acc + base + ot;
-                            }, 0);
-
+                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
+                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
                             const profit = totalInvoice - totalBill;
 
                             const remaining = group.callTimes.length - completedCount;
@@ -73,6 +72,20 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
 
                             return (
                                 <tr key={group.staffId} className="hover:bg-muted/30 transition-colors">
+                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-foreground">
+                                                {min ? formatDate(min) : 'TBD'}
+                                                {firstRow?.startTime && ` ${firstRow.startTime}`}
+                                            </span>
+                                            {min && max && min.getTime() !== max.getTime() && (
+                                                <span className="text-xs">
+                                                    to {formatDate(max)}
+                                                    {firstRow?.endTime && ` ${firstRow.endTime}`}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-4">
                                         <button
                                             onClick={() => onTalentClick(group.staffId)}
@@ -93,7 +106,7 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
                                         )}
                                     </td>
-                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600 border-l border-border">
+                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
                                         {fmtCurrency(totalBill)}
                                     </td>
                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-emerald-600">
@@ -101,20 +114,6 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                                     </td>
                                     <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-700'}`}>
                                         {fmtCurrency(profit)}
-                                    </td>
-                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm">
-                                                {min ? formatDate(min) : 'TBD'}
-                                                {firstRow?.startTime && ` ${firstRow.startTime}`}
-                                            </span>
-                                            {min && max && min.getTime() !== max.getTime() && (
-                                                <span className="text-xs">
-                                                    to {formatDate(max)}
-                                                    {firstRow?.endTime && ` ${firstRow.endTime}`}
-                                                </span>
-                                            )}
-                                        </div>
                                     </td>
                                 </tr>
                             );

@@ -21,6 +21,11 @@ export class ServiceService {
     description: true,
     cost: true,
     price: true,
+    minimum: true,
+    expenditure: true,
+    expenditureAmount: true,
+    expenditureAmountType: true,
+    travelInMinimum: true,
     isActive: true,
     createdBy: true,
     createdAt: true,
@@ -39,6 +44,11 @@ export class ServiceService {
           description: data.description?.trim() || null,
           cost: data.cost ?? null,
           price: data.price ?? null,
+          minimum: data.minimum ?? null,
+          expenditure: data.expenditure ?? false,
+          expenditureAmount: data.expenditureAmount ?? null,
+          expenditureAmountType: data.expenditureAmountType ?? null,
+          travelInMinimum: data.travelInMinimum ?? false,
           createdBy: createdByUserId,
         },
         select: this.serviceSelect,
@@ -107,7 +117,7 @@ export class ServiceService {
     ]);
 
     return {
-      data,
+      data: data as ServiceSelect[],
       meta: {
         total,
         page,
@@ -130,7 +140,7 @@ export class ServiceService {
       });
     }
 
-    return service;
+    return service as ServiceSelect;
   }
 
   async update(
@@ -150,9 +160,14 @@ export class ServiceService {
             data.description === null ? null : data.description?.trim(),
           cost: data.cost === undefined ? undefined : data.cost,
           price: data.price === undefined ? undefined : data.price,
+          minimum: data.minimum === undefined ? undefined : data.minimum,
+          expenditure: data.expenditure === undefined ? undefined : data.expenditure,
+          expenditureAmount: data.expenditureAmount === undefined ? undefined : data.expenditureAmount,
+          expenditureAmountType: data.expenditureAmountType === undefined ? undefined : data.expenditureAmountType,
+          travelInMinimum: data.travelInMinimum === undefined ? undefined : data.travelInMinimum,
         },
         select: this.serviceSelect,
-      });
+      }) as ServiceSelect;
     } catch (error) {
       console.error('Error updating service:', error);
       throw new TRPCError({

@@ -3,12 +3,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { EditIcon, ArchiveBoxIcon, EyeIcon } from "@/components/ui/icons";
 import { InvoiceStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/common/data-table";
 import { format } from "date-fns";
-import { Pencil, Eye, Archive, RotateCcw, Trash2 } from "lucide-react";
+import { ActionDropdown, type ActionItem } from "@/components/common/action-dropdown";
+import { EditIcon, EyeIcon, ArchiveBoxIcon, RefreshCwIcon, TrashIcon } from "@/components/ui/icons";
 
 interface Invoice {
     id: string;
@@ -122,50 +122,46 @@ export function InvoiceTable({
         {
             key: "actions",
             label: "Actions",
-            className: "py-4 px-4",
-            headerClassName: "text-left py-3 px-4",
-            render: (invoice) => (
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onEdit?.(invoice)}
-                    >
-                        <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onView?.(invoice)}
-                    >
-                        <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-0"
-                        onClick={() => onArchive?.(invoice)}
-                    >
-                        {showArchived ? (
-                            <RotateCcw className="h-4 w-4 text-blue-600" />
-                        ) : (
-                            <Archive className="h-4 w-4 text-blue-500" />
-                        )}
-                    </Button>
-                    {showArchived && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="px-0"
-                            onClick={() => onDelete?.(invoice)}
-                        >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                    )}
-                </div>
-            ),
+            headerClassName: "text-left py-3 px-4 w-10",
+            className: "w-10 py-4 px-4",
+            render: (invoice) => {
+                const actions: ActionItem[] = [];
+
+                if (onEdit) {
+                    actions.push({
+                        label: 'Edit',
+                        icon: <EditIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onEdit(invoice),
+                    });
+                }
+
+                if (onView) {
+                    actions.push({
+                        label: 'View',
+                        icon: <EyeIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onView(invoice),
+                    });
+                }
+
+                if (onArchive) {
+                    actions.push({
+                        label: showArchived ? 'Restore' : 'Archive',
+                        icon: showArchived ? <RefreshCwIcon className="h-3.5 w-3.5" /> : <ArchiveBoxIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onArchive(invoice),
+                    });
+                }
+
+                if (showArchived && onDelete) {
+                    actions.push({
+                        label: 'Delete',
+                        icon: <TrashIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onDelete(invoice),
+                        variant: 'destructive',
+                    });
+                }
+
+                return <ActionDropdown actions={actions} />;
+            },
         },
         {
             key: "status",

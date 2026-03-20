@@ -16,6 +16,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { CheckCircleIcon, XCircleIcon, XIcon } from '@/components/ui/icons';
 import { useState } from 'react';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 interface PendingStaffRow {
     id: string; // invitation id
@@ -245,18 +246,18 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
         {
             key: 'actions',
             label: 'Actions',
-            headerClassName: 'text-left py-3 px-4 w-20',
-            render: (item) => (
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => onViewAssignment?.(item.callTimeId)}
-                    title="View Assignment"
-                >
-                    <EyeIcon className="h-4 w-4" />
-                </Button>
-            ),
+            headerClassName: 'text-left py-3 px-4 w-10',
+            className: 'w-10 py-3 px-2',
+            render: (item: PendingStaffRow) => {
+                const actions: ActionItem[] = [
+                    {
+                        label: 'View Assignment',
+                        icon: <EyeIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onViewAssignment?.(item.callTimeId),
+                    }
+                ];
+                return <ActionDropdown actions={actions} />;
+            },
         },
         {
             key: 'firstName',

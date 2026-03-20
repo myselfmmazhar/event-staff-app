@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useRoleTerm } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 interface User {
   id: string;
@@ -153,60 +154,45 @@ export function UserTable({
     {
       key: 'actions',
       label: columnLabels.actions,
-      className: 'py-4 px-4',
-      headerClassName: 'text-left py-3 px-4',
+      headerClassName: 'text-left py-3 px-4 w-10',
+      className: 'w-10 py-4 px-4',
       render: (user) => {
         const invitationStatus = getInvitationStatus(user);
         const canResendInvitation = invitationStatus === 'pending' || invitationStatus === 'expired';
 
-        return (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="px-0"
-              onClick={() => onEdit(user)}
-              title="Edit user"
-            >
-              <EditIcon className="h-4 w-4" />
-            </Button>
-            {user.role !== 'SUPER_ADMIN' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => onDelete(user)}
-                title="Delete user"
-              >
-                <TrashIcon className="h-4 w-4" />
-              </Button>
-            )}
-            {/* Resend Invitation - for pending/expired users */}
-            {canResendInvitation && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onResendInvitation(user)}
-                title="Resend invitation email"
-                className="text-primary hover:text-primary"
-              >
-                <MailIcon className="h-4 w-4 mr-1" />
-                Resend
-              </Button>
-            )}
-            {/* Toggle Status - only for accepted invitations and non-SUPER_ADMIN */}
-            {invitationStatus === 'accepted' && user.role !== 'SUPER_ADMIN' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onToggleStatus(user)}
-                title={user.isActive ? 'Deactivate user' : 'Activate user'}
-              >
-                {user.isActive ? 'Deactivate' : 'Activate'}
-              </Button>
-            )}
-          </div>
-        );
+        const actions: ActionItem[] = [
+          {
+            label: 'Edit user',
+            icon: <EditIcon className="h-3.5 w-3.5" />,
+            onClick: () => onEdit(user),
+          },
+        ];
+
+        if (user.role !== 'SUPER_ADMIN') {
+          actions.push({
+            label: 'Delete user',
+            icon: <TrashIcon className="h-3.5 w-3.5" />,
+            onClick: () => onDelete(user),
+            variant: 'destructive',
+          });
+        }
+
+        if (canResendInvitation) {
+          actions.push({
+            label: 'Resend Invitation',
+            icon: <MailIcon className="h-3.5 w-3.5" />,
+            onClick: () => onResendInvitation(user),
+          });
+        }
+
+        if (invitationStatus === 'accepted' && user.role !== 'SUPER_ADMIN') {
+          actions.push({
+            label: user.isActive ? 'Deactivate user' : 'Activate user',
+            onClick: () => onToggleStatus(user),
+          });
+        }
+
+        return <ActionDropdown actions={actions} />;
       },
     },
     {

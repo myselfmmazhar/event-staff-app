@@ -5,7 +5,16 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { EventGroup } from './types';
-import { calcOvertimeCost, calcOvertimePrice, calcClockedHours, calcScheduledHours, toNumber, fmtCurrency } from './helpers';
+import { 
+    calcOvertimeCost, 
+    calcOvertimePrice, 
+    calcClockedHours, 
+    calcScheduledHours, 
+    toNumber, 
+    fmtCurrency,
+    calcTotalBill,
+    calcTotalInvoice 
+} from './helpers';
 
 interface TimesheetSummaryTableProps {
     eventGroups: EventGroup[];
@@ -30,16 +39,16 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted/50 border-b border-border">
                         <tr>
+                            <th className="px-4 py-3 font-semibold text-foreground">Date / Time</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Task</th>
                             {/* <th className="px-4 py-3 font-semibold text-foreground">Task ID</th> */}
                             <th className="px-4 py-3 font-semibold text-foreground">Client</th>
-                            <th className="px-4 py-3 font-semibold text-foreground">Assignments</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-center">Assignments</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Status</th>
-                             <th className="px-4 py-3 font-semibold text-foreground text-right border-l border-border">Total Bill</th>
-                             <th className="px-4 py-3 font-semibold text-foreground text-right">Total Inv</th>
-                             <th className="px-4 py-3 font-semibold text-foreground text-right">Profit</th>
-                             <th className="px-4 py-3 font-semibold text-foreground">Date / Time</th>
-                         </tr>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Inv</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Profit</th>
+                        </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
                         {eventGroups.map((group) => {
@@ -59,21 +68,8 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                 : null;
                             const hasDateRange = !!minDate && !!maxDate && minDate.getTime() !== maxDate.getTime();
 
-                            const totalOvertimeCost = group.callTimes.reduce((acc, ct) => acc + calcOvertimeCost(ct.timeEntry, ct), 0);
-                            const totalOvertimePrice = group.callTimes.reduce((acc, ct) => acc + calcOvertimePrice(ct.timeEntry, ct), 0);
-
-                            const totalBill = group.callTimes.reduce((acc, ct) => {
-                                const base = ct.payRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.payRate)) : (calcScheduledHours(ct) * toNumber(ct.payRate))) : toNumber(ct.payRate);
-                                const ot = calcOvertimeCost(ct.timeEntry, ct);
-                                return acc + base + ot;
-                            }, 0);
-
-                            const totalInvoice = group.callTimes.reduce((acc, ct) => {
-                                const base = ct.billRateType === 'PER_HOUR' ? (ct.timeEntry ? (calcClockedHours(ct.timeEntry) * toNumber(ct.billRate)) : (calcScheduledHours(ct) * toNumber(ct.billRate))) : toNumber(ct.billRate);
-                                const ot = calcOvertimePrice(ct.timeEntry, ct);
-                                return acc + base + ot;
-                            }, 0);
-
+                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
+                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
                             const profit = totalInvoice - totalBill;
 
                             const completedCount = group.callTimes.filter(ct => ct.timeEntry?.clockIn && ct.timeEntry?.clockOut).length;
@@ -86,6 +82,20 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                     key={group.eventId}
                                     className="hover:bg-muted/30 transition-colors"
                                 >
+                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-foreground">
+                                                {minDate ? formatDate(minDate) : 'TBD'}
+                                                {firstRow?.startTime && ` ${firstRow.startTime}`}
+                                            </span>
+                                            {maxDate && (minDate?.getTime() !== maxDate.getTime()) && (
+                                                <span className="text-xs">
+                                                    to {formatDate(maxDate)}
+                                                    {firstRow?.endTime && ` ${firstRow.endTime}`}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-4">
                                         <button
                                             onClick={() => onEventClick(group.eventId)}
@@ -102,7 +112,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                     <td className="px-4 py-4 text-muted-foreground">
                                         {event?.client?.businessName || 'No Client'}
                                     </td>
-                                    <td className="px-4 py-4">
+                                    <td className="px-4 py-4 text-center">
                                         <Badge variant="secondary">
                                             {group.callTimes.length}
                                         </Badge>
@@ -114,28 +124,14 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
                                         )}
                                     </td>
-                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600 border-l border-border">
-                                         {fmtCurrency(totalBill)}
-                                     </td>
-                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-emerald-600">
-                                         {fmtCurrency(totalInvoice)}
-                                     </td>
-                                     <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-700'}`}>
-                                         {fmtCurrency(profit)}
-                                     </td>
-                                     <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
-                                        <div className="flex flex-col">
-                                            <span>
-                                                {minDate ? formatDate(minDate) : 'TBD'}
-                                                {firstRow?.startTime && ` ${firstRow.startTime}`}
-                                            </span>
-                                            {hasDateRange && maxDate && (
-                                                <span className="text-xs">
-                                                    to {formatDate(maxDate)}
-                                                    {firstRow?.endTime && ` ${firstRow.endTime}`}
-                                                </span>
-                                            )}
-                                        </div>
+                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
+                                        {fmtCurrency(totalBill)}
+                                    </td>
+                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-emerald-600">
+                                        {fmtCurrency(totalInvoice)}
+                                    </td>
+                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-700'}`}>
+                                        {fmtCurrency(profit)}
                                     </td>
                                 </tr>
                             );
