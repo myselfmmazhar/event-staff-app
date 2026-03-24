@@ -240,10 +240,10 @@ export function InvoiceTable({
             </div>
             <div className="flex items-center gap-2 pt-2 border-t border-border">
                 <Button variant="outline" size="sm" onClick={() => onEdit?.(invoice)} className="flex-1">
-                    <Pencil className="h-4 w-4 mr-1" /> Edit
+                    <EditIcon className="h-4 w-4 mr-1" /> Edit
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => onView?.(invoice)} className="flex-1">
-                    <Eye className="h-4 w-4 mr-1" /> View
+                    <EyeIcon className="h-4 w-4 mr-1" /> View
                 </Button>
                 <Button
                     variant="outline"
@@ -252,9 +252,9 @@ export function InvoiceTable({
                     className={`flex-1 ${showArchived ? "text-blue-600 hover:bg-blue-50" : "text-blue-600 hover:text-blue-700 hover:bg-blue-50"}`}
                 >
                     {showArchived ? (
-                        <RotateCcw className="h-4 w-4 mr-1" />
+                        <RefreshCwIcon className="h-4 w-4 mr-1" />
                     ) : (
-                        <Archive className="h-4 w-4 mr-1" />
+                        <ArchiveBoxIcon className="h-4 w-4 mr-1" />
                     )}
                     {showArchived ? "Restore" : "Archive"}
                 </Button>
@@ -265,7 +265,7 @@ export function InvoiceTable({
                         onClick={() => onDelete?.(invoice)}
                         className="flex-1 text-destructive hover:bg-destructive/10"
                     >
-                        <Trash2 className="h-4 w-4 mr-1" /> Delete
+                        <TrashIcon className="h-4 w-4 mr-1" /> Delete
                     </Button>
                 )}
             </div>
