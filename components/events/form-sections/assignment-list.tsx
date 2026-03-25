@@ -2,7 +2,7 @@
 
 import { Accordion } from '@/components/ui/accordion';
 import { AssignmentItem } from './assignment-item';
-import { getAssignmentTotals } from '@/lib/utils/assignment-calculations';
+import { getAssignmentTotals, formatCurrency } from '@/lib/utils/assignment-calculations';
 import type { Assignment } from '@/lib/types/assignment.types';
 
 interface AssignmentListProps {
@@ -120,9 +120,9 @@ export function AssignmentList({
               Services ({totals.servicesCount})
             </span>
             <div className="text-right">
-              <span className="font-bold text-slate-900">${totals.servicesTotalPrice.toFixed(2)}</span>
+              <span className="font-bold text-slate-900">{formatCurrency(totals.servicesTotalPrice)}</span>
               <span className="text-[11px] text-slate-400 ml-3 font-medium">
-                Cost: ${totals.servicesTotalCost.toFixed(2)}
+                Cost: {formatCurrency(totals.servicesTotalCost)}
               </span>
             </div>
           </div>
@@ -133,9 +133,9 @@ export function AssignmentList({
               Products ({totals.productsCount})
             </span>
             <div className="text-right">
-              <span className="font-bold text-slate-900">${totals.productsTotalPrice.toFixed(2)}</span>
+              <span className="font-bold text-slate-900">{formatCurrency(totals.productsTotalPrice)}</span>
               <span className="text-[11px] text-slate-400 ml-3 font-medium">
-                Cost: ${totals.productsTotalCost.toFixed(2)}
+                Cost: {formatCurrency(totals.productsTotalCost)}
               </span>
             </div>
           </div>
@@ -143,9 +143,9 @@ export function AssignmentList({
         <div className="flex justify-between items-center text-base border-t border-slate-100 pt-3 px-1">
           <span className="font-bold text-slate-900">Grand Total</span>
           <div className="text-right flex items-center gap-3">
-            <span className="font-extrabold text-[#1e293b] text-lg">${totals.grandTotalPrice.toFixed(2)}</span>
+            <span className="font-extrabold text-[#1e293b] text-lg">{formatCurrency(totals.grandTotalPrice)}</span>
             <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
-              Cost: ${totals.grandTotalCost.toFixed(2)}
+              Cost: {formatCurrency(totals.grandTotalCost)}
             </span>
           </div>
         </div>

@@ -16,6 +16,8 @@ import {
     calcTotalInvoice,
     formatTime
 } from './helpers';
+import { MapPinIcon, UploadIcon } from '@/components/ui/icons';
+import { useToast } from '@/components/ui/use-toast';
 
 interface TimesheetSummaryTableProps {
     eventGroups: EventGroup[];
@@ -23,6 +25,44 @@ interface TimesheetSummaryTableProps {
 }
 
 export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSummaryTableProps) {
+    const { toast } = useToast();
+
+    const handleUpload = async (file: File, eventTitle: string) => {
+        const uploadToast = toast({
+            title: 'Uploading...',
+            description: `Uploading ${file.name} for ${eventTitle}`,
+            type: 'info'
+        });
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!res.ok) throw new Error('Upload failed');
+
+            const data = await res.json();
+            
+            uploadToast.dismiss();
+            toast({
+                title: 'Upload Successful',
+                description: `${file.name} has been uploaded.`,
+                variant: 'success'
+            });
+        } catch (error) {
+            uploadToast.dismiss();
+            toast({
+                title: 'Upload Failed',
+                description: 'There was an error uploading your file.',
+                variant: 'destructive'
+            });
+        }
+    };
+
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
         const d = typeof date === 'string' ? parseISO(date) : date;
@@ -46,6 +86,8 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Total Invoice</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Net Income</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-center">Location</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-center">Upload</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
@@ -130,6 +172,31 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                     </td>
                                     <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-foreground' : 'text-red-600'}`}>
                                         {fmtCurrency(profit)}
+                                    </td>
+                                    <td className="px-4 py-4 text-center">
+                                        <div className="flex items-center justify-center gap-1.5 text-muted-foreground whitespace-nowrap text-xs">
+                                            <MapPinIcon className="h-3.5 w-3.5 text-primary" />
+                                            <span>{event?.venue || '—'}</span>
+                                            {event?.city && <span className="opacity-70">({event.city})</span>}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-4 text-center">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const input = document.createElement('input');
+                                                input.type = 'file';
+                                                input.onchange = (ev: any) => {
+                                                    const file = ev.target.files?.[0];
+                                                    if (file) handleUpload(file, group.eventTitle);
+                                                };
+                                                input.click();
+                                            }}
+                                            className="p-1.5 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-primary"
+                                            title="Upload document"
+                                        >
+                                            <UploadIcon className="h-4 w-4" />
+                                        </button>
                                     </td>
                                 </tr>
                             );
