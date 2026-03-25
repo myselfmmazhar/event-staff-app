@@ -152,10 +152,16 @@ export function calcClockedPrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTi
     return base;
 }
 
+export function calcExpenditureCost(ct: CallTimeRow): number {
+    if (!ct.expenditure) return 0;
+    return toNumber(ct.expenditureAmount);
+}
+
 export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false, isCommApplied = false): number {
     const base = calcClockedCost(timeEntry, ct, isMinApplied);
     const ot = calcOvertimeCost(timeEntry, ct);
-    let total = base + ot;
+    const exp = calcExpenditureCost(ct);
+    let total = base + ot + exp;
 
     if (isCommApplied && ct.commissionAmount) {
         const comm = toNumber(ct.commissionAmount);
@@ -172,7 +178,8 @@ export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeR
 export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false, isCommApplied = false): number {
     const base = calcClockedPrice(timeEntry, ct, isMinApplied);
     const ot = calcOvertimePrice(timeEntry, ct);
-    let total = base + ot;
+    const exp = calcExpenditureCost(ct);
+    let total = base + ot + exp;
 
     if (isCommApplied && ct.commissionAmount) {
         const comm = toNumber(ct.commissionAmount);
@@ -206,7 +213,7 @@ export function fmtCurrency(n: number) {
 export function fmtDateTime(d: Date | string | null): string {
     if (!d) return '—';
     try {
-        return format(typeof d === 'string' ? parseISO(d) : d, 'MMM d, h:mma');
+        return format(typeof d === 'string' ? parseISO(d) : d, 'MMM d, h:mm a');
     } catch {
         return '—';
     }

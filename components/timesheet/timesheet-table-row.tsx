@@ -21,12 +21,14 @@ import {
     calcClockedCost,
     calcOvertimeCost,
     calcOvertimePrice,
+    calcClockedPrice,
     calcBillAmount,
     calcTotalBill,
     calcTotalInvoice,
     calcGrossProfit,
     fmtCurrency,
-    toInputDatetime
+    toInputDatetime,
+    calcExpenditureCost
 } from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
@@ -78,6 +80,8 @@ export function TimesheetTableRow({
     const clockedCostVal = calcClockedCost(te, ct, isMinApp);
     const otCost = calcOvertimeCost(te, ct);
     const otPrice = calcOvertimePrice(te, ct);
+    const clockedPriceVal = calcClockedPrice(te, ct, isMinApp);
+    const expCost = calcExpenditureCost(ct);
     const billAmount = calcBillAmount(ct);
     const totalBill = calcTotalBill(te, ct, isMinApp, isCommApp);
     const totalInvoice = calcTotalInvoice(te, ct, isMinApp, isCommApp);
@@ -180,6 +184,12 @@ export function TimesheetTableRow({
                     </td>
                 ) : (
                     <>
+                        {/* Position */}
+                        <td className="px-3 py-2.5">
+                            <Badge variant="primary" className="text-[10px] whitespace-nowrap bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
+                                {ct.service?.title || 'Unassigned'}
+                            </Badge>
+                        </td>
                         {/* Full Name */}
                         <td className="px-3 py-2.5 font-bold text-primary">
                             {ct.staff ? `${ct.staff.firstName} ${ct.staff.lastName}` : '—'}
@@ -187,51 +197,30 @@ export function TimesheetTableRow({
                     </>
                 )}
 
-                {/* Scheduled Shift + Time Dropdown */}
-                <td className="px-3 py-2.5">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <div className="cursor-pointer group flex flex-col items-start gap-1">
-                                <Badge variant="primary" className="text-[10px] whitespace-nowrap group-hover:bg-primary/90 transition-colors">
-                                    {ct.service?.title || 'Unassigned'}
-                                </Badge>
-                                <span className="text-[9px] text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1">
-                                    <ClockIcon className="h-2.5 w-2.5" />
-                                    {formatDate(ct.startDate)} @ {formatTime(ct.startTime)}
-                                </span>
+                {/* Scheduled Shift + Detailed Info */}
+                <td className="px-3 py-2.5 min-w-[200px]">
+                    <div className="space-y-1.5">
+                        <div>
+                            <div className="text-[9px] font-bold text-muted-foreground uppercase leading-none mb-0.5">Scheduled Start Date & Time</div>
+                            <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
+                                <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{formatDate(ct.startDate)}</span>
+                                <span className="text-primary font-bold">{formatTime(ct.startTime)}</span>
                             </div>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 p-3 z-[120]" align="start">
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between border-b pb-1.5">
-                                    <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider">Scheduled Shift</h4>
-                                    <Badge variant="outline" className="text-[9px]">{ct.service?.title}</Badge>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] text-muted-foreground uppercase font-medium">Start</p>
-                                        <div className="flex flex-col text-xs font-semibold">
-                                            <span>{formatDate(ct.startDate)}</span>
-                                            <span className="text-primary">{formatTime(ct.startTime)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] text-muted-foreground uppercase font-medium">End</p>
-                                        <div className="flex flex-col text-xs font-semibold">
-                                            <span>{formatDate(ct.endDate || ct.startDate)}</span>
-                                            <span className="text-primary">{formatTime(ct.endTime)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="pt-2 border-t flex items-center justify-between">
-                                    <span className="text-xs text-muted-foreground">Total Duration:</span>
-                                    <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100 italic">
-                                        {hoursScheduled.toFixed(2)} hrs
-                                    </span>
-                                </div>
+                        </div>
+                        <div>
+                            <div className="text-[9px] font-bold text-muted-foreground uppercase leading-none mb-0.5">Scheduled End Date & Time</div>
+                            <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
+                                <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{formatDate(ct.endDate || ct.startDate)}</span>
+                                <span className="text-primary font-bold">{formatTime(ct.endTime)}</span>
                             </div>
-                        </PopoverContent>
-                    </Popover>
+                        </div>
+                        <div className="flex items-center gap-2 pt-0.5">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase">Scheduled Hours:</span>
+                            <span className="text-[11px] font-extrabold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                                {hoursScheduled.toFixed(2)} hrs
+                            </span>
+                        </div>
+                    </div>
                 </td>
 
                 <td className="px-3 py-2.5 text-center">
@@ -343,77 +332,60 @@ export function TimesheetTableRow({
 
                 {/* Cost Columns - Only show in All or Bill tab */}
                 {(subTab === 'all' || subTab === 'bill') && (
-                    <>
-                        {/* Sched Cost */}
-                        <td className="px-3 py-2.5 text-right tabular-nums">
-                            {scheduledCost > 0 ? fmtCurrency(scheduledCost) : '—'}
-                        </td>
-
-                        {/* Clo Cost / Bill */}
-                        <td className="px-3 py-2.5 text-right tabular-nums">
-                            {clockedCostVal > 0 ? fmtCurrency(clockedCostVal) : '—'}
-                        </td>
-
-                        {/* Overtime Cost */}
-                        <td
-                            className="px-3 py-2.5 text-right tabular-nums text-muted-foreground whitespace-nowrap hover:bg-slate-50 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setIsEditingOtCost(true); }}
-                        >
-                            {isEditingOtCost ? (
-                                <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                                    <input
-                                        type="number"
-                                        value={otCostManual}
-                                        onChange={e => setOtCostManual(e.target.value)}
-                                        className="h-7 w-16 text-[10px] border border-border rounded px-1"
-                                        autoFocus
-                                    />
-                                    <button onClick={handleSave} className="p-0.5 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); setIsEditingOtCost(false); }} className="p-0.5 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
-                                </div>
-                            ) : (
-                                otCost > 0 ? fmtCurrency(otCost) : '—'
-                            )}
-                        </td>
-                    </>
+                    <td className="px-3 py-2.5 min-w-[150px]">
+                        <div className="space-y-1 text-right tabular-nums">
+                            <div className="flex justify-between items-center gap-4">
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase">Shift Cost:</span>
+                                <span className="text-[11px] font-semibold text-slate-700">{clockedCostVal > 0 ? fmtCurrency(clockedCostVal) : '0.00'}</span>
+                            </div>
+                            <div className="flex justify-between items-center gap-4">
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase">Overtime:</span>
+                                <span className="text-[11px] font-semibold text-amber-600">{otCost > 0 ? fmtCurrency(otCost) : '0.00'}</span>
+                            </div>
+                            <div className="flex justify-between items-center gap-4">
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase">Travel:</span>
+                                <span className="text-[11px] font-semibold text-indigo-600">{expCost > 0 ? fmtCurrency(expCost) : '0.00'}</span>
+                            </div>
+                            <div className="pt-0.5 mt-0.5 border-t border-slate-100 flex justify-between items-center gap-4">
+                                <span className="text-[10px] font-extrabold text-slate-900 uppercase">Cost:</span>
+                                <span className="text-[11px] font-extrabold text-slate-900">{fmtCurrency(clockedCostVal + otCost + expCost)}</span>
+                            </div>
+                        </div>
+                    </td>
                 )}
 
-                {/* Bill Amount */}
-                {/* Base Bill */}
-                <td className="px-3 py-2.5 text-right tabular-nums">
-                    {billAmount > 0 ? fmtCurrency(billAmount) : '—'}
-                </td>
-
-                {/* Overtime Price */}
-                {/* OT Price */}
-                <td className="px-3 py-2.5 text-right tabular-nums">
-                    {isEditingOtPrice ? (
-                        <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
-                            <input
-                                type="number"
-                                value={otPriceManual}
-                                onChange={e => setOtPriceManual(e.target.value)}
-                                className="h-7 w-16 text-[10px] border border-border rounded px-1"
-                                autoFocus
-                            />
-                            <button onClick={handleSave} className="p-0.5 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); setIsEditingOtPrice(false); }} className="p-0.5 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
+                {/* Consolidated Price (Bill) Column - Always Visible */}
+                <td className="px-3 py-2.5 min-w-[150px]">
+                    <div className="space-y-1 text-right tabular-nums">
+                        <div className="flex justify-between items-center gap-4">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase">Shift Price:</span>
+                            <span className="text-[11px] font-semibold text-slate-700">{clockedPriceVal > 0 ? fmtCurrency(clockedPriceVal) : '0.00'}</span>
                         </div>
-                    ) : (
-                        otPrice > 0 ? fmtCurrency(otPrice) : '—'
-                    )}
+                        <div className="flex justify-between items-center gap-4">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase">Overtime:</span>
+                            <span className="text-[11px] font-semibold text-amber-600">{otPrice > 0 ? fmtCurrency(otPrice) : '0.00'}</span>
+                        </div>
+                        <div className="flex justify-between items-center gap-4">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase">Travel:</span>
+                            <span className="text-[11px] font-semibold text-indigo-600">{expCost > 0 ? fmtCurrency(expCost) : '0.00'}</span>
+                        </div>
+                        <div className="pt-0.5 mt-0.5 border-t border-slate-100 flex justify-between items-center gap-4">
+                            <span className="text-[10px] font-extrabold text-slate-900 uppercase">Price:</span>
+                            <span className="text-[11px] font-extrabold text-slate-900">{fmtCurrency(clockedPriceVal + otPrice + expCost)}</span>
+                        </div>
+                    </div>
                 </td>
 
-                {/* Financial Summary Columns (Bill, Invoice, Profit) - Always Visible */}
+                {/* Financial Summary Columns (Invoice, Bill, Net Income) - Always Visible */}
+                <td className="px-3 py-2.5 text-right tabular-nums font-medium text-foreground bg-gray-50/5">
+                    {totalInvoice > 0 ? fmtCurrency(totalInvoice) : '0.00'}
+                </td>
+
                 <td className="px-3 py-2.5 text-right tabular-nums font-medium text-red-600 bg-red-50/10">
                     {totalBill > 0 ? fmtCurrency(totalBill) : '0.00'}
                 </td>
 
-                <td className="px-3 py-2.5 text-right tabular-nums font-medium text-emerald-600 bg-emerald-50/10">
-                    {totalInvoice > 0 ? fmtCurrency(totalInvoice) : '0.00'}
-                </td>
-
-                <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${grossProfit >= 0 ? 'text-blue-600 bg-blue-50/10' : 'text-red-700 bg-red-50/20'}`}>
+                <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${grossProfit >= 0 ? 'text-foreground' : 'text-red-600 bg-red-50/20'}`}>
                     {fmtCurrency(grossProfit)}
                 </td>
             </tr>

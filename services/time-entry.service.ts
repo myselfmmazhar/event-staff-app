@@ -138,13 +138,7 @@ export class TimeEntryService {
                         },
                     },
                 },
-                timeEntry: {
-                    include: {
-                        revisions: {
-                            orderBy: { editedAt: 'desc' },
-                        },
-                    },
-                },
+                timeEntry: true,
             },
             orderBy: [
                 { callTime: { startDate: 'asc' } },
@@ -186,7 +180,7 @@ export class TimeEntryService {
         return await (this.prisma as any).$transaction(async (tx: any) => {
             const existing = await tx.timeEntry.findUnique({
                 where: { invitationId: data.invitationId },
-                include: { revisions: { orderBy: { editedAt: 'desc' } } },
+                include: { staff: true },
             });
 
             if (existing) {
@@ -208,7 +202,7 @@ export class TimeEntryService {
                         overtimePrice: data.overtimePrice,
                         notes: data.notes,
                     },
-                    include: { revisions: { orderBy: { editedAt: 'desc' } } },
+                    include: { staff: true },
                 });
 
                 if (hasChanged) {
@@ -228,7 +222,7 @@ export class TimeEntryService {
 
                 return await tx.timeEntry.findUnique({
                     where: { id: existing.id },
-                    include: { revisions: { orderBy: { editedAt: 'desc' } } },
+                    include: { staff: true },
                 });
             }
 
@@ -245,7 +239,7 @@ export class TimeEntryService {
                     notes: data.notes,
                     createdBy: data.createdBy,
                 },
-                include: { revisions: { orderBy: { editedAt: 'desc' } } },
+                include: { staff: true },
             });
         });
     }

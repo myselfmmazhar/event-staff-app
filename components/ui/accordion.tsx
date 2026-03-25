@@ -186,15 +186,22 @@ export function AccordionArrow({ className }: AccordionArrowProps) {
   const { value, isOpen } = useAccordionItemContext();
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={(e) => {
         e.stopPropagation();
         toggleItem(value);
       }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleItem(value);
+        }
+      }}
       className={cn(
-        'p-1 rounded hover:bg-muted/50 transition-colors shrink-0',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        'p-1 rounded hover:bg-muted/50 transition-colors shrink-0 cursor-pointer outline-none',
+        'focus-visible:ring-2 focus-visible:ring-primary',
         className
       )}
     >
@@ -204,7 +211,7 @@ export function AccordionArrow({ className }: AccordionArrowProps) {
           isOpen && 'rotate-180'
         )}
       />
-    </button>
+    </div>
   );
 }
 

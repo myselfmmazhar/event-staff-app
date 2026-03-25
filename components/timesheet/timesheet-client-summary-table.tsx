@@ -38,9 +38,9 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                             <th className="px-4 py-3 font-semibold text-foreground">Client Name</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-center">Open Tasks</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Status</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Invoice</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Inv</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Profit</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Net Income</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
@@ -92,13 +92,13 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
                                         )}
                                     </td>
+                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">
+                                        {fmtCurrency(totalInvoice)}
+                                    </td>
                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
                                         {fmtCurrency(totalBill)}
                                     </td>
-                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-emerald-600">
-                                        {fmtCurrency(totalInvoice)}
-                                    </td>
-                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-700'}`}>
+                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-foreground' : 'text-red-600'}`}>
                                         {fmtCurrency(profit)}
                                     </td>
                                 </tr>

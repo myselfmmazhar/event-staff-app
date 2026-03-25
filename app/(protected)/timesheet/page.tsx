@@ -512,6 +512,7 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
@@ -524,19 +525,14 @@ export default function TimeManagerPage() {
                                                     )}
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-normal max-w-[80px]">Hours Clocked</th>
                                                     {(subTab === 'all' || subTab === 'bill') && (
-                                                        <>
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">{subTab === 'bill' ? 'Bill' : 'Clo Cost'}</th>
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
-                                                        </>
+                                                        <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Cost</th>
                                                     )}
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Base Bill</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-nowrap">Bill Amount</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-emerald-600 bg-emerald-50/5 whitespace-nowrap">Invoice Amount</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-blue-600 bg-blue-50/5 whitespace-nowrap">Gross Profit</th>
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Price</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -606,19 +602,14 @@ export default function TimeManagerPage() {
                                                     )}
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-normal max-w-[80px]">Hours Clocked</th>
                                                     {(subTab === 'all' || subTab === 'bill') && (
-                                                        <>
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">{subTab === 'bill' ? 'Bill' : 'Clo Cost'}</th>
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
-                                                        </>
+                                                        <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Cost</th>
                                                     )}
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Base Bill</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-nowrap">Bill Amount</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-emerald-600 bg-emerald-50/5 whitespace-nowrap">Invoice Amount</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-blue-600 bg-blue-50/5 whitespace-nowrap">Gross Profit</th>
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Price</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -686,6 +677,7 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
@@ -698,19 +690,14 @@ export default function TimeManagerPage() {
                                                     )}
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-normal max-w-[80px]">Hours Clocked</th>
                                                     {(subTab === 'all' || subTab === 'bill') && (
-                                                        <>
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">{subTab === 'bill' ? 'Bill' : 'Clo Cost'}</th>
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
-                                                        </>
+                                                        <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Cost</th>
                                                     )}
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Base Bill</th>
-                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-nowrap">Bill Amount</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-emerald-600 bg-emerald-50/5 whitespace-nowrap">Invoice Amount</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-blue-600 bg-blue-50/5 whitespace-nowrap">Gross Profit</th>
+                                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Price</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
+                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th>
                                                 </tr>
                                             </thead>
                                             <tbody>

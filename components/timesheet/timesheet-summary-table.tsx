@@ -13,7 +13,8 @@ import {
     toNumber, 
     fmtCurrency,
     calcTotalBill,
-    calcTotalInvoice 
+    calcTotalInvoice,
+    formatTime
 } from './helpers';
 
 interface TimesheetSummaryTableProps {
@@ -28,10 +29,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
         return format(d, 'MMM d, yyyy (EEE)');
     };
 
-    const formatTime = (time: string | null) => {
-        if (!time) return '';
-        return time;
-    };
+    // Remove local formatTime since it's now imported
 
     return (
         <Card className="overflow-hidden border border-border shadow-sm">
@@ -45,9 +43,9 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                             <th className="px-4 py-3 font-semibold text-foreground">Client</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-center">Assignments</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Status</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Invoice</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Inv</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Profit</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Net Income</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
@@ -86,12 +84,12 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                         <div className="flex flex-col">
                                             <span className="font-medium text-foreground">
                                                 {minDate ? formatDate(minDate) : 'TBD'}
-                                                {firstRow?.startTime && ` ${firstRow.startTime}`}
+                                                {firstRow?.startTime && ` ${formatTime(firstRow.startTime)}`}
                                             </span>
                                             {maxDate && (minDate?.getTime() !== maxDate.getTime()) && (
                                                 <span className="text-xs">
                                                     to {formatDate(maxDate)}
-                                                    {firstRow?.endTime && ` ${firstRow.endTime}`}
+                                                    {firstRow?.endTime && ` ${formatTime(firstRow.endTime)}`}
                                                 </span>
                                             )}
                                         </div>
@@ -124,13 +122,13 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
                                         )}
                                     </td>
+                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">
+                                        {fmtCurrency(totalInvoice)}
+                                    </td>
                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
                                         {fmtCurrency(totalBill)}
                                     </td>
-                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-emerald-600">
-                                        {fmtCurrency(totalInvoice)}
-                                    </td>
-                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-700'}`}>
+                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-foreground' : 'text-red-600'}`}>
                                         {fmtCurrency(profit)}
                                     </td>
                                 </tr>

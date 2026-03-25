@@ -284,34 +284,17 @@ export function AssignmentsSection({
             minDate={minDate}
             maxDate={maxDate}
             onInvalidDate={handleInvalidDate}
-            renderEditForm={(assignment) => (
-              <>
-                <h4 className="text-base font-medium mb-4">Edit Assignment</h4>
-                <AssignmentForm
-                  assignment={assignment}
-                  onSave={handleSaveAssignment}
-                  onCancel={handleCancelForm}
-                  onLiveChange={setLivePreviewAssignment}
-                  onCreateService={() => setShowCreateService(true)}
-                  onCreateProduct={() => setShowCreateProduct(true)}
-                  minDate={minDate}
-                  maxDate={maxDate}
-                  eventStartTime={eventStartTime}
-                  eventEndTime={eventEndTime}
-                  onInvalidDate={handleInvalidDate}
-                  disabled={disabled}
-                />
-              </>
-            )}
           />
         )}
 
-        {/* Assignment Form - only for NEW assignments (not editing) */}
-        {showForm && !editingAssignment && (
+        {/* Assignment Form - Modal for New or Editing */}
+        {showForm && (
           <Dialog open={showForm} onClose={handleCancelForm} className="max-w-4xl w-[90vw]">
             <DialogHeader className="flex flex-row items-center justify-between pr-2">
               <DialogTitle>
-                {defaultType === 'SERVICE' ? 'Add Service Assignment' : 'Add Product Assignment'}
+                {editingAssignment 
+                  ? 'Edit Assignment' 
+                  : (defaultType === 'SERVICE' ? 'Add Service Assignment' : 'Add Product Assignment')}
               </DialogTitle>
               <Button
                 variant="ghost"
@@ -322,12 +305,13 @@ export function AssignmentsSection({
                 <XIcon className="h-4 w-4" />
               </Button>
             </DialogHeader>
-            <DialogContent>
+            <DialogContent className="max-w-4xl">
               <AssignmentForm
-                assignment={repeatAssignment}
-                defaultType={defaultType}
+                assignment={editingAssignment || repeatAssignment}
+                defaultType={editingAssignment ? editingAssignment.type : defaultType}
                 onSave={handleSaveAssignment}
                 onCancel={handleCancelForm}
+                onLiveChange={editingAssignment ? setLivePreviewAssignment : undefined}
                 onCreateService={() => setShowCreateService(true)}
                 onCreateProduct={() => setShowCreateProduct(true)}
                 minDate={minDate}

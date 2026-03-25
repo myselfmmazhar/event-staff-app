@@ -11,6 +11,7 @@ import {
   STAFF_RATING_LABELS,
   RATE_TYPE_LABELS,
 } from '@/lib/constants/enums';
+import { ActionDropdown } from '@/components/common/action-dropdown';
 import { getAssignmentTotals, formatCurrency } from '@/lib/utils/assignment-calculations';
 import type { Assignment, ProductAssignment, ServiceAssignment } from '@/lib/types/assignment.types';
 import type { ExperienceRequirement, StaffRating } from '@prisma/client';
@@ -112,8 +113,30 @@ export function AssignmentItem({
 
   return (
     <AccordionItem value={assignment.id} className="border rounded-xl bg-white mb-2 overflow-hidden shadow-sm hover:border-primary/20 transition-all group">
-      <div className="flex items-center gap-4 px-4 py-3">
-        {/* Left: Type Icon & Name/Type Info */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        {/* Actions Dropdown and Expand Arrow at the Left */}
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <ActionDropdown
+            actions={[
+              { 
+                label: 'Edit', 
+                icon: <EditIcon className="h-3.5 w-3.5" />, 
+                onClick: onEdit,
+                disabled: disabled
+              },
+              { 
+                label: 'Delete', 
+                icon: <TrashIcon className="h-3.5 w-3.5" />, 
+                onClick: onDelete, 
+                variant: 'destructive',
+                disabled: disabled
+              },
+            ]}
+          />
+          <AccordionArrow className="h-6 w-6" />
+        </div>
+
+        {/* Type Icon & Name/Type Info */}
         <div className="flex items-center gap-3 w-[180px] shrink-0">
           <div className={cn(
             'p-2.5 rounded-xl shrink-0 flex items-center justify-center transition-colors',
@@ -237,34 +260,6 @@ export function AssignmentItem({
           </div>
         </div>
 
-        {/* Row Actions */}
-        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEdit}
-            disabled={disabled}
-            className="h-9 w-9 p-0 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-lg"
-          >
-            <EditIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            disabled={disabled}
-            className="h-9 w-9 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 w-6 p-0 text-slate-300 pointer-events-none"
-          >
-            <AccordionArrow className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
       <AccordionContent>

@@ -53,7 +53,7 @@ export const prisma =
     adapter,
   });
 
-// Last updated: 2026-02-25T13:50:00Z - Forcing reload after contact fields update
+// Last updated: 2026-03-25T15:10:00Z - Forcing reload after revisions update
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
   globalForPrisma.pgPool = pgPool;

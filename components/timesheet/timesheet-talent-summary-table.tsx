@@ -13,7 +13,8 @@ import {
     toNumber, 
     fmtCurrency,
     calcTotalBill,
-    calcTotalInvoice 
+    calcTotalInvoice,
+    formatTime
 } from './helpers';
 
 interface TimesheetTalentSummaryTableProps {
@@ -38,9 +39,9 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                             <th className="px-4 py-3 font-semibold text-foreground">Talent Name</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-center">Tasks</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Status</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Invoice</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Inv</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Profit</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Net Income</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
@@ -76,12 +77,12 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                                         <div className="flex flex-col">
                                             <span className="text-sm font-medium text-foreground">
                                                 {min ? formatDate(min) : 'TBD'}
-                                                {firstRow?.startTime && ` ${firstRow.startTime}`}
+                                                {firstRow?.startTime && ` ${formatTime(firstRow.startTime)}`}
                                             </span>
                                             {min && max && min.getTime() !== max.getTime() && (
                                                 <span className="text-xs">
                                                     to {formatDate(max)}
-                                                    {firstRow?.endTime && ` ${firstRow.endTime}`}
+                                                    {firstRow?.endTime && ` ${formatTime(firstRow.endTime)}`}
                                                 </span>
                                             )}
                                         </div>
@@ -106,13 +107,13 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
                                         )}
                                     </td>
+                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">
+                                        {fmtCurrency(totalInvoice)}
+                                    </td>
                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
                                         {fmtCurrency(totalBill)}
                                     </td>
-                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-emerald-600">
-                                        {fmtCurrency(totalInvoice)}
-                                    </td>
-                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-700'}`}>
+                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-foreground' : 'text-red-600'}`}>
                                         {fmtCurrency(profit)}
                                     </td>
                                 </tr>

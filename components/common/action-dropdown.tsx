@@ -20,8 +20,10 @@ interface ActionDropdownProps {
 }
 
 export function ActionDropdown({ actions, align = 'end' }: ActionDropdownProps) {
+    const [open, setOpen] = React.useState(false);
+
     return (
-        <Popover>
+        <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button 
                     variant="ghost" 
@@ -45,6 +47,7 @@ export function ActionDropdown({ actions, align = 'end' }: ActionDropdownProps) 
                                 e.preventDefault();
                                 e.stopPropagation();
                                 if (!action.disabled) {
+                                    setOpen(false);
                                     action.onClick();
                                 }
                             }}
