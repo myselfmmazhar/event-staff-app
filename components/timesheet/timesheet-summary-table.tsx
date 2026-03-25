@@ -176,7 +176,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                     <td className="px-4 py-4 text-center">
                                         <div className="flex items-center justify-center gap-1.5 text-muted-foreground whitespace-nowrap text-xs">
                                             <MapPinIcon className="h-3.5 w-3.5 text-primary" />
-                                            <span>{event?.venue || '—'}</span>
+                                            <span>{event?.venueName || '—'}</span>
                                             {event?.city && <span className="opacity-70">({event.city})</span>}
                                         </div>
                                     </td>
