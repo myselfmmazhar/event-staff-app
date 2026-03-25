@@ -63,6 +63,7 @@ export function TimesheetTableRow({
 }) {
     const [isEditing, setIsEditing] = useState(false);
 
+
     const te = ct.timeEntry;
     const [clockIn, setClockIn] = useState(toInputDatetime(te?.clockIn ?? null));
     const [clockOut, setClockOut] = useState(toInputDatetime(te?.clockOut ?? null));
@@ -141,6 +142,9 @@ export function TimesheetTableRow({
         }
     ];
 
+
+
+
     return (
         <>
             <tr
@@ -179,9 +183,11 @@ export function TimesheetTableRow({
 
                 {/* Staff Name or Event Name */}
                 {showEventName ? (
-                    <td colSpan={2} className="px-3 py-2.5 font-bold text-primary max-w-[200px] truncate">
-                        {ct.event?.title || '—'}
-                    </td>
+                    <>
+                        <td className="px-3 py-2.5 font-bold text-primary max-w-[200px] truncate">
+                            {ct.event?.title || '—'}
+                        </td>
+                    </>
                 ) : (
                     <>
                         {/* Position */}
@@ -287,7 +293,7 @@ export function TimesheetTableRow({
                                 value={breakMins}
                                 onChange={e => setBreakMins(parseInt(e.target.value) || 0)}
                                 className="h-7 w-12 text-[10px] border border-border rounded px-1"
-                                placeholder="Brk"
+                                placeholder="Break"
                             />
                             <button onClick={handleSave} className="p-1 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
                             <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="p-1 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
@@ -384,7 +390,6 @@ export function TimesheetTableRow({
                 <td className="px-3 py-2.5 text-right tabular-nums font-medium text-red-600 bg-red-50/10">
                     {totalBill > 0 ? fmtCurrency(totalBill) : '0.00'}
                 </td>
-
                 <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${grossProfit >= 0 ? 'text-foreground' : 'text-red-600 bg-red-50/20'}`}>
                     {fmtCurrency(grossProfit)}
                 </td>

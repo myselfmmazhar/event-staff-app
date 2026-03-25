@@ -18,6 +18,7 @@ import {
   EXPERIENCE_REQUIREMENT_OPTIONS,
   STAFF_RATING_OPTIONS,
   RATE_TYPE_OPTIONS,
+  RATE_TYPE_LABELS,
   AMOUNT_TYPE_OPTIONS,
 } from '@/lib/constants/enums';
 import { RateType } from '@prisma/client';
@@ -146,6 +147,9 @@ export function AssignmentForm({
         approveOvertime: false,
         overtimeRate: null,
         overtimeRateType: null,
+        minimum: false,
+        minimumAmount: null,
+        minimumAmountType: null,
         payRate: null,
         billRate: null,
         rateType: null,
@@ -243,6 +247,9 @@ export function AssignmentForm({
         approveOvertime: assignment.type === 'SERVICE' ? assignment.approveOvertime : false,
         overtimeRate: assignment.type === 'SERVICE' ? assignment.overtimeRate ?? null : null,
         overtimeRateType: assignment.type === 'SERVICE' ? assignment.overtimeRateType ?? null : null,
+        minimum: assignment.minimum,
+        minimumAmount: assignment.minimumAmount ?? null,
+        minimumAmountType: assignment.minimumAmountType ?? null,
         payRate: assignment.type === 'SERVICE' ? assignment.payRate : null,
         billRate: assignment.type === 'SERVICE' ? assignment.billRate : null,
         rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
@@ -375,6 +382,9 @@ export function AssignmentForm({
           commission: data.commission ?? false,
           commissionAmount: data.commissionAmount ?? null,
           commissionAmountType: data.commissionAmountType ?? null,
+          minimum: data.minimum ?? false,
+          minimumAmount: data.minimumAmount ?? null,
+          minimumAmountType: data.minimumAmountType ?? null,
           description: data.description ?? null,
           instructions: data.instructions ?? null,
         };
@@ -402,6 +412,9 @@ export function AssignmentForm({
           approveOvertime: data.approveOvertime || false,
           overtimeRate: data.overtimeRate ?? null,
           overtimeRateType: data.overtimeRateType ?? null,
+          minimum: data.minimum ?? false,
+          minimumAmount: data.minimumAmount ?? null,
+          minimumAmountType: data.minimumAmountType ?? null,
           payRate: data.payRate ?? null,
           billRate: data.billRate ?? null,
           rateType: data.rateType ?? null,
@@ -439,6 +452,9 @@ export function AssignmentForm({
           commission: data.commission,
           commissionAmount: data.commissionAmount ?? null,
           commissionAmountType: data.commissionAmountType ?? null,
+          minimum: data.minimum,
+          minimumAmount: data.minimumAmount ?? null,
+          minimumAmountType: data.minimumAmountType ?? null,
           description: data.description ?? null,
           instructions: data.instructions ?? null,
         };
@@ -466,6 +482,9 @@ export function AssignmentForm({
           approveOvertime: data.approveOvertime || false,
           overtimeRate: data.overtimeRate ?? null,
           overtimeRateType: data.overtimeRateType ?? null,
+          minimum: data.minimum,
+          minimumAmount: data.minimumAmount ?? null,
+          minimumAmountType: data.minimumAmountType ?? null,
           payRate: data.payRate ?? null,
           billRate: data.billRate ?? null,
           rateType: data.rateType ?? null,
@@ -1040,6 +1059,7 @@ export function AssignmentForm({
               min={0}
               {...register('commissionAmount', { valueAsNumber: true })}
               disabled={disabled || !watch('commission')}
+              onFocus={e => e.target.select()}
               placeholder="0.00"
             />
           </div>
@@ -1072,7 +1092,8 @@ export function AssignmentForm({
 
         {/* Approve for Overtime - Service only, after Commission */}
         {assignmentType === 'SERVICE' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-sm font-medium mb-2 block">Approve for Overtime?</Label>
               <div className="flex items-center gap-4 h-10">
@@ -1109,6 +1130,7 @@ export function AssignmentForm({
                 min={0}
                 {...register('overtimeRate', { valueAsNumber: true })}
                 disabled={disabled || !watch('approveOvertime')}
+                onFocus={e => e.target.select()}
                 placeholder="0.00"
               />
             </div>
@@ -1138,6 +1160,56 @@ export function AssignmentForm({
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
+              <div className="flex items-center gap-4 h-10">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="minimum"
+                    checked={watch('minimum') === true}
+                    onChange={() => setValue('minimum', true)}
+                    disabled={disabled}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">Yes</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="minimum"
+                    checked={watch('minimum') === false}
+                    onChange={() => setValue('minimum', false)}
+                    disabled={disabled}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">No</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="minimumAmount" className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
+              <Input
+                id="minimumAmount"
+                type="number"
+                step="0.01"
+                min={0}
+                {...register('minimumAmount', { valueAsNumber: true })}
+                disabled={disabled || !watch('minimum')}
+                onFocus={e => e.target.select()}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
+              <div className="h-10 flex items-center px-3 rounded-md border border-input bg-muted/50 text-sm italic text-muted-foreground">
+                {watch('rateType') ? RATE_TYPE_LABELS[watch('rateType') as RateType] : 'Select rate type above'}
+              </div>
+            </div>
+          </div>
+          </>
         )}
 
         {/* Instructions & Notes - Service only, at end */}

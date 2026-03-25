@@ -96,13 +96,13 @@ export function EventGroupTable({
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Sched</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hours Scheduled</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hrs Clo</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Sched Cost</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clo Cost</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hours Clocked</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Cost</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clocked Cost</th>
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>

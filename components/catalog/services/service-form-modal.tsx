@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
@@ -40,6 +41,7 @@ const formSchema = z.object({
     .default(null),
   cost: z.number().positive('Cost must be a positive number').nullable().default(null),
   price: z.number().positive('Price must be a positive number').nullable().default(null),
+  hasMinimum: z.boolean().default(false),
   minimum: z.number().min(0, 'Minimum must be a non-negative number').nullable().default(null),
 });
 
@@ -73,6 +75,8 @@ export function ServiceFormModal({
     reset,
     setError,
     control,
+    watch,
+    setValue,
   } = useForm<FormInput, undefined, FormOutput>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -81,6 +85,7 @@ export function ServiceFormModal({
       description: null,
       cost: null,
       price: null,
+      hasMinimum: false,
       minimum: null,
     },
   });
@@ -120,6 +125,7 @@ export function ServiceFormModal({
         description: service.description ?? null,
         cost: costValue,
         price: priceValue,
+        hasMinimum: minimumValue !== null,
         minimum: minimumValue,
       });
     } else if (!service && open) {
@@ -129,6 +135,7 @@ export function ServiceFormModal({
         description: null,
         cost: null,
         price: null,
+        hasMinimum: false,
         minimum: null,
       });
     }
@@ -152,9 +159,13 @@ export function ServiceFormModal({
       description: data.description || null,
       cost: data.cost,
       price: data.price,
-      minimum: data.minimum,
+      minimum: data.hasMinimum ? data.minimum : null,
     });
   };
+
+  const hasMinimum = watch('hasMinimum');
+  const costUnitType = watch('costUnitType');
+  const rateTypeLabel = COST_UNIT_TYPE_OPTIONS.find((opt) => opt.value === costUnitType)?.label || 'Value';
 
   return (
     <Dialog open={open} onClose={onClose} className="max-w-3xl">
@@ -304,32 +315,66 @@ export function ServiceFormModal({
             </div>
 
             <div>
-              <Label htmlFor="minimum">Minimum</Label>
+              <Label>Is Minimum?</Label>
               <Controller
-                name="minimum"
+                name="hasMinimum"
                 control={control}
                 render={({ field }) => (
-                  <Input
-                    id="minimum"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    inputMode="decimal"
-                    value={field.value ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      field.onChange(val === '' ? null : parseFloat(val));
+                  <RadioGroup
+                    value={field.value ? 'yes' : 'no'}
+                    onValueChange={(value) => {
+                      const enabled = value === 'yes';
+                      field.onChange(enabled);
+                      if (enabled && (watch('minimum') === null || watch('minimum') === undefined)) {
+                        setValue('minimum', 0);
+                      }
                     }}
-                    error={!!errors.minimum}
+                    className="flex items-center gap-4 mt-2"
                     disabled={isSubmitting}
-                    placeholder="e.g., 4.00"
-                  />
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="min-no" />
+                      <Label htmlFor="min-no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="min-yes" />
+                      <Label htmlFor="min-yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                  </RadioGroup>
                 )}
               />
-              {errors.minimum && (
-                <p className="text-sm text-destructive mt-1">{errors.minimum.message}</p>
-              )}
             </div>
+
+            {hasMinimum && (
+              <div>
+                <Label htmlFor="minimum">Minimum {rateTypeLabel}</Label>
+                <Controller
+                  name="minimum"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      id="minimum"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={field.value ?? 0}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        field.onChange(val === '' ? null : parseFloat(val));
+                      }}
+                      error={!!errors.minimum}
+                      disabled={isSubmitting}
+                      placeholder="e.g., 4.00"
+                    />
+                  )}
+                />
+                {errors.minimum && (
+                  <p className="text-sm text-destructive mt-1">{errors.minimum.message}</p>
+                )}
+              </div>
+            )}
           </div>
         </DialogContent>
 

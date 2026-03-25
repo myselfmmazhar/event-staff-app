@@ -204,7 +204,7 @@ export function AssignmentItem({
           <div className="flex-1 flex items-center justify-end gap-5" onClick={(e) => e.stopPropagation()}>
             {/* Qty */}
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Qty:</span>
+              <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Quantity:</span>
               <Input
                 type="number"
                 min={1}
@@ -250,13 +250,12 @@ export function AssignmentItem({
           </div>
         )}
 
-        {/* Total Calculations */}
         <div className="w-[120px] text-right shrink-0 pr-1 pl-4 border-l">
           <div className="text-[14px] font-extrabold text-blue-600 tracking-tight">
-            ${(totalPrice ?? 0).toFixed(2)}
+            {formatCurrency(totalPrice)}
           </div>
           <div className="text-[10px] text-slate-400 font-medium mt-0.5">
-            Cost: ${(totalCost ?? 0).toFixed(2)}
+            Cost: {formatCurrency(totalCost)}
           </div>
         </div>
 
@@ -277,7 +276,7 @@ export function AssignmentItem({
                 <div className="text-sm text-slate-700 font-semibold">{STAFF_RATING_LABELS[serviceAssignment.ratingRequired as StaffRating] || serviceAssignment.ratingRequired}</div>
               </div>
               <div>
-                <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">Exp Requirement</div>
+                <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">Experience Requirement</div>
                 <div className="text-sm text-slate-700 font-semibold">{EXPERIENCE_REQUIREMENT_LABELS[serviceAssignment.experienceRequired as ExperienceRequirement] || serviceAssignment.experienceRequired}</div>
               </div>
               <div>
