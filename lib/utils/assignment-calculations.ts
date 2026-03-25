@@ -19,11 +19,10 @@ export function calculateHours(params: AssignmentDateTimeParams): number | null 
 
   if (rateType !== 'PER_HOUR') return null;
 
-  // Need at least start date to calculate
-  if (!startDate) return null;
+  // For hourly, we MUST have both start and end date/time to calculate
+  if (!startDate || !endDate) return null;
 
-  // Use end date or default to start date (same day)
-  const effectiveEndDate = endDate || startDate;
+  const effectiveEndDate = endDate;
 
   // If we have both times, calculate exact hours
   if (startTime && endTime) {
@@ -34,11 +33,14 @@ export function calculateHours(params: AssignmentDateTimeParams): number | null 
 
     const diffMs = end.getTime() - start.getTime();
     // Return 0 for invalid time ranges (end before start)
-    if (diffMs <= 0) return 0;
+    if (diffMs < 0) return 0;
 
     // Convert to hours, round to 2 decimal places
     return Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
   }
+
+  // If one time is set but not both, we can't calculate exact hours
+  if (startTime || endTime) return null;
 
   // No times set - calculate days and assume 8 hours per day
   const start = new Date(startDate);
@@ -120,6 +122,6 @@ export function getAssignmentTotals(assignment: Assignment): {
  * Format a number as currency.
  */
 export function formatCurrency(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '$0.00';
+  if (value === null || value === undefined) return 'TBD';
   return `$${Number(value).toFixed(2)}`;
 }
