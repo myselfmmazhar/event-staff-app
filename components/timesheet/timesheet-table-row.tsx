@@ -72,20 +72,20 @@ export function TimesheetTableRow({
     const [otPriceManual, setOtPriceManual] = useState<string>(te?.overtimePrice !== undefined && te?.overtimePrice !== null ? toNumber(te.overtimePrice).toString() : '');
     const [isEditingOtCost, setIsEditingOtCost] = useState(false);
     const [isEditingOtPrice, setIsEditingOtPrice] = useState(false);
-    const [isMinApp, setIsMinApp] = useState(!!ct.minimum);
     const [isCommApp, setIsCommApp] = useState(!!ct.commission);
 
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
     const scheduledCost = calcScheduledCost(ct);
-    const clockedCostVal = calcClockedCost(te, ct, isMinApp);
+    const clockedCostVal = calcClockedCost(te, ct);
     const otCost = calcOvertimeCost(te, ct);
     const otPrice = calcOvertimePrice(te, ct);
-    const clockedPriceVal = calcClockedPrice(te, ct, isMinApp);
+    const clockedPriceVal = calcClockedPrice(te, ct);
     const expCost = calcExpenditureCost(ct);
+    const expPrice = calcExpenditurePrice(ct);
     const billAmount = calcBillAmount(ct);
-    const totalBill = calcTotalBill(te, ct, isMinApp, isCommApp);
-    const totalInvoice = calcTotalInvoice(te, ct, isMinApp, isCommApp);
+    const totalBill = calcTotalBill(te, ct, isCommApp);
+    const totalInvoice = calcTotalInvoice(te, ct, isCommApp);
     const grossProfit = totalInvoice - totalBill;
 
     const reviewRating = useMemo(() => ct.invitations?.[0]?.internalReviewRating ?? null, [ct.invitations]);
@@ -181,67 +181,196 @@ export function TimesheetTableRow({
                     <ActionDropdown actions={actions} align="start" />
                 </td>
 
-                {/* Staff Name or Event Name */}
-                {showEventName ? (
-                    <>
-                        <td className="px-3 py-2.5 font-bold text-primary max-w-[200px] truncate">
-                            {ct.event?.title || '—'}
-                        </td>
-                    </>
-                ) : (
-                    <>
-                        {/* Position */}
-                        <td className="px-3 py-2.5">
-                            <Badge variant="primary" className="text-[10px] whitespace-nowrap bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
-                                {ct.service?.title || 'Unassigned'}
-                            </Badge>
-                        </td>
-                        {/* Full Name */}
-                        <td className="px-3 py-2.5 font-bold text-primary">
-                            {ct.staff ? `${ct.staff.firstName} ${ct.staff.lastName}` : '—'}
-                        </td>
-                    </>
-                )}
+                {/* Service Date */}
+                <td className="px-3 py-2.5 whitespace-nowrap text-[11px] font-medium text-slate-600">
+                    {formatDate(ct.startDate)}
+                </td>
 
-                {/* Scheduled Shift + Detailed Info */}
-                <td className="px-3 py-2.5 min-w-[200px]">
-                    <div className="space-y-1.5">
+                {/* Full Name */}
+                <td className="px-3 py-2.5 font-bold text-primary whitespace-nowrap">
+                    {!showEventName ? (
+                        ct.staff ? (
+                            <div className="flex flex-col leading-tight">
+                                <span>{ct.staff.firstName}</span>
+                                <span className="text-slate-500 font-semibold">{ct.staff.lastName}</span>
+                            </div>
+                        ) : '—'
+                    ) : (
+                        <div className="whitespace-normal max-w-[200px] leading-tight">
+                            {ct.event?.title || '—'}
+                        </div>
+                    )}
+                </td>
+
+                {/* Services / Product (Position) */}
+                <td className="px-3 py-2.5">
+                    <Badge variant="primary" className="text-[10px] whitespace-normal max-w-[120px] bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight">
+                        {ct.service?.title || '—'}
+                    </Badge>
+                </td>
+
+                {/* Notes (Internal Notes) */}
+                <td className="px-3 py-2.5 whitespace-normal max-w-[150px] text-[10px] text-muted-foreground leading-snug">
+                    {te?.notes || ct.notes || '—'}
+                </td>
+
+                {/* Scheduled Shift */}
+                <td className="px-3 py-2.5 min-w-[180px]">
+                    <div className="space-y-1">
                         <div>
-                            <div className="text-[9px] font-bold text-muted-foreground uppercase leading-none mb-0.5">Scheduled Start Date & Time</div>
-                            <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
-                                <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{formatDate(ct.startDate)}</span>
+                            <div className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Scheduled Start Date & Time</div>
+                            <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
+                                <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.startDate)}</span>
                                 <span className="text-primary font-bold">{formatTime(ct.startTime)}</span>
                             </div>
                         </div>
                         <div>
-                            <div className="text-[9px] font-bold text-muted-foreground uppercase leading-none mb-0.5">Scheduled End Date & Time</div>
-                            <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
-                                <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{formatDate(ct.endDate || ct.startDate)}</span>
+                            <div className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Scheduled End Date & Time</div>
+                            <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
+                                <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.endDate || ct.startDate)}</span>
                                 <span className="text-primary font-bold">{formatTime(ct.endTime)}</span>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 pt-0.5">
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase">Scheduled Hours:</span>
-                            <span className="text-[11px] font-extrabold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                                {hoursScheduled.toFixed(2)} hrs
-                            </span>
+                        <div className="flex items-center gap-1.5 pt-0.5 border-t border-slate-50">
+                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Scheduled Hours:</span>
+                            <span className="text-[10px] font-extrabold text-emerald-600">{hoursScheduled.toFixed(2)} hrs</span>
                         </div>
                     </div>
                 </td>
 
+                {/* Actual Shift (formerly Clock In/Out) */}
+                <td className="px-3 py-2.5 min-w-[200px]" onClick={e => e.stopPropagation()}>
+                    {isEditing ? (
+                        <div className="flex flex-col gap-1.5 p-1 bg-slate-50 rounded border">
+                            <input
+                                type="datetime-local"
+                                value={clockIn}
+                                onChange={e => setClockIn(e.target.value)}
+                                className="h-6 text-[9px] border border-border rounded px-1"
+                            />
+                            <input
+                                type="datetime-local"
+                                value={clockOut}
+                                onChange={e => setClockOut(e.target.value)}
+                                className="h-6 text-[9px] border border-border rounded px-1"
+                            />
+                            <div className="flex items-center gap-1">
+                                <input
+                                    type="number"
+                                    value={breakMins}
+                                    onChange={e => setBreakMins(parseInt(e.target.value) || 0)}
+                                    className="h-6 w-full text-[9px] border border-border rounded px-1"
+                                    placeholder="Break"
+                                />
+                                <button onClick={handleSave} className="p-1 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="p-1 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-1 hover:bg-slate-50/50 rounded transition-colors" onClick={() => setIsEditing(true)}>
+                            <div>
+                                <div className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Shift Start Date & Time</div>
+                                <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
+                                    {te?.clockIn ? (
+                                        <>
+                                            <span className="bg-emerald-50 text-emerald-700 px-1 rounded-sm">{formatDate(te.clockIn)}</span>
+                                            <span className="text-emerald-700 font-bold">{formatTime(te.clockIn ? fmtDateTime(te.clockIn).split(', ')[1] || null : null)}</span>
+                                        </>
+                                    ) : (
+                                        <span className="text-slate-300 italic">Not clocked</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Shift End Date & Time</div>
+                                <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
+                                    {te?.clockOut ? (
+                                        <>
+                                            <span className="bg-red-50 text-red-700 px-1 rounded-sm">{formatDate(te.clockOut)}</span>
+                                            <span className="text-red-700 font-bold">{formatTime(te.clockOut ? fmtDateTime(te.clockOut).split(', ')[1] || null : null)}</span>
+                                        </>
+                                    ) : (
+                                        <span className="text-slate-300 italic">No out</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 pt-0.5 border-t border-emerald-50">
+                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift Hours:</span>
+                                <span className={`text-[10px] font-extrabold ${hoursClocked > 0 ? 'text-blue-600' : 'text-slate-400'}`}>
+                                    {hoursClocked.toFixed(2)} hrs
+                                </span>
+                                {isEdited && <Badge variant="warning" className="text-[7px] h-2.5 px-0.5 leading-none">Edited</Badge>}
+                            </div>
+                        </div>
+                    )}
+                </td>
+
+                {/* Variance */}
                 <td className="px-3 py-2.5 text-center">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsMinApp(prev => !prev);
-                        }}
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold transition-all border ${isMinApp
-                                ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
-                                : 'bg-muted text-muted-foreground border-border'
-                            }`}
-                    >
-                        {isMinApp ? 'YES' : 'NO'}
-                    </button>
+                    <div className="flex flex-col items-center">
+                        <span className={`text-[11px] font-bold ${Math.abs(hoursScheduled - hoursClocked) < 0.1 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {(hoursScheduled - hoursClocked).toFixed(2)}
+                        </span>
+                        <span className="text-[8px] font-bold text-muted-foreground uppercase">Hrs</span>
+                    </div>
+                </td>
+
+                {/* Rate Type */}
+                <td className="px-3 py-2.5 text-center text-muted-foreground whitespace-nowrap text-[9px] uppercase font-bold">
+                    {ct.payRateType.replace('PER_', '')}
+                </td>
+
+                <td className="px-3 py-2.5 text-center font-bold text-slate-700 whitespace-nowrap text-[11px]">
+                    {expCost ? fmtCurrency(expCost) : '—'}
+                </td>
+                <td className="px-3 py-2.5 text-center font-bold text-slate-700 whitespace-nowrap text-[11px]">
+                    {expPrice ? fmtCurrency(expPrice) : '—'}
+                </td>
+
+                {/* Cost Detail */}
+                {(subTab === 'all' || subTab === 'bill') && (
+                    <td className="px-3 py-2.5 min-w-[140px]">
+                        <div className="space-y-0.5 text-right tabular-nums">
+                            <div className="flex justify-between items-center gap-2">
+                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
+                                <span className="text-[10px] font-semibold">{fmtCurrency(clockedCostVal)}</span>
+                            </div>
+                            <div className="flex justify-between items-center gap-2">
+                                <span className="text-[8px] font-bold text-muted-foreground uppercase">OT:</span>
+                                <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otCost)}</span>
+                            </div>
+                            <div className="flex justify-between items-center gap-2">
+                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Exp:</span>
+                                <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expCost)}</span>
+                            </div>
+                            <div className="pt-0.5 border-t flex justify-between items-center gap-2">
+                                <span className="text-[9px] font-extrabold uppercase">Cost:</span>
+                                <span className="text-[10px] font-extrabold">{fmtCurrency(clockedCostVal + otCost + expCost)}</span>
+                            </div>
+                        </div>
+                    </td>
+                )}
+
+                {/* Price Detail */}
+                <td className="px-3 py-2.5 min-w-[140px]">
+                    <div className="space-y-0.5 text-right tabular-nums">
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
+                            <span className="text-[10px] font-semibold">{fmtCurrency(clockedPriceVal)}</span>
+                        </div>
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="text-[8px] font-bold text-muted-foreground uppercase">OT:</span>
+                            <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otPrice)}</span>
+                        </div>
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Exp:</span>
+                            <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expPrice)}</span>
+                        </div>
+                        <div className="pt-0.5 border-t flex justify-between items-center gap-2">
+                            <span className="text-[9px] font-extrabold uppercase">Price:</span>
+                            <span className="text-[10px] font-extrabold">{fmtCurrency(clockedPriceVal + otPrice + expPrice)}</span>
+                        </div>
+                    </div>
                 </td>
 
                 <td className="px-3 py-2.5 text-center">
@@ -259,136 +388,22 @@ export function TimesheetTableRow({
                     </button>
                 </td>
 
-
-                {/* Pay Rate / Type - Only show in All or Bill tab */}
-                {(subTab === 'all' || subTab === 'bill') && (
-                    <>
-                        <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
-                            ${toNumber(ct.payRate).toFixed(2)}
-                        </td>
-                        <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap text-[10px] uppercase">
-                            {ct.payRateType.replace('PER_', '')}
-                        </td>
-                    </>
-                )}
-
-                {/* Clock In / Out Editor or Display */}
-                {isEditing ? (
-                    <td colSpan={3} className="px-3 py-1" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="datetime-local"
-                                value={clockIn}
-                                onChange={e => setClockIn(e.target.value)}
-                                className="h-7 text-[10px] border border-border rounded px-1"
-                            />
-                            <input
-                                type="datetime-local"
-                                value={clockOut}
-                                onChange={e => setClockOut(e.target.value)}
-                                className="h-7 text-[10px] border border-border rounded px-1"
-                            />
-                            <input
-                                type="number"
-                                value={breakMins}
-                                onChange={e => setBreakMins(parseInt(e.target.value) || 0)}
-                                className="h-7 w-12 text-[10px] border border-border rounded px-1"
-                                placeholder="Break"
-                            />
-                            <button onClick={handleSave} className="p-1 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="p-1 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
-                        </div>
-                    </td>
-                ) : (
-                    <>
-                        {/* Clock In */}
-                        <td
-                            className={`px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-emerald-50 transition-colors ${isEdited ? 'text-amber-700' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-                        >
-                            <div className="flex items-center gap-2">
-                                {te?.clockIn ? (
-                                    <span className="text-emerald-600 font-medium">{fmtDateTime(te.clockIn)}</span>
-                                ) : (
-                                    <span className="text-slate-300 italic">Not clocked</span>
-                                )}
-                                {isEdited && (
-                                    <Badge variant="warning" className="text-[8px] h-3 px-1 leading-none py-0">
-                                        Edited
-                                    </Badge>
-                                )}
-                            </div>
-                        </td>
-                        {/* Clock Out */}
-                        <td
-                            className={`px-3 py-2.5 whitespace-nowrap text-[10px] hover:bg-red-50 transition-colors ${isEdited ? 'text-amber-700' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-                        >
-                            {te?.clockOut ? <span className="text-red-500 font-medium">{fmtDateTime(te.clockOut)}</span> : '—'}
-                        </td>
-                        {/* Hrs Clo */}
-                        <td
-                            className="px-3 py-2.5 text-center tabular-nums font-semibold hover:bg-slate-50 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-                        >
-                            {hoursClocked > 0 ? hoursClocked.toFixed(2) : '—'}
-                        </td>
-                    </>
-                )}
-
-                {/* Cost Columns - Only show in All or Bill tab */}
-                {(subTab === 'all' || subTab === 'bill') && (
-                    <td className="px-3 py-2.5 min-w-[150px]">
-                        <div className="space-y-1 text-right tabular-nums">
-                            <div className="flex justify-between items-center gap-4">
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase">Shift Cost:</span>
-                                <span className="text-[11px] font-semibold text-slate-700">{clockedCostVal > 0 ? fmtCurrency(clockedCostVal) : '0.00'}</span>
-                            </div>
-                            <div className="flex justify-between items-center gap-4">
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase">Overtime:</span>
-                                <span className="text-[11px] font-semibold text-amber-600">{otCost > 0 ? fmtCurrency(otCost) : '0.00'}</span>
-                            </div>
-                            <div className="flex justify-between items-center gap-4">
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase">Travel:</span>
-                                <span className="text-[11px] font-semibold text-indigo-600">{expCost > 0 ? fmtCurrency(expCost) : '0.00'}</span>
-                            </div>
-                            <div className="pt-0.5 mt-0.5 border-t border-slate-100 flex justify-between items-center gap-4">
-                                <span className="text-[10px] font-extrabold text-slate-900 uppercase">Cost:</span>
-                                <span className="text-[11px] font-extrabold text-slate-900">{fmtCurrency(clockedCostVal + otCost + expCost)}</span>
-                            </div>
-                        </div>
-                    </td>
-                )}
-
-                {/* Consolidated Price (Bill) Column - Always Visible */}
-                <td className="px-3 py-2.5 min-w-[150px]">
-                    <div className="space-y-1 text-right tabular-nums">
-                        <div className="flex justify-between items-center gap-4">
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase">Shift Price:</span>
-                            <span className="text-[11px] font-semibold text-slate-700">{clockedPriceVal > 0 ? fmtCurrency(clockedPriceVal) : '0.00'}</span>
-                        </div>
-                        <div className="flex justify-between items-center gap-4">
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase">Overtime:</span>
-                            <span className="text-[11px] font-semibold text-amber-600">{otPrice > 0 ? fmtCurrency(otPrice) : '0.00'}</span>
-                        </div>
-                        <div className="flex justify-between items-center gap-4">
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase">Travel:</span>
-                            <span className="text-[11px] font-semibold text-indigo-600">{expCost > 0 ? fmtCurrency(expCost) : '0.00'}</span>
-                        </div>
-                        <div className="pt-0.5 mt-0.5 border-t border-slate-100 flex justify-between items-center gap-4">
-                            <span className="text-[10px] font-extrabold text-slate-900 uppercase">Price:</span>
-                            <span className="text-[11px] font-extrabold text-slate-900">{fmtCurrency(clockedPriceVal + otPrice + expCost)}</span>
-                        </div>
-                    </div>
+                {/* Status */}
+                <td className="px-3 py-2.5 text-center">
+                    <Badge
+                        variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
+                        className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
+                    >
+                        {reviewRating || 'PENDING'}
+                    </Badge>
                 </td>
 
-                {/* Financial Summary Columns (Invoice, Bill, Net Income) - Always Visible */}
-                <td className="px-3 py-2.5 text-right tabular-nums font-medium text-foreground bg-gray-50/5">
-                    {totalInvoice > 0 ? fmtCurrency(totalInvoice) : '0.00'}
+                {/* Financial Totals */}
+                <td className="px-3 py-2.5 text-right tabular-nums font-bold text-red-600 bg-red-50/10">
+                    {fmtCurrency(totalBill)}
                 </td>
-
-                <td className="px-3 py-2.5 text-right tabular-nums font-medium text-red-600 bg-red-50/10">
-                    {totalBill > 0 ? fmtCurrency(totalBill) : '0.00'}
+                <td className="px-3 py-2.5 text-right tabular-nums font-bold text-foreground bg-slate-50/10">
+                    {fmtCurrency(totalInvoice)}
                 </td>
                 <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${grossProfit >= 0 ? 'text-foreground' : 'text-red-600 bg-red-50/20'}`}>
                     {fmtCurrency(grossProfit)}

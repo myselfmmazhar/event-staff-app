@@ -512,24 +512,22 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service Date</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal max-w-[120px]">Services / Product</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Notes</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
-                                                    {(subTab === 'all' || subTab === 'bill') && (
-                                                        <>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
-                                                        </>
-                                                    )}
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-normal max-w-[80px]">Hours Clocked</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Actual Shift</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Variance</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Exp Cost</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Exp Price</th>
                                                     {(subTab === 'all' || subTab === 'bill') && (
                                                         <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Cost</th>
                                                     )}
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Price</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
                                                     <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th>
@@ -590,23 +588,22 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Event / Task</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service Date</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal max-w-[120px]">Services / Product</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Notes</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
-                                                    {(subTab === 'all' || subTab === 'bill') && (
-                                                        <>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
-                                                        </>
-                                                    )}
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-normal max-w-[80px]">Hours Clocked</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Actual Shift</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Variance</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Exp Cost</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Exp Price</th>
                                                     {(subTab === 'all' || subTab === 'bill') && (
                                                         <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Cost</th>
                                                     )}
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Price</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
                                                     <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th>
@@ -677,24 +674,22 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service Date</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal max-w-[120px]">Services / Product</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Notes</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
-                                                    {(subTab === 'all' || subTab === 'bill') && (
-                                                        <>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
-                                                        </>
-                                                    )}
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
-                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-normal max-w-[80px]">Hours Clocked</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Actual Shift</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Variance</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Exp Cost</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Exp Price</th>
                                                     {(subTab === 'all' || subTab === 'bill') && (
                                                         <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Cost</th>
                                                     )}
                                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Price</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
                                                     <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th>

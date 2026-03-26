@@ -23,6 +23,9 @@ export type CallTimeRow = {
     expenditure?: boolean;
     expenditureAmount?: number | { toNumber?: () => number } | string | null;
     expenditureAmountType?: string | null;
+    expenditureCost?: number | { toNumber?: () => number } | string | null;
+    expenditurePrice?: number | { toNumber?: () => number } | string | null;
+    travelInMinimum?: boolean;
     notes: string | null;
     confirmedCount: number;
     needsStaff: boolean;

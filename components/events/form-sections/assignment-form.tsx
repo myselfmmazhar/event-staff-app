@@ -135,6 +135,10 @@ export function AssignmentForm({
         rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
         notes: assignment.type === 'SERVICE' ? assignment.notes : null,
         instructions: assignment.instructions ?? null,
+        expenditure: assignment.expenditure,
+        expenditureCost: assignment.expenditureCost ?? null,
+        expenditurePrice: assignment.expenditurePrice ?? null,
+        expenditureAmountType: assignment.expenditureAmountType ?? null,
       }
       : {
         type: defaultType,
@@ -147,9 +151,10 @@ export function AssignmentForm({
         approveOvertime: false,
         overtimeRate: null,
         overtimeRateType: null,
-        minimum: false,
-        minimumAmount: null,
-        minimumAmountType: null,
+        expenditure: false,
+        expenditureCost: null,
+        expenditurePrice: null,
+        expenditureAmountType: null,
         payRate: null,
         billRate: null,
         rateType: null,
@@ -255,6 +260,10 @@ export function AssignmentForm({
         rateType: assignment.type === 'SERVICE' ? assignment.rateType : null,
         notes: assignment.type === 'SERVICE' ? assignment.notes : null,
         instructions: assignment.instructions ?? null,
+        expenditure: assignment.expenditure,
+        expenditureCost: assignment.expenditureCost ?? null,
+        expenditurePrice: assignment.expenditurePrice ?? null,
+        expenditureAmountType: assignment.expenditureAmountType ?? null,
       });
       // Re-enable auto-sync after reset completes
       setTimeout(() => { isInitialMount.current = false; }, 0);
@@ -320,6 +329,17 @@ export function AssignmentForm({
       'ASSIGNMENT': 'PER_SHIFT',
     };
     setValue('rateType', service.costUnitType ? rateTypeMap[service.costUnitType] || 'PER_HOUR' : 'PER_HOUR');
+    
+    // Auto-fill expenditure values from service
+    // @ts-ignore - The types might be slightly out of sync in VS Code but the db has these
+    setValue('expenditure', service.expenditure || false);
+    // @ts-ignore
+    setValue('expenditureCost', service.expenditureCost ? Number(service.expenditureCost) : null);
+    // @ts-ignore
+    setValue('expenditurePrice', service.expenditurePrice ? Number(service.expenditurePrice) : null);
+    // @ts-ignore
+    setValue('expenditureAmountType', service.expenditureAmountType || null);
+
     setServiceSelectorOpen(false);
     setServiceSearch('');
   };
@@ -382,44 +402,12 @@ export function AssignmentForm({
           commission: data.commission ?? false,
           commissionAmount: data.commissionAmount ?? null,
           commissionAmountType: data.commissionAmountType ?? null,
-          minimum: data.minimum ?? false,
-          minimumAmount: data.minimumAmount ?? null,
-          minimumAmountType: data.minimumAmountType ?? null,
-          description: data.description ?? null,
-          instructions: data.instructions ?? null,
-        };
-        onLiveChange(liveAssignment);
-      } else {
-        const liveAssignment: Assignment = {
-          id,
-          type: 'SERVICE',
-          serviceId: data.serviceId!,
-          service: selectedService,
-          quantity: data.quantity ?? 1,
-          commission: data.commission ?? false,
-          commissionAmount: data.commissionAmount ?? null,
-          commissionAmountType: data.commissionAmountType ?? null,
-          startDate: startDateUBD ? null : (data.startDate ?? null),
-          startDateUBD,
-          startTime: startTimeTBD ? null : (data.startTime ?? null),
-          startTimeTBD,
-          endDate: endDateUBD ? null : (data.endDate ?? null),
-          endDateUBD,
-          endTime: endTimeTBD ? null : (data.endTime ?? null),
-          endTimeTBD,
-          experienceRequired: data.experienceRequired || 'ANY',
-          ratingRequired: data.ratingRequired || 'ANY',
-          approveOvertime: data.approveOvertime || false,
-          overtimeRate: data.overtimeRate ?? null,
-          overtimeRateType: data.overtimeRateType ?? null,
-          minimum: data.minimum ?? false,
-          minimumAmount: data.minimumAmount ?? null,
-          minimumAmountType: data.minimumAmountType ?? null,
-          payRate: data.payRate ?? null,
-          billRate: data.billRate ?? null,
-          rateType: data.rateType ?? null,
           notes: data.notes ?? null,
           instructions: data.instructions ?? null,
+          expenditure: data.expenditure ?? false,
+          expenditureCost: data.expenditureCost ?? null,
+          expenditurePrice: data.expenditurePrice ?? null,
+          expenditureAmountType: data.expenditureAmountType ?? null,
         };
         onLiveChange(liveAssignment);
       }
@@ -452,11 +440,12 @@ export function AssignmentForm({
           commission: data.commission,
           commissionAmount: data.commissionAmount ?? null,
           commissionAmountType: data.commissionAmountType ?? null,
-          minimum: data.minimum,
-          minimumAmount: data.minimumAmount ?? null,
-          minimumAmountType: data.minimumAmountType ?? null,
-          description: data.description ?? null,
+          notes: data.notes ?? null,
           instructions: data.instructions ?? null,
+          expenditure: data.expenditure,
+          expenditureCost: data.expenditureCost ?? null,
+          expenditurePrice: data.expenditurePrice ?? null,
+          expenditureAmountType: data.expenditureAmountType ?? null,
         };
         onSave(productAssignment, action);
       } else {
@@ -478,13 +467,14 @@ export function AssignmentForm({
           endTime: endTimeTBD ? null : (data.endTime ?? null),
           endTimeTBD,
           experienceRequired: data.experienceRequired || 'ANY',
-          ratingRequired: data.ratingRequired || 'ANY',
+          ratingRequired: ratingRequiredSchema.parse(data.ratingRequired || 'ANY'),
           approveOvertime: data.approveOvertime || false,
           overtimeRate: data.overtimeRate ?? null,
           overtimeRateType: data.overtimeRateType ?? null,
-          minimum: data.minimum,
-          minimumAmount: data.minimumAmount ?? null,
-          minimumAmountType: data.minimumAmountType ?? null,
+          expenditure: data.expenditure,
+          expenditureCost: data.expenditureCost ?? null,
+          expenditurePrice: data.expenditurePrice ?? null,
+          expenditureAmountType: data.expenditureAmountType ?? null,
           payRate: data.payRate ?? null,
           billRate: data.billRate ?? null,
           rateType: data.rateType ?? null,
@@ -1163,14 +1153,13 @@ export function AssignmentForm({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
+              <Label className="text-sm font-medium mb-2 block">Expenditures?</Label>
               <div className="flex items-center gap-4 h-10">
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
-                    name="minimum"
-                    checked={watch('minimum') === true}
-                    onChange={() => setValue('minimum', true)}
+                    checked={watch('expenditure') === true}
+                    onChange={() => setValue('expenditure', true)}
                     disabled={disabled}
                     className="accent-primary"
                   />
@@ -1179,9 +1168,8 @@ export function AssignmentForm({
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
-                    name="minimum"
-                    checked={watch('minimum') === false}
-                    onChange={() => setValue('minimum', false)}
+                    checked={watch('expenditure') === false}
+                    onChange={() => setValue('expenditure', false)}
                     disabled={disabled}
                     className="accent-primary"
                   />
@@ -1190,23 +1178,30 @@ export function AssignmentForm({
               </div>
             </div>
             <div>
-              <Label htmlFor="minimumAmount" className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
+              <Label htmlFor="expenditureCost" className="text-sm font-medium mb-2 block">Exp Cost (to Talent)</Label>
               <Input
-                id="minimumAmount"
+                id="expenditureCost"
                 type="number"
                 step="0.01"
                 min={0}
-                {...register('minimumAmount', { valueAsNumber: true })}
-                disabled={disabled || !watch('minimum')}
+                {...register('expenditureCost', { valueAsNumber: true })}
+                disabled={disabled || !watch('expenditure')}
                 onFocus={e => e.target.select()}
                 placeholder="0.00"
               />
             </div>
             <div>
-              <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
-              <div className="h-10 flex items-center px-3 rounded-md border border-input bg-muted/50 text-sm italic text-muted-foreground">
-                {watch('rateType') ? RATE_TYPE_LABELS[watch('rateType') as RateType] : 'Select rate type above'}
-              </div>
+              <Label htmlFor="expenditurePrice" className="text-sm font-medium mb-2 block">Exp Price (to Client)</Label>
+              <Input
+                id="expenditurePrice"
+                type="number"
+                step="0.01"
+                min={0}
+                {...register('expenditurePrice', { valueAsNumber: true })}
+                disabled={disabled || !watch('expenditure')}
+                onFocus={e => e.target.select()}
+                placeholder="0.00"
+              />
             </div>
           </div>
           </>

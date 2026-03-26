@@ -57,12 +57,16 @@ export interface BaseAssignment {
   commissionAmount?: number | null;
   /** Commission amount type (e.g. PERCENTAGE, FLAT) */
   commissionAmountType?: AmountType | null;
-  /** Whether minimum applies to this assignment */
-  minimum: boolean;
-  /** Minimum amount (if minimum is enabled) */
-  minimumAmount?: number | null;
-  /** Minimum amount type (e.g. PERCENTAGE, FLAT) */
-  minimumAmountType?: AmountType | null;
+  /** Whether expenditure applies to this assignment */
+  expenditure: boolean;
+  /** Expenditure cost (paid to talent) */
+  expenditureCost?: number | null;
+  /** Expenditure price (billed to client) */
+  expenditurePrice?: number | null;
+  /** Legacy expenditure amount */
+  expenditureAmount?: number | null;
+  /** Expenditure amount type (e.g. FLAT) */
+  expenditureAmountType?: AmountType | null;
 }
 
 /**
@@ -164,9 +168,11 @@ export interface AssignmentFormData {
   billRate?: number | null;
   rateType?: RateType | null;
   notes?: string | null;
-  minimum?: boolean;
-  minimumAmount?: number | null;
-  minimumAmountType?: AmountType | null;
+  expenditure?: boolean;
+  expenditureCost?: number | null;
+  expenditurePrice?: number | null;
+  expenditureAmount?: number | null;
+  expenditureAmountType?: AmountType | null;
 }
 
 /**
