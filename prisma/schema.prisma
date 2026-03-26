@@ -142,6 +142,7 @@ model CallTime {
   expenditureCost       Decimal?                @db.Decimal(10, 2)
   expenditurePrice      Decimal?                @db.Decimal(10, 2)
   travelInMinimum       Boolean                 @default(false)
+  minimum               Decimal?                @db.Decimal(10, 2)
 
   createdAt             DateTime                @default(now()) @db.Timestamp(6)
   updatedAt             DateTime                @updatedAt @db.Timestamp(6)
@@ -410,6 +411,7 @@ model Service {
   expenditureCost       Decimal?               @db.Decimal(10, 2)
   expenditurePrice      Decimal?               @db.Decimal(10, 2)
   travelInMinimum       Boolean                @default(false)
+  minimum               Decimal?               @db.Decimal(10, 2)
   isActive              Boolean                @default(true)
   createdBy             String
   createdAt             DateTime               @default(now()) @db.Timestamp(6)
@@ -1061,26 +1063,40 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id          String   @id @default(uuid()) @db.Uuid
-  invoiceId   String   @db.Uuid
-  date        DateTime? @db.Date
-  productId   String?  @db.Uuid
-  serviceId   String?  @db.Uuid
-  description String
-  quantity    Decimal  @db.Decimal(10, 2)
-  price       Decimal  @db.Decimal(10, 2)
-  amount      Decimal  @db.Decimal(10, 2)
-  createdAt   DateTime @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime @updatedAt @db.Timestamp(6)
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product     Product? @relation(fields: [productId], references: [id])
-  service     Service? @relation(fields: [serviceId], references: [id])
+  id                     String   @id @default(uuid()) @db.Uuid
+  invoiceId              String   @db.Uuid
+  date                   DateTime? @db.Date
+  productId              String?  @db.Uuid
+  serviceId              String?  @db.Uuid
+  description            String
+  quantity               Decimal  @db.Decimal(10, 2)
+  price                  Decimal  @db.Decimal(10, 2)
+  amount                 Decimal  @db.Decimal(10, 2)
+  
+  // New fields for shift details (mirrors CallTime/TimeEntry data)
+  scheduledStart         DateTime? @db.Timestamp(6)
+  scheduledEnd           DateTime? @db.Timestamp(6)
+  scheduledHours         Decimal?  @db.Decimal(10, 2)
+  actualStart           DateTime? @db.Timestamp(6)
+  actualEnd             DateTime? @db.Timestamp(6)
+  actualHours           Decimal?  @db.Decimal(10, 2)
+
+  scheduleShiftDetail    String?   @db.Text
+  actualShiftDetails     String?   @db.Text
+  internalNotes          String?   @db.Text
+
+  createdAt              DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt              DateTime  @updatedAt @db.Timestamp(6)
+  invoice                Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product                Product? @relation(fields: [productId], references: [id])
+  service                Service? @relation(fields: [serviceId], references: [id])
 
   @@index([invoiceId])
   @@index([productId])
   @@index([serviceId])
   @@map("invoice_items")
 }
+
 
 enum EstimateStatus {
   DRAFT

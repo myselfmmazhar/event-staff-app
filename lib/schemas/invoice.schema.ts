@@ -21,8 +21,18 @@ export const InvoiceItemSchema = z.object({
     quantity: z.coerce.number().min(0),
     price: z.coerce.number().min(0),
     amount: z.coerce.number().min(0),
-    date: z.date().optional().nullable(),
+    date: z.coerce.date().optional().nullable(),
+    scheduledStart: z.date().optional().nullable(),
+    scheduledEnd: z.date().optional().nullable(),
+    scheduledHours: z.coerce.number().optional().nullable(),
+    actualStart: z.date().optional().nullable(),
+    actualEnd: z.date().optional().nullable(),
+    actualHours: z.coerce.number().optional().nullable(),
+    scheduleShiftDetail: z.string().optional().nullable(),
+    actualShiftDetails: z.string().optional().nullable(),
+    internalNotes: z.string().optional().nullable(),
 });
+
 
 // Base Invoice Schema
 export const InvoiceSchemaCtx = z.object({

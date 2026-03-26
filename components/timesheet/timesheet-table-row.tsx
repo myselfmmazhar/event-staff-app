@@ -28,7 +28,8 @@ import {
     calcGrossProfit,
     fmtCurrency,
     toInputDatetime,
-    calcExpenditureCost
+    calcExpenditureCost,
+    calcExpenditurePrice
 } from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';

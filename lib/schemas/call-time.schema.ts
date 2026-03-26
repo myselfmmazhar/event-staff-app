@@ -95,6 +95,7 @@ export class CallTimeSchema {
       expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
       expenditureCost: z.number().min(0).optional().nullable(),
       expenditurePrice: z.number().min(0).optional().nullable(),
+      minimum: z.number().min(0).optional().nullable(),
       travelInMinimum: z.boolean().default(false),
     })
     .refine((data) => data.payRateType === data.billRateType, {
@@ -171,6 +172,7 @@ export class CallTimeSchema {
       expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
       expenditureCost: z.number().min(0).optional().nullable(),
       expenditurePrice: z.number().min(0).optional().nullable(),
+      minimum: z.number().min(0).optional().nullable(),
       travelInMinimum: z.boolean().optional(),
     })
     .refine(
@@ -367,6 +369,7 @@ export class CallTimeSchema {
     expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
     expenditureCost: z.number().min(0).optional().nullable(),
     expenditurePrice: z.number().min(0).optional().nullable(),
+    minimum: z.number().min(0).optional().nullable(),
     travelInMinimum: z.boolean().default(false).optional(),
 
     notes: z.string().max(5000).optional().nullable(),

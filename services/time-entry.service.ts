@@ -278,6 +278,7 @@ export class TimeEntryService {
                         event: { select: { id: true, title: true, clientId: true } },
                     },
                 },
+                timeEntry: true,
             },
         });
 
@@ -319,7 +320,46 @@ export class TimeEntryService {
 
                 const rate = Number(inv.callTime.billRate) || 0;
                 const isPerHour = inv.callTime.billRateType === 'PER_HOUR';
-                const quantity = isPerHour ? hours : 1;
+                
+                // Raw Scheduled Start/End
+                let scheduledStart = null;
+                let scheduledEnd = null;
+                if (inv.callTime.startDate && inv.callTime.startTime) {
+                    scheduledStart = new Date(inv.callTime.startDate);
+                    const [sh, sm] = inv.callTime.startTime.split(':').map(Number);
+                    scheduledStart.setHours(sh ?? 0, sm ?? 0, 0, 0);
+
+                    scheduledEnd = new Date(inv.callTime.endDate || inv.callTime.startDate);
+                    const [eh, em] = inv.callTime.endTime?.split(':').map(Number) || [0, 0];
+                    scheduledEnd.setHours(eh ?? 0, em ?? 0, 0, 0);
+                }
+
+                // Actual Hours calculation (if time entry exists)
+                let actualHours = 0;
+                if (inv.timeEntry?.clockIn && inv.timeEntry?.clockOut) {
+                    const diffMs = new Date(inv.timeEntry.clockOut).getTime() - new Date(inv.timeEntry.clockIn).getTime();
+                    const breakMs = (inv.timeEntry.breakMinutes || 0) * 60 * 1000;
+                    actualHours = Math.max(0, Math.round(((diffMs - breakMs) / (1000 * 60 * 60)) * 100) / 100);
+                }
+
+                const quantity = isPerHour ? (actualHours || hours) : 1;
+
+                // Format Details (Keep for reference or title use)
+                const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString();
+                const fmtTime = (d: Date | string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                const schedStartStr = scheduledStart ? `${fmtDate(scheduledStart)} ${fmtTime(scheduledStart)}` : '—';
+                const schedEndStr = scheduledEnd ? `${fmtDate(scheduledEnd)} ${fmtTime(scheduledEnd)}` : '—';
+                const scheduleShiftDetail = `Scheduled: ${schedStartStr} - ${schedEndStr} (${hours} hrs)`;
+
+                let actualShiftDetails = 'Actual: Not clocked';
+                if (inv.timeEntry?.clockIn) {
+                    const clockInStr = `${fmtDate(inv.timeEntry.clockIn)} ${fmtTime(inv.timeEntry.clockIn)}`;
+                    const clockOutStr = inv.timeEntry.clockOut 
+                        ? `${fmtDate(inv.timeEntry.clockOut)} ${fmtTime(inv.timeEntry.clockOut)}` 
+                        : 'No out';
+                    actualShiftDetails = `Actual: ${clockInStr} - ${clockOutStr} (${actualHours} hrs)`;
+                }
 
                 return {
                     description: `${inv.callTime.service?.title || 'Staff'} - ${inv.staff.firstName} ${inv.staff.lastName}`,
@@ -328,6 +368,15 @@ export class TimeEntryService {
                     amount: quantity * rate,
                     serviceId: inv.callTime.serviceId,
                     date: inv.callTime.startDate,
+                    scheduledStart,
+                    scheduledEnd,
+                    scheduledHours: hours,
+                    actualStart: inv.timeEntry?.clockIn,
+                    actualEnd: inv.timeEntry?.clockOut,
+                    actualHours,
+                    scheduleShiftDetail,
+                    actualShiftDetails,
+                    internalNotes: inv.timeEntry?.notes || ""
                 };
             });
 
