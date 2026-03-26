@@ -54,9 +54,9 @@ export const assignmentFieldsSchema = z
     commission: z.boolean().default(false),
     commissionAmount: z.coerce.number().min(0).optional().nullable(),
     commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
-    minimum: z.coerce.number().min(0).optional().nullable(),
     expenditure: z.boolean().default(false),
-    expenditureAmount: z.coerce.number().min(0).optional().nullable(),
+    expenditureCost: z.coerce.number().min(0).optional().nullable(),
+    expenditurePrice: z.coerce.number().min(0).optional().nullable(),
     expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
     travelInMinimum: z.boolean().default(false),
     notes: z.string().optional(),
@@ -250,6 +250,17 @@ export function AssignmentFormFields({
     if (service.price !== null && service.price !== undefined) {
       setValue('billRate', Number(service.price));
     }
+    
+    // Auto-fill expenditure values from service
+    // @ts-ignore
+    setValue('expenditure', service.expenditure || false);
+    // @ts-ignore
+    setValue('expenditureCost', service.expenditureCost ? Number(service.expenditureCost) : null);
+    // @ts-ignore
+    setValue('expenditurePrice', service.expenditurePrice ? Number(service.expenditurePrice) : null);
+    // @ts-ignore
+    setValue('expenditureAmountType', service.expenditureAmountType || null);
+
     setServiceSelectorOpen(false);
     setServiceSearch('');
     onServiceSelect?.(service);
@@ -756,41 +767,10 @@ export function AssignmentFormFields({
             )}
           </div>
 
-          {/* Minimum & Expenditure */}
+          {/* Expenditures Section */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                {...register('minimum')}
-                onFocus={() => {
-                  const current = getValues('minimum') as any;
-                  if (current === 0 || current === '0') {
-                    setValue('minimum', '' as any);
-                  }
-                }}
-                disabled={disabled}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="flex flex-col justify-end pb-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  {...register('travelInMinimum')}
-                  disabled={disabled}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                <span className="text-sm font-medium">Travel added in min?</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Expenditure?</Label>
+              <Label className="text-sm font-medium mb-2 block">Expenditures?</Label>
               <div className="flex items-center gap-4 h-10">
                 <label className="flex items-center gap-2">
                   <input
@@ -808,8 +788,8 @@ export function AssignmentFormFields({
                     checked={watch('expenditure') === false}
                     onChange={() => {
                       setValue('expenditure', false);
-                      setValue('expenditureAmount', null);
-                      setValue('expenditureAmountType', null);
+                      setValue('expenditureCost', null);
+                      setValue('expenditurePrice', null);
                     }}
                     disabled={disabled}
                     className="accent-primary"
@@ -821,16 +801,16 @@ export function AssignmentFormFields({
             {watch('expenditure') && (
               <>
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
+                  <Label className="text-sm font-medium mb-2 block">Expenditure Cost</Label>
                   <Input
                     type="number"
                     step="0.01"
                     min={0}
-                    {...register('expenditureAmount')}
+                    {...register('expenditureCost')}
                     onFocus={() => {
-                      const current = getValues('expenditureAmount') as any;
+                      const current = getValues('expenditureCost') as any;
                       if (current === 0 || current === '0') {
-                        setValue('expenditureAmount', '' as any);
+                        setValue('expenditureCost', '' as any);
                       }
                     }}
                     disabled={disabled}
@@ -838,29 +818,46 @@ export function AssignmentFormFields({
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Amount Type</Label>
-                  <Controller
-                    name="expenditureAmountType"
-                    control={control}
-                    render={({ field }) => (
-                      <Select
-                        value={field.value ?? ''}
-                        onValueChange={(val) => field.onChange(val || null)}
-                        disabled={disabled}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {AMOUNT_TYPE_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                  <Label className="text-sm font-medium mb-2 block">Expenditure Price</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    {...register('expenditurePrice')}
+                    onFocus={() => {
+                      const current = getValues('expenditurePrice') as any;
+                      if (current === 0 || current === '0') {
+                        setValue('expenditurePrice', '' as any);
+                      }
+                    }}
+                    disabled={disabled}
+                    placeholder="0.00"
                   />
+                </div>
+                <div>
+                    <Label className="text-sm font-medium mb-2 block">Type</Label>
+                    <Controller
+                      name="expenditureAmountType"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value ?? ''}
+                          onValueChange={(val) => field.onChange(val || null)}
+                          disabled={disabled}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AMOUNT_TYPE_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                 </div>
               </>
             )}
@@ -996,6 +993,10 @@ export function getDefaultAssignmentValues(today?: string): AssignmentFieldsInpu
     commission: false,
     commissionAmount: null,
     commissionAmountType: null,
+    expenditure: false,
+    expenditureCost: null,
+    expenditurePrice: null,
+    expenditureAmountType: null,
     notes: '',
   };
 }

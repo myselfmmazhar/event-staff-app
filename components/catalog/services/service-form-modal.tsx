@@ -41,8 +41,9 @@ const formSchema = z.object({
     .default(null),
   cost: z.number().positive('Cost must be a positive number').nullable().default(null),
   price: z.number().positive('Price must be a positive number').nullable().default(null),
-  hasMinimum: z.boolean().default(false),
-  minimum: z.number().min(0, 'Minimum must be a non-negative number').nullable().default(null),
+  hasExpenditure: z.boolean().default(false),
+  expenditureCost: z.number().min(0, 'Must be non-negative').nullable().default(null),
+  expenditurePrice: z.number().min(0, 'Must be non-negative').nullable().default(null),
 });
 
 type FormInput = z.input<typeof formSchema>;
@@ -85,8 +86,9 @@ export function ServiceFormModal({
       description: null,
       cost: null,
       price: null,
-      hasMinimum: false,
-      minimum: null,
+      hasExpenditure: false,
+      expenditureCost: null,
+      expenditurePrice: null,
     },
   });
 
@@ -110,13 +112,26 @@ export function ServiceFormModal({
         }
       }
 
-      let minimumValue: number | null = null;
-      if (service.minimum != null) {
-        if (typeof service.minimum === 'object' && 'toNumber' in service.minimum) {
-          minimumValue = (service.minimum as { toNumber: () => number }).toNumber();
-        } else {
-          minimumValue = Number(service.minimum);
-        }
+      let expCostValue: number | null = null;
+      if (service.expenditureCost != null) {
+        expCostValue = typeof service.expenditureCost === 'object' && 'toNumber' in service.expenditureCost 
+          ? (service.expenditureCost as any).toNumber() 
+          : Number(service.expenditureCost);
+      } else if (service.expenditureAmount != null) {
+        expCostValue = typeof service.expenditureAmount === 'object' && 'toNumber' in service.expenditureAmount 
+          ? (service.expenditureAmount as any).toNumber() 
+          : Number(service.expenditureAmount);
+      }
+
+      let expPriceValue: number | null = null;
+      if (service.expenditurePrice != null) {
+        expPriceValue = typeof service.expenditurePrice === 'object' && 'toNumber' in service.expenditurePrice 
+          ? (service.expenditurePrice as any).toNumber() 
+          : Number(service.expenditurePrice);
+      } else if (service.expenditureAmount != null) {
+        expPriceValue = typeof service.expenditureAmount === 'object' && 'toNumber' in service.expenditureAmount 
+          ? (service.expenditureAmount as any).toNumber() 
+          : Number(service.expenditureAmount);
       }
 
       reset({
@@ -125,8 +140,9 @@ export function ServiceFormModal({
         description: service.description ?? null,
         cost: costValue,
         price: priceValue,
-        hasMinimum: minimumValue !== null,
-        minimum: minimumValue,
+        hasExpenditure: service.expenditure || expCostValue !== null || expPriceValue !== null,
+        expenditureCost: expCostValue,
+        expenditurePrice: expPriceValue,
       });
     } else if (!service && open) {
       reset({
@@ -135,8 +151,9 @@ export function ServiceFormModal({
         description: null,
         cost: null,
         price: null,
-        hasMinimum: false,
-        minimum: null,
+        hasExpenditure: false,
+        expenditureCost: null,
+        expenditurePrice: null,
       });
     }
   }, [service, open, reset]);
@@ -159,7 +176,9 @@ export function ServiceFormModal({
       description: data.description || null,
       cost: data.cost,
       price: data.price,
-      minimum: data.hasMinimum ? data.minimum : null,
+      expenditure: data.hasExpenditure,
+      expenditureCost: data.hasExpenditure ? data.expenditureCost : null,
+      expenditurePrice: data.hasExpenditure ? data.expenditurePrice : null,
     });
   };
 
@@ -315,9 +334,9 @@ export function ServiceFormModal({
             </div>
 
             <div>
-              <Label>Is Minimum?</Label>
+              <Label>Expenditures?</Label>
               <Controller
-                name="hasMinimum"
+                name="hasExpenditure"
                 control={control}
                 render={({ field }) => (
                   <RadioGroup
@@ -325,55 +344,80 @@ export function ServiceFormModal({
                     onValueChange={(value) => {
                       const enabled = value === 'yes';
                       field.onChange(enabled);
-                      if (enabled && (watch('minimum') === null || watch('minimum') === undefined)) {
-                        setValue('minimum', 0);
-                      }
                     }}
                     className="flex items-center gap-4 mt-2"
                     disabled={isSubmitting}
                   >
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="min-no" />
-                      <Label htmlFor="min-no" className="font-normal cursor-pointer">No</Label>
+                      <RadioGroupItem value="no" id="exp-no" />
+                      <Label htmlFor="exp-no" className="font-normal cursor-pointer">No</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="min-yes" />
-                      <Label htmlFor="min-yes" className="font-normal cursor-pointer">Yes</Label>
+                      <RadioGroupItem value="yes" id="exp-yes" />
+                      <Label htmlFor="exp-yes" className="font-normal cursor-pointer">Yes</Label>
                     </div>
                   </RadioGroup>
                 )}
               />
             </div>
 
-            {hasMinimum && (
-              <div>
-                <Label htmlFor="minimum">Minimum {rateTypeLabel}</Label>
-                <Controller
-                  name="minimum"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      id="minimum"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      inputMode="decimal"
-                      value={field.value ?? 0}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        field.onChange(val === '' ? null : parseFloat(val));
-                      }}
-                      error={!!errors.minimum}
-                      disabled={isSubmitting}
-                      placeholder="e.g., 4.00"
-                    />
+            {watch('hasExpenditure') && (
+              <>
+                <div>
+                  <Label htmlFor="expenditureCost">Expenditure Cost</Label>
+                  <Controller
+                    name="expenditureCost"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        id="expenditureCost"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === '' ? null : parseFloat(val));
+                        }}
+                        error={!!errors.expenditureCost}
+                        disabled={isSubmitting}
+                        placeholder="0.00"
+                      />
+                    )}
+                  />
+                  {errors.expenditureCost && (
+                    <p className="text-sm text-destructive mt-1">{errors.expenditureCost.message}</p>
                   )}
-                />
-                {errors.minimum && (
-                  <p className="text-sm text-destructive mt-1">{errors.minimum.message}</p>
-                )}
-              </div>
+                </div>
+                <div>
+                  <Label htmlFor="expenditurePrice">Expenditure Price</Label>
+                  <Controller
+                    name="expenditurePrice"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        id="expenditurePrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === '' ? null : parseFloat(val));
+                        }}
+                        error={!!errors.expenditurePrice}
+                        disabled={isSubmitting}
+                        placeholder="0.00"
+                      />
+                    )}
+                  />
+                  {errors.expenditurePrice && (
+                    <p className="text-sm text-destructive mt-1">{errors.expenditurePrice.message}</p>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </DialogContent>

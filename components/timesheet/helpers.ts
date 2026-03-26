@@ -126,39 +126,32 @@ export function calcBillAmount(ct: CallTimeRow): number {
     return billRate;
 }
 
-export function calcClockedCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false): number {
+export function calcClockedCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
     const rate = toNumber(ct.payRate);
     const type = ct.payRateType as RateType;
     const hours = calcClockedHours(timeEntry);
-    let base = type === 'PER_HOUR' ? hours * rate : rate;
-
-    if (isMinApplied && ct.minimum) {
-        base = Math.max(base, toNumber(ct.minimum));
-    }
-
-    return base;
+    return type === 'PER_HOUR' ? hours * rate : rate;
 }
 
-export function calcClockedPrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false): number {
+export function calcClockedPrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
     const rate = toNumber(ct.billRate);
     const type = ct.billRateType as RateType;
     const hours = calcClockedHours(timeEntry);
-    let base = type === 'PER_HOUR' ? hours * rate : rate;
-
-    if (isMinApplied && ct.minimum) {
-        base = Math.max(base, toNumber(ct.minimum));
-    }
-
-    return base;
+    return type === 'PER_HOUR' ? hours * rate : rate;
 }
 
 export function calcExpenditureCost(ct: CallTimeRow): number {
     if (!ct.expenditure) return 0;
-    return toNumber(ct.expenditureAmount);
+    return toNumber(ct.expenditureCost ?? ct.expenditureAmount);
 }
 
-export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false, isCommApplied = false): number {
-    const base = calcClockedCost(timeEntry, ct, isMinApplied);
+export function calcExpenditurePrice(ct: CallTimeRow): number {
+    if (!ct.expenditure) return 0;
+    return toNumber(ct.expenditurePrice ?? ct.expenditureAmount);
+}
+
+export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false): number {
+    const base = calcClockedCost(timeEntry, ct);
     const ot = calcOvertimeCost(timeEntry, ct);
     const exp = calcExpenditureCost(ct);
     let total = base + ot + exp;
@@ -175,10 +168,10 @@ export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeR
     return total;
 }
 
-export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isMinApplied = false, isCommApplied = false): number {
-    const base = calcClockedPrice(timeEntry, ct, isMinApplied);
+export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false): number {
+    const base = calcClockedPrice(timeEntry, ct);
     const ot = calcOvertimePrice(timeEntry, ct);
-    const exp = calcExpenditureCost(ct);
+    const exp = calcExpenditurePrice(ct);
     let total = base + ot + exp;
 
     if (isCommApplied && ct.commissionAmount) {
@@ -207,7 +200,7 @@ export function formatRate(rate: CallTimeRow['payRate'], rateType: string): stri
 }
 
 export function fmtCurrency(n: number) {
-    return n.toFixed(2);
+    return `$${n.toFixed(2)}`;
 }
 
 export function fmtDateTime(d: Date | string | null): string {
