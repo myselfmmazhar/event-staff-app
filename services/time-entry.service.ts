@@ -56,6 +56,11 @@ export class TimeEntryService {
                                 id: true,
                                 eventId: true,
                                 title: true,
+                                venueName: true,
+                                address: true,
+                                city: true,
+                                state: true,
+                                zipCode: true,
                                 poNumber: true,
                                 client: { select: { id: true, businessName: true } },
                             },
@@ -132,6 +137,11 @@ export class TimeEntryService {
                                 id: true,
                                 eventId: true,
                                 title: true,
+                                venueName: true,
+                                address: true,
+                                city: true,
+                                state: true,
+                                zipCode: true,
                                 poNumber: true,
                                 client: { select: { id: true, businessName: true } },
                             },
@@ -405,19 +415,20 @@ export class TimeEntryService {
      */
     async reviewInvitation(data: {
         invitationIds: string[];
-        decision: 'APPROVE' | 'REJECT' | 'REVIEW';
+        decision: 'APPROVE' | 'REJECT' | 'REVIEW' | 'PENDING';
         reviewerId: string;
     }) {
         const internalReviewRating =
             data.decision === 'APPROVE' ? 'MET_EXPECTATIONS' :
-                data.decision === 'REJECT' ? 'DID_NOT_MEET' : 'NEEDS_IMPROVEMENT';
+                data.decision === 'REJECT' ? 'DID_NOT_MEET' : 
+                data.decision === 'REVIEW' ? 'NEEDS_IMPROVEMENT' : null;
 
         return await (this.prisma as any).callTimeInvitation.updateMany({
             where: { id: { in: data.invitationIds } },
             data: {
                 internalReviewRating,
-                reviewedBy: data.reviewerId,
-                reviewedAt: new Date(),
+                reviewedBy: data.decision === 'PENDING' ? null : data.reviewerId,
+                reviewedAt: data.decision === 'PENDING' ? null : new Date(),
             },
         });
     }

@@ -5,12 +5,12 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { EventGroup } from './types';
-import { 
-    calcOvertimeCost, 
-    calcOvertimePrice, 
-    calcClockedHours, 
-    calcScheduledHours, 
-    toNumber, 
+import {
+    calcOvertimeCost,
+    calcOvertimePrice,
+    calcClockedHours,
+    calcScheduledHours,
+    toNumber,
     fmtCurrency,
     calcTotalBill,
     calcTotalInvoice,
@@ -46,7 +46,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
             if (!res.ok) throw new Error('Upload failed');
 
             const data = await res.json();
-            
+
             uploadToast.dismiss();
             toast({
                 title: 'Upload Successful',
@@ -174,10 +174,13 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                         {fmtCurrency(profit)}
                                     </td>
                                     <td className="px-4 py-4 text-center">
-                                        <div className="flex items-center justify-center gap-1.5 text-muted-foreground whitespace-nowrap text-xs">
-                                            <MapPinIcon className="h-3.5 w-3.5 text-primary" />
-                                            <span>{event?.venueName || '—'}</span>
-                                            {event?.city && <span className="opacity-70">({event.city})</span>}
+                                        <div className="text-sm text-muted-foreground">
+                                            <div className="font-medium text-foreground">{event?.venueName || '—'}</div>
+                                            {(event?.city || event?.state) && (
+                                                <div className="text-xs opacity-75">
+                                                    {[event?.city, event?.state].filter(Boolean).join(', ')}
+                                                </div>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-4 py-4 text-center">

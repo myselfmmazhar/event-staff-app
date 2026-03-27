@@ -318,7 +318,6 @@ export type CallTimeSelect = Prisma.CallTimeGetPayload<{
     payRateType: true;
     billRate: true;
     billRateType: true;
-    notes: true;
     minimum: true;
     eventId: true;
     createdAt: true;
@@ -424,7 +423,6 @@ export type ServiceSelect = Prisma.ServiceGetPayload<{
     description: true;
     cost: true;
     price: true;
-    minimum: true;
     expenditure: true;
     expenditureAmount: true;
     expenditureAmountType: true;

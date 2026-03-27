@@ -5,12 +5,12 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { TalentGroup } from './types';
-import { 
-    calcOvertimeCost, 
-    calcOvertimePrice, 
-    calcClockedHours, 
-    calcScheduledHours, 
-    toNumber, 
+import {
+    calcOvertimeCost,
+    calcOvertimePrice,
+    calcClockedHours,
+    calcScheduledHours,
+    toNumber,
     fmtCurrency,
     calcTotalBill,
     calcTotalInvoice,
@@ -39,9 +39,9 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                             <th className="px-4 py-3 font-semibold text-foreground">Talent Name</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-center">Tasks</th>
                             <th className="px-4 py-3 font-semibold text-foreground">Status</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Invoice</th>
+                            {/* <th className="px-4 py-3 font-semibold text-foreground text-right">Total Invoice</th>
                             <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Net Income</th>
+                            <th className="px-4 py-3 font-semibold text-foreground text-right">Net Income</th> */}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
@@ -107,15 +107,15 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
                                         )}
                                     </td>
-                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">
-                                        {fmtCurrency(totalInvoice)}
-                                    </td>
-                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
-                                        {fmtCurrency(totalBill)}
-                                    </td>
-                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-foreground' : 'text-red-600'}`}>
-                                        {fmtCurrency(profit)}
-                                    </td>
+                                    // <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">
+                                    //     {fmtCurrency(totalInvoice)}
+                                    // </td>
+                                    // <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
+                                    //     {fmtCurrency(totalBill)}
+                                    // </td>
+                                    // <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-foreground' : 'text-red-600'}`}>
+                                    //     {fmtCurrency(profit)}
+                                    // </td>
                                 </tr>
                             );
                         })}
