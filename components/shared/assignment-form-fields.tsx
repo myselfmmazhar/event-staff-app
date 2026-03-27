@@ -770,7 +770,7 @@ export function AssignmentFormFields({
           {/* Expenditures Section */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <Label className="text-sm font-medium mb-2 block">Expenditures?</Label>
+              <Label className="text-sm font-medium mb-2 block">Travel?</Label>
               <div className="flex items-center gap-4 h-10">
                 <label className="flex items-center gap-2">
                   <input
@@ -801,7 +801,7 @@ export function AssignmentFormFields({
             {watch('expenditure') && (
               <>
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Expenditure Cost</Label>
+                  <Label className="text-sm font-medium mb-2 block">Travel Cost (to Talent)</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -818,7 +818,7 @@ export function AssignmentFormFields({
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Expenditure Price</Label>
+                  <Label className="text-sm font-medium mb-2 block">Travel Price (to Client)</Label>
                   <Input
                     type="number"
                     step="0.01"

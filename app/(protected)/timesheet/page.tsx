@@ -221,11 +221,16 @@ export default function TimeManagerPage() {
 
         assignments.forEach((inv: any) => {
             const eid = inv.callTime.event.id;
+            const event = inv.callTime.event;
             if (!groupsMap.has(eid)) {
                 groupsMap.set(eid, {
                     eventId: eid,
                     eventTitle: inv.callTime.event.title,
                     eventDisplayId: inv.callTime.event.eventId,
+                    clientName: event.client?.businessName,
+                    venueName: event.venueName,
+                    city: event.city,
+                    state: event.state,
                     callTimes: [],
                 });
             }
@@ -489,9 +494,20 @@ export default function TimeManagerPage() {
                             .map((group) => (
                                 <div key={group.eventId} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
                                     <div className="px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/20 border-b border-border flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-semibold text-lg text-foreground">{group.eventTitle}</span>
-                                            <Badge variant="outline">{group.eventDisplayId}</Badge>
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-semibold text-lg text-foreground">{group.eventTitle}</span>
+                                                <Badge variant="outline">{group.eventDisplayId}</Badge>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground font-medium">
+                                                <span className="text-slate-400">Location:</span> 
+                                                {group.venueName || '—'}
+                                                {(group.city || group.state) && (
+                                                    <span className="opacity-75 font-normal">
+                                                        ({[group.city, group.state].filter(Boolean).join(', ')})
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="overflow-x-auto">
@@ -681,9 +697,25 @@ export default function TimeManagerPage() {
                             .map((group) => (
                                 <div key={group.eventId} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
                                     <div className="px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/20 border-b border-border flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-semibold text-lg text-foreground">{group.eventTitle}</span>
-                                            <Badge variant="outline">{group.eventDisplayId}</Badge>
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-semibold text-lg text-foreground">{group.eventTitle}</span>
+                                                <Badge variant="outline">{group.eventDisplayId}</Badge>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                                                <span className="font-semibold text-primary/80 uppercase tracking-tighter text-[10px] bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+                                                    {group.clientName || 'No Client'}
+                                                </span>
+                                                <span className="flex items-center gap-1.5 font-medium text-[11px]">
+                                                    <span className="text-slate-400">Location:</span> 
+                                                    {group.venueName || '—'}
+                                                    {(group.city || group.state) && (
+                                                        <span className="opacity-75 font-normal">
+                                                            ({[group.city, group.state].filter(Boolean).join(', ')})
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Badge variant="secondary">

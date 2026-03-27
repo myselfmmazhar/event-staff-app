@@ -297,7 +297,7 @@ export function TimesheetTableRow({
                         <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
                             <select className="text-[10px] p-1 bg-muted/40 border-none rounded focus:ring-1 focus:ring-primary/20 font-medium text-slate-600 cursor-pointer">
                                 <option>Labor</option>
-                                <option>Expense</option>
+                                <option>Travel</option>
                                 <option>Bonus</option>
                             </select>
                         </td>
@@ -526,7 +526,7 @@ export function TimesheetTableRow({
                                             <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otCost)}</span>
                                         </div>
                                         <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Exp:</span>
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Travel:</span>
                                             <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expCost)}</span>
                                         </div>
                                         <div className="pt-0.5 border-t flex justify-between items-center gap-2">
@@ -567,7 +567,7 @@ export function TimesheetTableRow({
                                         <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otPrice)}</span>
                                     </div>
                                     <div className="flex justify-between items-center gap-2">
-                                        <span className="text-[8px] font-bold text-muted-foreground uppercase">Exp:</span>
+                                        <span className="text-[8px] font-bold text-muted-foreground uppercase">Travel:</span>
                                         <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expPrice)}</span>
                                     </div>
                                     <div className="pt-0.5 border-t flex justify-between items-center gap-2">
