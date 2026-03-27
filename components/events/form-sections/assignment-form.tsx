@@ -1174,7 +1174,7 @@ export function AssignmentForm({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label className="text-sm font-medium mb-2 block">Expenditures?</Label>
+              <Label className="text-sm font-medium mb-2 block">Travel?</Label>
               <div className="flex items-center gap-4 h-10">
                 <label className="flex items-center gap-2">
                   <input
@@ -1199,7 +1199,7 @@ export function AssignmentForm({
               </div>
             </div>
             <div>
-              <Label htmlFor="expenditureCost" className="text-sm font-medium mb-2 block">Exp Cost (to Talent)</Label>
+              <Label htmlFor="expenditureCost" className="text-sm font-medium mb-2 block">Travel Cost (to Talent)</Label>
               <Input
                 id="expenditureCost"
                 type="number"
@@ -1212,7 +1212,7 @@ export function AssignmentForm({
               />
             </div>
             <div>
-              <Label htmlFor="expenditurePrice" className="text-sm font-medium mb-2 block">Exp Price (to Client)</Label>
+              <Label htmlFor="expenditurePrice" className="text-sm font-medium mb-2 block">Travel Price (to Client)</Label>
               <Input
                 id="expenditurePrice"
                 type="number"

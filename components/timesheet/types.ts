@@ -94,6 +94,10 @@ export interface EventGroup {
     eventId: string;
     eventTitle: string;
     eventDisplayId: string;
+    clientName?: string | null;
+    venueName?: string | null;
+    city?: string | null;
+    state?: string | null;
     callTimes: CallTimeRow[];
 }
 
