@@ -42,6 +42,7 @@ export type CallTimeRow = {
         startTime: string | null;
         endDate: Date | string | null;
         endTime: string | null;
+        status: string;
         client: { id: string; businessName: string } | null;
     };
     invitations: Array<{

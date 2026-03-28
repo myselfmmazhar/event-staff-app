@@ -141,6 +141,7 @@ model CallTime {
   expenditureAmountType AmountType?
   expenditureCost       Decimal?                @db.Decimal(10, 2)
   expenditurePrice      Decimal?                @db.Decimal(10, 2)
+  travelInMinimum       Boolean                 @default(false)
   minimum               Decimal?                @db.Decimal(10, 2)
 
   createdAt             DateTime                @default(now()) @db.Timestamp(6)
@@ -409,6 +410,7 @@ model Service {
   expenditureAmountType AmountType?
   expenditureCost       Decimal?               @db.Decimal(10, 2)
   expenditurePrice      Decimal?               @db.Decimal(10, 2)
+  travelInMinimum       Boolean                @default(false)
   minimum               Decimal?               @db.Decimal(10, 2)
   isActive              Boolean                @default(true)
   createdBy             String

@@ -97,12 +97,14 @@ export class CallTimeService {
         commission: data.commission ?? false,
         commissionAmount: data.commissionAmount ?? null,
         commissionAmountType: data.commissionAmountType ?? null,
+        minimum: data.minimum ?? (data as any).minimumAmount ?? null,
         expenditure: data.expenditure ?? false,
         expenditurePrice: data.expenditurePrice ?? null,
         expenditureCost: data.expenditureCost ?? null,
         expenditureAmount: data.expenditureAmount ?? null,
         expenditureAmountType: data.expenditureAmountType ?? null,
         notes: data.notes,
+        instructions: (data as any).instructions,
         eventId: data.eventId,
       },
       include: {
@@ -372,6 +374,10 @@ export class CallTimeService {
     // Transform serviceId to Prisma relation syntax
     const { serviceId, ...restData } = data;
     const prismaData: any = { ...restData };
+
+    if (restData.minimum === undefined && (restData as any).minimumAmount !== undefined) {
+      prismaData.minimum = (restData as any).minimumAmount;
+    }
 
     // Handle service relation
     if (serviceId !== undefined) {
@@ -1711,6 +1717,7 @@ export class CallTimeService {
           commission: assignment.commission,
           commissionAmount: assignment.commissionAmount ?? null,
           commissionAmountType: assignment.commissionAmountType ?? null,
+          minimum: assignment.minimum ?? assignment.minimumAmount ?? (service.minimum ? Number(service.minimum) : null),
           expenditure: assignment.expenditure ?? service.expenditure ?? false,
           expenditureCost: assignment.expenditureCost ?? (service.expenditureCost ? Number(service.expenditureCost) : null),
           expenditurePrice: assignment.expenditurePrice ?? (service.expenditurePrice ? Number(service.expenditurePrice) : null),

@@ -227,9 +227,9 @@ export function TimesheetTableRow({
                                     <span className="font-medium italic leading-tight text-slate-500">{te?.notes || ct.notes || '—'}</span>
                                 </div>
                                 <div className="pt-1.5 border-t border-slate-100">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Add your own notes..." 
+                                    <input
+                                        type="text"
+                                        placeholder="Add your own notes..."
                                         onClick={e => e.stopPropagation()}
                                         className="w-full text-[10px] bg-transparent border-b border-dashed border-slate-200 focus:outline-none focus:border-indigo-300 focus:border-dashed py-0.5 placeholder:text-slate-300 font-medium"
                                     />
@@ -375,7 +375,7 @@ export function TimesheetTableRow({
                                         <span>{ct.staff.firstName}</span>
                                         <span className="text-slate-500 font-semibold">{ct.staff.lastName}</span>
                                     </div>
-                                ) : '—'
+                                ) : 'UNASSIGNED STAFF'
                             ) : (
                                 <div className="whitespace-normal max-w-[200px] leading-tight">
                                     {ct.event?.title || '—'}
@@ -490,10 +490,14 @@ export function TimesheetTableRow({
                             </div>
                         </td>
 
-                        {/* Rate Type */}
                         <td className="px-3 py-2.5 text-center text-muted-foreground whitespace-nowrap text-[9px] uppercase font-bold">
                             {ct.payRateType.replace('PER_', '')}
                         </td>
+
+                        {/* Minimum */}
+                        {/* <td className="px-3 py-2.5 text-right font-medium text-slate-600 tabular-nums">
+                            {fmtCurrency(toNumber(ct.minimum))}
+                        </td> */}
 
                         {/* Cost Detail */}
                         {(subTab === 'all' || subTab === 'bill') && (
@@ -608,16 +612,6 @@ export function TimesheetTableRow({
                     </>
                 )}
 
-                {/* Financial Totals */}
-                {/* <td className="px-3 py-2.5 text-right tabular-nums font-bold text-red-600 bg-red-50/10">
-                    {fmtCurrency(totalBill)}
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-bold text-foreground bg-slate-50/10">
-                    {fmtCurrency(totalInvoice)}
-                </td>
-                <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${grossProfit >= 0 ? 'text-foreground' : 'text-red-600 bg-red-50/20'}`}>
-                    {fmtCurrency(grossProfit)}
-                </td> */}
             </tr>
 
             {/* Expanded detail */}
