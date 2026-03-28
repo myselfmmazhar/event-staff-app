@@ -90,23 +90,23 @@ export function EventGroupTable({
                                         })()}
                                     </th>
                                     <th className="w-8 px-2 py-2" />
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service Date</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Payroll ID</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">HR ID</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Position</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Start Time</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">End Time</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hours Scheduled</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Pay Rate</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock In</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clock Out</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Hours Clocked</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Cost</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Clocked Cost</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Bill Amount</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Cost</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">OT Price</th>
-                                    <th className="px-3 py-2" />
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service / Product</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Notes</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Actual Shift</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Variance</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Cost</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Price</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Total Bill</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Total Invoice</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap pr-6">Net Income</th>
                                 </tr>
                             </thead>
                             <tbody>

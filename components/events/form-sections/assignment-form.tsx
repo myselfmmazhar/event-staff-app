@@ -1173,13 +1173,13 @@ export function AssignmentForm({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label className="text-sm font-medium mb-2 block">Travel?</Label>
+              <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
               <div className="flex items-center gap-4 h-10">
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
-                    checked={watch('expenditure') === true}
-                    onChange={() => setValue('expenditure', true)}
+                    checked={watch('minimum') === true}
+                    onChange={() => setValue('minimum', true)}
                     disabled={disabled}
                     className="accent-primary"
                   />
@@ -1188,8 +1188,12 @@ export function AssignmentForm({
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
-                    checked={watch('expenditure') === false}
-                    onChange={() => setValue('expenditure', false)}
+                    checked={watch('minimum') === false}
+                    onChange={() => {
+                      setValue('minimum', false);
+                      setValue('minimumAmount', null);
+                      setValue('minimumAmountType', null);
+                    }}
                     disabled={disabled}
                     className="accent-primary"
                   />
@@ -1198,29 +1202,25 @@ export function AssignmentForm({
               </div>
             </div>
             <div>
-              <Label htmlFor="expenditureCost" className="text-sm font-medium mb-2 block">Travel Cost (to Talent)</Label>
+              <Label htmlFor="minimumAmount" className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
               <Input
-                id="expenditureCost"
+                id="minimumAmount"
                 type="number"
                 step="0.01"
                 min={0}
-                {...register('expenditureCost', { valueAsNumber: true })}
-                disabled={disabled || !watch('expenditure')}
+                {...register('minimumAmount', { valueAsNumber: true })}
+                disabled={disabled || !watch('minimum')}
                 onFocus={e => e.target.select()}
                 placeholder="0.00"
               />
             </div>
             <div>
-              <Label htmlFor="expenditurePrice" className="text-sm font-medium mb-2 block">Travel Price (to Client)</Label>
+              <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
               <Input
-                id="expenditurePrice"
-                type="number"
-                step="0.01"
-                min={0}
-                {...register('expenditurePrice', { valueAsNumber: true })}
-                disabled={disabled || !watch('expenditure')}
-                onFocus={e => e.target.select()}
-                placeholder="0.00"
+                value={watch('rateType') ? watch('rateType').replace('PER_', ' ').replace('_', ' ').trim() : 'Select rate type above'}
+                readOnly
+                disabled
+                className="bg-slate-50 text-slate-500 font-medium"
               />
             </div>
           </div>

@@ -54,12 +54,16 @@ export const assignmentFieldsSchema = z
     commission: z.boolean().default(false),
     commissionAmount: z.coerce.number().min(0).optional().nullable(),
     commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    minimum: z.boolean().default(false),
+    minimumAmount: z.coerce.number().min(0).optional().nullable(),
+    minimumAmountType: z.nativeEnum(AmountType).optional().nullable(),
     expenditure: z.boolean().default(false),
     expenditureCost: z.coerce.number().min(0).optional().nullable(),
     expenditurePrice: z.coerce.number().min(0).optional().nullable(),
     expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
     travelInMinimum: z.boolean().default(false),
     notes: z.string().optional(),
+    instructions: z.string().optional(),
   })
   .refine((data) => data.payRateType === data.billRateType, {
     message: 'Pay rate type and bill rate type must match',
@@ -767,16 +771,16 @@ export function AssignmentFormFields({
             )}
           </div>
 
-          {/* Expenditures Section */}
+          {/* Minimum Section */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <Label className="text-sm font-medium mb-2 block">Travel?</Label>
+              <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
               <div className="flex items-center gap-4 h-10">
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
-                    checked={watch('expenditure') === true}
-                    onChange={() => setValue('expenditure', true)}
+                    checked={watch('minimum') === true}
+                    onChange={() => setValue('minimum', true)}
                     disabled={disabled}
                     className="accent-primary"
                   />
@@ -785,11 +789,11 @@ export function AssignmentFormFields({
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
-                    checked={watch('expenditure') === false}
+                    checked={watch('minimum') === false}
                     onChange={() => {
-                      setValue('expenditure', false);
-                      setValue('expenditureCost', null);
-                      setValue('expenditurePrice', null);
+                      setValue('minimum', false);
+                      setValue('minimumAmount', null);
+                      setValue('minimumAmountType', null);
                     }}
                     disabled={disabled}
                     className="accent-primary"
@@ -798,19 +802,19 @@ export function AssignmentFormFields({
                 </label>
               </div>
             </div>
-            {watch('expenditure') && (
+            {watch('minimum') && (
               <>
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Travel Cost (to Talent)</Label>
+                  <Label className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
                   <Input
                     type="number"
                     step="0.01"
                     min={0}
-                    {...register('expenditureCost')}
+                    {...register('minimumAmount')}
                     onFocus={() => {
-                      const current = getValues('expenditureCost') as any;
+                      const current = getValues('minimumAmount') as any;
                       if (current === 0 || current === '0') {
-                        setValue('expenditureCost', '' as any);
+                        setValue('minimumAmount', '' as any);
                       }
                     }}
                     disabled={disabled}
@@ -818,46 +822,13 @@ export function AssignmentFormFields({
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Travel Price (to Client)</Label>
+                  <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register('expenditurePrice')}
-                    onFocus={() => {
-                      const current = getValues('expenditurePrice') as any;
-                      if (current === 0 || current === '0') {
-                        setValue('expenditurePrice', '' as any);
-                      }
-                    }}
-                    disabled={disabled}
-                    placeholder="0.00"
+                    value={watch('payRateType') ? watch('payRateType').replace('PER_', ' ').replace('_', ' ').trim() : 'Select rate type above'}
+                    readOnly
+                    disabled
+                    className="bg-slate-50 text-slate-500 font-medium h-10"
                   />
-                </div>
-                <div>
-                    <Label className="text-sm font-medium mb-2 block">Type</Label>
-                    <Controller
-                      name="expenditureAmountType"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value ?? ''}
-                          onValueChange={(val) => field.onChange(val || null)}
-                          disabled={disabled}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {AMOUNT_TYPE_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
                 </div>
               </>
             )}
@@ -947,15 +918,32 @@ export function AssignmentFormFields({
         </div>
       </div>
 
-      {/* Notes */}
+      {/* Instructions */}
+      <div className="mb-4">
+        <Label htmlFor="instructions" className="text-sm font-medium mb-2 block">Assignment Instructions</Label>
+        <Textarea
+          id="instructions"
+          {...register('instructions')}
+          disabled={disabled}
+          rows={3}
+          placeholder="Instructions sent to staff for this assignment..."
+        />
+        {errors.instructions && (
+          <p className="text-sm text-destructive mt-1">
+            {errors.instructions.message}
+          </p>
+        )}
+      </div>
+
+      {/* Notes (Internal Notes) */}
       <div>
-        <Label htmlFor="notes" className="text-sm font-medium mb-2 block">Notes</Label>
+        <Label htmlFor="notes" className="text-sm font-medium mb-2 block">Internal Notes</Label>
         <Textarea
           id="notes"
           {...register('notes')}
           disabled={disabled}
           rows={3}
-          placeholder="Internal notes for this assignment..."
+          placeholder="Internal notes for this assignment (not sent to staff)..."
         />
         {errors.notes && (
           <p className="text-sm text-destructive mt-1">
@@ -993,11 +981,15 @@ export function getDefaultAssignmentValues(today?: string): AssignmentFieldsInpu
     commission: false,
     commissionAmount: null,
     commissionAmountType: null,
+    minimum: false,
+    minimumAmount: null,
+    minimumAmountType: null,
     expenditure: false,
     expenditureCost: null,
     expenditurePrice: null,
     expenditureAmountType: null,
     notes: '',
+    instructions: '',
   };
 }
 

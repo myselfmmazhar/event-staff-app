@@ -157,13 +157,19 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                             {group.callTimes.length}
                                         </Badge>
                                     </td>
-                                    <td className="px-4 py-4">
-                                        {completedCount === group.callTimes.length && group.callTimes.length > 0 ? (
-                                            <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Completed</Badge>
-                                        ) : (
-                                            <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
-                                        )}
-                                    </td>
+                                     <td className="px-4 py-4">
+                                         {event?.status === 'COMPLETED' ? (
+                                             <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Completed</Badge>
+                                         ) : event?.status === 'IN_PROGRESS' || (completedCount > 0 && completedCount < group.callTimes.length) ? (
+                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
+                                         ) : event?.status === 'CANCELLED' ? (
+                                             <Badge variant="destructive" className="bg-red-500/10 text-red-600 border-red-500/20">Cancelled</Badge>
+                                         ) : event?.status === 'ASSIGNED' ? (
+                                             <Badge variant="info" className="bg-blue-500/10 text-blue-600 border-blue-500/20">Assigned</Badge>
+                                         ) : (
+                                             <Badge variant="outline" className="text-muted-foreground border-border">Draft</Badge>
+                                         )}
+                                     </td>
                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">
                                         {fmtCurrency(totalInvoice)}
                                     </td>

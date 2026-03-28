@@ -86,10 +86,12 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                         </Badge>
                                     </td>
                                     <td className="px-4 py-4">
-                                        {completedCount === group.callTimes.length && group.callTimes.length > 0 ? (
+                                        {group.callTimes.every(ct => ct.event.status === 'COMPLETED') && group.callTimes.length > 0 ? (
                                             <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Completed</Badge>
-                                        ) : (
+                                        ) : group.callTimes.some(ct => ct.event.status === 'IN_PROGRESS' || (ct.timeEntry?.clockIn && !ct.timeEntry?.clockOut)) ? (
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
+                                        ) : (
+                                            <Badge variant="info" className="bg-blue-500/10 text-blue-600 border-blue-500/20">Assigned</Badge>
                                         )}
                                     </td>
                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">
