@@ -25,27 +25,24 @@ model Account {
 }
 
 model CallTimeInvitation {
-  id            String                   @id @default(uuid()) @db.Uuid
-  callTimeId    String                   @db.Uuid
-  staffId       String                   @db.Uuid
-  status        CallTimeInvitationStatus @default(PENDING)
-  respondedAt   DateTime?                @db.Timestamp(6)
-  declineReason String?
-  isConfirmed   Boolean                  @default(false)
-  confirmedAt   DateTime?                @db.Timestamp(6)
-  createdAt     DateTime                 @default(now()) @db.Timestamp(6)
-  updatedAt     DateTime                 @updatedAt @db.Timestamp(6)
-
-  // Internal review fields (locked after submission)
-  internalReviewRating  InternalReviewRating?
-  internalReviewNotes   String?
-  reviewedBy            String?
-  reviewedAt            DateTime?                @db.Timestamp(6)
-
-  callTime      CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
-  staff         Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  reviewer      User?                    @relation("invitation_reviews", fields: [reviewedBy], references: [id])
-  timeEntry     TimeEntry?
+  id                   String                   @id @default(uuid()) @db.Uuid
+  callTimeId           String                   @db.Uuid
+  staffId              String                   @db.Uuid
+  status               CallTimeInvitationStatus @default(PENDING)
+  respondedAt          DateTime?                @db.Timestamp(6)
+  declineReason        String?
+  isConfirmed          Boolean                  @default(false)
+  confirmedAt          DateTime?                @db.Timestamp(6)
+  createdAt            DateTime                 @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime                 @updatedAt @db.Timestamp(6)
+  internalReviewNotes  String?
+  internalReviewRating InternalReviewRating?
+  reviewedAt           DateTime?                @db.Timestamp(6)
+  reviewedBy           String?
+  callTime             CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
+  reviewer             User?                    @relation("invitation_reviews", fields: [reviewedBy], references: [id])
+  staff                Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  timeEntry            TimeEntry?
 
   @@unique([callTimeId, staffId])
   @@index([callTimeId])
@@ -55,25 +52,24 @@ model CallTimeInvitation {
 }
 
 model TimeEntry {
-  id             String              @id @default(uuid()) @db.Uuid
-  invitationId   String              @unique @db.Uuid
-  staffId        String              @db.Uuid
-  callTimeId     String              @db.Uuid
-  clockIn        DateTime?           @db.Timestamp(6)
-  clockOut       DateTime?           @db.Timestamp(6)
-  breakMinutes   Int                 @default(0)
-  overtimeCost   Decimal?            @db.Decimal(10, 2)
-  overtimePrice  Decimal?            @db.Decimal(10, 2)
-  notes          String?
-  createdBy      String
-  createdAt      DateTime            @default(now()) @db.Timestamp(6)
-  updatedAt      DateTime            @updatedAt @db.Timestamp(6)
-
-  invitation     CallTimeInvitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
-  staff          Staff               @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  callTime       CallTime            @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
-  createdByUser  User                @relation("time_entries_created", fields: [createdBy], references: [id], onDelete: Cascade)
-  revisions      TimeEntryRevision[]
+  id            String              @id @default(uuid()) @db.Uuid
+  invitationId  String              @unique @db.Uuid
+  staffId       String              @db.Uuid
+  callTimeId    String              @db.Uuid
+  clockIn       DateTime?           @db.Timestamp(6)
+  clockOut      DateTime?           @db.Timestamp(6)
+  breakMinutes  Int                 @default(0)
+  notes         String?
+  createdBy     String
+  createdAt     DateTime            @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime            @updatedAt @db.Timestamp(6)
+  overtimeCost  Decimal?            @db.Decimal(10, 2)
+  overtimePrice Decimal?            @db.Decimal(10, 2)
+  callTime      CallTime            @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
+  createdByUser User                @relation("time_entries_created", fields: [createdBy], references: [id], onDelete: Cascade)
+  invitation    CallTimeInvitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  staff         Staff               @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  revisions     TimeEntryRevision[]
 
   @@index([staffId])
   @@index([callTimeId])
@@ -81,21 +77,18 @@ model TimeEntry {
 }
 
 model TimeEntryRevision {
-  id           String    @id @default(uuid()) @db.Uuid
-  timeEntryId  String    @db.Uuid
-
+  id            String    @id @default(uuid()) @db.Uuid
+  timeEntryId   String    @db.Uuid
   clockIn       DateTime? @db.Timestamp(6)
   clockOut      DateTime? @db.Timestamp(6)
   breakMinutes  Int       @default(0)
   overtimeCost  Decimal?  @db.Decimal(10, 2)
   overtimePrice Decimal?  @db.Decimal(10, 2)
   notes         String?
-
   editedBy      String
   editedAt      DateTime  @default(now()) @db.Timestamp(6)
-
-  timeEntry     TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
   editedByUser  User      @relation("time_entry_revisions_edited_by", fields: [editedBy], references: [id], onDelete: Cascade)
+  timeEntry     TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
 
   @@index([timeEntryId])
   @@index([editedBy])
@@ -104,52 +97,44 @@ model TimeEntryRevision {
 }
 
 model CallTime {
-  id                    String                  @id @default(uuid()) @db.Uuid
-  callTimeId            String                  @unique
-  serviceId             String?                 @db.Uuid
-  numberOfStaffRequired Int                     @default(1)
-  skillLevel            SkillLevel              @default(BEGINNER)
-  startDate             DateTime?               @db.Date
+  id                    String               @id @default(uuid()) @db.Uuid
+  callTimeId            String               @unique
+  serviceId             String?              @db.Uuid
+  numberOfStaffRequired Int                  @default(1)
+  skillLevel            SkillLevel           @default(BEGINNER)
+  startDate             DateTime?            @db.Date
   startTime             String?
-  endDate               DateTime?               @db.Date
+  endDate               DateTime?            @db.Date
   endTime               String?
-  payRate               Decimal                 @db.Decimal(10, 2)
+  payRate               Decimal              @db.Decimal(10, 2)
   payRateType           RateType
-  billRate              Decimal                 @db.Decimal(10, 2)
+  billRate              Decimal              @db.Decimal(10, 2)
   billRateType          RateType
   notes                 String?
-  instructions          String?
-  eventId               String                  @db.Uuid
-
-  // Billing overrides (separate from pay/bill rates for Event Form assignments)
-  customCost            Decimal?                @db.Decimal(10, 2)
-  customPrice           Decimal?                @db.Decimal(10, 2)
-
-  // Staff requirements
+  eventId               String               @db.Uuid
+  customCost            Decimal?             @db.Decimal(10, 2)
+  customPrice           Decimal?             @db.Decimal(10, 2)
   ratingRequired        StaffRating?
-  approveOvertime       Boolean                 @default(false)
-  overtimeRate          Decimal?                @db.Decimal(10, 2)
-  overtimeRateType      AmountType?
-
-  // Billing flag
-  commission            Boolean                 @default(false)
-  commissionAmount      Decimal?                @db.Decimal(10, 2)
+  approveOvertime       Boolean              @default(false)
+  commission            Boolean              @default(false)
+  createdAt             DateTime             @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime             @updatedAt @db.Timestamp(6)
+  commissionAmount      Decimal?             @db.Decimal(10, 2)
   commissionAmountType  AmountType?
-
-  expenditure           Boolean                 @default(false)
-  expenditureAmount     Decimal?                @db.Decimal(10, 2) // Maintain for legacy
+  overtimeRate          Decimal?             @db.Decimal(10, 2)
+  overtimeRateType      AmountType?
+  instructions          String?
+  travelInMinimum       Boolean              @default(false)
+  expenditureAmount     Decimal?             @db.Decimal(10, 2)
   expenditureAmountType AmountType?
-  expenditureCost       Decimal?                @db.Decimal(10, 2)
-  expenditurePrice      Decimal?                @db.Decimal(10, 2)
-  travelInMinimum       Boolean                 @default(false)
-  minimum               Decimal?                @db.Decimal(10, 2)
-
-  createdAt             DateTime                @default(now()) @db.Timestamp(6)
-  updatedAt             DateTime                @updatedAt @db.Timestamp(6)
+  expenditure           Boolean              @default(false)
+  expenditureCost       Decimal?             @db.Decimal(10, 2)
+  expenditurePrice      Decimal?             @db.Decimal(10, 2)
+  minimum               Decimal?             @db.Decimal(10, 2)
   invitations           CallTimeInvitation[]
+  event                 Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  service               Service?             @relation(fields: [serviceId], references: [id])
   timeEntries           TimeEntry[]
-  event                 Event                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  service               Service?                @relation(fields: [serviceId], references: [id])
 
   @@index([callTimeId])
   @@index([eventId])
@@ -159,8 +144,8 @@ model CallTime {
 }
 
 model Client {
-  id                             String    @id @default(uuid()) @db.Uuid
-  clientId                       String    @unique
+  id                             String           @id @default(uuid()) @db.Uuid
+  clientId                       String           @unique
   businessName                   String
   firstName                      String
   lastName                       String
@@ -169,42 +154,31 @@ model Client {
   businessPhone                  String?
   details                        String?
   requirements                   String?
-
-  // Business address (renamed from streetAddress, now optional)
   businessAddress                String?
-  businessAddressLine2           String?
   city                           String
   state                          String
   zipCode                        String
-
-  // CC Email
   ccEmail                        String?
-
-  // Billing Contact
   billingFirstName               String?
   billingLastName                String?
   billingEmail                   String?
   billingPhone                   String?
-
-  // Login access fields
-  hasLoginAccess                 Boolean   @default(false)
-  userId                         String?   @unique
+  hasLoginAccess                 Boolean          @default(false)
+  userId                         String?          @unique
   createdBy                      String
-  createdAt                      DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt                      DateTime  @updatedAt @db.Timestamp(6)
-  invitationExpiresAt            DateTime? @db.Timestamp(6)
-  invitationToken                String?   @unique
-
+  createdAt                      DateTime         @default(now()) @db.Timestamp(6)
+  updatedAt                      DateTime         @updatedAt @db.Timestamp(6)
+  invitationExpiresAt            DateTime?        @db.Timestamp(6)
+  invitationToken                String?          @unique
+  businessAddressLine2           String?
   internalNotes                  String?
-
-  // Relations
+  locations                      ClientLocation[]
   users_clients_createdByTousers User             @relation("clients_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
   users_clients_userIdTousers    User?            @relation("clients_userIdTousers", fields: [userId], references: [id])
-  events                         Event[]
-  eventTemplates                 EventTemplate[]
-  locations                      ClientLocation[]
-  invoices                       Invoice[]
   estimates                      Estimate[]
+  eventTemplates                 EventTemplate[]
+  events                         Event[]
+  invoices                       Invoice[]
 
   @@index([clientId])
   @@index([createdBy])
@@ -215,17 +189,14 @@ model Client {
 model ClientLocation {
   id           String   @id @default(uuid()) @db.Uuid
   clientId     String   @db.Uuid
-
   venueName    String   @db.VarChar(200)
   meetingPoint String?  @db.VarChar(300)
   venueAddress String   @db.VarChar(300)
   city         String   @db.VarChar(100)
   state        String   @db.VarChar(50)
   zipCode      String   @db.VarChar(20)
-
   createdAt    DateTime @default(now()) @db.Timestamp(6)
   updatedAt    DateTime @updatedAt @db.Timestamp(6)
-
   client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId])
@@ -244,6 +215,7 @@ model EmailBrandingSettings {
   footerText         String?
   createdAt          DateTime @default(now()) @db.Timestamp(6)
   updatedAt          DateTime @updatedAt @db.Timestamp(6)
+
   @@map("email_branding_settings")
 }
 
@@ -255,73 +227,63 @@ model EmailTemplate {
   isCustomized Boolean           @default(false)
   createdAt    DateTime          @default(now()) @db.Timestamp(6)
   updatedAt    DateTime          @updatedAt @db.Timestamp(6)
+
   @@map("email_templates")
 }
 
 model Event {
-  id              String       @id @default(uuid()) @db.Uuid
-  eventId         String       @unique
-  title           String
-  description     String?
-  requirements    String?
-  privateComments String?
-  venueName       String
-  address         String
-  addressLine2    String?
-  city            String
-  state           String
-  zipCode         String
-  startDate       DateTime?    @db.Date
-  startTime       String?
-  endDate         DateTime?    @db.Date
-  endTime         String?
-  timezone        String
-  status          EventStatus  @default(DRAFT)
-  fileLinks       Json?
-  isArchived      Boolean      @default(false)
-  archivedAt      DateTime?    @db.Timestamp(6)
-
-  // Request Information
-  requestMethod      RequestMethod?
-  requestorName      String?        @db.VarChar(200)
-  requestorPhone     String?        @db.VarChar(50)
-  requestorEmail     String?        @db.VarChar(255)
-  poNumber           String?        @db.VarChar(100)
-
-  // Event Instructions & Documents
+  id                   String         @id @default(uuid()) @db.Uuid
+  eventId              String         @unique
+  title                String
+  description          String?
+  requirements         String?
+  privateComments      String?
+  venueName            String
+  address              String
+  city                 String
+  state                String
+  zipCode              String
+  startDate            DateTime?      @db.Date
+  startTime            String?
+  endDate              DateTime?      @db.Date
+  endTime              String?
+  timezone             String
+  status               EventStatus    @default(DRAFT)
+  fileLinks            Json?
+  isArchived           Boolean        @default(false)
+  archivedAt           DateTime?      @db.Timestamp(6)
+  requestMethod        RequestMethod?
+  requestorName        String?        @db.VarChar(200)
+  requestorPhone       String?        @db.VarChar(50)
+  requestorEmail       String?        @db.VarChar(255)
+  poNumber             String?        @db.VarChar(100)
   preEventInstructions String?
   eventDocuments       Json?
-
-  // Custom Fields
   customFields         Json?
-
-  // Onsite Contact & Meeting Point
-  meetingPoint     String?        @db.VarChar(300)
-  onsitePocName    String?        @db.VarChar(200)
-  onsitePocPhone   String?        @db.VarChar(50)
-  onsitePocEmail   String?        @db.VarChar(255)
-
-  // Billing & Rate Settings
-  estimate              Boolean?
-  taskRateType          AmountType?
-  commission            Boolean?
-  commissionAmount      Decimal?     @db.Decimal(10, 2)
-  commissionAmountType  AmountType?
-  approveForOvertime    Boolean?
-  overtimeRate          Decimal?     @db.Decimal(10, 2)
-  overtimeRateType      AmountType?
-
-  createdBy       String
-  clientId        String?      @db.Uuid
-  createdAt       DateTime     @default(now()) @db.Timestamp(6)
-  updatedAt       DateTime     @updatedAt @db.Timestamp(6)
-  geocodedAt      DateTime?    @db.Timestamp(6)
-  latitude        Float?
-  longitude       Float?
-  callTimes       CallTime[]
-  eventProducts   EventProduct[]
-  client          Client?      @relation(fields: [clientId], references: [id])
-  createdByUser   User         @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  meetingPoint         String?        @db.VarChar(300)
+  onsitePocName        String?        @db.VarChar(200)
+  onsitePocPhone       String?        @db.VarChar(50)
+  onsitePocEmail       String?        @db.VarChar(255)
+  estimate             Boolean?
+  taskRateType         AmountType?
+  commission           Boolean?
+  commissionAmount     Decimal?       @db.Decimal(10, 2)
+  commissionAmountType AmountType?
+  approveForOvertime   Boolean?
+  overtimeRate         Decimal?       @db.Decimal(10, 2)
+  overtimeRateType     AmountType?
+  createdBy            String
+  clientId             String?        @db.Uuid
+  createdAt            DateTime       @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime       @updatedAt @db.Timestamp(6)
+  geocodedAt           DateTime?      @db.Timestamp(6)
+  latitude             Float?
+  longitude            Float?
+  addressLine2         String?
+  callTimes            CallTime[]
+  eventProducts        EventProduct[]
+  client               Client?        @relation(fields: [clientId], references: [id])
+  createdByUser        User           @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([clientId])
   @@index([createdBy])
@@ -333,94 +295,74 @@ model Event {
 }
 
 model EventTemplate {
-  id               String    @id @default(uuid()) @db.Uuid
-  name             String    @db.VarChar(200)
-  description      String?   @db.VarChar(500)
-
-  // Event fields to prefill
-  title            String?   @db.VarChar(200)
-  eventDescription String?
-  requirements     String?   @db.VarChar(200)
-  privateComments  String?
-
-  // Venue fields
-  venueName        String?   @db.VarChar(200)
-  address          String?   @db.VarChar(300)
-  addressLine2     String?   @db.VarChar(200)
-  city             String?   @db.VarChar(100)
-  state            String?   @db.VarChar(50)
-  zipCode          String?   @db.VarChar(20)
-  latitude         Float?
-  longitude        Float?
-
-  // Date & Time fields
-  startDate        DateTime? @db.Date
-  startTime        String?   @db.VarChar(5)
-  endDate          DateTime? @db.Date
-  endTime          String?   @db.VarChar(5)
-  timezone         String?   @db.VarChar(50)
-
-  // Attachments
-  fileLinks        Json?
-
-  // Request Information
-  requestMethod      RequestMethod?
-  requestorName      String?        @db.VarChar(200)
-  requestorPhone     String?        @db.VarChar(50)
-  requestorEmail     String?        @db.VarChar(255)
-  poNumber           String?        @db.VarChar(100)
-
-  // Event Instructions & Documents
+  id                   String         @id @default(uuid()) @db.Uuid
+  name                 String         @db.VarChar(200)
+  description          String?        @db.VarChar(500)
+  title                String?        @db.VarChar(200)
+  eventDescription     String?
+  requirements         String?        @db.VarChar(200)
+  privateComments      String?
+  venueName            String?        @db.VarChar(200)
+  address              String?        @db.VarChar(300)
+  city                 String?        @db.VarChar(100)
+  state                String?        @db.VarChar(50)
+  zipCode              String?        @db.VarChar(20)
+  latitude             Float?
+  longitude            Float?
+  startDate            DateTime?      @db.Date
+  startTime            String?        @db.VarChar(5)
+  endDate              DateTime?      @db.Date
+  endTime              String?        @db.VarChar(5)
+  timezone             String?        @db.VarChar(50)
+  fileLinks            Json?
+  requestMethod        RequestMethod?
+  requestorName        String?        @db.VarChar(200)
+  requestorPhone       String?        @db.VarChar(50)
+  requestorEmail       String?        @db.VarChar(255)
+  poNumber             String?        @db.VarChar(100)
   preEventInstructions String?
   eventDocuments       Json?
-
-  // Custom Fields
   customFields         Json?
-
-  // Onsite Contact & Meeting Point
-  meetingPoint     String?        @db.VarChar(300)
-  onsitePocName    String?        @db.VarChar(200)
-  onsitePocPhone   String?        @db.VarChar(50)
-  onsitePocEmail   String?        @db.VarChar(255)
-
-  // Default client (optional)
-  clientId         String?   @db.Uuid
-  client           Client?   @relation(fields: [clientId], references: [id])
-
-  // Ownership & audit
-  createdBy        String
-  createdByUser    User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  createdAt        DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt        DateTime  @updatedAt @db.Timestamp(6)
+  meetingPoint         String?        @db.VarChar(300)
+  onsitePocName        String?        @db.VarChar(200)
+  onsitePocPhone       String?        @db.VarChar(50)
+  onsitePocEmail       String?        @db.VarChar(255)
+  clientId             String?        @db.Uuid
+  createdBy            String
+  createdAt            DateTime       @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime       @updatedAt @db.Timestamp(6)
+  addressLine2         String?        @db.VarChar(200)
+  client               Client?        @relation(fields: [clientId], references: [id])
+  createdByUser        User           @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([createdBy])
   @@map("event_templates")
 }
 
 model Service {
-  id                    String                 @id @default(uuid()) @db.Uuid
-  serviceId             String                 @unique
-  title                 String                 @db.VarChar(200)
+  id                    String                   @id @default(uuid()) @db.Uuid
+  serviceId             String                   @unique
+  title                 String                   @db.VarChar(200)
   costUnitType          CostUnitType?
-  description           String?                @db.VarChar(1000)
-  cost                  Decimal?               @db.Decimal(10, 2)
-  price                 Decimal?               @db.Decimal(10, 2)
-  expenditure           Boolean                @default(false)
-  expenditureAmount     Decimal?               @db.Decimal(10, 2) // Maintain for legacy
-  expenditureAmountType AmountType?
-  expenditureCost       Decimal?               @db.Decimal(10, 2)
-  expenditurePrice      Decimal?               @db.Decimal(10, 2)
-  travelInMinimum       Boolean                @default(false)
-  minimum               Decimal?               @db.Decimal(10, 2)
-  isActive              Boolean                @default(true)
+  description           String?                  @db.VarChar(1000)
+  cost                  Decimal?                 @db.Decimal(10, 2)
+  price                 Decimal?                 @db.Decimal(10, 2)
+  isActive              Boolean                  @default(true)
   createdBy             String
-  createdAt             DateTime               @default(now()) @db.Timestamp(6)
-  updatedAt             DateTime               @updatedAt @db.Timestamp(6)
-  createdByUser         User                   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt             DateTime                 @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime                 @updatedAt @db.Timestamp(6)
+  travelInMinimum       Boolean                  @default(false)
+  expenditureAmount     Decimal?                 @db.Decimal(10, 2)
+  expenditureAmountType AmountType?
+  expenditure           Boolean                  @default(false)
+  expenditureCost       Decimal?                 @db.Decimal(10, 2)
+  expenditurePrice      Decimal?                 @db.Decimal(10, 2)
+  minimum               Decimal?                 @db.Decimal(10, 2)
   callTimes             CallTime[]
-  staff                 StaffServiceAssignment[]
-  invoiceItems          InvoiceItem[]
   estimateItems         EstimateItem[]
+  invoiceItems          InvoiceItem[]
+  createdByUser         User                     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  staff                 StaffServiceAssignment[]
 
   @@index([serviceId])
   @@index([title])
@@ -445,10 +387,10 @@ model Product {
   createdBy       String
   createdAt       DateTime         @default(now()) @db.Timestamp(6)
   updatedAt       DateTime         @updatedAt @db.Timestamp(6)
-  createdByUser   User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  estimateItems   EstimateItem[]
   eventProducts   EventProduct[]
   invoiceItems    InvoiceItem[]
-  estimateItems   EstimateItem[]
+  createdByUser   User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([productId])
   @@index([title])
@@ -486,6 +428,7 @@ model NotificationPreference {
   createdAt                DateTime @default(now()) @db.Timestamp(6)
   updatedAt                DateTime @updatedAt @db.Timestamp(6)
   user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("notification_preferences")
 }
 
@@ -540,13 +483,13 @@ model OrganizationSettings {
 
 model SmtpConfiguration {
   id        String   @id @default(uuid()) @db.Uuid
-  name      String   // e.g. "Mailtrap", "Gmail"
+  name      String
   host      String
   port      Int
   user      String
   pass      String
   from      String
-  security  String   @default("TLS") // NONE, TLS, SSL
+  security  String   @default("TLS")
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now()) @db.Timestamp(6)
   updatedAt DateTime @updatedAt @db.Timestamp(6)
@@ -556,55 +499,40 @@ model SmtpConfiguration {
 
 model MessagingConfiguration {
   id          String   @id @default(uuid()) @db.Uuid
-  name        String   // e.g. "Bird Primary", "Bird Backup"
+  name        String
   provider    String   @default("BIRD")
   apiKey      String
   workspaceId String?
   channelId   String?
-  from        String?
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now()) @db.Timestamp(6)
   updatedAt   DateTime @updatedAt @db.Timestamp(6)
+  from        String?
 
   @@map("messaging_configurations")
 }
 
-enum MessageType {
-  EMAIL
-  SMS
-  WHATSAPP
-  MESSAGE
-}
-
-enum MessageStatus {
-  SENT
-  FAILED
-  PENDING
-}
-
 model CommunicationLog {
-  id          String        @id @default(uuid()) @db.Uuid
-  type        MessageType
-  recipient   String
-  subject     String?
-  content     String
-  status      MessageStatus @default(PENDING)
-  error       String?
-  senderId    String
-  metadata    Json?
-  fileLinks   Json?
-  isTrashed   Boolean       @default(false)
-  createdAt   DateTime      @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime      @updatedAt @db.Timestamp(6)
-
-  sender      User          @relation(fields: [senderId], references: [id])
+  id        String        @id @default(uuid()) @db.Uuid
+  type      MessageType
+  recipient String
+  subject   String?
+  content   String
+  status    MessageStatus @default(PENDING)
+  error     String?
+  senderId  String
+  isTrashed Boolean       @default(false)
+  createdAt DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt DateTime      @updatedAt @db.Timestamp(6)
+  fileLinks Json?
+  metadata  Json?
+  sender    User          @relation(fields: [senderId], references: [id])
 
   @@index([senderId])
   @@index([type])
   @@index([status])
   @@map("communication_logs")
 }
-
 
 model Session {
   id        String   @id
@@ -628,56 +556,46 @@ model SmsTemplate {
   isCustomized Boolean         @default(false)
   createdAt    DateTime        @default(now()) @db.Timestamp(6)
   updatedAt    DateTime        @updatedAt @db.Timestamp(6)
+
   @@map("sms_templates")
 }
 
 model Staff {
-  id                           String                       @id @default(uuid()) @db.Uuid
-  staffId                      String                       @unique
-  accountStatus                AccountStatus                @default(PENDING)
-  staffType                    StaffType                    @default(EMPLOYEE)
-  staffRole                    StaffRole                    @default(INDIVIDUAL)
+  id                           String                   @id @default(uuid()) @db.Uuid
+  staffId                      String                   @unique
+  accountStatus                AccountStatus            @default(PENDING)
+  staffType                    StaffType                @default(EMPLOYEE)
+  staffRole                    StaffRole                @default(INDIVIDUAL)
   firstName                    String
   lastName                     String
-  phone                        String                       @default("")
-  email                        String                       @unique
-  payrollId                    String?
-  hrSystemId                   String?
-  dateOfBirth                  DateTime?                    @db.Date
-  skillLevel                   SkillLevel                   @default(BEGINNER)
-  availabilityStatus           AvailabilityStatus           @default(OPEN_TO_OFFERS)
-  timeOffStart                 DateTime?                    @db.Date
-  timeOffEnd                   DateTime?                    @db.Date
-  streetAddress                String                       @default("")
+  phone                        String                   @default("")
+  email                        String                   @unique
+  dateOfBirth                  DateTime?                @db.Date
+  skillLevel                   SkillLevel               @default(BEGINNER)
+  availabilityStatus           AvailabilityStatus       @default(OPEN_TO_OFFERS)
+  timeOffStart                 DateTime?                @db.Date
+  timeOffEnd                   DateTime?                @db.Date
+  streetAddress                String                   @default("")
   aptSuiteUnit                 String?
-  city                         String                       @default("")
-  country                      String                       @default("")
-  state                        String                       @default("")
-  zipCode                      String                       @default("")
+  city                         String                   @default("")
+  country                      String                   @default("")
+  state                        String                   @default("")
+  zipCode                      String                   @default("")
   experience                   String?
-  staffRating                  StaffRating                  @default(NA)
+  staffRating                  StaffRating              @default(NA)
   internalNotes                String?
-  invitationToken              String?                      @unique
-  invitationExpiresAt          DateTime?                    @db.Timestamp(6)
-  hasLoginAccess               Boolean                      @default(false)
-  companyId                    String?                      @db.Uuid
-  userId                       String?                      @unique
+  invitationToken              String?                  @unique
+  invitationExpiresAt          DateTime?                @db.Timestamp(6)
+  hasLoginAccess               Boolean                  @default(false)
+  companyId                    String?                  @db.Uuid
+  userId                       String?                  @unique
   createdBy                    String
-  createdAt                    DateTime                     @default(now()) @db.Timestamp(6)
-  updatedAt                    DateTime                     @updatedAt @db.Timestamp(6)
-  geocodedAt                   DateTime?                    @db.Timestamp(6)
-  latitude                     Float?
-  longitude                    Float?
-
-  // Custom fields
+  createdAt                    DateTime                 @default(now()) @db.Timestamp(6)
+  updatedAt                    DateTime                 @updatedAt @db.Timestamp(6)
   customField1                 String?
   customField2                 String?
   customField3                 String?
-
-  // Documents (JSON array of {name, url, type?, size?})
   documents                    Json?
-
-  // Team Details (only when staffRole = TEAM)
   teamEntityName               String?
   teamEmail                    String?
   teamPhone                    String?
@@ -686,16 +604,19 @@ model Staff {
   teamCity                     String?
   teamState                    String?
   teamZipCode                  String?
-
-  // Relations
+  geocodedAt                   DateTime?                @db.Timestamp(6)
+  latitude                     Float?
+  longitude                    Float?
+  hrSystemId                   String?
+  payrollId                    String?
   callTimeInvitations          CallTimeInvitation[]
-  timeEntries                  TimeEntry[]
-  company                      Staff?                       @relation("staffTostaff", fields: [companyId], references: [id])
-  teamMembers                  Staff[]                      @relation("staffTostaff")
-  users_staff_createdByTousers User                         @relation("staff_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
-  users_staff_userIdTousers    User?                        @relation("staff_userIdTousers", fields: [userId], references: [id])
+  company                      Staff?                   @relation("staffTostaff", fields: [companyId], references: [id])
+  teamMembers                  Staff[]                  @relation("staffTostaff")
+  users_staff_createdByTousers User                     @relation("staff_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
+  users_staff_userIdTousers    User?                    @relation("staff_userIdTousers", fields: [userId], references: [id])
   services                     StaffServiceAssignment[]
   taxDetails                   StaffTaxDetails?
+  timeEntries                  TimeEntry[]
 
   @@index([accountStatus])
   @@index([availabilityStatus])
@@ -722,113 +643,89 @@ model StaffServiceAssignment {
 }
 
 model StaffTaxDetails {
-  id                      String            @id @default(uuid()) @db.Uuid
-  staffId                 String            @unique @db.Uuid
-
-  // Who fills out tax details
-  taxFilledBy             TaxFilledBy       @default(TALENT)
-
-  // W-9 Line 1: Name
-  taxName                 String?
-
-  // W-9 Line 2: Business name
-  businessName            String?
-
-  // W-9 Line 3a: Federal tax classification
-  businessStructure       BusinessStructure @default(INDIVIDUAL)
-  llcClassification       String?           // C, S, or P when LLC selected
-
-  // W-9 Line 4: Exemptions
-  exemptPayeeCode         String?
-  fatcaExemptionCode      String?
-
-  // W-9 Lines 5-6: Address
-  taxAddress              String?
-  taxCity                 String?
-  taxState                String?
-  taxZip                  String?
-
-  // W-9 Line 7: Account numbers (optional)
-  accountNumbers          String?
-
-  // W-9 Part I: Tax identifiers (sensitive)
-  ssn                     String?
-  ein                     String?
-
-  // W-9 Part II: Certification
-  signatureUrl            String?
-  certificationDate       DateTime?         @db.Timestamp(6)
-
-  // Audit
-  createdAt               DateTime          @default(now()) @db.Timestamp(6)
-  updatedAt               DateTime          @updatedAt @db.Timestamp(6)
-
-  // Relation
-  staff                   Staff             @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  id                 String            @id @default(uuid()) @db.Uuid
+  staffId            String            @unique @db.Uuid
+  businessStructure  BusinessStructure @default(INDIVIDUAL)
+  businessName       String?
+  ssn                String?
+  ein                String?
+  signatureUrl       String?
+  createdAt          DateTime          @default(now()) @db.Timestamp(6)
+  updatedAt          DateTime          @updatedAt @db.Timestamp(6)
+  accountNumbers     String?
+  certificationDate  DateTime?         @db.Timestamp(6)
+  exemptPayeeCode    String?
+  fatcaExemptionCode String?
+  llcClassification  String?
+  taxAddress         String?
+  taxCity            String?
+  taxFilledBy        TaxFilledBy       @default(TALENT)
+  taxName            String?
+  taxState           String?
+  taxZip             String?
+  staff              Staff             @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId])
   @@map("staff_tax_details")
 }
 
 model User {
-  id                               String                    @id
-  email                            String                    @unique
-  emailVerified                    Boolean                   @default(false)
+  id                               String                  @id
+  email                            String                  @unique
+  emailVerified                    Boolean                 @default(false)
   name                             String
   password                         String?
   firstName                        String
   lastName                         String
-  role                             UserRole                  @default(STAFF)
-  isActive                         Boolean                   @default(true)
+  role                             UserRole                @default(STAFF)
+  isActive                         Boolean                 @default(true)
   phone                            String?
   profilePhoto                     String?
-  lastLoginAt                      DateTime?                 @db.Timestamp(6)
-  invitationToken                  String?                   @unique
-  invitationExpiresAt              DateTime?                 @db.Timestamp(6)
-  createdAt                        DateTime                  @default(now()) @db.Timestamp(6)
-  updatedAt                        DateTime                  @updatedAt @db.Timestamp(6)
+  lastLoginAt                      DateTime?               @db.Timestamp(6)
+  invitationToken                  String?                 @unique
+  invitationExpiresAt              DateTime?               @db.Timestamp(6)
+  createdAt                        DateTime                @default(now()) @db.Timestamp(6)
+  updatedAt                        DateTime                @updatedAt @db.Timestamp(6)
   accounts                         Account[]
-  clients_clients_createdByTousers Client[]                  @relation("clients_createdByTousers")
-  clients_clients_userIdTousers    Client?                   @relation("clients_userIdTousers")
-  events                           Event[]
+  invitationReviews                CallTimeInvitation[]    @relation("invitation_reviews")
+  clients_clients_createdByTousers Client[]                @relation("clients_createdByTousers")
+  clients_clients_userIdTousers    Client?                 @relation("clients_userIdTousers")
+  communicationLogs                CommunicationLog[]
+  contacts                         Contact[]               @relation("contacts_created")
+  estimatesCreated                 Estimate[]              @relation("estimates_created")
   eventTemplates                   EventTemplate[]
+  events                           Event[]
+  invoicesCreated                  Invoice[]               @relation("invoices_created")
   notification_preferences         NotificationPreference?
   notifications                    Notification[]
-  sessions                         Session[]
-  services                         Service[]
   products                         Product[]
-  invoicesCreated                  Invoice[]                 @relation("invoices_created")
-  estimatesCreated                 Estimate[]                @relation("estimates_created")
-  staff_staff_createdByTousers     Staff[]                   @relation("staff_createdByTousers")
-  staff_staff_userIdTousers        Staff?                    @relation("staff_userIdTousers")
-  communicationLogs                CommunicationLog[]
-  contacts                         Contact[]                 @relation("contacts_created")
-  invitationReviews                CallTimeInvitation[]      @relation("invitation_reviews")
-  timeEntriesCreated               TimeEntry[]               @relation("time_entries_created")
-  timeEntryRevisionsEdited         TimeEntryRevision[]       @relation("time_entry_revisions_edited_by")
+  services                         Service[]
+  sessions                         Session[]
+  staff_staff_createdByTousers     Staff[]                 @relation("staff_createdByTousers")
+  staff_staff_userIdTousers        Staff?                  @relation("staff_userIdTousers")
+  timeEntriesCreated               TimeEntry[]             @relation("time_entries_created")
+  timeEntryRevisionsEdited         TimeEntryRevision[]     @relation("time_entry_revisions_edited_by")
+
   @@map("users")
 }
 
 model Contact {
   id                   String    @id @default(uuid()) @db.Uuid
-  contactId            String    @unique // e.g. CON-2026-001
+  contactId            String    @unique
   firstName            String
   lastName             String
   email                String
   phone                String
-  dateOfBirth          DateTime? @db.Date
-  transactionType      String?
   ricsSurveyAccount    Boolean?  @default(false)
-  correspondingAddress String?
-  contactSource        String?
-  contactType          String?
-  
-  internalNotes        String?
-  
   createdBy            String
   createdAt            DateTime  @default(now()) @db.Timestamp(6)
   updatedAt            DateTime  @updatedAt @db.Timestamp(6)
-
+  contactSource        String?
+  contactType          String?
+  correspondingAddress String?
+  dateOfBirth          DateTime? @db.Date
+  transactionType      String?
+  internalNotes        String?
   createdByUser        User      @relation("contacts_created", fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([email])
@@ -837,15 +734,155 @@ model Contact {
 }
 
 model Verification {
-  id         String   @id
+  id         String    @id
   identifier String
   value      String
-  expiresAt  DateTime @db.Timestamp(6)
-  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  expiresAt  DateTime  @db.Timestamp(6)
+  createdAt  DateTime  @default(now()) @db.Timestamp(6)
   updatedAt  DateTime? @updatedAt @db.Timestamp(6)
 
   @@unique([identifier, value])
   @@map("verifications")
+}
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  invoiceNo      String        @unique
+  clientId       String        @db.Uuid
+  status         InvoiceStatus @default(DRAFT)
+  invoiceDate    DateTime      @db.Date
+  dueDate        DateTime?     @db.Date
+  terms          String?
+  customField1   String?
+  customField2   String?
+  customField3   String?
+  discountType   DiscountType?
+  discountValue  Decimal?      @db.Decimal(10, 2)
+  depositAmount  Decimal?      @db.Decimal(10, 2)
+  shippingAmount Decimal?      @db.Decimal(10, 2)
+  salesTaxAmount Decimal?      @db.Decimal(10, 2)
+  isTaxable      Boolean       @default(false)
+  notes          String?
+  paymentDetails String?
+  fileLinks      Json?
+  isArchived     Boolean       @default(false)
+  archivedAt     DateTime?     @db.Timestamp(6)
+  createdBy      String
+  createdAt      DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime      @updatedAt @db.Timestamp(6)
+  items          InvoiceItem[]
+  client         Client        @relation(fields: [clientId], references: [id])
+  createdByUser  User          @relation("invoices_created", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([invoiceNo])
+  @@index([status])
+  @@index([createdBy])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id                  String    @id @default(uuid()) @db.Uuid
+  invoiceId           String    @db.Uuid
+  date                DateTime? @db.Date
+  productId           String?   @db.Uuid
+  serviceId           String?   @db.Uuid
+  description         String
+  quantity            Decimal   @db.Decimal(10, 2)
+  price               Decimal   @db.Decimal(10, 2)
+  amount              Decimal   @db.Decimal(10, 2)
+  createdAt           DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt           DateTime  @updatedAt @db.Timestamp(6)
+  actualEnd           DateTime? @db.Timestamp(6)
+  actualHours         Decimal?  @db.Decimal(10, 2)
+  actualShiftDetails  String?
+  actualStart         DateTime? @db.Timestamp(6)
+  internalNotes       String?
+  scheduleShiftDetail String?
+  scheduledEnd        DateTime? @db.Timestamp(6)
+  scheduledHours      Decimal?  @db.Decimal(10, 2)
+  scheduledStart      DateTime? @db.Timestamp(6)
+  invoice             Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product             Product?  @relation(fields: [productId], references: [id])
+  service             Service?  @relation(fields: [serviceId], references: [id])
+
+  @@index([invoiceId])
+  @@index([productId])
+  @@index([serviceId])
+  @@map("invoice_items")
+}
+
+model Estimate {
+  id             String         @id @default(uuid()) @db.Uuid
+  estimateNo     String         @unique
+  clientId       String         @db.Uuid
+  status         EstimateStatus @default(DRAFT)
+  estimateDate   DateTime       @db.Date
+  expirationDate DateTime?      @db.Date
+  approvedBy     String?
+  approvedDate   DateTime?      @db.Date
+  terms          String?
+  customField1   String?
+  customField2   String?
+  customField3   String?
+  discountType   DiscountType?
+  discountValue  Decimal?       @db.Decimal(10, 2)
+  depositAmount  Decimal?       @db.Decimal(10, 2)
+  shippingAmount Decimal?       @db.Decimal(10, 2)
+  salesTaxAmount Decimal?       @db.Decimal(10, 2)
+  isTaxable      Boolean        @default(false)
+  notes          String?
+  paymentDetails String?
+  fileLinks      Json?
+  isArchived     Boolean        @default(false)
+  archivedAt     DateTime?      @db.Timestamp(6)
+  createdBy      String
+  createdAt      DateTime       @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime       @updatedAt @db.Timestamp(6)
+  items          EstimateItem[]
+  client         Client         @relation(fields: [clientId], references: [id])
+  createdByUser  User           @relation("estimates_created", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([estimateNo])
+  @@index([status])
+  @@index([createdBy])
+  @@map("estimates")
+}
+
+model EstimateItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  estimateId  String    @db.Uuid
+  date        DateTime? @db.Date
+  productId   String?   @db.Uuid
+  serviceId   String?   @db.Uuid
+  description String
+  quantity    Decimal   @db.Decimal(10, 2)
+  price       Decimal   @db.Decimal(10, 2)
+  amount      Decimal   @db.Decimal(10, 2)
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamp(6)
+  estimate    Estimate  @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  product     Product?  @relation(fields: [productId], references: [id])
+  service     Service?  @relation(fields: [serviceId], references: [id])
+
+  @@index([estimateId])
+  @@index([productId])
+  @@index([serviceId])
+  @@map("estimate_items")
+}
+
+enum MessageType {
+  EMAIL
+  SMS
+  MESSAGE
+  WHATSAPP
+}
+
+enum MessageStatus {
+  SENT
+  FAILED
+  PENDING
 }
 
 enum AccountStatus {
@@ -890,11 +927,11 @@ enum EmailTemplateType {
 
 enum EventStatus {
   DRAFT
-  PUBLISHED
   ASSIGNED
   IN_PROGRESS
   COMPLETED
   CANCELLED
+  PUBLISHED
 }
 
 enum RequestMethod {
@@ -920,7 +957,6 @@ enum NotificationType {
   SHIFT_REMINDER
   STAFF_INVITATION
   GENERAL
-  // Event status change notifications
   EVENT_FULLY_STAFFED
   EVENT_STARTED
   EVENT_COMPLETED
@@ -939,11 +975,11 @@ enum AmountType {
 }
 
 enum CostUnitType {
-  HOURLY      // per hour
-  ASSIGNMENT  // per assignment (default for service assignments)
-  SHIFT       // per shift
-  DAY         // per day
-  JOB         // per job
+  HOURLY
+  ASSIGNMENT
+  SHIFT
+  DAY
+  JOB
 }
 
 enum PriceUnitType {
@@ -1026,78 +1062,6 @@ enum UserRole {
   CLIENT
 }
 
-model Invoice {
-  id              String        @id @default(uuid()) @db.Uuid
-  invoiceNo       String        @unique
-  clientId        String        @db.Uuid
-  status          InvoiceStatus @default(DRAFT)
-  invoiceDate     DateTime      @db.Date
-  dueDate         DateTime?     @db.Date
-  terms           String?
-  customField1    String?
-  customField2    String?
-  customField3    String?
-  discountType    DiscountType?
-  discountValue   Decimal?      @db.Decimal(10, 2)
-  depositAmount   Decimal?      @db.Decimal(10, 2)
-  shippingAmount  Decimal?      @db.Decimal(10, 2)
-  salesTaxAmount  Decimal?      @db.Decimal(10, 2)
-  isTaxable       Boolean       @default(false)
-  notes           String?
-  paymentDetails  String?
-  fileLinks       Json?
-  isArchived      Boolean       @default(false)
-  archivedAt      DateTime?     @db.Timestamp(6)
-  createdBy       String
-  createdAt       DateTime      @default(now()) @db.Timestamp(6)
-  updatedAt       DateTime      @updatedAt @db.Timestamp(6)
-  client          Client        @relation(fields: [clientId], references: [id])
-  createdByUser   User          @relation("invoices_created", fields: [createdBy], references: [id], onDelete: Cascade)
-  items           InvoiceItem[]
-
-  @@index([clientId])
-  @@index([invoiceNo])
-  @@index([status])
-  @@index([createdBy])
-  @@map("invoices")
-}
-
-model InvoiceItem {
-  id                     String   @id @default(uuid()) @db.Uuid
-  invoiceId              String   @db.Uuid
-  date                   DateTime? @db.Date
-  productId              String?  @db.Uuid
-  serviceId              String?  @db.Uuid
-  description            String
-  quantity               Decimal  @db.Decimal(10, 2)
-  price                  Decimal  @db.Decimal(10, 2)
-  amount                 Decimal  @db.Decimal(10, 2)
-  
-  // New fields for shift details (mirrors CallTime/TimeEntry data)
-  scheduledStart         DateTime? @db.Timestamp(6)
-  scheduledEnd           DateTime? @db.Timestamp(6)
-  scheduledHours         Decimal?  @db.Decimal(10, 2)
-  actualStart           DateTime? @db.Timestamp(6)
-  actualEnd             DateTime? @db.Timestamp(6)
-  actualHours           Decimal?  @db.Decimal(10, 2)
-
-  scheduleShiftDetail    String?   @db.Text
-  actualShiftDetails     String?   @db.Text
-  internalNotes          String?   @db.Text
-
-  createdAt              DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt              DateTime  @updatedAt @db.Timestamp(6)
-  invoice                Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product                Product? @relation(fields: [productId], references: [id])
-  service                Service? @relation(fields: [serviceId], references: [id])
-
-  @@index([invoiceId])
-  @@index([productId])
-  @@index([serviceId])
-  @@map("invoice_items")
-}
-
-
 enum EstimateStatus {
   DRAFT
   SENT
@@ -1105,66 +1069,6 @@ enum EstimateStatus {
   DECLINED
   EXPIRED
   CONVERTED
-}
-
-model Estimate {
-  id              String         @id @default(uuid()) @db.Uuid
-  estimateNo      String         @unique
-  clientId        String         @db.Uuid
-  status          EstimateStatus @default(DRAFT)
-  estimateDate    DateTime       @db.Date
-  expirationDate  DateTime?      @db.Date
-  approvedBy      String?
-  approvedDate    DateTime?      @db.Date
-  terms           String?
-  customField1    String?
-  customField2    String?
-  customField3    String?
-  discountType    DiscountType?
-  discountValue   Decimal?       @db.Decimal(10, 2)
-  depositAmount   Decimal?       @db.Decimal(10, 2)
-  shippingAmount  Decimal?       @db.Decimal(10, 2)
-  salesTaxAmount  Decimal?       @db.Decimal(10, 2)
-  isTaxable       Boolean        @default(false)
-  notes           String?
-  paymentDetails  String?
-  fileLinks       Json?
-  isArchived      Boolean        @default(false)
-  archivedAt      DateTime?      @db.Timestamp(6)
-  createdBy       String
-  createdAt       DateTime       @default(now()) @db.Timestamp(6)
-  updatedAt       DateTime       @updatedAt @db.Timestamp(6)
-  client          Client         @relation(fields: [clientId], references: [id])
-  createdByUser   User           @relation("estimates_created", fields: [createdBy], references: [id], onDelete: Cascade)
-  items           EstimateItem[]
-
-  @@index([clientId])
-  @@index([estimateNo])
-  @@index([status])
-  @@index([createdBy])
-  @@map("estimates")
-}
-
-model EstimateItem {
-  id          String    @id @default(uuid()) @db.Uuid
-  estimateId  String    @db.Uuid
-  date        DateTime? @db.Date
-  productId   String?   @db.Uuid
-  serviceId   String?   @db.Uuid
-  description String
-  quantity    Decimal   @db.Decimal(10, 2)
-  price       Decimal   @db.Decimal(10, 2)
-  amount      Decimal   @db.Decimal(10, 2)
-  createdAt   DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime  @updatedAt @db.Timestamp(6)
-  estimate    Estimate  @relation(fields: [estimateId], references: [id], onDelete: Cascade)
-  product     Product?  @relation(fields: [productId], references: [id])
-  service     Service?  @relation(fields: [serviceId], references: [id])
-
-  @@index([estimateId])
-  @@index([productId])
-  @@index([serviceId])
-  @@map("estimate_items")
 }
 
 enum InvoiceStatus {

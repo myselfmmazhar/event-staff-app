@@ -395,12 +395,10 @@ export class TimeEntryService {
                     actualHours = Math.max(0, Math.round(((diffMs - breakMs) / (1000 * 60 * 60)) * 100) / 100);
                 }
 
-                const quantity = isPerHour ? (actualHours || hours) : 1;
-
                 // Format Details (Keep for reference or title use)
                 const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString();
                 const fmtTime = (d: Date | string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
+
                 const schedStartStr = scheduledStart ? `${fmtDate(scheduledStart)} ${fmtTime(scheduledStart)}` : '—';
                 const schedEndStr = scheduledEnd ? `${fmtDate(scheduledEnd)} ${fmtTime(scheduledEnd)}` : '—';
                 const scheduleShiftDetail = `Scheduled: ${schedStartStr} - ${schedEndStr} (${hours} hrs)`;
@@ -408,17 +406,23 @@ export class TimeEntryService {
                 let actualShiftDetails = 'Actual: Not clocked';
                 if (inv.timeEntry?.clockIn) {
                     const clockInStr = `${fmtDate(inv.timeEntry.clockIn)} ${fmtTime(inv.timeEntry.clockIn)}`;
-                    const clockOutStr = inv.timeEntry.clockOut 
-                        ? `${fmtDate(inv.timeEntry.clockOut)} ${fmtTime(inv.timeEntry.clockOut)}` 
+                    const clockOutStr = inv.timeEntry.clockOut
+                        ? `${fmtDate(inv.timeEntry.clockOut)} ${fmtTime(inv.timeEntry.clockOut)}`
                         : 'No out';
                     actualShiftDetails = `Actual: ${clockInStr} - ${clockOutStr} (${actualHours} hrs)`;
                 }
 
-                return {
+                const baseQuantity = isPerHour ? hours : 1;
+                const otHours = Math.max(0, actualHours - hours);
+
+                const itemsList = [];
+
+                // Add Base Item
+                itemsList.push({
                     description: `${inv.callTime.service?.title || 'Staff'} - ${inv.staff.firstName} ${inv.staff.lastName}`,
-                    quantity,
+                    quantity: baseQuantity,
                     price: rate,
-                    amount: quantity * rate,
+                    amount: baseQuantity * rate,
                     serviceId: inv.callTime.serviceId,
                     date: inv.callTime.startDate,
                     scheduledStart,
@@ -430,8 +434,31 @@ export class TimeEntryService {
                     scheduleShiftDetail,
                     actualShiftDetails,
                     internalNotes: inv.timeEntry?.notes || ""
-                };
-            });
+                });
+
+                // Add Overtime Item if applicable
+                if (otHours > 0) {
+                    itemsList.push({
+                        description: `Overtime - ${inv.callTime.service?.title || 'Staff'} - ${inv.staff.firstName} ${inv.staff.lastName}`,
+                        quantity: otHours,
+                        price: rate,
+                        amount: otHours * rate,
+                        serviceId: inv.callTime.serviceId,
+                        date: inv.callTime.startDate,
+                        scheduledStart,
+                        scheduledEnd,
+                        scheduledHours: hours,
+                        actualStart: inv.timeEntry?.clockIn,
+                        actualEnd: inv.timeEntry?.clockOut,
+                        actualHours,
+                        scheduleShiftDetail,
+                        actualShiftDetails: `Overtime: ${otHours.toFixed(2)} hours`,
+                        internalNotes: `Overtime worked beyond scheduled ${hours} hours`
+                    });
+                }
+
+                return itemsList;
+            }).flat();
 
             await (this.prisma as any).invoice.create({
                 data: {

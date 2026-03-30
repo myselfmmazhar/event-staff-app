@@ -155,14 +155,69 @@ export default function ViewInvoicePage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {invoice.items?.map((item, index) => (
-                                    <tr key={index} className="border-b last:border-0">
-                                        <td className="py-3 px-2">{item.description}</td>
-                                        <td className="py-3 px-2 text-right">{Number(item.quantity)}</td>
-                                        <td className="py-3 px-2 text-right">${Number(item.price).toFixed(2)}</td>
-                                        <td className="py-3 px-2 text-right font-medium">${Number(item.amount).toFixed(2)}</td>
-                                    </tr>
-                                ))}
+                                {(() => {
+                                    const rows: React.ReactNode[] = [];
+                                    invoice.items?.forEach((item, index) => {
+                                        const actualHours = Number(item.actualHours) || 0;
+                                        const scheduledHours = Number(item.scheduledHours) || 0;
+                                        const otHours = Math.max(0, actualHours - scheduledHours);
+                                        const hasOT = otHours > 0;
+
+                                        // Main Item (Base Shift)
+                                        rows.push(
+                                            <tr key={`item-${index}`} className="border-b last:border-0 align-top">
+                                                <td className="py-3 px-2">
+                                                    <div className="font-medium">{item.description}</div>
+                                                    {item.scheduleShiftDetail && (
+                                                        <div className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                                                            📅 {item.scheduleShiftDetail}
+                                                        </div>
+                                                    )}
+                                                    {item.actualShiftDetails && (
+                                                        <div className="text-[11px] text-muted-foreground leading-relaxed">
+                                                            🕒 {item.actualShiftDetails}
+                                                        </div>
+                                                    )}
+                                                    {item.internalNotes && (
+                                                        <div className="text-[10px] italic text-slate-400 mt-1 pl-4 border-l-2 border-slate-100">
+                                                            Note: {item.internalNotes}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-2 text-right">
+                                                    {hasOT ? scheduledHours.toFixed(2) : Number(item.quantity).toFixed(2)}
+                                                </td>
+                                                <td className="py-3 px-2 text-right">${Number(item.price).toFixed(2)}</td>
+                                                <td className="py-3 px-2 text-right font-medium">
+                                                    ${(hasOT ? (scheduledHours * Number(item.price)) : Number(item.amount)).toFixed(2)}
+                                                </td>
+                                            </tr>
+                                        );
+
+                                        // Add OT Row if applicable
+                                        if (hasOT) {
+                                            const otAmount = otHours * Number(item.price);
+                                            rows.push(
+                                                <tr key={`item-ot-${index}`} className="border-b last:border-0 bg-blue-50/10 animate-in fade-in slide-in-from-left-1 duration-500 align-top">
+                                                    <td className="py-3 px-2 pl-6">
+                                                        <div className="font-medium text-blue-700/80">
+                                                            Overtime - {item.description}
+                                                        </div>
+                                                        <div className="text-[11px] text-blue-600/60 italic">
+                                                            Extra {otHours.toFixed(2)} hours worked beyond scheduled shift
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-2 text-right text-blue-700/70">{otHours.toFixed(2)}</td>
+                                                    <td className="py-3 px-2 text-right text-blue-700/70">${Number(item.price).toFixed(2)}</td>
+                                                    <td className="py-3 px-2 text-right font-semibold text-blue-800">
+                                                        ${otAmount.toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        }
+                                    });
+                                    return rows;
+                                })()}
                             </tbody>
                         </table>
                     </div>
