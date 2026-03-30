@@ -148,7 +148,11 @@ export default function TimeManagerPage() {
         breakMins: number,
         otCost?: number | null,
         otPrice?: number | null,
-        notes?: string | null
+        notes?: string | null,
+        shiftCost?: number | null,
+        shiftPrice?: number | null,
+        travelCost?: number | null,
+        travelPrice?: number | null
     ) => {
         // Find the matching assignment to get staffId/callTimeId
         const assignment = assignments.find((a: any) => a.id === invitationId);
@@ -163,7 +167,11 @@ export default function TimeManagerPage() {
             breakMinutes: breakMins,
             overtimeCost: otCost,
             overtimePrice: otPrice,
-            notes: notes ?? undefined,
+            shiftCost: shiftCost,
+            shiftPrice: shiftPrice,
+            travelCost: travelCost,
+            travelPrice: travelPrice,
+            notes: notes,
         });
     };
 
@@ -405,7 +413,7 @@ export default function TimeManagerPage() {
         });
 
         const groups = Array.from(groupsMap.values());
-        
+
         // Internal sorting for groups (by date/time usually)
         groups.forEach(g => {
             g.callTimes.sort((a, b) => {
@@ -806,8 +814,8 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="bill" label="Bill Amount" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
+                                                            <SortHeader id="cost" label="Commission Cost" align="text-right" />
+                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
                                                         <>
@@ -915,8 +923,8 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="bill" label="Bill Amount" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
+                                                            <SortHeader id="cost" label="Commission Cost" align="text-right" />
+                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
                                                         <>
@@ -949,7 +957,7 @@ export default function TimeManagerPage() {
                                             <tbody>
                                                 {(() => {
                                                     const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
-                                                    
+
                                                     if (subTab !== 'bill') {
                                                         return filtered.map(ct => (
                                                             <TimesheetTableRow
@@ -1030,7 +1038,7 @@ export default function TimeManagerPage() {
                                             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                                                 <span className="font-semibold text-primary/80 uppercase tracking-tighter text-[10px] bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
                                                     {subTab === 'bill' ? (
-                                                        group.callTimes[0]?.staff 
+                                                        group.callTimes[0]?.staff
                                                             ? `${group.callTimes[0].staff.firstName} ${group.callTimes[0].staff.lastName}`
                                                             : 'No Talent'
                                                     ) : (group.clientName || 'No Client')}
@@ -1085,8 +1093,8 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="bill" label="Bill Amount" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
+                                                            <SortHeader id="cost" label="Commission Cost" align="text-right" />
+                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
                                                         <>
@@ -1119,7 +1127,7 @@ export default function TimeManagerPage() {
                                             <tbody>
                                                 {(() => {
                                                     const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
-                                                    
+
                                                     if (subTab !== 'bill') {
                                                         return filtered.map(ct => (
                                                             <TimesheetTableRow

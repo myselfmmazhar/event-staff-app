@@ -223,6 +223,10 @@ export class TimeEntryService {
         breakMinutes?: number;
         overtimeCost?: number | null;
         overtimePrice?: number | null;
+        shiftCost?: number | null;
+        shiftPrice?: number | null;
+        travelCost?: number | null;
+        travelPrice?: number | null;
         notes?: string;
         createdBy: string;
     }) {
@@ -241,6 +245,10 @@ export class TimeEntryService {
                     (existing.breakMinutes ?? 0) !== breakMinutes ||
                     (existing.overtimeCost?.toString?.() ?? existing.overtimeCost) !== (data.overtimeCost?.toString?.() ?? data.overtimeCost) ||
                     (existing.overtimePrice?.toString?.() ?? existing.overtimePrice) !== (data.overtimePrice?.toString?.() ?? data.overtimePrice) ||
+                    (existing.shiftCost?.toString?.() ?? existing.shiftCost) !== (data.shiftCost?.toString?.() ?? data.shiftCost) ||
+                    (existing.shiftPrice?.toString?.() ?? existing.shiftPrice) !== (data.shiftPrice?.toString?.() ?? data.shiftPrice) ||
+                    (existing.travelCost?.toString?.() ?? existing.travelCost) !== (data.travelCost?.toString?.() ?? data.travelCost) ||
+                    (existing.travelPrice?.toString?.() ?? existing.travelPrice) !== (data.travelPrice?.toString?.() ?? data.travelPrice) ||
                     (existing.notes ?? '') !== (data.notes ?? '');
 
                 const updated = await tx.timeEntry.update({
@@ -251,6 +259,10 @@ export class TimeEntryService {
                         breakMinutes,
                         overtimeCost: data.overtimeCost,
                         overtimePrice: data.overtimePrice,
+                        shiftCost: data.shiftCost,
+                        shiftPrice: data.shiftPrice,
+                        travelCost: data.travelCost,
+                        travelPrice: data.travelPrice,
                         notes: data.notes,
                     },
                     include: { staff: true },
@@ -265,6 +277,10 @@ export class TimeEntryService {
                             breakMinutes: updated.breakMinutes,
                             overtimeCost: updated.overtimeCost,
                             overtimePrice: updated.overtimePrice,
+                            shiftCost: updated.shiftCost,
+                            shiftPrice: updated.shiftPrice,
+                            travelCost: updated.travelCost,
+                            travelPrice: updated.travelPrice,
                             notes: updated.notes,
                             editedBy: data.createdBy,
                         },
@@ -287,6 +303,10 @@ export class TimeEntryService {
                     breakMinutes,
                     overtimeCost: data.overtimeCost,
                     overtimePrice: data.overtimePrice,
+                    shiftCost: data.shiftCost,
+                    shiftPrice: data.shiftPrice,
+                    travelCost: data.travelCost,
+                    travelPrice: data.travelPrice,
                     notes: data.notes,
                     createdBy: data.createdBy,
                 },

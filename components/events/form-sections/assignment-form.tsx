@@ -1208,7 +1208,7 @@ export function AssignmentForm({
               </div>
               {!!watch('expenditure') && (
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
+                  <Label className="text-sm font-medium mb-2 block">Is Travel Included Minimum?</Label>
                   <div className="flex items-center gap-4 h-10">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -1235,32 +1235,8 @@ export function AssignmentForm({
                   </div>
                 </div>
               )}
-              {!!watch('expenditure') && !!watch('travelInMinimum') && (
+              {!!watch('expenditure') && watch('travelInMinimum') === false && (
                 <>
-                  <div>
-                    <Label htmlFor="expenditureCost" className="text-sm font-medium mb-2 block">Travel Cost (to Talent)</Label>
-                    <Input
-                      id="expenditureCost"
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      {...register('expenditureCost', { valueAsNumber: true })}
-                      onFocus={e => e.target.select()}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="expenditurePrice" className="text-sm font-medium mb-2 block">Travel Price (to Client)</Label>
-                    <Input
-                      id="expenditurePrice"
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      {...register('expenditurePrice', { valueAsNumber: true })}
-                      onFocus={e => e.target.select()}
-                      placeholder="0.00"
-                    />
-                  </div>
                   <div>
                     <Label className="text-sm font-medium mb-2 block">Travel Type</Label>
                     <Controller
@@ -1285,6 +1261,52 @@ export function AssignmentForm({
                         </Select>
                       )}
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="expenditureCost" className="text-sm font-medium mb-2 block">Travel Cost (to Talent)</Label>
+                    <Input
+                      id="expenditureCost"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      {...register('expenditureCost', { valueAsNumber: true })}
+                      onFocus={e => e.target.select()}
+                      placeholder="0.00"
+                    />
+                    {watch('expenditureAmountType') === 'MULTIPLIER' && watch('payRate') != null && watch('expenditureCost') != null && (
+                      <div className="text-[11px] text-blue-600 font-semibold mt-1 px-1 flex items-center gap-1">
+                         <span>Calculated Value:</span>
+                         <span className="bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                           ${((Number(watch('payRate')) || 0) * (Number(watch('expenditureCost')) || 0)).toFixed(2)}
+                         </span>
+                         <span className="text-muted-foreground text-[10px] font-normal italic">
+                           ({Number(watch('payRate')).toFixed(2)} x {Number(watch('expenditureCost'))})
+                         </span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="expenditurePrice" className="text-sm font-medium mb-2 block">Travel Price (to Client)</Label>
+                    <Input
+                      id="expenditurePrice"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      {...register('expenditurePrice', { valueAsNumber: true })}
+                      onFocus={e => e.target.select()}
+                      placeholder="0.00"
+                    />
+                    {watch('expenditureAmountType') === 'MULTIPLIER' && watch('billRate') != null && watch('expenditurePrice') != null && (
+                      <div className="text-[11px] text-blue-600 font-semibold mt-1 px-1 flex items-center gap-1">
+                         <span>Calculated Value:</span>
+                         <span className="bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                           ${((Number(watch('billRate')) || 0) * (Number(watch('expenditurePrice')) || 0)).toFixed(2)}
+                         </span>
+                         <span className="text-muted-foreground text-[10px] font-normal italic">
+                           ({Number(watch('billRate')).toFixed(2)} x {Number(watch('expenditurePrice'))})
+                         </span>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
