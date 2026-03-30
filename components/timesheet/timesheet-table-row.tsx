@@ -29,12 +29,17 @@ import {
     fmtCurrency,
     toInputDatetime,
     calcExpenditureCost,
-    calcExpenditurePrice
+    calcExpenditurePrice,
+    getTimeOnly
 } from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
+import { TalentContactPopover } from './talent-contact-popover';
 import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
-
+import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 export function TimesheetTableRow({
     ct,
     isExpanded,
@@ -56,15 +61,17 @@ export function TimesheetTableRow({
     onToggleExpand: (id: string, e: React.MouseEvent) => void;
     onToggleSelect: (id: string, e: React.MouseEvent) => void;
     onViewEvent: (id: string) => void;
-    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null) => void;
+    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null, notes?: string | null) => void;
     showEventName?: boolean;
     onApprove?: (id: string) => void;
     onReject?: (id: string) => void;
     onReview?: (id: string) => void;
     onPending?: (id: string) => void;
-    subTab?: 'all' | 'bill' | 'invoice';
+    subTab?: 'all' | 'bill' | 'invoice' | 'commission';
 }) {
+    const { toast } = useToast();
     const [isEditing, setIsEditing] = useState(false);
+    const [isEditingNotes, setIsEditingNotes] = useState(false);
 
 
     const te = ct.timeEntry;
@@ -73,9 +80,12 @@ export function TimesheetTableRow({
     const [breakMins, setBreakMins] = useState(te?.breakMinutes ?? 0);
     const [otCostManual, setOtCostManual] = useState<string>(te?.overtimeCost !== undefined && te?.overtimeCost !== null ? toNumber(te.overtimeCost).toString() : '');
     const [otPriceManual, setOtPriceManual] = useState<string>(te?.overtimePrice !== undefined && te?.overtimePrice !== null ? toNumber(te.overtimePrice).toString() : '');
+    const [localNotes, setLocalNotes] = useState(te?.notes || ct.notes || '');
     const [isEditingOtCost, setIsEditingOtCost] = useState(false);
     const [isEditingOtPrice, setIsEditingOtPrice] = useState(false);
     const [isCommApp, setIsCommApp] = useState(!!ct.commission);
+    const [billBasis, setBillBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
+    const [invoiceBasis, setInvoiceBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
 
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
@@ -87,9 +97,11 @@ export function TimesheetTableRow({
     const expCost = calcExpenditureCost(ct);
     const expPrice = calcExpenditurePrice(ct);
     const billAmount = calcBillAmount(ct);
-    const totalBill = calcTotalBill(te, ct, isCommApp);
-    const totalInvoice = calcTotalInvoice(te, ct, isCommApp);
+    const totalBill = calcTotalBill(te, ct, isCommApp, billBasis);
+    const totalInvoice = calcTotalInvoice(te, ct, isCommApp, invoiceBasis);
     const grossProfit = totalInvoice - totalBill;
+
+
 
     const reviewRating = useMemo(() => ct.invitations?.[0]?.internalReviewRating ?? null, [ct.invitations]);
     const isRejected = reviewRating === 'DID_NOT_MEET' || reviewRating === 'NO_CALL_NO_SHOW';
@@ -109,10 +121,16 @@ export function TimesheetTableRow({
                 clockOut || null,
                 breakMins,
                 parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
-                parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined)
+                parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined),
+                localNotes
             );
+            toast({
+                title: 'Changes saved',
+                description: 'The time entry has been updated.',
+            });
         }
         setIsEditing(false);
+        setIsEditingNotes(false);
         setIsEditingOtCost(false);
         setIsEditingOtPrice(false);
     };
@@ -194,44 +212,88 @@ export function TimesheetTableRow({
                             {formatDate(ct.startDate)}
                         </td>
 
-                        {/* Service / Product (Position) */}
-                        <td className="px-3 py-2.5">
-                            <Badge variant="primary" className="text-[10px] whitespace-normal max-w-[120px] bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight">
-                                {ct.service?.title || '—'}
-                            </Badge>
-                        </td>
 
-                        {/* Description - Combined Details */}
-                        <td className="px-3 py-4 text-[10px] leading-snug text-slate-600 min-w-[320px]">
-                            <div className="space-y-1.5">
+
+                        {/* Description - Multiline Structured (Matches Screenshot) */}
+                        <td className="px-3 py-4 text-[10px] leading-relaxed text-slate-600 min-w-[350px]">
+                            <div className="flex flex-col gap-3">
+                                {/* Scheduled Shift Section */}
                                 <div className="flex flex-col">
-                                    <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Scheduled Shift</span>
-                                    <span className="font-medium">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Scheduled Shift</span>
+                                        <button 
+                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'SCHEDULED' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
+                                            onClick={(e) => { e.stopPropagation(); setInvoiceBasis('SCHEDULED'); }}
+                                        >
+                                            Bill Scheduled
+                                        </button>
+                                    </div>
+                                    <span className="font-medium text-slate-500">
                                         {formatDate(ct.startDate)} • {formatTime(ct.startTime)} - {formatTime(ct.endTime)}
                                         <span className="ml-1 text-slate-400">({hoursScheduled.toFixed(2)} hrs)</span>
                                     </span>
                                 </div>
+                                
+                                {/* Actual Shift Section */}
                                 <div className="flex flex-col">
-                                    <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Actual Shift</span>
+                                    <div className="flex items-center justify-between">
+                                        <span className={`font-bold text-[8px] uppercase tracking-tight ${te?.clockIn ? 'text-emerald-500' : 'text-slate-400'}`}>Actual Shift</span>
+                                        <button 
+                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'ACTUAL' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
+                                            onClick={(e) => { e.stopPropagation(); setInvoiceBasis('ACTUAL'); }}
+                                        >
+                                            Bill Actual
+                                        </button>
+                                    </div>
                                     {te?.clockIn ? (
-                                        <span className="font-medium text-emerald-600">
-                                            {formatDate(te.clockIn)} • {formatTime(te.clockIn ? fmtDateTime(te.clockIn).split(', ')[1] || null : null)} - {te.clockOut ? formatTime(te.clockOut ? fmtDateTime(te.clockOut).split(', ')[1] || null : null) : 'No out'}
+                                        <span className="font-bold text-emerald-600 italic">
+                                            {formatDate(te.clockIn)} • {formatTime(getTimeOnly(te.clockIn))} - {te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : 'No out'}
                                             <span className="ml-1 opacity-70">({hoursClocked.toFixed(2)} hrs)</span>
                                         </span>
                                     ) : (
                                         <span className="text-slate-300 italic font-medium">Not clocked</span>
                                     )}
                                 </div>
+
+                                {/* Notes Section */}
                                 <div className="flex flex-col">
                                     <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Notes</span>
-                                    <span className="font-medium italic leading-tight text-slate-500">{te?.notes || ct.notes || '—'}</span>
+                                    {isEditingNotes ? (
+                                        <div className="mt-1" onClick={e => e.stopPropagation()}>
+                                            <textarea
+                                                value={localNotes}
+                                                onChange={e => setLocalNotes(e.target.value)}
+                                                className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-primary outline-none min-h-[40px] bg-white text-slate-700 font-medium"
+                                                autoFocus
+                                            />
+                                            <div className="flex justify-end mt-1">
+                                                <button onClick={() => setIsEditingNotes(false)} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                    <CheckIcon className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div 
+                                            className="group relative cursor-pointer hover:bg-slate-50 p-1.5 rounded border border-transparent hover:border-slate-100 transition-all font-medium text-slate-500 italic"
+                                            onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
+                                        >
+                                            <p className="line-clamp-2">{localNotes || '—'}</p>
+                                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <EditIcon className="h-3 w-3 text-slate-400" />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="pt-1.5 border-t border-slate-100">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Add your own notes..." 
-                                        onClick={e => e.stopPropagation()}
-                                        className="w-full text-[10px] bg-transparent border-b border-dashed border-slate-200 focus:outline-none focus:border-indigo-300 focus:border-dashed py-0.5 placeholder:text-slate-300 font-medium"
+
+                                {/* Quick Note Input */}
+                                <div className="pt-2 border-t border-dashed border-slate-100" onClick={e => e.stopPropagation()}>
+                                    <input
+                                        type="text"
+                                        placeholder="Add your own notes..."
+                                        value={localNotes}
+                                        onChange={e => setLocalNotes(e.target.value)}
+                                        onBlur={handleSave}
+                                        className="w-full text-[10px] bg-transparent border-none focus:outline-none placeholder:text-slate-300 font-medium italic text-slate-400"
                                     />
                                 </div>
                             </div>
@@ -239,50 +301,67 @@ export function TimesheetTableRow({
 
                         {/* QTY */}
                         <td className="px-3 py-2.5 text-center font-bold text-slate-700 tabular-nums">
-                            {hoursClocked > 0 ? hoursClocked.toFixed(2) : hoursScheduled.toFixed(2)}
+                            {invoiceBasis === 'ACTUAL' ? hoursClocked.toFixed(2) : hoursScheduled.toFixed(2)}
                         </td>
 
                         {/* Price */}
-                        <td className="px-3 py-2.5 text-right font-semibold text-slate-600 tabular-nums cursor-pointer hover:bg-slate-50 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setIsEditingOtPrice(true); }}
-                        >
-                            {isEditingOtPrice ? (
-                                <input
-                                    type="number"
-                                    value={otPriceManual}
-                                    onChange={(e) => setOtPriceManual(e.target.value)}
-                                    onBlur={handleSave}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                                    autoFocus
-                                    className="w-16 h-6 text-[10px] text-right border border-border rounded px-1 focus:ring-1 focus:ring-primary outline-none"
-                                    onClick={e => e.stopPropagation()}
-                                />
-                            ) : (
-                                fmtCurrency(toNumber(ct.billRate))
-                            )}
+                        <td className="px-3 py-2.5 text-right font-semibold text-slate-600 tabular-nums">
+                            <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
+                                <PopoverTrigger asChild>
+                                    <div className="cursor-pointer hover:bg-slate-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
+                                        {fmtCurrency(toNumber(ct.billRate))}
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price/OT</Label>
+                                            <Input
+                                                type="number"
+                                                value={otPriceManual}
+                                                onChange={(e) => setOtPriceManual(e.target.value)}
+                                                className="h-8 text-sm"
+                                                placeholder="0.00"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="outline" onClick={() => setIsEditingOtPrice(false)}>Cancel</Button>
+                                            <Button size="sm" onClick={handleSave}>Save</Button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </td>
 
                         {/* Invoice Amount */}
-                        <td className="px-3 py-2.5 text-right font-extrabold text-primary tabular-nums text-[13px] pr-6 cursor-pointer hover:bg-primary/5 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setIsEditingOtPrice(true); }}
-                        >
-                            {isEditingOtPrice ? (
-                                <div className="flex flex-col items-end gap-1">
-                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">Adjust Price/OT</span>
-                                    <input
-                                        type="number"
-                                        value={otPriceManual}
-                                        onChange={(e) => setOtPriceManual(e.target.value)}
-                                        onBlur={handleSave}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                                        autoFocus
-                                        className="w-20 h-7 text-[11px] text-right border-2 border-primary/20 rounded-md px-1.5 focus:border-primary focus:ring-0 outline-none shadow-sm"
-                                        onClick={e => e.stopPropagation()}
-                                    />
-                                </div>
-                            ) : (
-                                fmtCurrency(totalInvoice)
-                            )}
+                        <td className="px-3 py-2.5 text-right font-extrabold text-primary tabular-nums text-[13px] pr-6">
+                            <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
+                                <PopoverTrigger asChild>
+                                    <div className="cursor-pointer hover:bg-primary/5 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
+                                        {fmtCurrency(totalInvoice)}
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price/OT</Label>
+                                            <Input
+                                                type="number"
+                                                value={otPriceManual}
+                                                onChange={(e) => setOtPriceManual(e.target.value)}
+                                                className="h-8 text-sm"
+                                                placeholder="0.00"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="outline" onClick={() => setIsEditingOtPrice(false)}>Cancel</Button>
+                                            <Button size="sm" onClick={handleSave}>Save</Button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </td>
                     </>
                 ) : subTab === 'bill' ? (
@@ -301,49 +380,268 @@ export function TimesheetTableRow({
                             </select>
                         </td>
 
-                        {/* Bill Description */}
-                        <td className="px-3 py-2.5 min-w-[350px]">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="font-extrabold text-primary text-[11px] uppercase tracking-tight">
-                                    {ct.event?.title || '—'}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-[9px] font-bold text-blue-600 bg-blue-50 border-blue-200 uppercase">
-                                        {ct.service?.title || '—'}
-                                    </Badge>
-                                    <span className="text-[10px] font-medium text-slate-500 italic">
-                                        {te?.clockIn ? (
-                                            `${formatDate(te.clockIn)} • ${formatTime(te.clockIn ? fmtDateTime(te.clockIn).split(', ')[1] || null : null)} - ${te.clockOut ? formatTime(te.clockOut ? fmtDateTime(te.clockOut).split(', ')[1] || null : null) : '?'}`
-                                        ) : 'Actual shift not clocked'}
-                                    </span>
+                        {/* Bill Description - Matches Screenshot 2 + Notes */}
+                        <td className="px-3 py-4 text-[10px] leading-relaxed min-w-[350px]">
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-bold text-primary text-[12px] uppercase tracking-tight">
+                                            {ct.staff ? `${ct.staff.firstName} ${ct.staff.lastName}` : (ct.event?.title || '—')}
+                                        </span>
+                                        {ct.mergedRows && ct.mergedRows.length > 0 ? (
+                                            <div className="flex flex-col gap-1 mt-1">
+                                                {ct.mergedRows.map((row, idx) => (
+                                                    <div key={row.id || idx} className="flex items-center gap-2">
+                                                        <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] px-1.5 py-0 font-bold uppercase">
+                                                            {row.service?.title || '—'}
+                                                        </Badge>
+                                                        <span className="text-slate-400 italic font-medium text-[9px]">
+                                                            {billBasis === 'ACTUAL' ? (
+                                                                row.timeEntry?.clockIn ? `${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? formatTime(getTimeOnly(row.timeEntry.clockOut)) : '??'}` : 'Not clocked'
+                                                            ) : (
+                                                                `${formatTime(row.startTime)} - ${formatTime(row.endTime)}`
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100 text-[9px] px-1.5 py-0 font-bold uppercase">
+                                                    {ct.service?.title || '—'}
+                                                </Badge>
+                                                <span className="text-slate-400 italic font-medium">
+                                                    {billBasis === 'ACTUAL' ? (
+                                                        te?.clockIn ? `${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '??'}` : 'Actual shift not clocked'
+                                                    ) : (
+                                                        `${formatTime(ct.startTime)} - ${formatTime(ct.endTime)}`
+                                                    )}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <button 
+                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'ACTUAL' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
+                                            onClick={(e) => { e.stopPropagation(); setBillBasis('ACTUAL'); }}
+                                        >
+                                            Actual
+                                        </button>
+                                        <button 
+                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'SCHEDULED' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
+                                            onClick={(e) => { e.stopPropagation(); setBillBasis('SCHEDULED'); }}
+                                        >
+                                            Sched
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Notes Section */}
+                                <div className="flex flex-col pt-1 border-t border-slate-50">
+                                    <span className="font-bold text-[7px] text-slate-300 uppercase tracking-widest mb-0.5">Notes</span>
+                                    {isEditingNotes ? (
+                                        <div onClick={e => e.stopPropagation()}>
+                                            <textarea
+                                                value={localNotes}
+                                                onChange={e => setLocalNotes(e.target.value)}
+                                                className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-red-500 outline-none min-h-[40px] bg-white text-slate-700 font-medium"
+                                                autoFocus
+                                            />
+                                            <div className="flex justify-end mt-1">
+                                                <button onClick={() => setIsEditingNotes(false)} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                    <CheckIcon className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div 
+                                            className="group relative cursor-pointer hover:bg-slate-50 p-1 rounded transition-all font-medium text-slate-500 italic text-[10px]"
+                                            onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
+                                        >
+                                            <p className="line-clamp-2">{localNotes || 'Click to add notes...'}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </td>
 
                         {/* Bill Amount */}
-                        <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px] cursor-pointer hover:bg-red-50 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setIsEditingOtCost(true); }}
-                        >
-                            {isEditingOtCost ? (
-                                <div className="flex flex-col items-end gap-1">
-                                    <span className="text-[8px] font-bold text-red-400 uppercase tracking-tight">Adjust Cost/OT</span>
-                                    <input
-                                        type="number"
-                                        value={otCostManual}
-                                        onChange={(e) => setOtCostManual(e.target.value)}
-                                        onBlur={handleSave}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                                        autoFocus
-                                        className="w-20 h-7 text-[11px] text-right border-2 border-red-200 rounded-md px-1.5 focus:border-red-500 focus:ring-0 outline-none shadow-sm"
-                                        onClick={e => e.stopPropagation()}
-                                    />
-                                </div>
-                            ) : (
-                                fmtCurrency(totalBill)
-                            )}
+                        <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px]">
+                            <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
+                                <PopoverTrigger asChild>
+                                    <div className="cursor-pointer hover:bg-red-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
+                                        {fmtCurrency(totalBill)}
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost/OT</Label>
+                                            <Input
+                                                type="number"
+                                                value={otCostManual}
+                                                onChange={(e) => setOtCostManual(e.target.value)}
+                                                className="h-8 text-sm"
+                                                placeholder="0.00"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="outline" onClick={() => setIsEditingOtCost(false)}>Cancel</Button>
+                                            <Button size="sm" className="bg-red-500 hover:bg-red-600" onClick={handleSave}>Save</Button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </td>
 
                         {/* Status */}
+                        <td className="px-3 py-2.5 text-center">
+                            <Badge
+                                variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
+                                className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
+                            >
+                                {reviewRating === 'MET_EXPECTATIONS' ? 'APPROVED' :
+                                    (reviewRating === 'DID_NOT_MEET' || reviewRating === 'NO_CALL_NO_SHOW') ? 'REJECTED' :
+                                        reviewRating === 'NEEDS_IMPROVEMENT' ? 'REVIEW' : 'PENDING'}
+                            </Badge>
+                        </td>
+
+
+                    </>
+                ) : subTab === 'commission' ? (
+                    <>
+                        {/* Action */}
+                        <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
+                            <ActionDropdown actions={actions} align="start" />
+                        </td>
+
+                        {/* Team / User (Replacing Category) */}
+                        <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
+                            <select className="text-[10px] p-1 bg-muted/40 border-none rounded focus:ring-1 focus:ring-primary/20 font-medium text-slate-600 cursor-pointer">
+                                <option>Team A</option>
+                                <option>Team B</option>
+                                <option>Admin</option>
+                                <option>User 1</option>
+                            </select>
+                        </td>
+
+                        {/* Commission Description */}
+                        <td className="px-3 py-4 text-[10px] leading-relaxed min-w-[350px]">
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-bold text-primary text-[12px] uppercase tracking-tight text-emerald-600">
+                                            {ct.staff ? `${ct.staff.firstName} ${ct.staff.lastName}` : (ct.event?.title || '—')}
+                                        </span>
+                                        {ct.mergedRows && ct.mergedRows.length > 0 ? (
+                                            <div className="flex flex-col gap-1 mt-1">
+                                                {ct.mergedRows.map((row, idx) => (
+                                                    <div key={row.id || idx} className="flex items-center gap-2">
+                                                        <Badge variant="primary" className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] px-1.5 py-0 font-bold uppercase">
+                                                            {row.service?.title || '—'}
+                                                        </Badge>
+                                                        <span className="text-slate-400 italic font-medium text-[9px]">
+                                                            {billBasis === 'ACTUAL' ? (
+                                                                row.timeEntry?.clockIn ? `${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? formatTime(getTimeOnly(row.timeEntry.clockOut)) : '??'}` : 'Not clocked'
+                                                            ) : (
+                                                                `${formatTime(row.startTime)} - ${formatTime(row.endTime)}`
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="primary" className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] px-1.5 py-0 font-bold uppercase">
+                                                    {ct.service?.title || '—'}
+                                                </Badge>
+                                                <span className="text-slate-400 italic font-medium">
+                                                    {billBasis === 'ACTUAL' ? (
+                                                        te?.clockIn ? `${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '??'}` : 'Actual shift not clocked'
+                                                    ) : (
+                                                        `${formatTime(ct.startTime)} - ${formatTime(ct.endTime)}`
+                                                    )}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <button 
+                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'ACTUAL' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
+                                            onClick={(e) => { e.stopPropagation(); setBillBasis('ACTUAL'); }}
+                                        >
+                                            Actual
+                                        </button>
+                                        <button 
+                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'SCHEDULED' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
+                                            onClick={(e) => { e.stopPropagation(); setBillBasis('SCHEDULED'); }}
+                                        >
+                                            Sched
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Notes Section */}
+                                <div className="flex flex-col pt-1 border-t border-slate-50">
+                                    <span className="font-bold text-[7px] text-slate-300 uppercase tracking-widest mb-0.5">Notes</span>
+                                    {isEditingNotes ? (
+                                        <div onClick={e => e.stopPropagation()}>
+                                            <textarea
+                                                value={localNotes}
+                                                onChange={e => setLocalNotes(e.target.value)}
+                                                className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-red-500 outline-none min-h-[40px] bg-white text-slate-700 font-medium"
+                                                autoFocus
+                                            />
+                                            <div className="flex justify-end mt-1">
+                                                <button onClick={() => setIsEditingNotes(false)} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                    <CheckIcon className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div 
+                                            className="group relative cursor-pointer hover:bg-slate-50 p-1 rounded transition-all font-medium text-slate-500 italic text-[10px]"
+                                            onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
+                                        >
+                                            <p className="line-clamp-2">{localNotes || 'Click to add notes...'}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </td>
+
+                        {/* Bill Amount (Same as Bill Tab) */}
+                        <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px]">
+                            <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
+                                <PopoverTrigger asChild>
+                                    <div className="cursor-pointer hover:bg-red-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
+                                        {fmtCurrency(totalBill)}
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost/OT</Label>
+                                            <Input
+                                                type="number"
+                                                value={otCostManual}
+                                                onChange={(e) => setOtCostManual(e.target.value)}
+                                                className="h-8 text-sm"
+                                                placeholder="0.00"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="outline" onClick={() => setIsEditingOtCost(false)}>Cancel</Button>
+                                            <Button size="sm" className="bg-red-500 hover:bg-red-600" onClick={handleSave}>Save</Button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </td>
+
+                        {/* Status (Same as Bill Tab) */}
                         <td className="px-3 py-2.5 text-center">
                             <Badge
                                 variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
@@ -371,11 +669,16 @@ export function TimesheetTableRow({
                         <td className="px-3 py-2.5 font-bold text-primary whitespace-nowrap">
                             {!showEventName ? (
                                 ct.staff ? (
-                                    <div className="flex flex-col leading-tight">
-                                        <span>{ct.staff.firstName}</span>
-                                        <span className="text-slate-500 font-semibold">{ct.staff.lastName}</span>
-                                    </div>
-                                ) : '—'
+                                    <TalentContactPopover
+                                        talent={ct.staff}
+                                        trigger={
+                                            <div className="flex flex-col leading-tight cursor-pointer hover:underline">
+                                                <span>{ct.staff.firstName}</span>
+                                                <span className="text-slate-500 font-semibold">{ct.staff.lastName}</span>
+                                            </div>
+                                        }
+                                    />
+                                ) : 'UNASSIGNED STAFF'
                             ) : (
                                 <div className="whitespace-normal max-w-[200px] leading-tight">
                                     {ct.event?.title || '—'}
@@ -385,28 +688,27 @@ export function TimesheetTableRow({
 
                         {/* Services / Product (Position) */}
                         <td className="px-3 py-2.5">
-                            <Badge variant="primary" className="text-[10px] whitespace-normal max-w-[120px] bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight">
-                                {ct.service?.title || '—'}
+                            <Badge variant="primary" className="text-[10px] whitespace-normal max-w-[120px] bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight py-1 flex flex-col items-start gap-0.5">
+                                {ct.service?.title ? ct.service.title.split(' / ').map((part: string, i: number) => (
+                                    <span key={i} className="block">{part}</span>
+                                )) : '—'}
                             </Badge>
                         </td>
 
-                        {/* Notes (Internal Notes) */}
-                        <td className="px-3 py-2.5 whitespace-normal max-w-[150px] text-[10px] text-muted-foreground leading-snug">
-                            {te?.notes || ct.notes || '—'}
-                        </td>
-
                         {/* Scheduled Shift */}
-                        <td className="px-3 py-2.5 min-w-[180px]">
+                        <td className="px-3 py-2.5 min-w-[110px]">
                             <div className="space-y-1">
                                 <div>
                                     <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
                                         <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.startDate)}</span>
+                                        <span className="text-slate-400">-</span>
                                         <span className=" font-bold">{formatTime(ct.startTime)}</span>
                                     </div>
                                 </div>
                                 <div>
                                     <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
                                         <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.endDate || ct.startDate)}</span>
+                                        <span className="text-slate-400">-</span>
                                         <span className=" font-bold">{formatTime(ct.endTime)}</span>
                                     </div>
                                 </div>
@@ -417,7 +719,7 @@ export function TimesheetTableRow({
                         </td>
 
                         {/* Actual Shift (formerly Clock In/Out) */}
-                        <td className="px-3 py-2.5 min-w-[200px]" onClick={e => e.stopPropagation()}>
+                        <td className="px-3 py-2.5 min-w-[120px]" onClick={e => e.stopPropagation()}>
                             {isEditing ? (
                                 <div className="flex flex-col gap-1.5 p-1 bg-slate-50 rounded border">
                                     <input
@@ -432,16 +734,29 @@ export function TimesheetTableRow({
                                         onChange={e => setClockOut(e.target.value)}
                                         className="h-6 text-[9px] border border-border rounded px-1"
                                     />
-                                    <div className="flex items-center gap-1">
-                                        <input
-                                            type="number"
-                                            value={breakMins}
-                                            onChange={e => setBreakMins(parseInt(e.target.value) || 0)}
-                                            className="h-6 w-full text-[9px] border border-border rounded px-1"
-                                            placeholder="Break"
-                                        />
-                                        <button onClick={(e) => { e.stopPropagation(); handleSave(); }} className="p-1 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="p-1 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
+                                    <div className="flex items-center gap-1 justify-between">
+                                        <div className="bg-emerald-50 text-emerald-700 px-1.5 py-1 rounded text-[9px] font-bold border border-emerald-100 flex items-center gap-1 whitespace-nowrap">
+                                            {(() => {
+                                                if (!clockIn || !clockOut) return '0.00';
+                                                try {
+                                                    const start = new Date(clockIn).getTime();
+                                                    const end = new Date(clockOut).getTime();
+                                                    const diffHrs = (end - start) / (1000 * 60 * 60);
+                                                    const netHrs = diffHrs - (breakMins / 60);
+                                                    return isNaN(netHrs) ? '0.00' : Math.max(0, netHrs).toFixed(2);
+                                                } catch {
+                                                    return '0.00';
+                                                }
+                                            })()} hrs
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button onClick={(e) => { e.stopPropagation(); handleSave(); }} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors">
+                                                <CheckIcon className="h-3 w-3" />
+                                            </button>
+                                            <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="p-1 bg-slate-200 rounded hover:bg-slate-300 transition-colors">
+                                                <CloseIcon className="h-3 w-3" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
@@ -451,7 +766,8 @@ export function TimesheetTableRow({
                                             {te?.clockIn ? (
                                                 <>
                                                     <span className="bg-emerald-50  px-1 rounded-sm">{formatDate(te.clockIn)}</span>
-                                                    <span className=" font-bold">{formatTime(te.clockIn ? fmtDateTime(te.clockIn).split(', ')[1] || null : null)}</span>
+                                                    <span className="text-slate-400">-</span>
+                                                    <span className=" font-bold">{formatTime(getTimeOnly(te.clockIn))}</span>
                                                 </>
                                             ) : (
                                                 <span className="text-slate-300 italic">Not clocked</span>
@@ -463,7 +779,8 @@ export function TimesheetTableRow({
                                             {te?.clockOut ? (
                                                 <>
                                                     <span className="bg-red-50  px-1 rounded-sm">{formatDate(te.clockOut)}</span>
-                                                    <span className=" font-bold">{formatTime(te.clockOut ? fmtDateTime(te.clockOut).split(', ')[1] || null : null)}</span>
+                                                    <span className="text-slate-400">-</span>
+                                                    <span className=" font-bold">{formatTime(getTimeOnly(te.clockOut))}</span>
                                                 </>
                                             ) : (
                                                 <span className="text-slate-300 italic">No out</span>
@@ -490,108 +807,127 @@ export function TimesheetTableRow({
                             </div>
                         </td>
 
-                        {/* Rate Type */}
                         <td className="px-3 py-2.5 text-center text-muted-foreground whitespace-nowrap text-[9px] uppercase font-bold">
                             {ct.payRateType.replace('PER_', '')}
                         </td>
 
+                        {/* Minimum */}
+                        {/* <td className="px-3 py-2.5 text-right font-medium text-slate-600 tabular-nums">
+                            {fmtCurrency(toNumber(ct.minimum))}
+                        </td> */}
+
                         {/* Cost Detail */}
                         {(subTab === 'all' || subTab === 'bill') && (
-                            <td className="px-3 py-2.5 min-w-[140px] cursor-pointer hover:bg-slate-50 transition-colors"
-                                onClick={(e) => { e.stopPropagation(); setIsEditingOtCost(true); }}
-                            >
-                                {isEditingOtCost ? (
-                                    <div className="flex flex-col gap-1.5 p-1.5 bg-red-50/50 rounded border border-red-100">
-                                        <span className="text-[8px] font-bold text-red-400 uppercase tracking-tight">Adj Cost/OT</span>
-                                        <input
-                                            type="number"
-                                            value={otCostManual}
-                                            onChange={(e) => setOtCostManual(e.target.value)}
-                                            onBlur={handleSave}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                                            autoFocus
-                                            className="w-full h-6 text-[10px] text-right border border-red-200 rounded px-1 focus:ring-1 focus:ring-red-500 outline-none"
-                                            onClick={e => e.stopPropagation()}
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="space-y-0.5 text-right tabular-nums">
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
-                                            <span className="text-[10px] font-semibold">{fmtCurrency(clockedCostVal)}</span>
+                            <td className="px-3 py-2.5 min-w-[140px]">
+                                <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
+                                    <PopoverTrigger asChild>
+                                        <div className="space-y-0.5 text-right tabular-nums cursor-pointer hover:bg-slate-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
+                                            <div className="flex justify-between items-center gap-2">
+                                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
+                                                <span className="text-[10px] font-semibold">{fmtCurrency(clockedCostVal)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center gap-2">
+                                                <span className="text-[8px] font-bold text-muted-foreground uppercase">OT:</span>
+                                                <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otCost)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center gap-2">
+                                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Travel:</span>
+                                                <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expCost)}</span>
+                                            </div>
+                                            <div className="pt-0.5 border-t flex justify-between items-center gap-2">
+                                                <span className="text-[9px] font-extrabold uppercase">Cost:</span>
+                                                <span className="text-[10px] font-extrabold">{fmtCurrency(clockedCostVal + otCost + expCost)}</span>
+                                            </div>
                                         </div>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">OT:</span>
-                                            <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otCost)}</span>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost/OT</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={otCostManual}
+                                                    onChange={(e) => setOtCostManual(e.target.value)}
+                                                    className="h-8 text-sm"
+                                                    placeholder="0.00"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div className="flex justify-end gap-2">
+                                                <Button size="sm" variant="outline" onClick={() => setIsEditingOtCost(false)}>Cancel</Button>
+                                                <Button size="sm" className="bg-red-500 hover:bg-red-600" onClick={handleSave}>Save</Button>
+                                            </div>
                                         </div>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Travel:</span>
-                                            <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expCost)}</span>
-                                        </div>
-                                        <div className="pt-0.5 border-t flex justify-between items-center gap-2">
-                                            <span className="text-[9px] font-extrabold uppercase">Cost:</span>
-                                            <span className="text-[10px] font-extrabold">{fmtCurrency(clockedCostVal + otCost + expCost)}</span>
-                                        </div>
-                                    </div>
-                                )}
+                                    </PopoverContent>
+                                </Popover>
                             </td>
                         )}
 
                         {/* Price Detail */}
-                        <td className="px-3 py-2.5 min-w-[140px] cursor-pointer hover:bg-slate-50 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setIsEditingOtPrice(true); }}
-                        >
-                            {isEditingOtPrice ? (
-                                <div className="flex flex-col gap-1.5 p-1.5 bg-primary/5 rounded border border-primary/10">
-                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">Adj Price/OT</span>
-                                    <input
-                                        type="number"
-                                        value={otPriceManual}
-                                        onChange={(e) => setOtPriceManual(e.target.value)}
-                                        onBlur={handleSave}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                                        autoFocus
-                                        className="w-full h-6 text-[10px] text-right border border-blue-200 rounded px-1 focus:ring-1 focus:ring-primary outline-none"
-                                        onClick={e => e.stopPropagation()}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="space-y-0.5 text-right tabular-nums">
-                                    <div className="flex justify-between items-center gap-2">
-                                        <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
-                                        <span className="text-[10px] font-semibold">{fmtCurrency(clockedPriceVal)}</span>
+                        <td className="px-3 py-2.5 min-w-[140px]">
+                            <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
+                                <PopoverTrigger asChild>
+                                    <div className="space-y-0.5 text-right tabular-nums cursor-pointer hover:bg-slate-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
+                                        <div className="flex justify-between items-center gap-2">
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
+                                            <span className="text-[10px] font-semibold">{fmtCurrency(clockedPriceVal)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center gap-2">
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">OT:</span>
+                                            <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otPrice)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center gap-2">
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Travel:</span>
+                                            <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expPrice)}</span>
+                                        </div>
+                                        <div className="pt-0.5 border-t flex justify-between items-center gap-2">
+                                            <span className="text-[9px] font-extrabold uppercase">Price:</span>
+                                            <span className="text-[10px] font-extrabold">{fmtCurrency(clockedPriceVal + otPrice + expPrice)}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-center gap-2">
-                                        <span className="text-[8px] font-bold text-muted-foreground uppercase">OT:</span>
-                                        <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otPrice)}</span>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price/OT</Label>
+                                            <Input
+                                                type="number"
+                                                value={otPriceManual}
+                                                onChange={(e) => setOtPriceManual(e.target.value)}
+                                                className="h-8 text-sm"
+                                                placeholder="0.00"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="outline" onClick={() => setIsEditingOtPrice(false)}>Cancel</Button>
+                                            <Button size="sm" onClick={handleSave}>Save</Button>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-center gap-2">
-                                        <span className="text-[8px] font-bold text-muted-foreground uppercase">Travel:</span>
-                                        <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expPrice)}</span>
-                                    </div>
-                                    <div className="pt-0.5 border-t flex justify-between items-center gap-2">
-                                        <span className="text-[9px] font-extrabold uppercase">Price:</span>
-                                        <span className="text-[10px] font-extrabold">{fmtCurrency(clockedPriceVal + otPrice + expPrice)}</span>
-                                    </div>
-                                </div>
-                            )}
+                                </PopoverContent>
+                            </Popover>
                         </td>
 
                         <td className="px-3 py-2.5 text-center">
-                            <button
-                                role="switch"
-                                aria-checked={isCommApp}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIsCommApp(prev => !prev);
-                                }}
-                                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:ring-offset-1 ${isCommApp ? 'bg-indigo-600' : 'bg-slate-200'}`}
-                            >
-                                <span
-                                    aria-hidden="true"
-                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${isCommApp ? 'translate-x-4' : 'translate-x-0'}`}
-                                />
-                            </button>
+                            <div className="flex flex-col items-center justify-center gap-1">
+                                <span className={`text-[10px] font-bold ${isCommApp ? 'text-indigo-600' : 'text-slate-500'} uppercase tracking-wider`}>
+                                    {isCommApp ? 'Yes' : 'No'}
+                                </span>
+                                <button
+                                    role="switch"
+                                    aria-checked={isCommApp}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsCommApp(prev => !prev);
+                                    }}
+                                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:ring-offset-1 ${isCommApp ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${isCommApp ? 'translate-x-4' : 'translate-x-0'}`}
+                                    />
+                                </button>
+                            </div>
                         </td>
 
                         {/* Status */}
@@ -605,19 +941,36 @@ export function TimesheetTableRow({
                                         reviewRating === 'NEEDS_IMPROVEMENT' ? 'REVIEW' : 'PENDING'}
                             </Badge>
                         </td>
+
+                        {/* Notes (Internal Notes) - Moved after Status */}
+                        <td className="px-3 py-2.5 whitespace-normal max-w-[400px] min-w-[250px] text-[10px] text-muted-foreground leading-snug" onClick={e => e.stopPropagation()}>
+                            {isEditingNotes ? (
+                                <div className="flex flex-col gap-1">
+                                    <textarea
+                                        value={localNotes}
+                                        onChange={e => setLocalNotes(e.target.value)}
+                                        className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-primary outline-none min-h-[60px]"
+                                        autoFocus
+                                    />
+                                    <div className="flex justify-end gap-1">
+                                        <button onClick={handleSave} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors">
+                                            <CheckIcon className="h-3 w-3" />
+                                        </button>
+                                        <button onClick={() => setIsEditingNotes(false)} className="p-1 bg-slate-200 rounded hover:bg-slate-300 transition-colors">
+                                            <CloseIcon className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="group relative cursor-pointer hover:text-primary transition-colors" onClick={() => setIsEditingNotes(true)}>
+                                    <span className="line-clamp-3">{localNotes || 'Click to add notes...'}</span>
+                                    <EditIcon className="h-3 w-3 absolute -right-4 top-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                            )}
+                        </td>
                     </>
                 )}
 
-                {/* Financial Totals */}
-                {/* <td className="px-3 py-2.5 text-right tabular-nums font-bold text-red-600 bg-red-50/10">
-                    {fmtCurrency(totalBill)}
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-bold text-foreground bg-slate-50/10">
-                    {fmtCurrency(totalInvoice)}
-                </td>
-                <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${grossProfit >= 0 ? 'text-foreground' : 'text-red-600 bg-red-50/20'}`}>
-                    {fmtCurrency(grossProfit)}
-                </td> */}
             </tr>
 
             {/* Expanded detail */}

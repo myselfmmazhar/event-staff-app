@@ -47,13 +47,12 @@ export class EventService {
   private async getOwnedEventMeta(id: string, userId: string, userRole?: string) {
     const isSuperAdmin = userRole === 'SUPER_ADMIN';
     const isAdmin = userRole === 'ADMIN';
+    const isManagerPlus = isSuperAdmin || isAdmin || (userRole === 'MANAGER');
 
     const event = await this.prisma.event.findFirst({
       where: {
         id,
-        ...(isSuperAdmin ? {} : 
-           isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } : 
-           { createdBy: userId }),
+        ...(isManagerPlus ? {} : { createdBy: userId }),
       },
       select: {
         id: true,
@@ -214,21 +213,15 @@ export class EventService {
 
     const isSuperAdmin = userRole === 'SUPER_ADMIN';
     const isAdmin = userRole === 'ADMIN';
+    const isManagerPlus = isSuperAdmin || isAdmin || (userRole === 'MANAGER');
 
     // Build where clause
     const where: Prisma.EventWhereInput = {
       isArchived: false,
     };
 
-    if (isSuperAdmin) {
-      // Super Admin sees everything
-    } else if (isAdmin) {
-      // Admin sees everything EXCEPT what was created by a SUPER_ADMIN
-      where.createdByUser = {
-        role: { not: 'SUPER_ADMIN' }
-      };
-    } else {
-      // Others see only their own
+    if (!isManagerPlus) {
+      // Non-managers only see their own
       where.createdBy = userId;
     }
 
@@ -386,20 +379,8 @@ export class EventService {
       this.prisma.event.count({ where }),
     ]);
 
-    // Trigger-based status update: check and update statuses for listed events
-    const eventIds = data.map((e) => e.id);
-    const updatedStatuses = await checkAndUpdateMultipleEventStatuses(this.prisma, eventIds);
-
-    // Apply updated statuses to data (only if any were updated)
-    const dataWithUpdatedStatus = updatedStatuses.size > 0
-      ? data.map((e) => ({
-        ...e,
-        status: updatedStatuses.get(e.id) ?? e.status,
-      }))
-      : data;
-
     return {
-      data: dataWithUpdatedStatus,
+      data,
       meta: {
         total,
         page,
@@ -416,13 +397,12 @@ export class EventService {
   async findOne(id: string, userId: string, userRole?: string) {
     const isSuperAdmin = userRole === 'SUPER_ADMIN';
     const isAdmin = userRole === 'ADMIN';
+    const isManagerPlus = isSuperAdmin || isAdmin || (userRole === 'MANAGER');
 
     const event = await this.prisma.event.findFirst({
       where: {
         id,
-        ...(isSuperAdmin ? {} : 
-           isAdmin ? { createdByUser: { role: { not: 'SUPER_ADMIN' } } } : 
-           { createdBy: userId }),
+        ...(isManagerPlus ? {} : { createdBy: userId }),
       },
       select: {
         id: true,
@@ -537,13 +517,6 @@ export class EventService {
         code: "NOT_FOUND",
         message: `${terminology.event.singular} with ID ${id} not found or you don't have permission to access it`,
       });
-    }
-
-    // Trigger-based status update: check if status needs updating based on current time
-    const statusResult = await checkAndUpdateEventStatus(this.prisma, id);
-    if (statusResult.updated && statusResult.newStatus) {
-      // Return updated status in the event object
-      return { ...event, status: statusResult.newStatus };
     }
 
     return event;

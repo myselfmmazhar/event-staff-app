@@ -43,6 +43,9 @@ export function hoursFromMinutes(mins: number): number {
 }
 
 export function calcScheduledHours(ct: CallTimeRow): number {
+    if (ct.mergedRows && ct.mergedRows.length > 0) {
+        return ct.mergedRows.reduce((sum, row) => sum + calcScheduledHours(row), 0);
+    }
     const start = combineDateTime(ct.startDate, ct.startTime);
     const end = combineDateTime(ct.endDate ?? ct.startDate, ct.endTime);
     if (!start || !end || end <= start) return 0;
@@ -67,6 +70,9 @@ export function toNumber(val: number | { toNumber?: () => number } | string | nu
 }
 
 export function calcScheduledCost(ct: CallTimeRow): number {
+    if (ct.mergedRows && ct.mergedRows.length > 0) {
+        return ct.mergedRows.reduce((sum, row) => sum + calcScheduledCost(row), 0);
+    }
     const rate = toNumber(ct.payRate);
     const type = ct.payRateType as RateType;
     if (type === 'PER_HOUR') return calcScheduledHours(ct) * rate;
@@ -120,6 +126,9 @@ export function calcOvertimePrice(timeEntry: CallTimeRow['timeEntry'], ct: CallT
 }
 
 export function calcBillAmount(ct: CallTimeRow): number {
+    if (ct.mergedRows && ct.mergedRows.length > 0) {
+        return ct.mergedRows.reduce((sum, row) => sum + calcBillAmount(row), 0);
+    }
     const billRate = toNumber(ct.billRate);
     const type = ct.billRateType as RateType;
     if (type === 'PER_HOUR') return calcScheduledHours(ct) * billRate;
@@ -150,9 +159,12 @@ export function calcExpenditurePrice(ct: CallTimeRow): number {
     return toNumber(ct.expenditurePrice ?? ct.expenditureAmount);
 }
 
-export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false): number {
-    const base = calcClockedCost(timeEntry, ct);
-    const ot = calcOvertimeCost(timeEntry, ct);
+export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false, basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL'): number {
+    if (ct.mergedRows && ct.mergedRows.length > 0) {
+        return ct.mergedRows.reduce((sum, row) => sum + calcTotalBill(row.timeEntry, row, isCommApplied, basis), 0);
+    }
+    const base = basis === 'ACTUAL' ? calcClockedCost(timeEntry, ct) : calcScheduledCost(ct);
+    const ot = basis === 'ACTUAL' ? calcOvertimeCost(timeEntry, ct) : 0;
     const exp = calcExpenditureCost(ct);
     let total = base + ot + exp;
 
@@ -168,9 +180,12 @@ export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeR
     return total;
 }
 
-export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false): number {
-    const base = calcClockedPrice(timeEntry, ct);
-    const ot = calcOvertimePrice(timeEntry, ct);
+export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false, basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL'): number {
+    if (ct.mergedRows && ct.mergedRows.length > 0) {
+        return ct.mergedRows.reduce((sum, row) => sum + calcTotalInvoice(row.timeEntry, row, isCommApplied, basis), 0);
+    }
+    const base = basis === 'ACTUAL' ? calcClockedPrice(timeEntry, ct) : calcBillAmount(ct);
+    const ot = basis === 'ACTUAL' ? calcOvertimePrice(timeEntry, ct) : 0;
     const exp = calcExpenditurePrice(ct);
     let total = base + ot + exp;
 
@@ -209,6 +224,16 @@ export function fmtDateTime(d: Date | string | null): string {
         return format(typeof d === 'string' ? parseISO(d) : d, 'MMM d, h:mm a');
     } catch {
         return '—';
+    }
+}
+
+export function getTimeOnly(d: Date | string | null): string | null {
+    if (!d) return null;
+    try {
+        const date = typeof d === 'string' ? parseISO(d) : d;
+        return format(date, 'HH:mm');
+    } catch {
+        return null;
     }
 }
 

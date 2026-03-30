@@ -2,27 +2,26 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
-import type { TalentGroup } from './types';
-import {
-    calcOvertimeCost,
-    calcOvertimePrice,
-    calcClockedHours,
-    calcScheduledHours,
-    toNumber,
-    fmtCurrency,
-    calcTotalBill,
-    calcTotalInvoice,
-    formatTime
+import type { TalentGroup, SortField, SortOrder } from './types';
+import { ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
+import { 
+    calcTotalBill, 
+    calcTotalInvoice, 
+    formatTime,
+    fmtCurrency
 } from './helpers';
+import { TalentContactPopover } from './talent-contact-popover';
 
 interface TimesheetTalentSummaryTableProps {
     talentGroups: TalentGroup[];
     onTalentClick: (staffId: string) => void;
+    sortBy?: SortField;
+    sortOrder?: SortOrder;
+    onSort?: (field: SortField) => void;
 }
 
-export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: TimesheetTalentSummaryTableProps) {
+export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick, sortBy, sortOrder, onSort }: TimesheetTalentSummaryTableProps) {
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
         const d = typeof date === 'string' ? parseISO(date) : date;
@@ -35,13 +34,25 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted/50 border-b border-border">
                         <tr>
-                            <th className="px-4 py-3 font-semibold text-foreground">Date / Time</th>
-                            <th className="px-4 py-3 font-semibold text-foreground">Talent Name</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-center">Tasks</th>
-                            <th className="px-4 py-3 font-semibold text-foreground">Status</th>
-                            {/* <th className="px-4 py-3 font-semibold text-foreground text-right">Total Invoice</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Net Income</th> */}
+                            {[
+                                { id: 'startDate', label: 'Date / Time' },
+                                { id: 'staffName', label: 'Talent' },
+                                { id: 'assignments', label: 'Tasks', align: 'text-center' },
+                                { id: 'status', label: 'Status' },
+                            ].map((col) => (
+                                <th
+                                    key={col.id}
+                                    className={`px-4 py-3 font-semibold text-foreground cursor-pointer hover:bg-muted transition-colors ${col.align || ''}`}
+                                    onClick={() => onSort?.(col.id as SortField)}
+                                >
+                                    <div className={`flex items-center gap-1 ${col.align === 'text-center' ? 'justify-center' : ''}`}>
+                                        {col.label}
+                                        {sortBy === col.id && (
+                                            sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />
+                                        )}
+                                    </div>
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
@@ -61,12 +72,6 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                                     if (!maxDate || d > maxDate) maxDate = d;
                                 }
                             }
-
-                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
-                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
-                            const profit = totalInvoice - totalBill;
-
-                            const remaining = group.callTimes.length - completedCount;
 
                             const min = minDate;
                             const max = maxDate;
@@ -88,12 +93,16 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                                         </div>
                                     </td>
                                     <td className="px-4 py-4">
-                                        <button
-                                            onClick={() => onTalentClick(group.staffId)}
-                                            className="font-medium text-primary hover:underline text-left pointer-events-auto"
-                                        >
-                                            {group.staffName}
-                                        </button>
+                                        <TalentContactPopover
+                                            talent={firstRow?.staff || { firstName: group.staffName.split(' ')[0], lastName: group.staffName.split(' ')[1] || '' } as any}
+                                            trigger={
+                                                <button
+                                                    className="font-medium text-primary hover:underline text-left pointer-events-auto"
+                                                >
+                                                    {group.staffName}
+                                                </button>
+                                            }
+                                        />
                                     </td>
                                     <td className="px-4 py-4 text-center">
                                         <Badge variant="secondary">
@@ -101,21 +110,14 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick }: Tim
                                         </Badge>
                                     </td>
                                     <td className="px-4 py-4">
-                                        {completedCount === group.callTimes.length && group.callTimes.length > 0 ? (
+                                        {group.callTimes.every(ct => ct.event.status === 'COMPLETED') && group.callTimes.length > 0 ? (
                                             <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Completed</Badge>
-                                        ) : (
+                                        ) : group.callTimes.some(ct => ct.event.status === 'IN_PROGRESS' || (ct.timeEntry?.clockIn && !ct.timeEntry?.clockOut)) ? (
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
+                                        ) : (
+                                            <Badge variant="info" className="bg-blue-500/10 text-blue-600 border-blue-500/20">Assigned</Badge>
                                         )}
                                     </td>
-                                    // <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">
-                                    //     {fmtCurrency(totalInvoice)}
-                                    // </td>
-                                    // <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
-                                    //     {fmtCurrency(totalBill)}
-                                    // </td>
-                                    // <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-foreground' : 'text-red-600'}`}>
-                                    //     {fmtCurrency(profit)}
-                                    // </td>
                                 </tr>
                             );
                         })}

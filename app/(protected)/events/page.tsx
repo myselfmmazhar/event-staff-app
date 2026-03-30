@@ -260,6 +260,7 @@ export default function EventsPage() {
       onSuccess: () => {
         setIsFormOpen(false);
         setSelectedEvent(null);
+        refetch();
       },
     })
   );

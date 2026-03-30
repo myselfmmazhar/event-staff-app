@@ -19,9 +19,12 @@ import {
 interface TimesheetClientSummaryTableProps {
     clientGroups: ClientGroup[];
     onClientClick: (clientId: string) => void;
+    sortBy?: SortField;
+    sortOrder?: SortOrder;
+    onSort?: (field: SortField) => void;
 }
 
-export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: TimesheetClientSummaryTableProps) {
+export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortBy, sortOrder, onSort }: TimesheetClientSummaryTableProps) {
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
         const d = typeof date === 'string' ? parseISO(date) : date;
@@ -34,13 +37,28 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted/50 border-b border-border">
                         <tr>
-                            <th className="px-4 py-3 font-semibold text-foreground">Date Range</th>
-                            <th className="px-4 py-3 font-semibold text-foreground">Client Name</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-center">Open Tasks</th>
-                            <th className="px-4 py-3 font-semibold text-foreground">Status</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Invoice</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Total Bill</th>
-                            <th className="px-4 py-3 font-semibold text-foreground text-right">Net Income</th>
+                            {[
+                                { id: 'startDate', label: 'Date Range' },
+                                { id: 'client', label: 'Client Name' },
+                                { id: 'assignments', label: 'Open Tasks', align: 'text-center' },
+                                { id: 'status', label: 'Status' },
+                                { id: 'invoice', label: 'Total Invoice', align: 'text-right' },
+                                { id: 'bill', label: 'Total Bill', align: 'text-right' },
+                                { id: 'netIncome', label: 'Net Income', align: 'text-right' },
+                            ].map((col) => (
+                                <th
+                                    key={col.id}
+                                    className={`px-4 py-3 font-semibold text-foreground cursor-pointer hover:bg-muted transition-colors ${col.align || ''}`}
+                                    onClick={() => onSort?.(col.id as SortField)}
+                                >
+                                    <div className={`flex items-center gap-1 ${col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : ''}`}>
+                                        {col.label}
+                                        {sortBy === col.id && (
+                                            sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />
+                                        )}
+                                    </div>
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
@@ -86,10 +104,12 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick }: Tim
                                         </Badge>
                                     </td>
                                     <td className="px-4 py-4">
-                                        {completedCount === group.callTimes.length && group.callTimes.length > 0 ? (
+                                        {group.callTimes.every(ct => ct.event.status === 'COMPLETED') && group.callTimes.length > 0 ? (
                                             <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Completed</Badge>
-                                        ) : (
+                                        ) : group.callTimes.some(ct => ct.event.status === 'IN_PROGRESS' || (ct.timeEntry?.clockIn && !ct.timeEntry?.clockOut)) ? (
                                             <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
+                                        ) : (
+                                            <Badge variant="info" className="bg-blue-500/10 text-blue-600 border-blue-500/20">Assigned</Badge>
                                         )}
                                     </td>
                                     <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">

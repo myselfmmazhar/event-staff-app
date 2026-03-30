@@ -16,7 +16,7 @@ export const eventAttachmentRouter = router({
     .input(EventAttachmentSchema.getByEventId)
     .query(async ({ ctx, input }) => {
       const service = new EventAttachmentService(ctx.prisma);
-      return await service.getByEventId(input.eventId, ctx.userId!);
+      return await service.getByEventId(input.eventId, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -26,7 +26,7 @@ export const eventAttachmentRouter = router({
     .input(EventAttachmentSchema.addProduct)
     .mutation(async ({ ctx, input }) => {
       const service = new EventAttachmentService(ctx.prisma);
-      return await service.addProduct(input, ctx.userId!);
+      return await service.addProduct(input, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -37,7 +37,7 @@ export const eventAttachmentRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { eventId, productId, ...data } = input;
       const service = new EventAttachmentService(ctx.prisma);
-      return await service.updateProduct(eventId, productId, data, ctx.userId!);
+      return await service.updateProduct(eventId, productId, data, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -47,7 +47,7 @@ export const eventAttachmentRouter = router({
     .input(EventAttachmentSchema.removeProduct)
     .mutation(async ({ ctx, input }) => {
       const service = new EventAttachmentService(ctx.prisma);
-      return await service.removeProduct(input.eventId, input.productId, ctx.userId!);
+      return await service.removeProduct(input.eventId, input.productId, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -57,7 +57,7 @@ export const eventAttachmentRouter = router({
     .input(EventAttachmentSchema.bulkUpdateProducts)
     .mutation(async ({ ctx, input }) => {
       const service = new EventAttachmentService(ctx.prisma);
-      return await service.bulkUpdateProducts(input, ctx.userId!);
+      return await service.bulkUpdateProducts(input, ctx.userId!, ctx.userRole as string);
     }),
 
   /**
@@ -67,7 +67,7 @@ export const eventAttachmentRouter = router({
     .input(EventAttachmentSchema.getByEventId)
     .query(async ({ ctx, input }) => {
       const service = new EventAttachmentService(ctx.prisma);
-      const result = await service.getByEventId(input.eventId, ctx.userId!);
+      const result = await service.getByEventId(input.eventId, ctx.userId!, ctx.userRole as string);
       return result.products;
     }),
 });

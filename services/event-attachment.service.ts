@@ -43,9 +43,16 @@ export class EventAttachmentService {
   /**
    * Verify event ownership
    */
-  private async verifyEventOwnership(eventId: string, userId: string) {
+  private async verifyEventOwnership(eventId: string, userId: string, userRole?: string) {
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN';
+    const isManagerPlus = isSuperAdmin || isAdmin || (userRole === 'MANAGER');
+
     const event = await this.prisma.event.findFirst({
-      where: { id: eventId, createdBy: userId },
+      where: {
+        id: eventId,
+        ...(isManagerPlus ? {} : { createdBy: userId }),
+      },
       select: { id: true },
     });
 
@@ -63,8 +70,8 @@ export class EventAttachmentService {
    * Get all products attached to an event
    * (Services are now retrieved via CallTime)
    */
-  async getByEventId(eventId: string, userId: string) {
-    await this.verifyEventOwnership(eventId, userId);
+  async getByEventId(eventId: string, userId: string, userRole?: string) {
+    await this.verifyEventOwnership(eventId, userId, userRole);
 
     const products = await this.prisma.eventProduct.findMany({
       where: { eventId },
@@ -79,8 +86,8 @@ export class EventAttachmentService {
   /**
    * Add a product to an event
    */
-  async addProduct(input: AddProductInput, userId: string) {
-    await this.verifyEventOwnership(input.eventId, userId);
+  async addProduct(input: AddProductInput, userId: string, userRole?: string) {
+    await this.verifyEventOwnership(input.eventId, userId, userRole);
 
     // Verify product exists
     const product = await this.prisma.product.findUnique({
@@ -130,9 +137,10 @@ export class EventAttachmentService {
     eventId: string,
     productId: string,
     data: { quantity?: number; customPrice?: number | null; notes?: string | null },
-    userId: string
+    userId: string,
+    userRole?: string
   ) {
-    await this.verifyEventOwnership(eventId, userId);
+    await this.verifyEventOwnership(eventId, userId, userRole);
 
     // Verify attachment exists
     const existing = await this.prisma.eventProduct.findUnique({
@@ -164,8 +172,8 @@ export class EventAttachmentService {
   /**
    * Remove a product from an event
    */
-  async removeProduct(eventId: string, productId: string, userId: string) {
-    await this.verifyEventOwnership(eventId, userId);
+  async removeProduct(eventId: string, productId: string, userId: string, userRole?: string) {
+    await this.verifyEventOwnership(eventId, userId, userRole);
 
     // Verify attachment exists
     const existing = await this.prisma.eventProduct.findUnique({
@@ -193,8 +201,8 @@ export class EventAttachmentService {
   /**
    * Bulk update products on an event (replace all)
    */
-  async bulkUpdateProducts(input: BulkUpdateProductsInput, userId: string) {
-    await this.verifyEventOwnership(input.eventId, userId);
+  async bulkUpdateProducts(input: BulkUpdateProductsInput, userId: string, userRole?: string) {
+    await this.verifyEventOwnership(input.eventId, userId, userRole);
 
     // Verify all products exist
     if (input.products.length > 0) {

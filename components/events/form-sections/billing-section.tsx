@@ -61,7 +61,7 @@ export function BillingSection({
                 </label>
               </div>
             </div>
-            <div>
+            {/* <div>
               <Label htmlFor="taskRateType">Task Rate Type</Label>
               <Controller
                 name="taskRateType"
@@ -85,7 +85,7 @@ export function BillingSection({
                   </Select>
                 )}
               />
-            </div>
+            </div> */}
           </div>
         </div>
       )}

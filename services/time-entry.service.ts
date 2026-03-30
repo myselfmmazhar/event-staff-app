@@ -86,16 +86,11 @@ export class TimeEntryService {
         staffId?: string;
         search?: string;
     }) {
-        const invitationWhere: any = {
-            status: 'ACCEPTED',
-            isConfirmed: true,
+        const callTimeWhere: any = {
+            event: {
+                status: { in: ['IN_PROGRESS', 'COMPLETED'] },
+            },
         };
-
-        if (filters?.staffId) {
-            invitationWhere.staffId = filters.staffId;
-        }
-
-        const callTimeWhere: any = {};
         if (filters?.eventId) {
             callTimeWhere.eventId = filters.eventId;
         }
@@ -106,68 +101,114 @@ export class TimeEntryService {
             };
         }
 
-        if (Object.keys(callTimeWhere).length > 0) {
-            invitationWhere.callTime = callTimeWhere;
+        const invitationWhere: any = {
+            status: 'ACCEPTED',
+        };
+        if (filters?.staffId) {
+            invitationWhere.staffId = filters.staffId;
         }
 
-        const invitations = await (this.prisma as any).callTimeInvitation.findMany({
-            where: invitationWhere,
+        const callTimes = await (this.prisma as any).callTime.findMany({
+            where: callTimeWhere,
             include: {
-                staff: {
+                service: { select: { id: true, title: true } },
+                event: {
                     select: {
                         id: true,
-                        firstName: true,
-                        lastName: true,
-                        accountStatus: true,
-                        staffRating: true,
-                        skillLevel: true,
-                        streetAddress: true,
+                        eventId: true,
+                        title: true,
+                        venueName: true,
+                        address: true,
                         city: true,
                         state: true,
                         zipCode: true,
-                        email: true,
-                        phone: true,
+                        poNumber: true,
+                        status: true,
+                        isArchived: true,
+                        client: { select: { id: true, businessName: true } },
                     },
                 },
-                callTime: {
+                invitations: {
+                    where: invitationWhere,
                     include: {
-                        service: { select: { id: true, title: true } },
-                        event: {
+                        staff: {
                             select: {
                                 id: true,
-                                eventId: true,
-                                title: true,
-                                venueName: true,
-                                address: true,
+                                firstName: true,
+                                lastName: true,
+                                accountStatus: true,
+                                staffRating: true,
+                                skillLevel: true,
+                                streetAddress: true,
                                 city: true,
                                 state: true,
                                 zipCode: true,
-                                poNumber: true,
-                                client: { select: { id: true, businessName: true } },
+                                email: true,
+                                phone: true,
                             },
                         },
+                        timeEntry: true,
                     },
                 },
-                timeEntry: true,
             },
-            orderBy: [
-                { callTime: { startDate: 'asc' } },
-                { staff: { firstName: 'asc' } },
-            ],
+            orderBy: { startDate: 'asc' },
         });
+
+        // Flatten callTimes into rows (CallTimeInvitation-like objects)
+        let rows: any[] = [];
+        for (const ct of callTimes) {
+            if (ct.invitations.length > 0) {
+                // Return one row for each accepted invitation
+                const invitationRows = ct.invitations.map((inv: any) => ({
+                    ...inv,
+                    callTime: {
+                        ...ct,
+                        invitations: undefined // Avoid circular/excessive data
+                    }
+                }));
+
+                // If filtering by staff, only these rows matter
+                rows.push(...invitationRows);
+            } else if (!filters?.staffId && (ct.event.status === 'COMPLETED' || ct.event.status === 'IN_PROGRESS')) {
+                // If no staff accepted but event is active/important, show an unassigned row
+                // This ensures "Test Task One" shows up even with 0 staff
+                rows.push({
+                    id: `unassigned-${ct.id}`,
+                    status: 'PENDING',
+                    isConfirmed: false,
+                    staffId: null,
+                    staff: null,
+                    timeEntry: null,
+                    callTimeId: ct.id,
+                    callTime: {
+                        ...ct,
+                        invitations: undefined
+                    }
+                });
+            }
+        }
 
         // Apply search client-side (name, event title, position)
         if (filters?.search) {
             const q = filters.search.toLowerCase();
-            return invitations.filter((inv: any) => {
-                const name = `${inv.staff.firstName} ${inv.staff.lastName}`.toLowerCase();
-                const eventTitle = inv.callTime.event.title.toLowerCase();
-                const position = inv.callTime.service?.title?.toLowerCase() ?? '';
+            rows = rows.filter((row: any) => {
+                const name = row.staff ? `${row.staff.firstName} ${row.staff.lastName}`.toLowerCase() : 'unassigned';
+                const eventTitle = row.callTime.event.title.toLowerCase();
+                const position = row.callTime.service?.title?.toLowerCase() ?? '';
                 return name.includes(q) || eventTitle.includes(q) || position.includes(q);
             });
         }
 
-        return invitations;
+        // Final sort: Date, then Staff Name
+        return rows.sort((a, b) => {
+            const dateA = new Date(a.callTime.startDate || 0).getTime();
+            const dateB = new Date(b.callTime.startDate || 0).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+
+            const nameA = a.staff ? `${a.staff.firstName} ${a.staff.lastName}` : 'zzz';
+            const nameB = b.staff ? `${b.staff.firstName} ${b.staff.lastName}` : 'zzz';
+            return nameA.localeCompare(nameB);
+        });
     }
 
     /**
@@ -272,7 +313,9 @@ export class TimeEntryService {
             where: {
                 id: { in: invitationIds },
                 status: 'ACCEPTED',
-                isConfirmed: true,
+                callTime: {
+                    event: { status: { in: ['IN_PROGRESS', 'COMPLETED'] } },
+                },
                 // Rejects should not be counted/invoiced
                 OR: [
                     { internalReviewRating: null },
