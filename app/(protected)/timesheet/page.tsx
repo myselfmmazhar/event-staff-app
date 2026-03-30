@@ -148,7 +148,11 @@ export default function TimeManagerPage() {
         breakMins: number,
         otCost?: number | null,
         otPrice?: number | null,
-        notes?: string | null
+        notes?: string | null,
+        shiftCost?: number | null,
+        shiftPrice?: number | null,
+        travelCost?: number | null,
+        travelPrice?: number | null
     ) => {
         // Find the matching assignment to get staffId/callTimeId
         const assignment = assignments.find((a: any) => a.id === invitationId);
@@ -163,6 +167,10 @@ export default function TimeManagerPage() {
             breakMinutes: breakMins,
             overtimeCost: otCost,
             overtimePrice: otPrice,
+            shiftCost: shiftCost,
+            shiftPrice: shiftPrice,
+            travelCost: travelCost,
+            travelPrice: travelPrice,
             notes: notes,
         });
     };
@@ -806,8 +814,8 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="bill" label="Bill Amount" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
+                                                            <SortHeader id="cost" label="Commission Cost" align="text-right" />
+                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
                                                         <>
@@ -915,8 +923,8 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="bill" label="Bill Amount" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
+                                                            <SortHeader id="cost" label="Commission Cost" align="text-right" />
+                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
                                                         <>
@@ -1085,8 +1093,8 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="bill" label="Bill Amount" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
+                                                            <SortHeader id="cost" label="Commission Cost" align="text-right" />
+                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
                                                         <>

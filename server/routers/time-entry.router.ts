@@ -38,6 +38,10 @@ export const timeEntryRouter = router({
             breakMinutes: z.number().int().min(0).default(0),
             overtimeCost: z.number().optional().nullable(),
             overtimePrice: z.number().optional().nullable(),
+            shiftCost: z.number().optional().nullable(),
+            shiftPrice: z.number().optional().nullable(),
+            travelCost: z.number().optional().nullable(),
+            travelPrice: z.number().optional().nullable(),
             notes: z.string().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
@@ -51,6 +55,10 @@ export const timeEntryRouter = router({
                 breakMinutes: input.breakMinutes,
                 overtimeCost: input.overtimeCost,
                 overtimePrice: input.overtimePrice,
+                shiftCost: input.shiftCost,
+                shiftPrice: input.shiftPrice,
+                travelCost: input.travelCost,
+                travelPrice: input.travelPrice,
                 notes: input.notes,
                 createdBy: ctx.userId as string,
             });

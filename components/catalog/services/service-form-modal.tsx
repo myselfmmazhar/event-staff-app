@@ -41,7 +41,8 @@ const formSchema = z.object({
     .default(null),
   cost: z.number().positive('Cost must be a positive number').nullable().default(null),
   price: z.number().positive('Price must be a positive number').nullable().default(null),
-  hasExpenditure: z.boolean().default(false),
+  hasMinimum: z.boolean().default(false),
+  minimum: z.number().min(0, 'Must be non-negative').nullable().default(null),
   expenditureCost: z.number().min(0, 'Must be non-negative').nullable().default(null),
   expenditurePrice: z.number().min(0, 'Must be non-negative').nullable().default(null),
 });
@@ -86,7 +87,8 @@ export function ServiceFormModal({
       description: null,
       cost: null,
       price: null,
-      hasExpenditure: false,
+      hasMinimum: false,
+      minimum: null,
       expenditureCost: null,
       expenditurePrice: null,
     },
@@ -140,7 +142,8 @@ export function ServiceFormModal({
         description: service.description ?? null,
         cost: costValue,
         price: priceValue,
-        hasExpenditure: service.expenditure || expCostValue !== null || expPriceValue !== null,
+        hasMinimum: service.expenditure || expCostValue !== null || expPriceValue !== null || service.minimum !== null,
+        minimum: service.minimum != null ? (typeof service.minimum === 'object' && 'toNumber' in (service.minimum as any) ? (service.minimum as any).toNumber() : Number(service.minimum)) : null,
         expenditureCost: expCostValue,
         expenditurePrice: expPriceValue,
       });
@@ -151,7 +154,8 @@ export function ServiceFormModal({
         description: null,
         cost: null,
         price: null,
-        hasExpenditure: false,
+        hasMinimum: false,
+        minimum: null,
         expenditureCost: null,
         expenditurePrice: null,
       });
@@ -176,9 +180,10 @@ export function ServiceFormModal({
       description: data.description || null,
       cost: data.cost,
       price: data.price,
-      expenditure: data.hasExpenditure,
-      expenditureCost: data.hasExpenditure ? data.expenditureCost : null,
-      expenditurePrice: data.hasExpenditure ? data.expenditurePrice : null,
+      minimum: data.hasMinimum ? data.minimum : null,
+      expenditure: data.hasMinimum,
+      expenditureCost: data.hasMinimum ? data.expenditureCost : null,
+      expenditurePrice: data.hasMinimum ? data.expenditurePrice : null,
     });
   };
 
@@ -333,9 +338,9 @@ export function ServiceFormModal({
             </div>
 
             <div>
-              <Label>Expenditures?</Label>
+              <Label>Minimum?</Label>
               <Controller
-                name="hasExpenditure"
+                name="hasMinimum"
                 control={control}
                 render={({ field }) => (
                   <RadioGroup
@@ -348,74 +353,70 @@ export function ServiceFormModal({
                     disabled={isSubmitting}
                   >
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="exp-no" />
-                      <Label htmlFor="exp-no" className="font-normal cursor-pointer">No</Label>
+                      <RadioGroupItem value="no" id="min-no" />
+                      <Label htmlFor="min-no" className="font-normal cursor-pointer">No</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="exp-yes" />
-                      <Label htmlFor="exp-yes" className="font-normal cursor-pointer">Yes</Label>
+                      <RadioGroupItem value="yes" id="min-yes" />
+                      <Label htmlFor="min-yes" className="font-normal cursor-pointer">Yes</Label>
                     </div>
                   </RadioGroup>
                 )}
               />
             </div>
 
-            {watch('hasExpenditure') && (
+            {watch('hasMinimum') && (
               <>
                 <div>
-                  <Label htmlFor="expenditureCost">Expenditure Cost</Label>
+                  <Label htmlFor="minimum">Quantity</Label>
                   <Controller
-                    name="expenditureCost"
+                    name="minimum"
                     control={control}
                     render={({ field }) => (
                       <Input
-                        id="expenditureCost"
+                        id="minimum"
                         type="number"
-                        step="0.01"
+                        step="1"
                         min="0"
-                        inputMode="decimal"
                         value={field.value ?? ''}
                         onChange={(e) => {
                           const val = e.target.value;
                           field.onChange(val === '' ? null : parseFloat(val));
                         }}
-                        error={!!errors.expenditureCost}
+                        error={!!errors.minimum}
                         disabled={isSubmitting}
-                        placeholder="0.00"
+                        placeholder="e.g., 4"
                       />
                     )}
                   />
-                  {errors.expenditureCost && (
-                    <p className="text-sm text-destructive mt-1">{errors.expenditureCost.message}</p>
+                  {errors.minimum && (
+                    <p className="text-sm text-destructive mt-1">{errors.minimum.message}</p>
                   )}
                 </div>
+
                 <div>
-                  <Label htmlFor="expenditurePrice">Expenditure Price</Label>
-                  <Controller
-                    name="expenditurePrice"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        id="expenditurePrice"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        inputMode="decimal"
-                        value={field.value ?? ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val === '' ? null : parseFloat(val));
-                        }}
-                        error={!!errors.expenditurePrice}
-                        disabled={isSubmitting}
-                        placeholder="0.00"
-                      />
-                    )}
-                  />
-                  {errors.expenditurePrice && (
-                    <p className="text-sm text-destructive mt-1">{errors.expenditurePrice.message}</p>
-                  )}
+                  <Label>Rate Type</Label>
+                  <Select
+                    value={costUnitType || ''}
+                    disabled={true}
+                  >
+                    <SelectTrigger className="bg-muted/50 cursor-not-allowed">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COST_UNIT_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground mt-1 italic">
+                    Follows main Rate Type
+                  </p>
                 </div>
+
+
               </>
             )}
           </div>
