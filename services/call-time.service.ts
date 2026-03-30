@@ -1717,7 +1717,7 @@ export class CallTimeService {
           commission: assignment.commission,
           commissionAmount: assignment.commissionAmount ?? null,
           commissionAmountType: assignment.commissionAmountType ?? null,
-          minimum: assignment.minimum ?? assignment.minimumAmount ?? (service.minimum ? Number(service.minimum) : null),
+          minimum: assignment.minimum ?? (service.minimum ? Number(service.minimum) : null),
           expenditure: assignment.expenditure ?? service.expenditure ?? false,
           expenditureCost: assignment.expenditureCost ?? (service.expenditureCost ? Number(service.expenditureCost) : null),
           expenditurePrice: assignment.expenditurePrice ?? (service.expenditurePrice ? Number(service.expenditurePrice) : null),
