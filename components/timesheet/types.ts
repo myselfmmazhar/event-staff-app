@@ -76,6 +76,10 @@ export type CallTimeRow = {
         breakMinutes: number;
         overtimeCost?: number | string | null;
         overtimePrice?: number | string | null;
+        shiftCost?: number | string | null;
+        shiftPrice?: number | string | null;
+        travelCost?: number | string | null;
+        travelPrice?: number | string | null;
         notes?: string | null;
         revisions?: Array<{
             id: string;
@@ -84,6 +88,10 @@ export type CallTimeRow = {
             breakMinutes: number;
             overtimeCost: number | string | null;
             overtimePrice: number | string | null;
+            shiftCost?: number | string | null;
+            shiftPrice?: number | string | null;
+            travelCost?: number | string | null;
+            travelPrice?: number | string | null;
             notes: string | null;
             editedBy: string;
             editedAt: Date | string;

@@ -65,6 +65,10 @@ model TimeEntry {
   updatedAt     DateTime            @updatedAt @db.Timestamp(6)
   overtimeCost  Decimal?            @db.Decimal(10, 2)
   overtimePrice Decimal?            @db.Decimal(10, 2)
+  shiftCost     Decimal?            @db.Decimal(10, 2)
+  shiftPrice    Decimal?            @db.Decimal(10, 2)
+  travelCost    Decimal?            @db.Decimal(10, 2)
+  travelPrice   Decimal?            @db.Decimal(10, 2)
   callTime      CallTime            @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
   createdByUser User                @relation("time_entries_created", fields: [createdBy], references: [id], onDelete: Cascade)
   invitation    CallTimeInvitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
@@ -84,6 +88,10 @@ model TimeEntryRevision {
   breakMinutes  Int       @default(0)
   overtimeCost  Decimal?  @db.Decimal(10, 2)
   overtimePrice Decimal?  @db.Decimal(10, 2)
+  shiftCost     Decimal?  @db.Decimal(10, 2)
+  shiftPrice    Decimal?  @db.Decimal(10, 2)
+  travelCost    Decimal?  @db.Decimal(10, 2)
+  travelPrice   Decimal?  @db.Decimal(10, 2)
   notes         String?
   editedBy      String
   editedAt      DateTime  @default(now()) @db.Timestamp(6)

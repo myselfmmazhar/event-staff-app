@@ -136,6 +136,9 @@ export function calcBillAmount(ct: CallTimeRow): number {
 }
 
 export function calcClockedCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    if (timeEntry?.shiftCost !== undefined && timeEntry?.shiftCost !== null) {
+        return toNumber(timeEntry.shiftCost);
+    }
     const rate = toNumber(ct.payRate);
     const type = ct.payRateType as RateType;
     const hours = calcClockedHours(timeEntry);
@@ -143,6 +146,9 @@ export function calcClockedCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTim
 }
 
 export function calcClockedPrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
+    if (timeEntry?.shiftPrice !== undefined && timeEntry?.shiftPrice !== null) {
+        return toNumber(timeEntry.shiftPrice);
+    }
     const rate = toNumber(ct.billRate);
     const type = ct.billRateType as RateType;
     const hours = calcClockedHours(timeEntry);
@@ -150,11 +156,17 @@ export function calcClockedPrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTi
 }
 
 export function calcExpenditureCost(ct: CallTimeRow): number {
+    if (ct.timeEntry?.travelCost !== undefined && ct.timeEntry?.travelCost !== null) {
+        return toNumber(ct.timeEntry.travelCost);
+    }
     if (!ct.expenditure) return 0;
     return toNumber(ct.expenditureCost ?? ct.expenditureAmount);
 }
 
 export function calcExpenditurePrice(ct: CallTimeRow): number {
+    if (ct.timeEntry?.travelPrice !== undefined && ct.timeEntry?.travelPrice !== null) {
+        return toNumber(ct.timeEntry.travelPrice);
+    }
     if (!ct.expenditure) return 0;
     return toNumber(ct.expenditurePrice ?? ct.expenditureAmount);
 }
