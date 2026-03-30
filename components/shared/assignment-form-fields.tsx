@@ -54,6 +54,9 @@ export const assignmentFieldsSchema = z
     commission: z.boolean().default(false),
     commissionAmount: z.coerce.number().min(0).optional().nullable(),
     commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    minimum: z.boolean().default(false),
+    minimumAmount: z.coerce.number().min(0).optional().nullable(),
+    minimumRateType: z.nativeEnum(RateType).optional().nullable(),
     expenditure: z.boolean().default(false),
     expenditureCost: z.coerce.number().min(0).optional().nullable(),
     expenditurePrice: z.coerce.number().min(0).optional().nullable(),
@@ -250,7 +253,7 @@ export function AssignmentFormFields({
     if (service.price !== null && service.price !== undefined) {
       setValue('billRate', Number(service.price));
     }
-    
+
     // Auto-fill expenditure values from service
     // @ts-ignore
     setValue('expenditure', service.expenditure || false);
@@ -767,17 +770,16 @@ export function AssignmentFormFields({
             )}
           </div>
 
-          {/* Expenditures Section */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <Label className="text-sm font-medium mb-2 block">Travel?</Label>
+              <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
               <div className="flex items-center gap-4 h-10">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
-                    name="expenditure-toggle"
-                    checked={watch('expenditure') === true}
-                    onChange={() => setValue('expenditure', true)}
+                    name="minimum-toggle"
+                    checked={watch('minimum') === true}
+                    onChange={() => setValue('minimum', true)}
                     disabled={disabled}
                     className="accent-primary"
                   />
@@ -786,13 +788,12 @@ export function AssignmentFormFields({
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
-                    name="expenditure-toggle"
-                    checked={watch('expenditure') === false}
+                    name="minimum-toggle"
+                    checked={watch('minimum') === false}
                     onChange={() => {
-                      setValue('expenditure', false);
-                      setValue('expenditureCost', null);
-                      setValue('expenditurePrice', null);
-                      setValue('travelInMinimum', false);
+                      setValue('minimum', false);
+                      setValue('minimumAmount', null);
+                      setValue('minimumRateType', null);
                     }}
                     disabled={disabled}
                     className="accent-primary"
@@ -801,50 +802,19 @@ export function AssignmentFormFields({
                 </label>
               </div>
             </div>
-
-            {!!watch('expenditure') && (
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
-                <div className="flex items-center gap-4 h-10">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="travel-minimum-toggle"
-                      checked={watch('travelInMinimum') === true}
-                      onChange={() => setValue('travelInMinimum', true)}
-                      disabled={disabled}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm">Yes</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="travel-minimum-toggle"
-                      checked={watch('travelInMinimum') === false}
-                      onChange={() => setValue('travelInMinimum', false)}
-                      disabled={disabled}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm">No</span>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {!!watch('expenditure') && !!watch('travelInMinimum') && (
+            {!!watch('minimum') && (
               <>
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Travel Cost (to Talent)</Label>
+                  <Label className="text-sm font-medium mb-2 block">Minimum Amount</Label>
                   <Input
                     type="number"
                     step="0.01"
                     min={0}
-                    {...register('expenditureCost')}
+                    {...register('minimumAmount')}
                     onFocus={() => {
-                      const current = getValues('expenditureCost') as any;
+                      const current = getValues('minimumAmount') as any;
                       if (current === 0 || current === '0') {
-                        setValue('expenditureCost', '' as any);
+                        setValue('minimumAmount', '' as any);
                       }
                     }}
                     disabled={disabled}
@@ -852,26 +822,9 @@ export function AssignmentFormFields({
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Travel Price (to Client)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register('expenditurePrice')}
-                    onFocus={() => {
-                      const current = getValues('expenditurePrice') as any;
-                      if (current === 0 || current === '0') {
-                        setValue('expenditurePrice', '' as any);
-                      }
-                    }}
-                    disabled={disabled}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">Travel Type</Label>
+                  <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
                   <Controller
-                    name="expenditureAmountType"
+                    name="minimumRateType"
                     control={control}
                     render={({ field }) => (
                       <Select
@@ -883,7 +836,7 @@ export function AssignmentFormFields({
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
-                          {AMOUNT_TYPE_OPTIONS.map((opt) => (
+                          {RATE_TYPE_OPTIONS.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>
                               {opt.label}
                             </SelectItem>
@@ -1031,6 +984,9 @@ export function getDefaultAssignmentValues(today?: string): AssignmentFieldsInpu
     expenditureCost: null,
     expenditurePrice: null,
     expenditureAmountType: null,
+    minimum: false,
+    minimumAmount: null,
+    minimumRateType: null,
     travelInMinimum: false,
     notes: '',
   };

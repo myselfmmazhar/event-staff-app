@@ -221,7 +221,7 @@ export function TimesheetTableRow({
                                 <div className="flex flex-col">
                                     <div className="flex items-center justify-between">
                                         <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Scheduled Shift</span>
-                                        <button 
+                                        <button
                                             className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'SCHEDULED' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
                                             onClick={(e) => { e.stopPropagation(); setInvoiceBasis('SCHEDULED'); }}
                                         >
@@ -233,12 +233,12 @@ export function TimesheetTableRow({
                                         <span className="ml-1 text-slate-400">({hoursScheduled.toFixed(2)} hrs)</span>
                                     </span>
                                 </div>
-                                
+
                                 {/* Actual Shift Section */}
                                 <div className="flex flex-col">
                                     <div className="flex items-center justify-between">
                                         <span className={`font-bold text-[8px] uppercase tracking-tight ${te?.clockIn ? 'text-emerald-500' : 'text-slate-400'}`}>Actual Shift</span>
-                                        <button 
+                                        <button
                                             className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'ACTUAL' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
                                             onClick={(e) => { e.stopPropagation(); setInvoiceBasis('ACTUAL'); }}
                                         >
@@ -273,7 +273,7 @@ export function TimesheetTableRow({
                                             </div>
                                         </div>
                                     ) : (
-                                        <div 
+                                        <div
                                             className="group relative cursor-pointer hover:bg-slate-50 p-1.5 rounded border border-transparent hover:border-slate-100 transition-all font-medium text-slate-500 italic"
                                             onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
                                         >
@@ -421,13 +421,13 @@ export function TimesheetTableRow({
                                         )}
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <button 
+                                        <button
                                             className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'ACTUAL' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
                                             onClick={(e) => { e.stopPropagation(); setBillBasis('ACTUAL'); }}
                                         >
                                             Actual
                                         </button>
-                                        <button 
+                                        <button
                                             className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'SCHEDULED' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
                                             onClick={(e) => { e.stopPropagation(); setBillBasis('SCHEDULED'); }}
                                         >
@@ -454,7 +454,7 @@ export function TimesheetTableRow({
                                             </div>
                                         </div>
                                     ) : (
-                                        <div 
+                                        <div
                                             className="group relative cursor-pointer hover:bg-slate-50 p-1 rounded transition-all font-medium text-slate-500 italic text-[10px]"
                                             onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
                                         >
@@ -567,13 +567,13 @@ export function TimesheetTableRow({
                                         )}
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <button 
+                                        <button
                                             className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'ACTUAL' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
                                             onClick={(e) => { e.stopPropagation(); setBillBasis('ACTUAL'); }}
                                         >
                                             Actual
                                         </button>
-                                        <button 
+                                        <button
                                             className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'SCHEDULED' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
                                             onClick={(e) => { e.stopPropagation(); setBillBasis('SCHEDULED'); }}
                                         >
@@ -600,7 +600,7 @@ export function TimesheetTableRow({
                                             </div>
                                         </div>
                                     ) : (
-                                        <div 
+                                        <div
                                             className="group relative cursor-pointer hover:bg-slate-50 p-1 rounded transition-all font-medium text-slate-500 italic text-[10px]"
                                             onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
                                         >

@@ -168,9 +168,11 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                         </Badge>
                                     </td> */}
                                     <td className="px-4 py-4 text-muted-foreground">
-                                        {subTab === 'bill' 
-                                            ? (firstRow?.staff ? `${firstRow.staff.firstName} ${firstRow.staff.lastName}` : 'No Staff')
-                                            : (event?.client?.businessName || 'No Client')}
+                                        {
+                                            subTab === 'bill'
+                                                ? (firstRow?.staff ? `${firstRow.staff.firstName} ${firstRow.staff.lastName}` : 'No Staff')
+                                                : (event?.client?.businessName || 'No Client')
+                                        }
                                     </td>
                                     <td className="px-4 py-4 text-center">
                                         <div className="text-sm text-muted-foreground">
@@ -227,12 +229,12 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                             <UploadIcon className="h-4 w-4" />
                                         </button>
                                     </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-        </Card>
+                                </tr >
+                    );
+})}
+                </tbody >
+            </table >
+        </div >
+        </Card >
     );
 }
