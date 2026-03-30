@@ -163,7 +163,7 @@ export default function TimeManagerPage() {
             breakMinutes: breakMins,
             overtimeCost: otCost,
             overtimePrice: otPrice,
-            notes: notes,
+            notes: notes ?? undefined,
         });
     };
 

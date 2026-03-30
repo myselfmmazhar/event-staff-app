@@ -15,7 +15,7 @@ interface TimesheetHeaderProps {
     onGenerateBills?: () => void;
     activeTab: 'task' | 'client' | 'talent';
     onTabChange: (tab: 'task' | 'client' | 'talent') => void;
-    subTab?: 'all' | 'bill' | 'invoice';
+    subTab?: 'all' | 'bill' | 'invoice' | 'commission';
 }
 
 export function TimesheetHeader({
