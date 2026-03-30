@@ -3,8 +3,9 @@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
 import { format, parseISO } from 'date-fns';
-import type { ClientGroup } from './types';
+import type { ClientGroup, SortField, SortOrder } from './types';
 import { 
     calcOvertimeCost, 
     calcOvertimePrice, 

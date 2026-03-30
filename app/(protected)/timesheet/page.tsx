@@ -413,7 +413,7 @@ export default function TimeManagerPage() {
         });
 
         const groups = Array.from(groupsMap.values());
-        
+
         // Internal sorting for groups (by date/time usually)
         groups.forEach(g => {
             g.callTimes.sort((a, b) => {
@@ -957,7 +957,7 @@ export default function TimeManagerPage() {
                                             <tbody>
                                                 {(() => {
                                                     const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
-                                                    
+
                                                     if (subTab !== 'bill') {
                                                         return filtered.map(ct => (
                                                             <TimesheetTableRow
@@ -1038,7 +1038,7 @@ export default function TimeManagerPage() {
                                             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                                                 <span className="font-semibold text-primary/80 uppercase tracking-tighter text-[10px] bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
                                                     {subTab === 'bill' ? (
-                                                        group.callTimes[0]?.staff 
+                                                        group.callTimes[0]?.staff
                                                             ? `${group.callTimes[0].staff.firstName} ${group.callTimes[0].staff.lastName}`
                                                             : 'No Talent'
                                                     ) : (group.clientName || 'No Client')}
@@ -1127,7 +1127,7 @@ export default function TimeManagerPage() {
                                             <tbody>
                                                 {(() => {
                                                     const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
-                                                    
+
                                                     if (subTab !== 'bill') {
                                                         return filtered.map(ct => (
                                                             <TimesheetTableRow
