@@ -228,11 +228,19 @@ export class TimeEntryService {
         travelCost?: number | null;
         travelPrice?: number | null;
         notes?: string;
+        commission?: boolean;
         createdBy: string;
     }) {
         const breakMinutes = data.breakMinutes ?? 0;
 
         return await (this.prisma as any).$transaction(async (tx: any) => {
+            if (data.commission !== undefined) {
+                await tx.callTime.update({
+                    where: { id: data.callTimeId },
+                    data: { commission: data.commission },
+                });
+            }
+
             const existing = await tx.timeEntry.findUnique({
                 where: { invitationId: data.invitationId },
                 include: { staff: true },

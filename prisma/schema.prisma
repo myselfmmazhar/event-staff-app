@@ -88,13 +88,13 @@ model TimeEntryRevision {
   breakMinutes  Int       @default(0)
   overtimeCost  Decimal?  @db.Decimal(10, 2)
   overtimePrice Decimal?  @db.Decimal(10, 2)
+  notes         String?
+  editedBy      String
+  editedAt      DateTime  @default(now()) @db.Timestamp(6)
   shiftCost     Decimal?  @db.Decimal(10, 2)
   shiftPrice    Decimal?  @db.Decimal(10, 2)
   travelCost    Decimal?  @db.Decimal(10, 2)
   travelPrice   Decimal?  @db.Decimal(10, 2)
-  notes         String?
-  editedBy      String
-  editedAt      DateTime  @default(now()) @db.Timestamp(6)
   editedByUser  User      @relation("time_entry_revisions_edited_by", fields: [editedBy], references: [id], onDelete: Cascade)
   timeEntry     TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
 
