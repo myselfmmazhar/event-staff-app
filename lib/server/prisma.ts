@@ -53,7 +53,7 @@ export const prisma =
     adapter,
   });
 
-// Last updated: 2026-03-25T15:10:00Z - Forcing reload after revisions update
+// Last updated: 2026-03-31T03:55:00Z - Confirmed schema sync
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
   globalForPrisma.pgPool = pgPool;

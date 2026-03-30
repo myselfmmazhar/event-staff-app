@@ -152,7 +152,8 @@ export default function TimeManagerPage() {
         shiftCost?: number | null,
         shiftPrice?: number | null,
         travelCost?: number | null,
-        travelPrice?: number | null
+        travelPrice?: number | null,
+        commission?: boolean
     ) => {
         // Find the matching assignment to get staffId/callTimeId
         const assignment = assignments.find((a: any) => a.id === invitationId);
@@ -172,6 +173,7 @@ export default function TimeManagerPage() {
             travelCost: travelCost,
             travelPrice: travelPrice,
             notes: notes,
+            commission: commission,
         });
     };
 

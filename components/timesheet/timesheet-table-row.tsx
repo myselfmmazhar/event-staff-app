@@ -61,7 +61,7 @@ export function TimesheetTableRow({
     onToggleExpand: (id: string, e: React.MouseEvent) => void;
     onToggleSelect: (id: string, e: React.MouseEvent) => void;
     onViewEvent: (id: string) => void;
-    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null, notes?: string | null, shiftCost?: number | null, shiftPrice?: number | null, travelCost?: number | null, travelPrice?: number | null) => void;
+    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null, notes?: string | null, shiftCost?: number | null, shiftPrice?: number | null, travelCost?: number | null, travelPrice?: number | null, commission?: boolean) => void;
     showEventName?: boolean;
     onApprove?: (id: string) => void;
     onReject?: (id: string) => void;
@@ -141,7 +141,8 @@ export function TimesheetTableRow({
                 parsedShiftCost !== null && !isNaN(parsedShiftCost) ? parsedShiftCost : (shiftCostManual === '' ? null : undefined),
                 parsedShiftPrice !== null && !isNaN(parsedShiftPrice) ? parsedShiftPrice : (shiftPriceManual === '' ? null : undefined),
                 parsedTravelCost !== null && !isNaN(parsedTravelCost) ? parsedTravelCost : (travelCostManual === '' ? null : undefined),
-                parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined)
+                parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined),
+                isCommApp
             );
             toast({
                 title: 'Changes saved',
@@ -152,6 +153,32 @@ export function TimesheetTableRow({
         setIsEditingNotes(false);
         setIsEditingOtCost(false);
         setIsEditingOtPrice(false);
+    };
+    const handleToggleCommission = (val: boolean) => {
+        setIsCommApp(val);
+        if (onSaveTimeEntry) {
+            const parsedOtCost = otCostManual !== '' ? parseFloat(otCostManual) : null;
+            const parsedOtPrice = otPriceManual !== '' ? parseFloat(otPriceManual) : null;
+            const parsedShiftCost = shiftCostManual !== '' ? parseFloat(shiftCostManual) : null;
+            const parsedShiftPrice = shiftPriceManual !== '' ? parseFloat(shiftPriceManual) : null;
+            const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
+            const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
+
+            onSaveTimeEntry(
+                ct.id,
+                clockIn || null,
+                clockOut || null,
+                breakMins,
+                parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
+                parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined),
+                localNotes,
+                parsedShiftCost !== null && !isNaN(parsedShiftCost) ? parsedShiftCost : (shiftCostManual === '' ? null : undefined),
+                parsedShiftPrice !== null && !isNaN(parsedShiftPrice) ? parsedShiftPrice : (shiftPriceManual === '' ? null : undefined),
+                parsedTravelCost !== null && !isNaN(parsedTravelCost) ? parsedTravelCost : (travelCostManual === '' ? null : undefined),
+                parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined),
+                val
+            );
+        }
     };
 
     const actions: ActionItem[] = [
@@ -245,13 +272,13 @@ export function TimesheetTableRow({
                                                 className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'SCHEDULED' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
                                                 onClick={(e) => { e.stopPropagation(); setInvoiceBasis('SCHEDULED'); }}
                                             >
-                                                BILLSCHEDULED
+                                                SCHEDULED
                                             </button>
                                             <button
                                                 className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'ACTUAL' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
                                                 onClick={(e) => { e.stopPropagation(); setInvoiceBasis('ACTUAL'); }}
                                             >
-                                                BILLACTUAL
+                                                ACTUAL
                                             </button>
                                         </div>
                                     </div>
@@ -950,7 +977,7 @@ export function TimesheetTableRow({
                                     aria-checked={isCommApp}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        setIsCommApp(prev => !prev);
+                                        handleToggleCommission(!isCommApp);
                                     }}
                                     className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:ring-offset-1 ${isCommApp ? 'bg-indigo-600' : 'bg-slate-200'}`}
                                 >
