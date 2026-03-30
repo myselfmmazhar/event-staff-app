@@ -61,7 +61,7 @@ export function TimesheetTableRow({
     onToggleExpand: (id: string, e: React.MouseEvent) => void;
     onToggleSelect: (id: string, e: React.MouseEvent) => void;
     onViewEvent: (id: string) => void;
-    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null, notes?: string | null) => void;
+    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null, notes?: string | null, shiftCost?: number | null, shiftPrice?: number | null, travelCost?: number | null, travelPrice?: number | null) => void;
     showEventName?: boolean;
     onApprove?: (id: string) => void;
     onReject?: (id: string) => void;
@@ -80,12 +80,20 @@ export function TimesheetTableRow({
     const [breakMins, setBreakMins] = useState(te?.breakMinutes ?? 0);
     const [otCostManual, setOtCostManual] = useState<string>(te?.overtimeCost !== undefined && te?.overtimeCost !== null ? toNumber(te.overtimeCost).toString() : '');
     const [otPriceManual, setOtPriceManual] = useState<string>(te?.overtimePrice !== undefined && te?.overtimePrice !== null ? toNumber(te.overtimePrice).toString() : '');
+    const [shiftCostManual, setShiftCostManual] = useState<string>(te?.shiftCost !== undefined && te?.shiftCost !== null ? toNumber(te.shiftCost).toString() : '');
+    const [shiftPriceManual, setShiftPriceManual] = useState<string>(te?.shiftPrice !== undefined && te?.shiftPrice !== null ? toNumber(te.shiftPrice).toString() : '');
+    const [travelCostManual, setTravelCostManual] = useState<string>(te?.travelCost !== undefined && te?.travelCost !== null ? toNumber(te.travelCost).toString() : '');
+    const [travelPriceManual, setTravelPriceManual] = useState<string>(te?.travelPrice !== undefined && te?.travelPrice !== null ? toNumber(te.travelPrice).toString() : '');
     const [localNotes, setLocalNotes] = useState(te?.notes || ct.notes || '');
     const [isEditingOtCost, setIsEditingOtCost] = useState(false);
     const [isEditingOtPrice, setIsEditingOtPrice] = useState(false);
     const [isCommApp, setIsCommApp] = useState(!!ct.commission);
     const [billBasis, setBillBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
     const [invoiceBasis, setInvoiceBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
+
+    useEffect(() => {
+        ct.commission = isCommApp;
+    }, [isCommApp, ct]);
 
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
@@ -101,6 +109,9 @@ export function TimesheetTableRow({
     const totalInvoice = calcTotalInvoice(te, ct, isCommApp, invoiceBasis);
     const grossProfit = totalInvoice - totalBill;
 
+    const commissionCost = isCommApp ? totalBill - calcTotalBill(te, ct, false, billBasis) : 0;
+    const commissionPrice = isCommApp ? totalInvoice - calcTotalInvoice(te, ct, false, invoiceBasis) : 0;
+
 
 
     const reviewRating = useMemo(() => ct.invitations?.[0]?.internalReviewRating ?? null, [ct.invitations]);
@@ -114,6 +125,10 @@ export function TimesheetTableRow({
         if (onSaveTimeEntry) {
             const parsedOtCost = otCostManual !== '' ? parseFloat(otCostManual) : null;
             const parsedOtPrice = otPriceManual !== '' ? parseFloat(otPriceManual) : null;
+            const parsedShiftCost = shiftCostManual !== '' ? parseFloat(shiftCostManual) : null;
+            const parsedShiftPrice = shiftPriceManual !== '' ? parseFloat(shiftPriceManual) : null;
+            const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
+            const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
 
             onSaveTimeEntry(
                 ct.id,
@@ -122,7 +137,11 @@ export function TimesheetTableRow({
                 breakMins,
                 parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
                 parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined),
-                localNotes
+                localNotes,
+                parsedShiftCost !== null && !isNaN(parsedShiftCost) ? parsedShiftCost : (shiftCostManual === '' ? null : undefined),
+                parsedShiftPrice !== null && !isNaN(parsedShiftPrice) ? parsedShiftPrice : (shiftPriceManual === '' ? null : undefined),
+                parsedTravelCost !== null && !isNaN(parsedTravelCost) ? parsedTravelCost : (travelCostManual === '' ? null : undefined),
+                parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined)
             );
             toast({
                 title: 'Changes saved',
@@ -221,12 +240,20 @@ export function TimesheetTableRow({
                                 <div className="flex flex-col">
                                     <div className="flex items-center justify-between">
                                         <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Scheduled Shift</span>
-                                        <button
-                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'SCHEDULED' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
-                                            onClick={(e) => { e.stopPropagation(); setInvoiceBasis('SCHEDULED'); }}
-                                        >
-                                            Bill Scheduled
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'SCHEDULED' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
+                                                onClick={(e) => { e.stopPropagation(); setInvoiceBasis('SCHEDULED'); }}
+                                            >
+                                                BILLSCHEDULED
+                                            </button>
+                                            <button
+                                                className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'ACTUAL' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
+                                                onClick={(e) => { e.stopPropagation(); setInvoiceBasis('ACTUAL'); }}
+                                            >
+                                                BILLACTUAL
+                                            </button>
+                                        </div>
                                     </div>
                                     <span className="font-medium text-slate-500">
                                         {formatDate(ct.startDate)} • {formatTime(ct.startTime)} - {formatTime(ct.endTime)}
@@ -238,12 +265,7 @@ export function TimesheetTableRow({
                                 <div className="flex flex-col">
                                     <div className="flex items-center justify-between">
                                         <span className={`font-bold text-[8px] uppercase tracking-tight ${te?.clockIn ? 'text-emerald-500' : 'text-slate-400'}`}>Actual Shift</span>
-                                        <button
-                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'ACTUAL' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
-                                            onClick={(e) => { e.stopPropagation(); setInvoiceBasis('ACTUAL'); }}
-                                        >
-                                            Bill Actual
-                                        </button>
+
                                     </div>
                                     {te?.clockIn ? (
                                         <span className="font-bold text-emerald-600 italic">
@@ -422,13 +444,13 @@ export function TimesheetTableRow({
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <button
-                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'ACTUAL' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
+                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'ACTUAL' ? 'bg-amber-500 text-white border-amber-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-amber-400/50'}`}
                                             onClick={(e) => { e.stopPropagation(); setBillBasis('ACTUAL'); }}
                                         >
                                             Actual
                                         </button>
                                         <button
-                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'SCHEDULED' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
+                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'SCHEDULED' ? 'bg-amber-500 text-white border-amber-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-amber-400/50'}`}
                                             onClick={(e) => { e.stopPropagation(); setBillBasis('SCHEDULED'); }}
                                         >
                                             Sched
@@ -566,20 +588,6 @@ export function TimesheetTableRow({
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'ACTUAL' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
-                                            onClick={(e) => { e.stopPropagation(); setBillBasis('ACTUAL'); }}
-                                        >
-                                            Actual
-                                        </button>
-                                        <button
-                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'SCHEDULED' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-red-400/50'}`}
-                                            onClick={(e) => { e.stopPropagation(); setBillBasis('SCHEDULED'); }}
-                                        >
-                                            Sched
-                                        </button>
-                                    </div>
                                 </div>
 
                                 {/* Notes Section */}
@@ -611,46 +619,14 @@ export function TimesheetTableRow({
                             </div>
                         </td>
 
-                        {/* Bill Amount (Same as Bill Tab) */}
+                        {/* Commission Cost */}
                         <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px]">
-                            <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
-                                <PopoverTrigger asChild>
-                                    <div className="cursor-pointer hover:bg-red-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
-                                        {fmtCurrency(totalBill)}
-                                    </div>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost/OT</Label>
-                                            <Input
-                                                type="number"
-                                                value={otCostManual}
-                                                onChange={(e) => setOtCostManual(e.target.value)}
-                                                className="h-8 text-sm"
-                                                placeholder="0.00"
-                                                autoFocus
-                                            />
-                                        </div>
-                                        <div className="flex justify-end gap-2">
-                                            <Button size="sm" variant="outline" onClick={() => setIsEditingOtCost(false)}>Cancel</Button>
-                                            <Button size="sm" className="bg-red-500 hover:bg-red-600" onClick={handleSave}>Save</Button>
-                                        </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
+                            {fmtCurrency(commissionCost)}
                         </td>
 
-                        {/* Status (Same as Bill Tab) */}
-                        <td className="px-3 py-2.5 text-center">
-                            <Badge
-                                variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
-                                className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
-                            >
-                                {reviewRating === 'MET_EXPECTATIONS' ? 'APPROVED' :
-                                    (reviewRating === 'DID_NOT_MEET' || reviewRating === 'NO_CALL_NO_SHOW') ? 'REJECTED' :
-                                        reviewRating === 'NEEDS_IMPROVEMENT' ? 'REVIEW' : 'PENDING'}
-                            </Badge>
+                        {/* Commission Price */}
+                        <td className="px-3 py-2.5 text-right font-extrabold text-foreground tabular-nums text-[13px]">
+                            {fmtCurrency(commissionPrice)}
                         </td>
                     </>
                 ) : (
@@ -840,18 +816,46 @@ export function TimesheetTableRow({
                                             </div>
                                         </div>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
+                                    <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>
                                         <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost/OT</Label>
-                                                <Input
-                                                    type="number"
-                                                    value={otCostManual}
-                                                    onChange={(e) => setOtCostManual(e.target.value)}
-                                                    className="h-8 text-sm"
-                                                    placeholder="0.00"
-                                                    autoFocus
-                                                />
+                                            <div className="space-y-3">
+                                                <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost Detail</Label>
+
+                                                <div className="grid gap-2">
+                                                    <div className="grid grid-cols-3 items-center gap-4">
+                                                        <Label htmlFor="shift-cost" className="text-[10px] font-bold text-muted-foreground">SHIFT</Label>
+                                                        <Input
+                                                            id="shift-cost"
+                                                            type="number"
+                                                            value={shiftCostManual}
+                                                            onChange={(e) => setShiftCostManual(e.target.value)}
+                                                            className="h-8 text-sm col-span-2"
+                                                            placeholder="Auto"
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-3 items-center gap-4">
+                                                        <Label htmlFor="ot-cost" className="text-[10px] font-bold text-muted-foreground">OVERTIME</Label>
+                                                        <Input
+                                                            id="ot-cost"
+                                                            type="number"
+                                                            value={otCostManual}
+                                                            onChange={(e) => setOtCostManual(e.target.value)}
+                                                            className="h-8 text-sm col-span-2"
+                                                            placeholder="Auto"
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-3 items-center gap-4">
+                                                        <Label htmlFor="travel-cost" className="text-[10px] font-bold text-muted-foreground">TRAVEL</Label>
+                                                        <Input
+                                                            id="travel-cost"
+                                                            type="number"
+                                                            value={travelCostManual}
+                                                            onChange={(e) => setTravelCostManual(e.target.value)}
+                                                            className="h-8 text-sm col-span-2"
+                                                            placeholder="Auto"
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div className="flex justify-end gap-2">
                                                 <Button size="sm" variant="outline" onClick={() => setIsEditingOtCost(false)}>Cancel</Button>
@@ -886,18 +890,46 @@ export function TimesheetTableRow({
                                         </div>
                                     </div>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
+                                <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>
                                     <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price/OT</Label>
-                                            <Input
-                                                type="number"
-                                                value={otPriceManual}
-                                                onChange={(e) => setOtPriceManual(e.target.value)}
-                                                className="h-8 text-sm"
-                                                placeholder="0.00"
-                                                autoFocus
-                                            />
+                                        <div className="space-y-3">
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price Detail</Label>
+
+                                            <div className="grid gap-2">
+                                                <div className="grid grid-cols-3 items-center gap-4">
+                                                    <Label htmlFor="shift-price" className="text-[10px] font-bold text-muted-foreground">SHIFT</Label>
+                                                    <Input
+                                                        id="shift-price"
+                                                        type="number"
+                                                        value={shiftPriceManual}
+                                                        onChange={(e) => setShiftPriceManual(e.target.value)}
+                                                        className="h-8 text-sm col-span-2"
+                                                        placeholder="Auto"
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-3 items-center gap-4">
+                                                    <Label htmlFor="ot-price" className="text-[10px] font-bold text-muted-foreground">OVERTIME</Label>
+                                                    <Input
+                                                        id="ot-price"
+                                                        type="number"
+                                                        value={otPriceManual}
+                                                        onChange={(e) => setOtPriceManual(e.target.value)}
+                                                        className="h-8 text-sm col-span-2"
+                                                        placeholder="Auto"
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-3 items-center gap-4">
+                                                    <Label htmlFor="travel-price" className="text-[10px] font-bold text-muted-foreground">TRAVEL</Label>
+                                                    <Input
+                                                        id="travel-price"
+                                                        type="number"
+                                                        value={travelPriceManual}
+                                                        onChange={(e) => setTravelPriceManual(e.target.value)}
+                                                        className="h-8 text-sm col-span-2"
+                                                        placeholder="Auto"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="flex justify-end gap-2">
                                             <Button size="sm" variant="outline" onClick={() => setIsEditingOtPrice(false)}>Cancel</Button>
