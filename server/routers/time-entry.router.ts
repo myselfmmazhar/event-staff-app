@@ -30,8 +30,8 @@ export const timeEntryRouter = router({
      */
     upsert: managerProcedure
         .input(z.object({
-            invitationId: z.string().uuid(),
-            staffId: z.string().uuid(),
+            invitationId: z.string().nullable().optional(),
+            staffId: z.string().nullable().optional(),
             callTimeId: z.string().uuid(),
             clockIn: z.string().optional().nullable(),
             clockOut: z.string().optional().nullable(),
@@ -48,8 +48,8 @@ export const timeEntryRouter = router({
         .mutation(async ({ ctx, input }) => {
             const service = new TimeEntryService(ctx.prisma);
             return await service.upsertTimeEntry({
-                invitationId: input.invitationId,
-                staffId: input.staffId,
+                invitationId: input.invitationId || null,
+                staffId: input.staffId || null,
                 callTimeId: input.callTimeId,
                 clockIn: input.clockIn ? new Date(input.clockIn) : null,
                 clockOut: input.clockOut ? new Date(input.clockOut) : null,

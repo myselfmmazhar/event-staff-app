@@ -161,6 +161,20 @@ export class TimeEntryService {
                 // Return one row for each accepted invitation
                 const invitationRows = ct.invitations.map((inv: any) => ({
                     ...inv,
+                    commission: ct.commission,
+                    commissionAmount: ct.commissionAmount,
+                    commissionAmountType: ct.commissionAmountType,
+                    overtimeRate: ct.overtimeRate,
+                    overtimeRateType: ct.overtimeRateType,
+                    payRate: ct.payRate,
+                    payRateType: ct.payRateType,
+                    billRate: ct.billRate,
+                    billRateType: ct.billRateType,
+                    expenditure: ct.expenditure,
+                    expenditureAmount: ct.expenditureAmount,
+                    expenditureCost: ct.expenditureCost,
+                    expenditurePrice: ct.expenditurePrice,
+                    minimum: ct.minimum,
                     callTime: {
                         ...ct,
                         invitations: undefined // Avoid circular/excessive data
@@ -180,6 +194,20 @@ export class TimeEntryService {
                     staff: null,
                     timeEntry: null,
                     callTimeId: ct.id,
+                    commission: ct.commission,
+                    commissionAmount: ct.commissionAmount,
+                    commissionAmountType: ct.commissionAmountType,
+                    overtimeRate: ct.overtimeRate,
+                    overtimeRateType: ct.overtimeRateType,
+                    payRate: ct.payRate,
+                    payRateType: ct.payRateType,
+                    billRate: ct.billRate,
+                    billRateType: ct.billRateType,
+                    expenditure: ct.expenditure,
+                    expenditureAmount: ct.expenditureAmount,
+                    expenditureCost: ct.expenditureCost,
+                    expenditurePrice: ct.expenditurePrice,
+                    minimum: ct.minimum,
                     callTime: {
                         ...ct,
                         invitations: undefined
@@ -215,8 +243,8 @@ export class TimeEntryService {
      * Upsert a time entry for a given invitation.
      */
     async upsertTimeEntry(data: {
-        invitationId: string;
-        staffId: string;
+        invitationId?: string | null;
+        staffId?: string | null;
         callTimeId: string;
         clockIn?: Date | null;
         clockOut?: Date | null;
@@ -239,6 +267,11 @@ export class TimeEntryService {
                     where: { id: data.callTimeId },
                     data: { commission: data.commission },
                 });
+            }
+
+            // Exit early if this is an unassigned position (no staff to update)
+            if (!data.invitationId || !data.staffId) {
+                return null;
             }
 
             const existing = await tx.timeEntry.findUnique({

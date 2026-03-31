@@ -245,7 +245,7 @@ export function AssignmentItem({
 
             {/* Rate Scale Label */}
             <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap w-[90px]">
-              {isProduct ? 'Per Item' : (serviceAssignment?.rateType ? RATE_TYPE_LABELS[serviceAssignment.rateType] : 'Per Assignment')}
+              {isProduct ? 'Per Item' : (serviceAssignment?.rateType ? RATE_TYPE_LABELS[serviceAssignment.rateType] : 'Per Shift')}
             </span>
           </div>
         )}

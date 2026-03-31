@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronLeftIcon, CheckIcon, CloseIcon, MoreVerticalIcon, CheckCircleIcon, ChevronUpIcon, ChevronDownIcon } from '@/components/ui/icons';
 import type { SortField, SortOrder, StaffingFilter, EventGroup, CallTimeRow, TimesheetTab, ClientGroup, TalentGroup } from '@/components/timesheet/types';
 import { TalentContactPopover } from '@/components/timesheet/talent-contact-popover';
-import { calcTotalBill, calcTotalInvoice, toNumber, calcScheduledHours, calcClockedHours } from '@/components/timesheet/helpers';
+import { calcTotalBill, calcTotalInvoice, toNumber, calcScheduledHours, calcClockedHours, formatDate } from '@/components/timesheet/helpers';
 import { parseISO } from 'date-fns';
 
 export default function TimeManagerPage() {
@@ -42,7 +42,7 @@ export default function TimeManagerPage() {
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortField>('startDate');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-    const [subTab, setSubTab] = useState<'all' | 'bill' | 'invoice' | 'commission'>('all');
+    const [subTab, setSubTab] = useState<'all' | 'bills' | 'invoices' | 'commissions'>('all');
 
     // ── Row State ──
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -617,31 +617,31 @@ export default function TimeManagerPage() {
                             All
                         </button>
                         <button
-                            onClick={() => setSubTab('invoice')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'invoice'
+                            onClick={() => setSubTab('invoices')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'invoices'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                                 }`}
                         >
-                            Invoice
+                            Invoices
                         </button>
                         <button
-                            onClick={() => setSubTab('bill')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'bill'
+                            onClick={() => setSubTab('bills')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'bills'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                                 }`}
                         >
-                            Bill
+                            Bills
                         </button>
                         <button
-                            onClick={() => setSubTab('commission')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'commission'
+                            onClick={() => setSubTab('commissions')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'commissions'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                                 }`}
                         >
-                            Commission
+                            Commissions
                         </button>
                     </div>
                 )}
@@ -808,7 +808,7 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[300px]">Description</th>
-                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">QTY</th>
+                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                             <SortHeader id="price" label="Price" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
                                                         </>
@@ -816,7 +816,6 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="cost" label="Commission Cost" align="text-right" />
                                                             <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
@@ -830,7 +829,7 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="staffName" label="Talent" />
-                                                            <SortHeader id="service" label={<>Service / <br />Product</>} className="max-w-[100px]" />
+                                                            <SortHeader id="service" label="Services / Products" />
                                                             <SortHeader id="scheduledShift" label="Scheduled Shift" />
                                                             <SortHeader id="actualShift" label="Actual Shift" />
                                                             <SortHeader id="variance" label="Variance" align="text-center" />
@@ -913,22 +912,22 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    {subTab === 'invoice' ? (
+                                                    {subTab === 'invoices' ? (
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
+                                                            <SortHeader id="service" label="Services / Products" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[300px]">Description</th>
-                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">QTY</th>
+                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                             <SortHeader id="price" label="Price" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
                                                         </>
-                                                    ) : subTab === 'commission' ? (
+                                                    ) : subTab === 'commissions' ? (
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="cost" label="Commission Cost" align="text-right" />
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Invoice Description</th>
                                                             <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
-                                                    ) : subTab === 'bill' ? (
+                                                    ) : subTab === 'bills' ? (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
@@ -939,7 +938,7 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="staffName" label="Talent" />
-                                                            <SortHeader id="service" label={<>Service / <br />Product</>} className="max-w-[100px]" />
+                                                            <SortHeader id="service" label="Services / Products" />
                                                             <SortHeader id="scheduledShift" label="Scheduled Shift" />
                                                             <SortHeader id="actualShift" label="Actual Shift" />
                                                             <SortHeader id="variance" label="Variance" align="text-center" />
@@ -958,9 +957,45 @@ export default function TimeManagerPage() {
                                             </thead>
                                             <tbody>
                                                 {(() => {
-                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
+                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commissions' || !!ct.commission);
 
-                                                    if (subTab !== 'bill') {
+                                                    if (subTab === 'invoices') {
+                                                        const serviceMap = new Map<string, CallTimeRow>();
+                                                        filtered.forEach(ct => {
+                                                            const sid = ct.serviceId || ct.service?.id || 'none';
+                                                            const sDate = formatDate(ct.startDate);
+                                                            const key = `${sDate}_${sid}`;
+                                                            if (!serviceMap.has(key)) {
+                                                                serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                            } else {
+                                                                const existing = serviceMap.get(key)!;
+                                                                if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                    existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                }
+                                                                if (!existing.mergedRows) existing.mergedRows = [];
+                                                                existing.mergedRows.push(ct);
+                                                            }
+                                                        });
+                                                        return Array.from(serviceMap.values()).map(ct => (
+                                                            <TimesheetTableRow
+                                                                key={ct.id}
+                                                                ct={ct}
+                                                                isExpanded={expandedRows.has(ct.id)}
+                                                                isSelected={selectedRows.has(ct.id)}
+                                                                onToggleExpand={toggleExpand}
+                                                                onToggleSelect={toggleSelect}
+                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                onSaveTimeEntry={handleSaveTimeEntry}
+                                                                onApprove={handleApprove}
+                                                                onReject={handleReject}
+                                                                onReview={handleReview}
+                                                                onPending={handlePending}
+                                                                subTab={subTab}
+                                                            />
+                                                        ));
+                                                    }
+
+                                                    if (subTab !== 'bills') {
                                                         return filtered.map(ct => (
                                                             <TimesheetTableRow
                                                                 key={ct.id}
@@ -1082,23 +1117,22 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    {subTab === 'invoice' ? (
+                                                    {subTab === 'invoices' ? (
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
-                                                            {/* <SortHeader id="service" label={<>Service / <br />Product</>} className="max-w-[100px]" /> */}
+                                                            <SortHeader id="service" label="Services / Products" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[300px]">Description</th>
-                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">QTY</th>
+                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                             <SortHeader id="price" label="Price" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
                                                         </>
-                                                    ) : subTab === 'commission' ? (
+                                                    ) : subTab === 'commissions' ? (
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="cost" label="Commission Cost" align="text-right" />
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Invoice Description</th>
                                                             <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
-                                                    ) : subTab === 'bill' ? (
+                                                    ) : subTab === 'bills' ? (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
@@ -1109,7 +1143,7 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="staffName" label="Talent" />
-                                                            <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
+                                                            <SortHeader id="service" label="Services / Products" />
                                                             <SortHeader id="scheduledShift" label="Scheduled Shift" />
                                                             <SortHeader id="actualShift" label="Actual Shift" />
                                                             <SortHeader id="variance" label="Variance" align="text-center" />
@@ -1128,9 +1162,45 @@ export default function TimeManagerPage() {
                                             </thead>
                                             <tbody>
                                                 {(() => {
-                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
+                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commissions' || !!ct.commission);
 
-                                                    if (subTab !== 'bill') {
+                                                    if (subTab === 'invoices') {
+                                                        const serviceMap = new Map<string, CallTimeRow>();
+                                                        filtered.forEach(ct => {
+                                                            const sid = ct.serviceId || ct.service?.id || 'none';
+                                                            const sDate = formatDate(ct.startDate);
+                                                            const key = `${sDate}_${sid}`;
+                                                            if (!serviceMap.has(key)) {
+                                                                serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                            } else {
+                                                                const existing = serviceMap.get(key)!;
+                                                                if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                    existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                }
+                                                                if (!existing.mergedRows) existing.mergedRows = [];
+                                                                existing.mergedRows.push(ct);
+                                                            }
+                                                        });
+                                                        return Array.from(serviceMap.values()).map(ct => (
+                                                            <TimesheetTableRow
+                                                                key={ct.id}
+                                                                ct={ct}
+                                                                isExpanded={expandedRows.has(ct.id)}
+                                                                isSelected={selectedRows.has(ct.id)}
+                                                                onToggleExpand={toggleExpand}
+                                                                onToggleSelect={toggleSelect}
+                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                onSaveTimeEntry={handleSaveTimeEntry}
+                                                                onApprove={handleApprove}
+                                                                onReject={handleReject}
+                                                                onReview={handleReview}
+                                                                onPending={handlePending}
+                                                                subTab={subTab}
+                                                            />
+                                                        ));
+                                                    }
+
+                                                    if (subTab !== 'bills') {
                                                         return filtered.map(ct => (
                                                             <TimesheetTableRow
                                                                 key={ct.id}
