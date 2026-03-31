@@ -77,6 +77,13 @@ export interface AccountDetailsSectionProps extends StaffFormSectionProps {
       plural: string;
     };
   };
+  labels: {
+    staffCustomFields: {
+      customField1: string;
+      customField2: string;
+      customField3: string;
+    };
+  };
 }
 
 /**
