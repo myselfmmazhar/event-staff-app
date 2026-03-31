@@ -115,7 +115,7 @@ export const ASSIGNMENT_TYPE_OPTIONS: Array<{ value: 'PRODUCT' | 'SERVICE'; labe
  */
 export const RATE_TYPE_LABELS: Record<RateType, string> = {
   PER_HOUR: 'Per Hour',
-  PER_SHIFT: 'Per Assignment',
+  PER_SHIFT: 'Per Shift',
   PER_DAY: 'Per Day',
   PER_EVENT: 'Per Event',
 };
@@ -125,7 +125,7 @@ export const RATE_TYPE_LABELS: Record<RateType, string> = {
  */
 export const RATE_TYPE_OPTIONS: Array<{ value: RateType; label: string }> = [
   { value: 'PER_HOUR', label: 'Per Hour' },
-  { value: 'PER_SHIFT', label: 'Per Assignment' },
+  { value: 'PER_SHIFT', label: 'Per Shift' },
 ];
 
 /**
@@ -149,7 +149,7 @@ export const AMOUNT_TYPE_OPTIONS: Array<{ value: AmountType; label: string }> = 
  */
 export const COST_UNIT_TYPE_LABELS: Record<CostUnitType, string> = {
   HOURLY: 'Per Hour',
-  ASSIGNMENT: 'Per Assignment',
+  ASSIGNMENT: 'Per Shift',
   SHIFT: 'Per Shift',
   DAY: 'Per Day',
   JOB: 'Per Job',
@@ -160,7 +160,7 @@ export const COST_UNIT_TYPE_LABELS: Record<CostUnitType, string> = {
  */
 export const COST_UNIT_TYPE_OPTIONS: Array<{ value: CostUnitType; label: string }> = [
   { value: 'HOURLY', label: 'Per Hour' },
-  { value: 'ASSIGNMENT', label: 'Per Assignment' },
+  { value: 'ASSIGNMENT', label: 'Per Shift' },
 ];
 
 /**

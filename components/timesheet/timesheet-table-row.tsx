@@ -67,7 +67,7 @@ export function TimesheetTableRow({
     onReject?: (id: string) => void;
     onReview?: (id: string) => void;
     onPending?: (id: string) => void;
-    subTab?: 'all' | 'bill' | 'invoice' | 'commission';
+    subTab?: 'all' | 'bills' | 'invoices' | 'commissions';
 }) {
     const { toast } = useToast();
     const [isEditing, setIsEditing] = useState(false);
@@ -90,6 +90,10 @@ export function TimesheetTableRow({
     const [isCommApp, setIsCommApp] = useState(!!ct.commission);
     const [billBasis, setBillBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
     const [invoiceBasis, setInvoiceBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
+
+    useEffect(() => {
+        setIsCommApp(!!ct.commission);
+    }, [ct.commission]);
 
     useEffect(() => {
         ct.commission = isCommApp;
@@ -246,7 +250,7 @@ export function TimesheetTableRow({
                     </button>
                 </td>
 
-                {subTab === 'invoice' ? (
+                {subTab === 'invoices' ? (
                     <>
                         {/* Actions Dropdown */}
                         <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
@@ -258,6 +262,13 @@ export function TimesheetTableRow({
                             {formatDate(ct.startDate)}
                         </td>
 
+                        {/* Services / Product (Position) */}
+                        <td className="px-3 py-2.5">
+                            <Badge variant="primary" className="text-[10px] whitespace-nowrap bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight py-1 font-bold">
+                                {ct.service?.title || '—'}
+                            </Badge>
+                        </td>
+
 
 
                         {/* Description - Multiline Structured (Matches Screenshot) */}
@@ -267,20 +278,6 @@ export function TimesheetTableRow({
                                 <div className="flex flex-col">
                                     <div className="flex items-center justify-between">
                                         <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Scheduled Shift</span>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'SCHEDULED' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
-                                                onClick={(e) => { e.stopPropagation(); setInvoiceBasis('SCHEDULED'); }}
-                                            >
-                                                SCHEDULED
-                                            </button>
-                                            <button
-                                                className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${invoiceBasis === 'ACTUAL' ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-400 border-slate-200 hover:border-primary/50'}`}
-                                                onClick={(e) => { e.stopPropagation(); setInvoiceBasis('ACTUAL'); }}
-                                            >
-                                                ACTUAL
-                                            </button>
-                                        </div>
                                     </div>
                                     <span className="font-medium text-slate-500">
                                         {formatDate(ct.startDate)} • {formatTime(ct.startTime)} - {formatTime(ct.endTime)}
@@ -348,9 +345,9 @@ export function TimesheetTableRow({
                             </div>
                         </td>
 
-                        {/* QTY */}
+                        {/* QTY (Staff Count) */}
                         <td className="px-3 py-2.5 text-center font-bold text-slate-700 tabular-nums">
-                            {invoiceBasis === 'ACTUAL' ? hoursClocked.toFixed(2) : hoursScheduled.toFixed(2)}
+                            {ct.mergedRows?.length || 1}
                         </td>
 
                         {/* Price */}
@@ -413,7 +410,7 @@ export function TimesheetTableRow({
                             </Popover>
                         </td>
                     </>
-                ) : subTab === 'bill' ? (
+                ) : subTab === 'bills' ? (
                     <>
                         {/* Action */}
                         <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
@@ -468,20 +465,6 @@ export function TimesheetTableRow({
                                                 </span>
                                             </div>
                                         )}
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'ACTUAL' ? 'bg-amber-500 text-white border-amber-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-amber-400/50'}`}
-                                            onClick={(e) => { e.stopPropagation(); setBillBasis('ACTUAL'); }}
-                                        >
-                                            Actual
-                                        </button>
-                                        <button
-                                            className={`text-[7px] font-bold uppercase px-1 py-0.5 rounded border transition-colors ${billBasis === 'SCHEDULED' ? 'bg-amber-500 text-white border-amber-500' : 'bg-transparent text-slate-400 border-slate-200 hover:border-amber-400/50'}`}
-                                            onClick={(e) => { e.stopPropagation(); setBillBasis('SCHEDULED'); }}
-                                        >
-                                            Sched
-                                        </button>
                                     </div>
                                 </div>
 
@@ -558,7 +541,7 @@ export function TimesheetTableRow({
 
 
                     </>
-                ) : subTab === 'commission' ? (
+                ) : subTab === 'commissions' ? (
                     <>
                         {/* Action */}
                         <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
@@ -646,10 +629,6 @@ export function TimesheetTableRow({
                             </div>
                         </td>
 
-                        {/* Commission Cost */}
-                        <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px]">
-                            {fmtCurrency(commissionCost)}
-                        </td>
 
                         {/* Commission Price */}
                         <td className="px-3 py-2.5 text-right font-extrabold text-foreground tabular-nums text-[13px]">
@@ -691,122 +670,116 @@ export function TimesheetTableRow({
 
                         {/* Services / Product (Position) */}
                         <td className="px-3 py-2.5">
-                            <Badge variant="primary" className="text-[10px] whitespace-normal max-w-[120px] bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight py-1 flex flex-col items-start gap-0.5">
-                                {ct.service?.title ? ct.service.title.split(' / ').map((part: string, i: number) => (
-                                    <span key={i} className="block">{part}</span>
-                                )) : '—'}
+                            <Badge variant="primary" className="text-[10px] whitespace-nowrap bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight py-1 font-bold">
+                                {ct.service?.title || '—'}
                             </Badge>
                         </td>
 
                         {/* Scheduled Shift */}
-                        <td className="px-3 py-2.5 min-w-[110px]">
-                            <div className="space-y-1">
-                                <div>
-                                    <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
-                                        <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.startDate)}</span>
-                                        <span className="text-slate-400">-</span>
-                                        <span className=" font-bold">{formatTime(ct.startTime)}</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
-                                        <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.endDate || ct.startDate)}</span>
-                                        <span className="text-slate-400">-</span>
-                                        <span className=" font-bold">{formatTime(ct.endTime)}</span>
-                                    </div>
+                        <td className="px-3 py-2.5 min-w-[220px]">
+                            <div className="flex flex-col gap-1">
+                                <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1 whitespace-nowrap">
+                                    <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.startDate)}</span>
+                                    <span className="font-bold">{formatTime(ct.startTime)}</span>
+                                    <span className="text-[9px] font-bold text-slate-400 mx-0.5">to</span>
+                                    <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.endDate || ct.startDate)}</span>
+                                    <span className="font-bold">{formatTime(ct.endTime)}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 pt-0.5 border-t border-slate-50">
-                                    <span className="text-[10px] font-extrabold ">{hoursScheduled.toFixed(2)} hrs</span>
+                                    <span className="text-[10px] font-extrabold text-slate-500">{hoursScheduled.toFixed(2)} hrs</span>
                                 </div>
                             </div>
                         </td>
 
                         {/* Actual Shift (formerly Clock In/Out) */}
-                        <td className="px-3 py-2.5 min-w-[120px]" onClick={e => e.stopPropagation()}>
-                            {isEditing ? (
-                                <div className="flex flex-col gap-1.5 p-1 bg-slate-50 rounded border">
-                                    <input
-                                        type="datetime-local"
-                                        value={clockIn}
-                                        onChange={e => setClockIn(e.target.value)}
-                                        className="h-6 text-[9px] border border-border rounded px-1"
-                                    />
-                                    <input
-                                        type="datetime-local"
-                                        value={clockOut}
-                                        onChange={e => setClockOut(e.target.value)}
-                                        className="h-6 text-[9px] border border-border rounded px-1"
-                                    />
-                                    <div className="flex items-center gap-1 justify-between">
-                                        <div className="bg-emerald-50 text-emerald-700 px-1.5 py-1 rounded text-[9px] font-bold border border-emerald-100 flex items-center gap-1 whitespace-nowrap">
-                                            {(() => {
-                                                if (!clockIn || !clockOut) return '0.00';
-                                                try {
-                                                    const start = new Date(clockIn).getTime();
-                                                    const end = new Date(clockOut).getTime();
-                                                    const diffHrs = (end - start) / (1000 * 60 * 60);
-                                                    const netHrs = diffHrs - (breakMins / 60);
-                                                    return isNaN(netHrs) ? '0.00' : Math.max(0, netHrs).toFixed(2);
-                                                } catch {
-                                                    return '0.00';
-                                                }
-                                            })()} hrs
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <button onClick={(e) => { e.stopPropagation(); handleSave(); }} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors">
-                                                <CheckIcon className="h-3 w-3" />
-                                            </button>
-                                            <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="p-1 bg-slate-200 rounded hover:bg-slate-300 transition-colors">
-                                                <CloseIcon className="h-3 w-3" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="space-y-1 hover:bg-slate-50/50 rounded transition-colors" onClick={() => setIsEditing(true)}>
-                                    <div>
-                                        <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
+                        <td className="px-3 py-2.5 min-w-[240px]" onClick={e => e.stopPropagation()}>
+                            <Popover open={isEditing} onOpenChange={setIsEditing}>
+                                <PopoverTrigger asChild>
+                                    <div
+                                        className={`flex flex-col gap-1 rounded transition-colors ${ct.staff ? 'cursor-pointer hover:bg-slate-50/50' : 'opacity-60 cursor-not-allowed'}`}
+                                        onClick={e => !ct.staff && e.stopPropagation()}
+                                    >
+                                        <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1 whitespace-nowrap">
                                             {te?.clockIn ? (
                                                 <>
-                                                    <span className="bg-emerald-50  px-1 rounded-sm">{formatDate(te.clockIn)}</span>
-                                                    <span className="text-slate-400">-</span>
-                                                    <span className=" font-bold">{formatTime(getTimeOnly(te.clockIn))}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="bg-emerald-50 px-1 rounded-sm">{formatDate(te.clockIn)}</span>
+                                                        <span className="font-bold">{formatTime(getTimeOnly(te.clockIn))}</span>
+                                                    </div>
+                                                    <span className="text-[9px] font-bold text-slate-400 mx-0.5">to</span>
+                                                    {te?.clockOut ? (
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="bg-red-50 px-1 rounded-sm">{formatDate(te.clockOut)}</span>
+                                                            <span className="font-bold">{formatTime(getTimeOnly(te.clockOut))}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-slate-300 italic">No out</span>
+                                                    )}
                                                 </>
                                             ) : (
                                                 <span className="text-slate-300 italic">Not clocked</span>
                                             )}
                                         </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
-                                            {te?.clockOut ? (
-                                                <>
-                                                    <span className="bg-red-50  px-1 rounded-sm">{formatDate(te.clockOut)}</span>
-                                                    <span className="text-slate-400">-</span>
-                                                    <span className=" font-bold">{formatTime(getTimeOnly(te.clockOut))}</span>
-                                                </>
-                                            ) : (
-                                                <span className="text-slate-300 italic">No out</span>
-                                            )}
+                                        <div className="flex items-center gap-1.5 pt-0.5 border-t border-emerald-50">
+                                            <span className="text-[10px] font-extrabold text-emerald-600">
+                                                {hoursClocked.toFixed(2)} hrs
+                                            </span>
+                                            {isEdited && <Badge variant="warning" className="text-[7px] h-2.5 px-0.5 leading-none">Edited</Badge>}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5 pt-0.5 border-t border-emerald-50">
-                                        <span className={`text-[10px] font-extrabold`}>
-                                            {hoursClocked.toFixed(2)} hrs
-                                        </span>
-                                        {isEdited && <Badge variant="warning" className="text-[7px] h-2.5 px-0.5 leading-none">Edited</Badge>}
-                                    </div>
-                                </div>
-                            )}
+                                </PopoverTrigger>
+                                {ct.staff && (
+                                    <PopoverContent className="w-64 p-3" onClick={e => e.stopPropagation()}>
+                                        <div className="space-y-3">
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-emerald-600">Edit Actual Shift</Label>
+                                            <div className="space-y-2">
+                                                <div className="space-y-1">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Clock In</span>
+                                                    <Input
+                                                        type="datetime-local"
+                                                        value={clockIn}
+                                                        onChange={e => setClockIn(e.target.value)}
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Clock Out</span>
+                                                    <Input
+                                                        type="datetime-local"
+                                                        value={clockOut}
+                                                        onChange={e => setClockOut(e.target.value)}
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t">
+                                                <div className="text-[10px] font-bold text-slate-500">
+                                                    Net: {(() => {
+                                                        if (!clockIn || !clockOut) return '0.00';
+                                                        const start = new Date(clockIn).getTime();
+                                                        const end = new Date(clockOut).getTime();
+                                                        const diffHrs = (end - start) / (1000 * 60 * 60);
+                                                        return Math.max(0, diffHrs - (breakMins / 60)).toFixed(2);
+                                                    })()} hrs
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="h-7 text-[10px]">Cancel</Button>
+                                                    <Button size="sm" onClick={handleSave} className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700">Save</Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                )}
+                            </Popover>
                         </td>
 
                         {/* Variance */}
                         <td className="px-3 py-2.5 text-center">
-                            <div className="flex flex-col items-center">
+                            <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                                 <span className={`text-[11px] font-bold ${Math.abs(hoursScheduled - hoursClocked) < 0.1 ? 'text-emerald-600' : 'text-red-500'}`}>
                                     {(hoursScheduled - hoursClocked).toFixed(2)}
                                 </span>
-                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Hrs</span>
+                                <span className="text-[8px] font-bold text-muted-foreground uppercase opacity-70">Hrs</span>
                             </div>
                         </td>
 
@@ -818,6 +791,9 @@ export function TimesheetTableRow({
                         {/* <td className="px-3 py-2.5 text-right font-medium text-slate-600 tabular-nums">
                             {fmtCurrency(toNumber(ct.minimum))}
                         </td> */}
+
+                        {/* Cost Detail ... (Skipping the cost detail Popover part for brevity in TargetContent if possible, or just replacing the whole block) */}
+                        {/* I will replace the Commission part below */}
 
                         {/* Cost Detail */}
                         {(subTab === 'all' || subTab === 'bill') && (
@@ -968,8 +944,8 @@ export function TimesheetTableRow({
                         </td>
 
                         <td className="px-3 py-2.5 text-center">
-                            <div className="flex flex-col items-center justify-center gap-1">
-                                <span className={`text-[10px] font-bold ${isCommApp ? 'text-indigo-600' : 'text-slate-500'} uppercase tracking-wider`}>
+                            <div className="flex items-center justify-center gap-2">
+                                <span className={`text-[10px] font-bold ${isCommApp ? 'text-indigo-600' : 'text-slate-500'} uppercase tracking-wider min-w-[24px]`}>
                                     {isCommApp ? 'Yes' : 'No'}
                                 </span>
                                 <button
