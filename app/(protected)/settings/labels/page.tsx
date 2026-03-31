@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 type LabelCategory = keyof typeof DEFAULT_GLOBAL_LABELS;
 
 const CATEGORY_TITLES: Record<LabelCategory, string> = {
+  staffCustomFields: "Talent Custom Fields",
   actions: "Action Buttons",
   search: "Search & Results",
   filters: "Filters",
@@ -30,6 +31,7 @@ const CATEGORY_TITLES: Record<LabelCategory, string> = {
 };
 
 const CATEGORY_DESCRIPTIONS: Record<LabelCategory, string> = {
+  staffCustomFields: "Customize labels for your talent/staff profile custom fields",
   actions: "Labels for buttons like Save, Cancel, Delete, etc.",
   search: "Labels for search inputs and results",
   filters: "Labels for filter controls",

@@ -175,6 +175,9 @@ export const formLabelsSchema = z
     startTime: optionalLabelString,
     endTime: optionalLabelString,
     timezone: optionalLabelString,
+    customField1: optionalLabelString,
+    customField2: optionalLabelString,
+    customField3: optionalLabelString,
   })
   .partial();
 
@@ -201,6 +204,14 @@ export const messageLabelsSchema = z
   })
   .partial();
 
+export const staffCustomFieldsSchema = z
+  .object({
+    customField1: optionalLabelString,
+    customField2: optionalLabelString,
+    customField3: optionalLabelString,
+  })
+  .partial();
+
 /**
  * Update Global Labels Schema
  */
@@ -214,6 +225,7 @@ export const updateGlobalLabelsSchema = z
     common: commonLabelsSchema.optional(),
     status: statusLabelsSchema.optional(),
     form: formLabelsSchema.optional(),
+    staffCustomFields: staffCustomFieldsSchema.optional(),
     messages: messageLabelsSchema.optional(),
   })
   .partial();

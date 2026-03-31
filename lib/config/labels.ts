@@ -150,6 +150,15 @@ export interface FormLabels {
   startTime: string;
   endTime: string;
   timezone: string;
+  customField1: string;
+  customField2: string;
+  customField3: string;
+}
+
+export interface StaffCustomFields {
+  customField1: string;
+  customField2: string;
+  customField3: string;
 }
 
 export interface MessageLabels {
@@ -174,6 +183,7 @@ export interface MessageLabels {
 }
 
 export interface GlobalLabels {
+  staffCustomFields: StaffCustomFields;
   actions: ActionLabels;
   search: SearchLabels;
   filters: FilterLabels;
@@ -368,6 +378,11 @@ export interface LabelsConfig {
 // ============================================================================
 
 export const DEFAULT_GLOBAL_LABELS: GlobalLabels = {
+  staffCustomFields: {
+    customField1: 'Custom Field 1',
+    customField2: 'Custom Field 2',
+    customField3: 'Custom Field 3',
+  },
   actions: {
     save: 'Save',
     cancel: 'Cancel',
@@ -498,6 +513,9 @@ export const DEFAULT_GLOBAL_LABELS: GlobalLabels = {
     startTime: 'Start Time',
     endTime: 'End Time',
     timezone: 'Timezone',
+    customField1: 'Custom Field 1',
+    customField2: 'Custom Field 2',
+    customField3: 'Custom Field 3',
   },
   messages: {
     saveSuccess: 'Saved successfully',

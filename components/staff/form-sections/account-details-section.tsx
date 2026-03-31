@@ -16,6 +16,7 @@ import {
   STAFF_RATING_OPTIONS,
   AVAILABILITY_STATUS_OPTIONS,
 } from './constants';
+import { useLabels } from '@/lib/hooks/use-labels';
 
 export function AccountDetailsSection({
   register,
@@ -27,6 +28,7 @@ export function AccountDetailsSection({
   companies,
   terminology,
 }: AccountDetailsSectionProps) {
+  const { labels } = useLabels();
   const availabilityStatus = watch('availabilityStatus');
   const staffType = watch('staffType');
 
@@ -70,7 +72,7 @@ export function AccountDetailsSection({
 
           <div>
             <Label htmlFor="staffType" required>
-              {terminology.staff.singular} Type
+              Staff Type
             </Label>
             <Controller
               name="staffType"
@@ -101,7 +103,7 @@ export function AccountDetailsSection({
 
           <div>
             <Label htmlFor="staffRole" required>
-              {terminology.staff.singular} Role
+              Staff Role
             </Label>
             <Controller
               name="staffRole"
@@ -163,7 +165,7 @@ export function AccountDetailsSection({
 
           <div>
             <Label htmlFor="staffRating" required>
-              {terminology.staff.singular} Rating
+              Staff Rating
             </Label>
             <Controller
               name="staffRating"
@@ -271,7 +273,6 @@ export function AccountDetailsSection({
                         field.onChange(e.target.value ? new Date(e.target.value) : null)
                       }
                       disabled={disabled}
-                      error={!!errors.timeOffStart}
                     />
                   )}
                 />
@@ -298,7 +299,6 @@ export function AccountDetailsSection({
                         field.onChange(e.target.value ? new Date(e.target.value) : null)
                       }
                       disabled={disabled}
-                      error={!!errors.timeOffEnd}
                     />
                   )}
                 />
@@ -310,38 +310,41 @@ export function AccountDetailsSection({
           )}
 
           <div>
-            <Label htmlFor="customField1">Custom Field 1</Label>
+            <Label htmlFor="customField1">{labels.global.staffCustomFields.customField1}</Label>
             <Input
               id="customField1"
               {...register('customField1')}
               disabled={disabled}
               error={!!errors.customField1}
+              placeholder={labels.global.staffCustomFields.customField1}
             />
             {errors.customField1 && (
               <p className="text-sm text-destructive mt-1">{String(errors.customField1?.message || "")}</p>
             )}
           </div>
-
+ 
           <div>
-            <Label htmlFor="customField2">Custom Field 2</Label>
+            <Label htmlFor="customField2">{labels.global.staffCustomFields.customField2}</Label>
             <Input
               id="customField2"
               {...register('customField2')}
               disabled={disabled}
               error={!!errors.customField2}
+              placeholder={labels.global.staffCustomFields.customField2}
             />
             {errors.customField2 && (
               <p className="text-sm text-destructive mt-1">{String(errors.customField2?.message || "")}</p>
             )}
           </div>
-
+ 
           <div>
-            <Label htmlFor="customField3">Custom Field 3</Label>
+            <Label htmlFor="customField3">{labels.global.staffCustomFields.customField3}</Label>
             <Input
               id="customField3"
               {...register('customField3')}
               disabled={disabled}
               error={!!errors.customField3}
+              placeholder={labels.global.staffCustomFields.customField3}
             />
             {errors.customField3 && (
               <p className="text-sm text-destructive mt-1">{String(errors.customField3?.message || "")}</p>

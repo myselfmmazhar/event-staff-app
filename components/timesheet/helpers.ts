@@ -160,7 +160,13 @@ export function calcExpenditureCost(ct: CallTimeRow): number {
         return toNumber(ct.timeEntry.travelCost);
     }
     if (!ct.expenditure) return 0;
-    return toNumber(ct.expenditureCost ?? ct.expenditureAmount);
+    
+    const amt = toNumber(ct.expenditureCost ?? ct.expenditureAmount);
+    if (ct.expenditureAmountType === 'MULTIPLIER') {
+        const base = calcClockedCost(ct.timeEntry, ct) + calcOvertimeCost(ct.timeEntry, ct);
+        return base * amt;
+    }
+    return amt;
 }
 
 export function calcExpenditurePrice(ct: CallTimeRow): number {
@@ -168,7 +174,13 @@ export function calcExpenditurePrice(ct: CallTimeRow): number {
         return toNumber(ct.timeEntry.travelPrice);
     }
     if (!ct.expenditure) return 0;
-    return toNumber(ct.expenditurePrice ?? ct.expenditureAmount);
+    
+    const amt = toNumber(ct.expenditurePrice ?? ct.expenditureAmount);
+    if (ct.expenditureAmountType === 'MULTIPLIER') {
+        const base = calcClockedPrice(ct.timeEntry, ct) + calcOvertimePrice(ct.timeEntry, ct);
+        return base * amt;
+    }
+    return amt;
 }
 
 export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false, basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL'): number {

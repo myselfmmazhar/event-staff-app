@@ -18,6 +18,8 @@ import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib
 import { AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { useLabels } from '@/lib/hooks/use-labels';
+import type { LabelsConfig } from '@/lib/config/labels';
 import type { StaffWithRelations } from '@/components/staff/staff-table';
 import { ServiceFormModal } from '@/components/catalog/services/service-form-modal';
 import type { CreateServiceInput } from '@/lib/schemas/service.schema';
@@ -134,6 +136,7 @@ interface StaffFormContentProps {
     services: ServiceOption[];
     companies: CompanyOption[];
     terminology: { staff: { singular: string; plural: string; lower: string } };
+    labels: LabelsConfig;
 }
 
 function StaffFormContent({
@@ -146,6 +149,7 @@ function StaffFormContent({
     services,
     companies,
     terminology,
+    labels,
 }: StaffFormContentProps) {
     const isEdit = !!staff;
     const [serviceSearch, setServiceSearch] = useState('');
@@ -291,6 +295,7 @@ function StaffFormContent({
                     {...sectionProps}
                     companies={companies}
                     terminology={terminology}
+                    labels={labels.global}
                     className="mb-6"
                 />
 
@@ -373,6 +378,7 @@ export function StaffFormModal({
     onViewDetails,
 }: StaffFormModalProps) {
     const { terminology } = useTerminology();
+    const { labels } = useLabels();
     const [showCreateService, setShowCreateService] = useState(false);
     const [mounted, setMounted] = useState(false);
     const utils = trpc.useUtils();
@@ -429,6 +435,7 @@ export function StaffFormModal({
                     services={services}
                     companies={companies}
                     terminology={terminology}
+                    labels={labels}
                 />
             </Dialog>
             {/* Service Modal rendered via portal to avoid nested form issues */}

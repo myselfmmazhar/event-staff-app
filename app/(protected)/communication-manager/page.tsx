@@ -88,6 +88,23 @@ export default function CommunicationManagerPage() {
     const [isDetailView, setIsDetailView] = useState(false);
     const [contactActionTab, setContactActionTab] = useState<'SMS' | 'WHATSAPP' | 'EMAIL' | 'COMMENT' | null>(null);
 
+    // Sync state with URL parameters
+    useEffect(() => {
+        const recipient = searchParams.get('recipient');
+        const tab = searchParams.get('tab');
+        
+        if (recipient) {
+            setSelectedRecipient(recipient);
+            
+            // Set action tab based on content or URL tab
+            if (tab === 'messages') {
+                setContactActionTab('SMS');
+            } else if (tab === 'email') {
+                setContactActionTab('EMAIL');
+            }
+        }
+    }, [searchParams]);
+
     // Filters & Pagination
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
