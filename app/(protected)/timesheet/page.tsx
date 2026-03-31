@@ -172,7 +172,7 @@ export default function TimeManagerPage() {
             shiftPrice: shiftPrice,
             travelCost: travelCost,
             travelPrice: travelPrice,
-            notes: notes,
+            notes: notes ?? undefined,
             commission: commission,
         });
     };
