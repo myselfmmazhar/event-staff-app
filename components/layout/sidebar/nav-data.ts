@@ -159,9 +159,9 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
             // },
             {
               label: 'Bills',
-              href: '/finance/bills',
+              href: '/bills',
+              // href: '/finance/bills',
               icon: BanknotesIcon,
-              comingSoon: true,
             },
             {
               label: 'Estimates',
