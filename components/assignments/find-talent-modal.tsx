@@ -107,17 +107,19 @@ export function FindTalentModal({
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingOffers, setPendingOffers] = useState<{ callTimeIds: string[], staffIds: string[] } | null>(null);
+  const [showResendConfirm, setShowResendConfirm] = useState(false);
 
   // Send offers mutation
   const sendInvitations = trpc.callTime.sendInvitations.useMutation({
     onSuccess: (data) => {
       toast({
-        title: 'Offers sent',
+        title: showResendConfirm ? 'Invitations re-sent' : 'Offers sent',
         description: `Successfully sent ${data.sent} offer(s) across ${effectiveCallTimeIds.length} assignment(s)`,
       });
       setSelectedStaffIds([]);
       setPendingOffers(null);
       setIsConfirmOpen(false);
+      setShowResendConfirm(false);
       if (hasCallTimeIds) {
         utils.callTime.getManyByIds.invalidate({ ids: effectiveCallTimeIds });
         utils.callTime.searchStaff.invalidate({ callTimeIds: effectiveCallTimeIds });
@@ -125,11 +127,20 @@ export function FindTalentModal({
       }
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'error',
-      });
+      // Check for fixed "already invited" message
+      if (error.message.includes('already been invited')) {
+        setPendingOffers({
+          callTimeIds: effectiveCallTimeIds,
+          staffIds: selectedStaffIds,
+        });
+        setShowResendConfirm(true);
+      } else {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'error',
+        });
+      }
       setPendingOffers(null);
       setIsConfirmOpen(false);
     },
@@ -157,6 +168,15 @@ export function FindTalentModal({
   const handleConfirmSend = () => {
     if (pendingOffers) {
       sendInvitations.mutate(pendingOffers);
+    }
+  };
+
+  const handleResend = () => {
+    if (pendingOffers) {
+      sendInvitations.mutate({
+        ...pendingOffers,
+        resendExisting: true,
+      });
     }
   };
 
@@ -339,6 +359,18 @@ export function FindTalentModal({
         description={`You are about to send offers to ${selectedStaffIds.length} ${staffTerm.lowerPlural} for ${effectiveCallTimeIds.length} different assignments.`}
         warningMessage="Are you sure you want to send batch alert confirmation?"
         confirmText="Yes, Send Offers"
+        variant="default"
+        isLoading={sendInvitations.isPending}
+      />
+
+      <ConfirmModal
+        open={showResendConfirm}
+        onClose={() => setShowResendConfirm(false)}
+        onConfirm={handleResend}
+        title="Staff Already Invited"
+        description="Some or all of the selected staff have already been invited to these assignments."
+        warningMessage="Do you want to re-send the invitations to these staff members?"
+        confirmText="Yes, Re-send Invitation"
         variant="default"
         isLoading={sendInvitations.isPending}
       />

@@ -226,6 +226,7 @@ export class CallTimeSchema {
     staffIds: z
       .array(z.string().uuid(FieldErrors.staffId))
       .min(1, 'At least one staff member is required'),
+    resendExisting: z.boolean().default(false).optional(),
   });
 
   /**
