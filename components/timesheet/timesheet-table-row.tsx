@@ -279,10 +279,14 @@ export function TimesheetTableRow({
                                     <div className="flex items-center justify-between">
                                         <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Scheduled Shift</span>
                                     </div>
-                                    <span className="font-medium text-slate-500">
-                                        {formatDate(ct.startDate)} • {formatTime(ct.startTime)} - {formatTime(ct.endTime)}
-                                        <span className="ml-1 text-slate-400">({hoursScheduled.toFixed(2)} hrs)</span>
-                                    </span>
+                                    <div className="flex flex-col font-medium text-slate-500">
+                                        <span>{formatDate(ct.startDate)} • {formatTime(ct.startTime)}</span>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">to</span>
+                                            <span>{formatDate(ct.endDate || ct.startDate)} • {formatTime(ct.endTime)}</span>
+                                            <span className="ml-1 text-slate-400 font-normal">({hoursScheduled.toFixed(2)} hrs)</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Actual Shift Section */}
@@ -292,10 +296,14 @@ export function TimesheetTableRow({
 
                                     </div>
                                     {te?.clockIn ? (
-                                        <span className="font-bold text-emerald-600 italic">
-                                            {formatDate(te.clockIn)} • {formatTime(getTimeOnly(te.clockIn))} - {te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : 'No out'}
-                                            <span className="ml-1 opacity-70">({hoursClocked.toFixed(2)} hrs)</span>
-                                        </span>
+                                        <div className="flex flex-col font-bold text-emerald-600 italic">
+                                            <span>{formatDate(te.clockIn)} • {formatTime(getTimeOnly(te.clockIn))}</span>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[9px] opacity-60 font-bold uppercase tracking-tighter">to</span>
+                                                <span>{te.clockOut ? `${formatDate(te.clockOut)} • ${formatTime(getTimeOnly(te.clockOut))}` : 'No out'}</span>
+                                                <span className="ml-1 opacity-70 font-normal">({hoursClocked.toFixed(2)} hrs)</span>
+                                            </div>
+                                        </div>
                                     ) : (
                                         <span className="text-slate-300 italic font-medium">Not clocked</span>
                                     )}
@@ -694,12 +702,16 @@ export function TimesheetTableRow({
                         {/* Scheduled Shift */}
                         <td className="px-3 py-2.5 min-w-[220px]">
                             <div className="flex flex-col gap-1">
-                                <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1 whitespace-nowrap">
-                                    <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.startDate)}</span>
-                                    <span className="font-bold">{formatTime(ct.startTime)}</span>
-                                    <span className="text-[9px] font-bold text-slate-400 mx-0.5">to</span>
-                                    <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.endDate || ct.startDate)}</span>
-                                    <span className="font-bold">{formatTime(ct.endTime)}</span>
+                                <div className="text-[10px] font-semibold text-slate-700 flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-1">
+                                        <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.startDate)}</span>
+                                        <span className="font-bold">{formatTime(ct.startTime)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">to</span>
+                                        <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.endDate || ct.startDate)}</span>
+                                        <span className="font-bold">{formatTime(ct.endTime)}</span>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-1.5 pt-0.5 border-t border-slate-50">
                                     <span className="text-[10px] font-extrabold text-slate-500">{hoursScheduled.toFixed(2)} hrs</span>
@@ -715,22 +727,24 @@ export function TimesheetTableRow({
                                         className={`flex flex-col gap-1 rounded transition-colors ${ct.staff ? 'cursor-pointer hover:bg-slate-50/50' : 'opacity-60 cursor-not-allowed'}`}
                                         onClick={e => !ct.staff && e.stopPropagation()}
                                     >
-                                        <div className="text-[10px] font-semibold text-slate-700 flex items-center gap-1 whitespace-nowrap">
+                                        <div className="text-[10px] font-semibold text-slate-700 flex flex-col gap-0.5">
                                             {te?.clockIn ? (
                                                 <>
                                                     <div className="flex items-center gap-1">
                                                         <span className="bg-emerald-50 px-1 rounded-sm">{formatDate(te.clockIn)}</span>
                                                         <span className="font-bold">{formatTime(getTimeOnly(te.clockIn))}</span>
                                                     </div>
-                                                    <span className="text-[9px] font-bold text-slate-400 mx-0.5">to</span>
-                                                    {te?.clockOut ? (
-                                                        <div className="flex items-center gap-1">
-                                                            <span className="bg-red-50 px-1 rounded-sm">{formatDate(te.clockOut)}</span>
-                                                            <span className="font-bold">{formatTime(getTimeOnly(te.clockOut))}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-slate-300 italic">No out</span>
-                                                    )}
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">to</span>
+                                                        {te?.clockOut ? (
+                                                            <>
+                                                                <span className="bg-red-50 px-1 rounded-sm">{formatDate(te.clockOut)}</span>
+                                                                <span className="font-bold">{formatTime(getTimeOnly(te.clockOut))}</span>
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-slate-300 italic">No out</span>
+                                                        )}
+                                                    </div>
                                                 </>
                                             ) : (
                                                 <span className="text-slate-300 italic">Not clocked</span>
