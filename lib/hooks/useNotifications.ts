@@ -122,6 +122,14 @@ export function useNotifications(options?: { enabled?: boolean }) {
                     // Invalidate queries to refresh data
                     utils.notification.getAll.invalidate();
 
+                    // If it's a call time or invitation related notification, also refresh the invitations and schedule
+                    const callTimeTypes = ['CALL_TIME_INVITATION', 'INVITATION_RESPONSE', 'INVITATION_CONFIRMED', 'WAITLIST_UPDATE'];
+                    if (callTimeTypes.includes(notification.type)) {
+                        utils.callTime.getMyInvitations.invalidate();
+                        // Also invalidate staff profile just in case status changed
+                        utils.staff.getMyProfile.invalidate();
+                    }
+
                     // Show toast notification
                     toast({
                         title: notification.title,

@@ -735,6 +735,7 @@ export class CallTimeService {
     }
 
     const invitations: any[] = [];
+    const resendExisting = input.resendExisting ?? false;
 
     // Loop through each assignment and each staff member
     for (const ct of callTimes) {
@@ -744,12 +745,92 @@ export class CallTimeService {
           callTimeId: ct.id,
           staffId: { in: input.staffIds },
         },
+        include: {
+          staff: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              userId: true,
+            },
+          },
+          callTime: {
+            include: {
+              service: true,
+              event: {
+                select: {
+                  id: true,
+                  title: true,
+                  venueName: true,
+                  city: true,
+                  state: true,
+                  description: true,
+                  requirements: true,
+                  preEventInstructions: true,
+                  privateComments: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       const existingStaffIds = existingInvitations.map((inv) => inv.staffId);
       const newStaffIds = input.staffIds.filter(
         (id) => !existingStaffIds.includes(id)
       );
+
+      // Handle existing invitations if re-sending requested
+      if (resendExisting) {
+        for (const invitation of existingInvitations) {
+          // If already accepted and confirmed, no need to resend
+          if (invitation.status === 'ACCEPTED' && invitation.isConfirmed) continue;
+
+          // Update existing to pending for re-invitation
+          const updated = await this.prisma.callTimeInvitation.update({
+            where: { id: invitation.id },
+            data: {
+              status: 'PENDING',
+              respondedAt: null,
+              declineReason: null,
+              isConfirmed: false,
+              confirmedAt: null,
+              createdAt: new Date(), // Refresh the timestamp
+            },
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  userId: true,
+                },
+              },
+              callTime: {
+                include: {
+                  service: true,
+                  event: {
+                    select: {
+                      id: true,
+                      title: true,
+                      venueName: true,
+                      city: true,
+                      state: true,
+                      description: true,
+                      requirements: true,
+                      preEventInstructions: true,
+                      privateComments: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+          invitations.push(updated);
+        }
+      }
 
       // Create new invitations for THIS assignment
       const newInvitations = await Promise.all(
@@ -796,9 +877,17 @@ export class CallTimeService {
     }
 
     if (invitations.length === 0) {
+      // If none sent and we are not resending, specialized message
+      if (!resendExisting) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'All selected staff have already been invited to these assignments',
+        });
+      }
+      
       throw new TRPCError({
         code: 'BAD_REQUEST',
-        message: 'All selected staff have already been invited to these assignments',
+        message: 'No staff available for re-invitation (already confirmed)',
       });
     }
 
@@ -1247,11 +1336,27 @@ export class CallTimeService {
                 state: true,
               },
             },
+            invitations: {
+              where: {
+                status: 'ACCEPTED',
+                isConfirmed: true,
+              },
+              select: { id: true },
+            },
           },
         },
       },
       orderBy: { callTime: { startDate: 'asc' } },
     });
+
+    // Enrich invitations with confirmedCount
+    const enrichedInvitations = invitations.map(inv => ({
+      ...inv,
+      callTime: {
+        ...inv.callTime,
+        confirmedCount: inv.callTime.invitations.length
+      }
+    }));
 
     // Use start of today for date comparison to include today's events
     const startOfToday = new Date();
@@ -1259,21 +1364,21 @@ export class CallTimeService {
 
     // Categorize invitations
     // Show all pending invitations regardless of date (to avoid timezone issues hiding today's events)
-    const pending = invitations.filter((inv) => inv.status === 'PENDING');
-    const accepted = invitations.filter(
+    const pending = enrichedInvitations.filter((inv) => inv.status === 'PENDING');
+    const accepted = enrichedInvitations.filter(
       (inv) =>
         inv.status === 'ACCEPTED' &&
         inv.isConfirmed &&
         (!inv.callTime.startDate || new Date(inv.callTime.startDate) >= startOfToday)
     );
-    const past = invitations.filter(
+    const past = enrichedInvitations.filter(
       (inv) =>
         inv.status === 'ACCEPTED' &&
         inv.isConfirmed &&
         !!inv.callTime.endDate &&
         new Date(inv.callTime.endDate) < startOfToday
     );
-    const declined = invitations.filter((inv) => inv.status === 'DECLINED');
+    const declined = enrichedInvitations.filter((inv) => inv.status === 'DECLINED');
 
     return { pending, accepted, past, declined };
   }

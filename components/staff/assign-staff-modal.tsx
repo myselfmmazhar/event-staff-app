@@ -10,6 +10,7 @@ import { SearchIcon, CloseIcon } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import type { StaffWithRelations } from './staff-table';
 
 interface AssignStaffModalProps {
@@ -40,6 +41,9 @@ export function AssignStaffModal({ staff, open, onClose }: AssignStaffModalProps
     { enabled: !!selectedEventId }
   );
 
+  const [showResendConfirm, setShowResendConfirm] = useState(false);
+  const [resendPayload, setResendPayload] = useState<{ callTimeIds: string[], staffIds: string[] } | null>(null);
+
   // Send invitation mutation
   const sendInvitationMutation = trpc.callTime.sendInvitations.useMutation({
     onSuccess: () => {
@@ -51,13 +55,33 @@ export function AssignStaffModal({ staff, open, onClose }: AssignStaffModalProps
       onClose();
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to send invitation',
-        variant: 'destructive',
-      });
+      // Check for the specific "already invited" error
+      if (error.message.includes('already been invited')) {
+        setResendPayload({
+          callTimeIds: [selectedCallTimeId],
+          staffIds: [staff.id],
+        });
+        setShowResendConfirm(true);
+      } else {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to send invitation',
+          variant: 'destructive',
+        });
+      }
     },
   });
+
+  const handleResend = () => {
+    if (!resendPayload) return;
+    
+    sendInvitationMutation.mutate({
+      ...resendPayload,
+      resendExisting: true,
+    });
+    setShowResendConfirm(false);
+    setResendPayload(null);
+  };
 
   const events = eventsQuery.data?.data || [];
   const callTimes = callTimesQuery.data?.data || [];
@@ -201,6 +225,17 @@ export function AssignStaffModal({ staff, open, onClose }: AssignStaffModalProps
           {sendInvitationMutation.isPending ? 'Sending...' : 'Send Invitation'}
         </Button>
       </DialogFooter>
+      <ConfirmModal
+        open={showResendConfirm}
+        onClose={() => setShowResendConfirm(false)}
+        onConfirm={handleResend}
+        title="Staff Already Invited"
+        description={`${staff.firstName} ${staff.lastName} has already been invited to this assignment.`}
+        warningMessage="Do you want to send the invitation again?"
+        confirmText="Yes, Send Again"
+        variant="default"
+        isLoading={sendInvitationMutation.isPending}
+      />
     </Dialog>
   );
 }

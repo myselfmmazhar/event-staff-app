@@ -21,6 +21,7 @@ import {
   ChevronRightIcon,
   AlertIcon,
 } from '@/components/ui/icons';
+import { ConfirmModal } from '@/components/common/confirm-modal';
 import type { AssignmentData } from './assignment-table';
 
 function formatTime(time: string | null): string {
@@ -96,27 +97,49 @@ export function OpenAssignmentsView() {
     }
   );
 
+  const [showResendConfirm, setShowResendConfirm] = useState(false);
+  const [resendPayload, setResendPayload] = useState<{ callTimeIds: string[], staffIds: string[] } | null>(null);
+
   // Send invitations mutation
   const sendInvitations = trpc.callTime.sendInvitations.useMutation({
     onSuccess: (result) => {
       toast({
-        title: 'Offers sent',
+        title: showResendConfirm ? 'Invitations re-sent' : 'Offers sent',
         description: `Successfully sent ${result.sent} offer(s)`,
       });
       setSelectedStaffIds([]);
+      setShowResendConfirm(false);
+      setResendPayload(null);
       if (selectedAssignmentId) {
         utils.callTime.getAll.invalidate();
         utils.callTime.searchStaff.invalidate({ callTimeIds: [selectedAssignmentId] });
       }
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'error',
-      });
+      if (error.message.includes('already been invited')) {
+        setResendPayload({
+          callTimeIds: [selectedAssignmentId!],
+          staffIds: selectedStaffIds,
+        });
+        setShowResendConfirm(true);
+      } else {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'error',
+        });
+      }
     },
   });
+
+  const handleResend = () => {
+    if (resendPayload) {
+      sendInvitations.mutate({
+        ...resendPayload,
+        resendExisting: true,
+      });
+    }
+  };
 
   const handleSendInvitations = () => {
     if (selectedStaffIds.length === 0 || !selectedAssignmentId) return;
@@ -299,6 +322,18 @@ export function OpenAssignmentsView() {
           </Card>
         )}
       </div>
+
+      <ConfirmModal
+        open={showResendConfirm}
+        onClose={() => setShowResendConfirm(false)}
+        onConfirm={handleResend}
+        title="Staff Already Invited"
+        description="Some or all of the selected staff have already been invited to this assignment."
+        warningMessage="Do you want to re-send the invitations to these staff members?"
+        confirmText="Yes, Re-send Invitation"
+        variant="default"
+        isLoading={sendInvitations.isPending}
+      />
     </div>
   );
 }
