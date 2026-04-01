@@ -25,6 +25,8 @@ interface Invitation {
     endTime: string | null;
     payRate: number | { toNumber: () => number };
     payRateType: RateType;
+    numberOfStaffRequired: number;
+    confirmedCount: number;
     event: {
       id: string;
       eventId: string;
@@ -158,7 +160,7 @@ export function PendingRequestsList({
                 disabled={isBatchResponding}
               >
                 <XCircleIcon className="h-4 w-4 mr-1" />
-                {selectedIds.size > 1 ? 'Batch Reject' : 'Decline'}
+                {selectedIds.size > 1 ? 'Batch Decline' : 'Decline'}
               </Button>
             </div>
           </div>
@@ -183,19 +185,22 @@ export function PendingRequestsList({
         const isSelected = selectedIds.has(invitation.id);
         const payRate =
           typeof invitation.callTime.payRate === 'object'
-            ? invitation.callTime.payRate.toNumber()
+            ? (invitation.callTime.payRate as any).toNumber()
             : Number(invitation.callTime.payRate);
 
         const isSameDay = invitation.callTime.startDate && invitation.callTime.endDate &&
           new Date(invitation.callTime.startDate).toDateString() ===
           new Date(invitation.callTime.endDate).toDateString();
 
+        const isClosed = invitation.callTime.confirmedCount >= invitation.callTime.numberOfStaffRequired;
+
         return (
           <Card
             key={invitation.id}
             className={cn(
               "p-5 transition-all duration-200 border-2",
-              isSelected ? "border-primary bg-primary/[0.02]" : "border-border shadow-sm hover:border-border/80"
+              isSelected ? "border-primary bg-primary/[0.02]" : "border-border shadow-sm hover:border-border/80",
+              isClosed ? "opacity-90 bg-muted/20" : ""
             )}
           >
             <div className="flex gap-4">
@@ -204,7 +209,8 @@ export function PendingRequestsList({
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => handleSelectOne(invitation.id)}
-                  className="h-5 w-5 rounded border-border text-primary focus:ring-primary cursor-pointer mt-1"
+                  disabled={isClosed}
+                  className="h-5 w-5 rounded border-border text-primary focus:ring-primary cursor-pointer mt-1 disabled:opacity-30 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -221,10 +227,25 @@ export function PendingRequestsList({
                           {invitation.callTime.event.title}
                         </p>
                       </div>
-                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-400">
-                        Pending Response
-                      </Badge>
+                      {isClosed ? (
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 font-black uppercase tracking-[0.1em] px-3 py-1">
+                          Offer Closed
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-400 font-bold uppercase tracking-wider text-[10px]">
+                          Pending Response
+                        </Badge>
+                      )}
                     </div>
+
+                    {isClosed && (
+                      <div className="mb-4 p-3 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg">
+                        <p className="text-xs text-red-700 dark:text-red-400 font-medium">
+                          <strong>Offer Closed:</strong> All available service assignments have been accepted and this offer is now closed. 
+                          If anything changes or new assignments open up, the offer may reopen.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Details */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -304,7 +325,7 @@ export function PendingRequestsList({
                     <div className="flex gap-2 md:flex-col min-w-[120px]">
                       <Button
                         onClick={() => setPendingAction({ ids: [invitation.id], accept: true })}
-                        disabled={isResponding === invitation.id}
+                        disabled={isResponding === invitation.id || isClosed}
                         className="flex-1 md:flex-none shadow-sm font-bold"
                       >
                         Accept
@@ -330,12 +351,12 @@ export function PendingRequestsList({
         open={pendingAction !== null}
         onClose={() => setPendingAction(null)}
         onConfirm={handleConfirmAction}
-        title={pendingAction?.accept ? (pendingAction.ids.length > 1 ? 'Batch Accept Invitations?' : 'Accept Invitation?') : (pendingAction?.ids.length! > 1 ? 'Batch Reject Invitations?' : 'Decline Invitation?')}
-        description={`You are about to ${pendingAction?.accept ? 'accept' : 'reject'} ${pendingAction?.ids.length} invitation(s).`}
+        title={pendingAction?.accept ? (pendingAction.ids.length > 1 ? 'Batch Accept Invitations?' : 'Accept Invitation?') : (pendingAction?.ids.length! > 1 ? 'Batch Decline Invitations?' : 'Decline Invitation?')}
+        description={`You are about to ${pendingAction?.accept ? 'accept' : 'decline'} ${pendingAction?.ids.length} invitation(s).`}
         warningMessage={pendingAction?.accept
           ? (pendingAction.ids.length > 1 ? 'Do you want to accept all selected invitations?' : 'Do you want to accept this invitation?')
-          : (pendingAction?.ids.length! > 1 ? 'Do you want to reject all selected invitations?' : 'Do you want to decline this invitation?')}
-        confirmText={pendingAction?.accept ? (pendingAction.ids.length > 1 ? 'Yes, Batch Accept' : 'Yes, Accept') : (pendingAction?.ids.length! > 1 ? 'Yes, Batch Reject' : 'Yes, Decline')}
+          : (pendingAction?.ids.length! > 1 ? 'Do you want to decline all selected invitations?' : 'Do you want to decline this invitation?')}
+        confirmText={pendingAction?.accept ? (pendingAction.ids.length > 1 ? 'Yes, Batch Accept' : 'Yes, Accept') : (pendingAction?.ids.length! > 1 ? 'Yes, Batch Decline' : 'Yes, Decline')}
         variant={pendingAction?.accept ? 'default' : 'danger'}
         isLoading={!!isResponding || !!isBatchResponding}
       />
