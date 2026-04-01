@@ -42,7 +42,7 @@ export default function TimeManagerPage() {
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortField>('startDate');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-    const [subTab, setSubTab] = useState<'all' | 'bills' | 'invoices' | 'commissions'>('all');
+    const [subTab, setSubTab] = useState<'all' | 'bill' | 'invoice' | 'commission'>('all');
 
     // ── Row State ──
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -617,8 +617,8 @@ export default function TimeManagerPage() {
                             All
                         </button>
                         <button
-                            onClick={() => setSubTab('invoices')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'invoices'
+                            onClick={() => setSubTab('invoice')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'invoice'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                                 }`}
@@ -626,8 +626,8 @@ export default function TimeManagerPage() {
                             Invoices
                         </button>
                         <button
-                            onClick={() => setSubTab('bills')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'bills'
+                            onClick={() => setSubTab('bill')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'bill'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                                 }`}
@@ -635,8 +635,8 @@ export default function TimeManagerPage() {
                             Bills
                         </button>
                         <button
-                            onClick={() => setSubTab('commissions')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'commissions'
+                            onClick={() => setSubTab('commission')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'commission'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                                 }`}
@@ -912,7 +912,7 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    {subTab === 'invoices' ? (
+                                                    {subTab === 'invoice' ? (
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="service" label="Services / Products" />
@@ -921,13 +921,13 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="price" label="Price" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
                                                         </>
-                                                    ) : subTab === 'commissions' ? (
+                                                    ) : subTab === 'commission' ? (
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Invoice Description</th>
                                                             <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
-                                                    ) : subTab === 'bills' ? (
+                                                    ) : subTab === 'bill' ? (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
@@ -957,12 +957,12 @@ export default function TimeManagerPage() {
                                             </thead>
                                             <tbody>
                                                 {(() => {
-                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commissions' || !!ct.commission);
+                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
 
-                                                    if (subTab === 'invoices') {
+                                                    if (subTab === 'invoice') {
                                                         const serviceMap = new Map<string, CallTimeRow>();
                                                         filtered.forEach(ct => {
-                                                            const sid = ct.serviceId || ct.service?.id || 'none';
+                                                            const sid = ct.service?.id || 'none';
                                                             const sDate = formatDate(ct.startDate);
                                                             const key = `${sDate}_${sid}`;
                                                             if (!serviceMap.has(key)) {
@@ -995,7 +995,7 @@ export default function TimeManagerPage() {
                                                         ));
                                                     }
 
-                                                    if (subTab !== 'bills') {
+                                                    if (subTab !== 'bill') {
                                                         return filtered.map(ct => (
                                                             <TimesheetTableRow
                                                                 key={ct.id}
@@ -1117,7 +1117,7 @@ export default function TimeManagerPage() {
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
                                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    {subTab === 'invoices' ? (
+                                                    {subTab === 'invoice' ? (
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="service" label="Services / Products" />
@@ -1126,13 +1126,13 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="price" label="Price" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
                                                         </>
-                                                    ) : subTab === 'commissions' ? (
+                                                    ) : subTab === 'commission' ? (
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Invoice Description</th>
                                                             <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
-                                                    ) : subTab === 'bills' ? (
+                                                    ) : subTab === 'bill' ? (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
@@ -1162,12 +1162,12 @@ export default function TimeManagerPage() {
                                             </thead>
                                             <tbody>
                                                 {(() => {
-                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commissions' || !!ct.commission);
+                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
 
-                                                    if (subTab === 'invoices') {
+                                                    if (subTab === 'invoice') {
                                                         const serviceMap = new Map<string, CallTimeRow>();
                                                         filtered.forEach(ct => {
-                                                            const sid = ct.serviceId || ct.service?.id || 'none';
+                                                            const sid = ct.service?.id || 'none';
                                                             const sDate = formatDate(ct.startDate);
                                                             const key = `${sDate}_${sid}`;
                                                             if (!serviceMap.has(key)) {
@@ -1200,7 +1200,7 @@ export default function TimeManagerPage() {
                                                         ));
                                                     }
 
-                                                    if (subTab !== 'bills') {
+                                                    if (subTab !== 'bill') {
                                                         return filtered.map(ct => (
                                                             <TimesheetTableRow
                                                                 key={ct.id}

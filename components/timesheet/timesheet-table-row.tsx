@@ -67,7 +67,7 @@ export function TimesheetTableRow({
     onReject?: (id: string) => void;
     onReview?: (id: string) => void;
     onPending?: (id: string) => void;
-    subTab?: 'all' | 'bills' | 'invoices' | 'commissions';
+    subTab?: 'all' | 'bill' | 'invoice' | 'commission';
 }) {
     const { toast } = useToast();
     const [isEditing, setIsEditing] = useState(false);
@@ -250,7 +250,7 @@ export function TimesheetTableRow({
                     </button>
                 </td>
 
-                {subTab === 'invoices' ? (
+                {subTab === 'invoice' ? (
                     <>
                         {/* Actions Dropdown */}
                         <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
@@ -416,7 +416,7 @@ export function TimesheetTableRow({
                             </Popover>
                         </td>
                     </>
-                ) : subTab === 'bills' ? (
+                ) : subTab === 'bill' ? (
                     <>
                         {/* Action */}
                         <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
@@ -550,7 +550,7 @@ export function TimesheetTableRow({
 
 
                     </>
-                ) : subTab === 'commissions' ? (
+                ) : subTab === 'commission' ? (
                     <>
                         {/* Action */}
                         <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
