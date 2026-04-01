@@ -287,23 +287,29 @@ export function ServiceFormModal({
                 name="cost"
                 control={control}
                 render={({ field }) => (
-                  <Input
-                    id="cost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    inputMode="decimal"
-                    value={field.value ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      field.onChange(val === '' ? null : parseFloat(val));
-                    }}
-                    error={!!errors.cost}
-                    disabled={isSubmitting}
-                    placeholder="e.g., 25.00"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-muted-foreground">$</span>
+                    <Input
+                      id="cost"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        field.onChange(val === '' ? null : parseFloat(val));
+                      }}
+                      error={!!errors.cost}
+                      disabled={isSubmitting}
+                      placeholder="e.g., 25.00"
+                    />
+                  </div>
                 )}
               />
+              <p className="text-[10px] text-muted-foreground mt-1 italic">
+                Cost paid to staff
+              </p>
               {errors.cost && (
                 <p className="text-sm text-destructive mt-1">{errors.cost.message}</p>
               )}
@@ -315,23 +321,29 @@ export function ServiceFormModal({
                 name="price"
                 control={control}
                 render={({ field }) => (
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    inputMode="decimal"
-                    value={field.value ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      field.onChange(val === '' ? null : parseFloat(val));
-                    }}
-                    error={!!errors.price}
-                    disabled={isSubmitting}
-                    placeholder="e.g., 50.00"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-muted-foreground">$</span>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        field.onChange(val === '' ? null : parseFloat(val));
+                      }}
+                      error={!!errors.price}
+                      disabled={isSubmitting}
+                      placeholder="e.g., 50.00"
+                    />
+                  </div>
                 )}
               />
+              <p className="text-[10px] text-muted-foreground mt-1 italic">
+                Price billed to client
+              </p>
               {errors.price && (
                 <p className="text-sm text-destructive mt-1">{errors.price.message}</p>
               )}
@@ -396,21 +408,12 @@ export function ServiceFormModal({
 
                 <div>
                   <Label>Rate Type</Label>
-                  <Select
-                    value={costUnitType || ''}
+                  <Input
+                    value={rateTypeLabel}
                     disabled={true}
-                  >
-                    <SelectTrigger className="bg-muted/50 cursor-not-allowed">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COST_UNIT_TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    className="bg-muted/50 cursor-not-allowed"
+                    readOnly
+                  />
                   <p className="text-[10px] text-muted-foreground mt-1 italic">
                     Follows main Rate Type
                   </p>

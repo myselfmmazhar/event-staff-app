@@ -362,14 +362,17 @@ export function TimesheetTableRow({
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price/OT</Label>
-                                            <Input
-                                                type="number"
-                                                value={otPriceManual}
-                                                onChange={(e) => setOtPriceManual(e.target.value)}
-                                                className="h-8 text-sm"
-                                                placeholder="0.00"
-                                                autoFocus
-                                            />
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-sm font-bold text-muted-foreground">$</span>
+                                                <Input
+                                                    type="number"
+                                                    value={otPriceManual}
+                                                    onChange={(e) => setOtPriceManual(e.target.value)}
+                                                    className="h-8 text-sm"
+                                                    placeholder="0.00"
+                                                    autoFocus
+                                                />
+                                            </div>
                                         </div>
                                         <div className="flex justify-end gap-2">
                                             <Button size="sm" variant="outline" onClick={() => setIsEditingOtPrice(false)}>Cancel</Button>
@@ -392,14 +395,17 @@ export function TimesheetTableRow({
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price/OT</Label>
-                                            <Input
-                                                type="number"
-                                                value={otPriceManual}
-                                                onChange={(e) => setOtPriceManual(e.target.value)}
-                                                className="h-8 text-sm"
-                                                placeholder="0.00"
-                                                autoFocus
-                                            />
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-sm font-bold text-muted-foreground">$</span>
+                                                <Input
+                                                    type="number"
+                                                    value={otPriceManual}
+                                                    onChange={(e) => setOtPriceManual(e.target.value)}
+                                                    className="h-8 text-sm"
+                                                    placeholder="0.00"
+                                                    autoFocus
+                                                />
+                                            </div>
                                         </div>
                                         <div className="flex justify-end gap-2">
                                             <Button size="sm" variant="outline" onClick={() => setIsEditingOtPrice(false)}>Cancel</Button>
@@ -509,14 +515,17 @@ export function TimesheetTableRow({
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost/OT</Label>
-                                            <Input
-                                                type="number"
-                                                value={otCostManual}
-                                                onChange={(e) => setOtCostManual(e.target.value)}
-                                                className="h-8 text-sm"
-                                                placeholder="0.00"
-                                                autoFocus
-                                            />
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-sm font-bold text-muted-foreground">$</span>
+                                                <Input
+                                                    type="number"
+                                                    value={otCostManual}
+                                                    onChange={(e) => setOtCostManual(e.target.value)}
+                                                    className="h-8 text-sm"
+                                                    placeholder="0.00"
+                                                    autoFocus
+                                                />
+                                            </div>
                                         </div>
                                         <div className="flex justify-end gap-2">
                                             <Button size="sm" variant="outline" onClick={() => setIsEditingOtCost(false)}>Cancel</Button>
@@ -631,8 +640,15 @@ export function TimesheetTableRow({
 
 
                         {/* Commission Price */}
-                        <td className="px-3 py-2.5 text-right font-extrabold text-foreground tabular-nums text-[13px]">
-                            {fmtCurrency(commissionPrice)}
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[13px] font-extrabold text-foreground">{fmtCurrency(commissionPrice)}</span>
+                                {ct.commissionAmountType === 'MULTIPLIER' && (
+                                    <span className="text-[9px] text-muted-foreground font-medium">
+                                        {(toNumber(ct.commissionAmount) * 100).toFixed(2)}% of {fmtCurrency(totalInvoice - commissionPrice)}
+                                    </span>
+                                )}
+                            </div>
                         </td>
                     </>
                 ) : (
@@ -806,11 +822,23 @@ export function TimesheetTableRow({
                                                 <span className="text-[10px] font-semibold">{fmtCurrency(clockedCostVal)}</span>
                                             </div>
                                             <div className="flex justify-between items-center gap-2">
-                                                <span className="text-[8px] font-bold text-muted-foreground uppercase">OT:</span>
+                                                <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                    OT:
+                                                    {ct.approveOvertime && (
+                                                        <span className="text-[7px] lowercase font-normal opacity-70">
+                                                            ({ct.overtimeRateType === 'MULTIPLIER' ? `${toNumber(ct.overtimeRate || 1.5).toFixed(2)}x` : fmtCurrency(toNumber(ct.overtimeRate))})
+                                                        </span>
+                                                    )}
+                                                </span>
                                                 <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otCost)}</span>
                                             </div>
                                             <div className="flex justify-between items-center gap-2">
-                                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Travel:</span>
+                                                <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                    Travel:
+                                                    {ct.expenditureAmountType === 'MULTIPLIER' && (
+                                                        <span className="text-[7px] lowercase font-normal opacity-70">({(toNumber(ct.expenditureAmount) * 100).toFixed(0)}%)</span>
+                                                    )}
+                                                </span>
                                                 <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expCost)}</span>
                                             </div>
                                             <div className="pt-0.5 border-t flex justify-between items-center gap-2">
@@ -827,36 +855,45 @@ export function TimesheetTableRow({
                                                 <div className="grid gap-2">
                                                     <div className="grid grid-cols-3 items-center gap-4">
                                                         <Label htmlFor="shift-cost" className="text-[10px] font-bold text-muted-foreground">SHIFT</Label>
-                                                        <Input
-                                                            id="shift-cost"
-                                                            type="number"
-                                                            value={shiftCostManual}
-                                                            onChange={(e) => setShiftCostManual(e.target.value)}
-                                                            className="h-8 text-sm col-span-2"
-                                                            placeholder="Auto"
-                                                        />
+                                                        <div className="col-span-2 flex items-center gap-1.5">
+                                                            <span className="text-xs font-bold text-muted-foreground">$</span>
+                                                            <Input
+                                                                id="shift-cost"
+                                                                type="number"
+                                                                value={shiftCostManual}
+                                                                onChange={(e) => setShiftCostManual(e.target.value)}
+                                                                className="h-8 text-sm"
+                                                                placeholder="Auto"
+                                                            />
+                                                        </div>
                                                     </div>
                                                     <div className="grid grid-cols-3 items-center gap-4">
                                                         <Label htmlFor="ot-cost" className="text-[10px] font-bold text-muted-foreground">OVERTIME</Label>
-                                                        <Input
-                                                            id="ot-cost"
-                                                            type="number"
-                                                            value={otCostManual}
-                                                            onChange={(e) => setOtCostManual(e.target.value)}
-                                                            className="h-8 text-sm col-span-2"
-                                                            placeholder="Auto"
-                                                        />
+                                                        <div className="col-span-2 flex items-center gap-1.5">
+                                                            <span className="text-xs font-bold text-muted-foreground">$</span>
+                                                            <Input
+                                                                id="ot-cost"
+                                                                type="number"
+                                                                value={otCostManual}
+                                                                onChange={(e) => setOtCostManual(e.target.value)}
+                                                                className="h-8 text-sm"
+                                                                placeholder="Auto"
+                                                            />
+                                                        </div>
                                                     </div>
                                                     <div className="grid grid-cols-3 items-center gap-4">
                                                         <Label htmlFor="travel-cost" className="text-[10px] font-bold text-muted-foreground">TRAVEL</Label>
-                                                        <Input
-                                                            id="travel-cost"
-                                                            type="number"
-                                                            value={travelCostManual}
-                                                            onChange={(e) => setTravelCostManual(e.target.value)}
-                                                            className="h-8 text-sm col-span-2"
-                                                            placeholder="Auto"
-                                                        />
+                                                        <div className="col-span-2 flex items-center gap-1.5">
+                                                            <span className="text-xs font-bold text-muted-foreground">$</span>
+                                                            <Input
+                                                                id="travel-cost"
+                                                                type="number"
+                                                                value={travelCostManual}
+                                                                onChange={(e) => setTravelCostManual(e.target.value)}
+                                                                className="h-8 text-sm"
+                                                                placeholder="Auto"
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -880,11 +917,23 @@ export function TimesheetTableRow({
                                             <span className="text-[10px] font-semibold">{fmtCurrency(clockedPriceVal)}</span>
                                         </div>
                                         <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">OT:</span>
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                OT:
+                                                {ct.approveOvertime && (
+                                                    <span className="text-[7px] lowercase font-normal opacity-70">
+                                                        ({ct.overtimeRateType === 'MULTIPLIER' ? `${toNumber(ct.overtimeRate || 1.5).toFixed(2)}x` : fmtCurrency(toNumber(ct.overtimeRate))})
+                                                    </span>
+                                                )}
+                                            </span>
                                             <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otPrice)}</span>
                                         </div>
                                         <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Travel:</span>
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                Travel:
+                                                {ct.expenditureAmountType === 'MULTIPLIER' && (
+                                                    <span className="text-[7px] lowercase font-normal opacity-70">({(toNumber(ct.expenditureAmount) * 100).toFixed(0)}%)</span>
+                                                )}
+                                            </span>
                                             <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expPrice)}</span>
                                         </div>
                                         <div className="pt-0.5 border-t flex justify-between items-center gap-2">
@@ -901,36 +950,45 @@ export function TimesheetTableRow({
                                             <div className="grid gap-2">
                                                 <div className="grid grid-cols-3 items-center gap-4">
                                                     <Label htmlFor="shift-price" className="text-[10px] font-bold text-muted-foreground">SHIFT</Label>
-                                                    <Input
-                                                        id="shift-price"
-                                                        type="number"
-                                                        value={shiftPriceManual}
-                                                        onChange={(e) => setShiftPriceManual(e.target.value)}
-                                                        className="h-8 text-sm col-span-2"
-                                                        placeholder="Auto"
-                                                    />
+                                                    <div className="col-span-2 flex items-center gap-1.5">
+                                                        <span className="text-xs font-bold text-muted-foreground">$</span>
+                                                        <Input
+                                                            id="shift-price"
+                                                            type="number"
+                                                            value={shiftPriceManual}
+                                                            onChange={(e) => setShiftPriceManual(e.target.value)}
+                                                            className="h-8 text-sm"
+                                                            placeholder="Auto"
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <div className="grid grid-cols-3 items-center gap-4">
                                                     <Label htmlFor="ot-price" className="text-[10px] font-bold text-muted-foreground">OVERTIME</Label>
-                                                    <Input
-                                                        id="ot-price"
-                                                        type="number"
-                                                        value={otPriceManual}
-                                                        onChange={(e) => setOtPriceManual(e.target.value)}
-                                                        className="h-8 text-sm col-span-2"
-                                                        placeholder="Auto"
-                                                    />
+                                                    <div className="col-span-2 flex items-center gap-1.5">
+                                                        <span className="text-xs font-bold text-muted-foreground">$</span>
+                                                        <Input
+                                                            id="ot-price"
+                                                            type="number"
+                                                            value={otPriceManual}
+                                                            onChange={(e) => setOtPriceManual(e.target.value)}
+                                                            className="h-8 text-sm"
+                                                            placeholder="Auto"
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <div className="grid grid-cols-3 items-center gap-4">
                                                     <Label htmlFor="travel-price" className="text-[10px] font-bold text-muted-foreground">TRAVEL</Label>
-                                                    <Input
-                                                        id="travel-price"
-                                                        type="number"
-                                                        value={travelPriceManual}
-                                                        onChange={(e) => setTravelPriceManual(e.target.value)}
-                                                        className="h-8 text-sm col-span-2"
-                                                        placeholder="Auto"
-                                                    />
+                                                    <div className="col-span-2 flex items-center gap-1.5">
+                                                        <span className="text-xs font-bold text-muted-foreground">$</span>
+                                                        <Input
+                                                            id="travel-price"
+                                                            type="number"
+                                                            value={travelPriceManual}
+                                                            onChange={(e) => setTravelPriceManual(e.target.value)}
+                                                            className="h-8 text-sm"
+                                                            placeholder="Auto"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

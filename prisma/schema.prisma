@@ -369,6 +369,7 @@ model Service {
   callTimes             CallTime[]
   estimateItems         EstimateItem[]
   invoiceItems          InvoiceItem[]
+  billItems             BillItem[]
   createdByUser         User                     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   staff                 StaffServiceAssignment[]
 
@@ -398,6 +399,7 @@ model Product {
   estimateItems   EstimateItem[]
   eventProducts   EventProduct[]
   invoiceItems    InvoiceItem[]
+  billItems       BillItem[]
   createdByUser   User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([productId])
@@ -625,6 +627,7 @@ model Staff {
   services                     StaffServiceAssignment[]
   taxDetails                   StaffTaxDetails?
   timeEntries                  TimeEntry[]
+  bills                        Bill[]
 
   @@index([accountStatus])
   @@index([availabilityStatus])
@@ -704,6 +707,7 @@ model User {
   eventTemplates                   EventTemplate[]
   events                           Event[]
   invoicesCreated                  Invoice[]               @relation("invoices_created")
+  billsCreated                     Bill[]                  @relation("bills_created")
   notification_preferences         NotificationPreference?
   notifications                    Notification[]
   products                         Product[]
@@ -716,6 +720,83 @@ model User {
 
   @@map("users")
 }
+
+model Bill {
+  id             String        @id @default(uuid()) @db.Uuid
+  billNo         String        @unique
+  staffId        String        @db.Uuid
+  status         BillStatus    @default(DRAFT)
+  billDate       DateTime      @db.Date
+  dueDate        DateTime?     @db.Date
+  terms          String?
+  customField1   String?
+  customField2   String?
+  customField3   String?
+  discountType   DiscountType?
+  discountValue  Decimal?      @db.Decimal(10, 2)
+  depositAmount  Decimal?      @db.Decimal(10, 2)
+  shippingAmount Decimal?      @db.Decimal(10, 2)
+  salesTaxAmount Decimal?      @db.Decimal(10, 2)
+  isTaxable      Boolean       @default(false)
+  notes          String?
+  paymentDetails String?
+  fileLinks      Json?
+  isArchived     Boolean       @default(false)
+  archivedAt     DateTime?     @db.Timestamp(6)
+  createdBy      String
+  createdAt      DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime      @updatedAt @db.Timestamp(6)
+  items          BillItem[]
+  staff          Staff         @relation(fields: [staffId], references: [id])
+  createdByUser  User          @relation("bills_created", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([billNo])
+  @@index([status])
+  @@index([createdBy])
+  @@map("bills")
+}
+
+model BillItem {
+  id                  String    @id @default(uuid()) @db.Uuid
+  billId              String    @db.Uuid
+  date                DateTime? @db.Date
+  productId           String?   @db.Uuid
+  serviceId           String?   @db.Uuid
+  description         String
+  quantity            Decimal   @db.Decimal(10, 2)
+  price               Decimal   @db.Decimal(10, 2)
+  amount              Decimal   @db.Decimal(10, 2)
+  createdAt           DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt           DateTime  @updatedAt @db.Timestamp(6)
+  actualEnd           DateTime? @db.Timestamp(6)
+  actualHours         Decimal?  @db.Decimal(10, 2)
+  actualShiftDetails  String?
+  actualStart         DateTime? @db.Timestamp(6)
+  internalNotes       String?
+  scheduleShiftDetail String?
+  scheduledEnd        DateTime? @db.Timestamp(6)
+  scheduledHours      Decimal?  @db.Decimal(10, 2)
+  scheduledStart      DateTime? @db.Timestamp(6)
+  bill                Bill      @relation(fields: [billId], references: [id], onDelete: Cascade)
+  product             Product?  @relation(fields: [productId], references: [id])
+  service             Service?  @relation(fields: [serviceId], references: [id])
+
+  @@index([billId])
+  @@index([productId])
+  @@index([serviceId])
+  @@map("bill_items")
+}
+
+enum BillStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  PAID
+  VOID
+  CANCELLED
+}
+
 
 model Contact {
   id                   String    @id @default(uuid()) @db.Uuid

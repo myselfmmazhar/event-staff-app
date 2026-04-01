@@ -610,22 +610,25 @@ export function AssignmentFormFields({
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="payRate" className="text-sm font-medium mb-2 block">Cost</Label>
-              <Input
-                id="payRate"
-                type="number"
-                step="0.01"
-                min={0}
-                {...register('payRate')}
-                onFocus={() => {
-                  const current = getValues('payRate') as any;
-                  if (current === 0 || current === '0') {
-                    setValue('payRate', '' as any);
-                  }
-                }}
-                error={!!errors.payRate}
-                disabled={disabled}
-                placeholder="0.00"
-              />
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold text-muted-foreground">$</span>
+                <Input
+                  id="payRate"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  {...register('payRate')}
+                  onFocus={() => {
+                    const current = getValues('payRate') as any;
+                    if (current === 0 || current === '0') {
+                      setValue('payRate', '' as any);
+                    }
+                  }}
+                  error={!!errors.payRate}
+                  disabled={disabled}
+                  placeholder="0.00"
+                />
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Cost paid to {staffTerm.lower}
               </p>
@@ -638,22 +641,25 @@ export function AssignmentFormFields({
 
             <div>
               <Label htmlFor="billRate" className="text-sm font-medium mb-2 block">Price</Label>
-              <Input
-                id="billRate"
-                type="number"
-                step="0.01"
-                min={0}
-                {...register('billRate')}
-                onFocus={() => {
-                  const current = getValues('billRate') as any;
-                  if (current === 0 || current === '0') {
-                    setValue('billRate', '' as any);
-                  }
-                }}
-                error={!!errors.billRate}
-                disabled={disabled}
-                placeholder="0.00"
-              />
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold text-muted-foreground">$</span>
+                <Input
+                  id="billRate"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  {...register('billRate')}
+                  onFocus={() => {
+                    const current = getValues('billRate') as any;
+                    if (current === 0 || current === '0') {
+                      setValue('billRate', '' as any);
+                    }
+                  }}
+                  error={!!errors.billRate}
+                  disabled={disabled}
+                  placeholder="0.00"
+                />
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Price billed to client
               </p>
@@ -726,20 +732,23 @@ export function AssignmentFormFields({
               <>
                 <div>
                   <Label className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register('commissionAmount')}
-                    onFocus={() => {
-                      const current = getValues('commissionAmount') as any;
-                      if (current === 0 || current === '0') {
-                        setValue('commissionAmount', '' as any);
-                      }
-                    }}
-                    disabled={disabled}
-                    placeholder="0.00"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      {...register('commissionAmount')}
+                      onFocus={() => {
+                        const current = getValues('commissionAmount') as any;
+                        if (current === 0 || current === '0') {
+                          setValue('commissionAmount', '' as any);
+                        }
+                      }}
+                      disabled={disabled}
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm font-medium mb-2 block">Amount Type</Label>
@@ -806,20 +815,23 @@ export function AssignmentFormFields({
               <>
                 <div>
                   <Label className="text-sm font-medium mb-2 block">Minimum Amount</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register('minimumAmount')}
-                    onFocus={() => {
-                      const current = getValues('minimumAmount') as any;
-                      if (current === 0 || current === '0') {
-                        setValue('minimumAmount', '' as any);
-                      }
-                    }}
-                    disabled={disabled}
-                    placeholder="0.00"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      {...register('minimumAmount')}
+                      onFocus={() => {
+                        const current = getValues('minimumAmount') as any;
+                        if (current === 0 || current === '0') {
+                          setValue('minimumAmount', '' as any);
+                        }
+                      }}
+                      disabled={disabled}
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
@@ -832,7 +844,7 @@ export function AssignmentFormFields({
                         onValueChange={(val) => field.onChange(val || null)}
                         disabled={disabled}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger hideIcon>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -885,20 +897,23 @@ export function AssignmentFormFields({
               <>
                 <div>
                   <Label className="text-sm font-medium mb-2 block">If Yes, enter rate</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register('overtimeRate')}
-                    onFocus={() => {
-                      const current = getValues('overtimeRate') as any;
-                      if (current === 0 || current === '0') {
-                        setValue('overtimeRate', '' as any);
-                      }
-                    }}
-                    disabled={disabled}
-                    placeholder="0.00"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      {...register('overtimeRate')}
+                      onFocus={() => {
+                        const current = getValues('overtimeRate') as any;
+                        if (current === 0 || current === '0') {
+                          setValue('overtimeRate', '' as any);
+                        }
+                      }}
+                      disabled={disabled}
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm font-medium mb-2 block">Rate Type</Label>

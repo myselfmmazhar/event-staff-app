@@ -14,6 +14,7 @@ import { CloseIcon } from '@/components/ui/icons';
 import { format } from 'date-fns';
 import { AccountStatus, AvailabilityStatus, StaffType, StaffRole } from '@prisma/client';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { useLabels } from '@/lib/hooks/use-labels';
 import type { StaffWithRelations } from '@/components/staff/staff-table';
 import { TaxDetailsView } from './tax-details-view';
 import { AssignmentHistory } from './assignment-history';
@@ -67,6 +68,7 @@ export function ViewStaffModal({
     isActioning = false,
 }: ViewStaffModalProps) {
     const { terminology } = useTerminology();
+    const { labels } = useLabels();
 
     if (!staff) return null;
 
@@ -388,19 +390,19 @@ export function ViewStaffModal({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {staff.customField1 && (
                                     <div>
-                                        <p className="text-sm text-muted-foreground">Custom Field 1</p>
+                                        <p className="text-sm text-muted-foreground">{labels.global.staffCustomFields.customField1}</p>
                                         <p className="text-base">{staff.customField1}</p>
                                     </div>
                                 )}
                                 {staff.customField2 && (
                                     <div>
-                                        <p className="text-sm text-muted-foreground">Custom Field 2</p>
+                                        <p className="text-sm text-muted-foreground">{labels.global.staffCustomFields.customField2}</p>
                                         <p className="text-base">{staff.customField2}</p>
                                     </div>
                                 )}
                                 {staff.customField3 && (
                                     <div>
-                                        <p className="text-sm text-muted-foreground">Custom Field 3</p>
+                                        <p className="text-sm text-muted-foreground">{labels.global.staffCustomFields.customField3}</p>
                                         <p className="text-base">{staff.customField3}</p>
                                     </div>
                                 )}

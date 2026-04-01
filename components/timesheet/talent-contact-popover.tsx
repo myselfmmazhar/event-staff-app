@@ -3,6 +3,7 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MailIcon, PhoneIcon, MapPinIcon, UserIcon } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 interface TalentContactPopoverProps {
     talent: {
@@ -19,6 +20,7 @@ interface TalentContactPopoverProps {
 }
 
 export function TalentContactPopover({ talent, trigger }: TalentContactPopoverProps) {
+    const router = useRouter();
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -48,18 +50,24 @@ export function TalentContactPopover({ talent, trigger }: TalentContactPopoverPr
                         <MailIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Email Address</span>
-                            <a href={`mailto:${talent.email}`} className="text-sm font-medium hover:text-primary transition-colors">
+                            <button 
+                                onClick={() => talent.email && router.push(`/communication-manager?tab=email&recipient=${talent.email}`)}
+                                className="text-sm font-medium hover:text-primary transition-colors text-left"
+                            >
                                 {talent.email || '—'}
-                            </a>
+                            </button>
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
                         <PhoneIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Phone Number</span>
-                            <a href={`tel:${talent.phone}`} className="text-sm font-medium hover:text-primary transition-colors">
+                            <button 
+                                onClick={() => talent.phone && router.push(`/communication-manager?tab=messages&recipient=${talent.phone}`)}
+                                className="text-sm font-medium hover:text-primary transition-colors text-left"
+                            >
                                 {talent.phone || '—'}
-                            </a>
+                            </button>
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
