@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-export type IdEntityType = 'event' | 'staff' | 'client' | 'callTime' | 'service' | 'product' | 'contact';
+export type IdEntityType = 'event' | 'staff' | 'client' | 'callTime' | 'service' | 'product' | 'contact' | 'category';
 
 interface IdGeneratorConfig {
   entityType: IdEntityType;
@@ -26,6 +26,7 @@ const ID_FIELD_MAP: Record<IdEntityType, { model: string; field: string }> = {
   service: { model: 'service', field: 'serviceId' },
   product: { model: 'product', field: 'productId' },
   contact: { model: 'contact', field: 'contactId' },
+  category: { model: 'serviceCategory', field: 'categoryId' },
 };
 
 /**
@@ -63,7 +64,9 @@ export async function generateUniqueId(prisma: PrismaClient, config: IdGenerator
   // Get the Prisma model dynamically
   const prismaModel = (prisma as unknown as Record<string, PrismaModelWithId>)[model];
   if (!prismaModel) {
-    throw new Error(`Prisma model ${model} is not available`);
+    const availableModels = Object.keys(prisma).filter(k => !k.startsWith('_') && !k.startsWith('$'));
+    console.error(`Available Prisma models: ${availableModels.join(', ')}`);
+    throw new Error(`Prisma model ${model} is not available. Available models: ${availableModels.join(', ')}`);
   }
 
   // Find the last ID for the current year
@@ -185,5 +188,17 @@ export async function generateContactId(prisma: PrismaClient): Promise<string> {
   return generateUniqueId(prisma, {
     entityType: 'contact',
     prefix: 'CON',
+  });
+}
+
+/**
+ * Generate a unique Service Category ID (static CAT prefix)
+ */
+export async function generateCategoryId(prisma: PrismaClient): Promise<string> {
+  return generateUniqueId(prisma, {
+    entityType: 'category',
+    prefix: 'CAT',
+    includeYear: false,
+    padLength: 4,
   });
 }

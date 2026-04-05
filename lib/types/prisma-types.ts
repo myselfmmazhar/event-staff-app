@@ -430,6 +430,7 @@ export type ServiceSelect = Prisma.ServiceGetPayload<{
     expenditureCost: true;
     expenditurePrice: true;
     isActive: true;
+    categoryId: true;
     createdBy: true;
     createdAt: true;
     updatedAt: true;
@@ -478,6 +479,23 @@ export type ProductSelect = Prisma.ProductGetPayload<{
     category: true;
     cost: true;
     price: true;
+    isActive: true;
+    createdBy: true;
+    createdAt: true;
+    updatedAt: true;
+  };
+}>;
+
+/**
+ * ServiceCategory Select Type
+ * Used by CategoryService for all query return types
+ */
+export type CategorySelect = Prisma.ServiceCategoryGetPayload<{
+  select: {
+    id: true;
+    categoryId: true;
+    name: true;
+    description: true;
     isActive: true;
     createdBy: true;
     createdAt: true;

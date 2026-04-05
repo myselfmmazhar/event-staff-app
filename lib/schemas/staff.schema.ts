@@ -22,14 +22,14 @@ const baseFields = {
     // Staff Information
     firstName: z
         .string()
-        .min(1, "First name is required")
         .max(50, "First name must be 50 characters or less")
-        .transform((val) => val.trim()),
+        .transform((val) => val?.trim() || "")
+        .optional(),
     lastName: z
         .string()
-        .min(1, "Last name is required")
         .max(50, "Last name must be 50 characters or less")
-        .transform((val) => val.trim()),
+        .transform((val) => val?.trim() || "")
+        .optional(),
     phone: z
         .string()
         .refine(
@@ -216,7 +216,7 @@ const baseFields = {
     // Service IDs (multi-select)
     serviceIds: z
         .array(z.string().uuid("Invalid service ID"))
-        .min(1, "At least one service must be selected")
+        .optional()
         .default([]),
 };
 

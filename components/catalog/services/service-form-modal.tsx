@@ -24,6 +24,7 @@ import type { CreateServiceInput } from '@/lib/schemas/service.schema';
 import {
   COST_UNIT_TYPE_OPTIONS,
 } from '@/lib/constants/enums';
+import { trpc } from '@/lib/client/trpc';
 
 // Form schema - uses null for optional enum fields, similar to staff form
 const formSchema = z.object({
@@ -45,6 +46,7 @@ const formSchema = z.object({
   minimum: z.number().min(0, 'Must be non-negative').nullable().default(null),
   expenditureCost: z.number().min(0, 'Must be non-negative').nullable().default(null),
   expenditurePrice: z.number().min(0, 'Must be non-negative').nullable().default(null),
+  categoryId: z.string().uuid().nullable().default(null),
 });
 
 type FormInput = z.input<typeof formSchema>;
@@ -91,6 +93,7 @@ export function ServiceFormModal({
       minimum: null,
       expenditureCost: null,
       expenditurePrice: null,
+      categoryId: null,
     },
   });
 
@@ -146,6 +149,7 @@ export function ServiceFormModal({
         minimum: service.minimum != null ? (typeof service.minimum === 'object' && 'toNumber' in (service.minimum as any) ? (service.minimum as any).toNumber() : Number(service.minimum)) : null,
         expenditureCost: expCostValue,
         expenditurePrice: expPriceValue,
+        categoryId: (service as any).categoryId ?? null,
       });
     } else if (!service && open) {
       reset({
@@ -158,6 +162,7 @@ export function ServiceFormModal({
         minimum: null,
         expenditureCost: null,
         expenditurePrice: null,
+        categoryId: null,
       });
     }
   }, [service, open, reset]);
@@ -184,11 +189,14 @@ export function ServiceFormModal({
       expenditure: data.hasMinimum,
       expenditureCost: data.hasMinimum ? data.expenditureCost : null,
       expenditurePrice: data.hasMinimum ? data.expenditurePrice : null,
+      categoryId: data.categoryId || null,
     });
   };
 
   const costUnitType = watch('costUnitType');
   const rateTypeLabel = COST_UNIT_TYPE_OPTIONS.find((opt) => opt.value === costUnitType)?.label || 'Value';
+
+  const { data: categoriesData } = trpc.category.getAllActive.useQuery();
 
   return (
     <Dialog open={open} onClose={onClose} className="max-w-3xl">
@@ -235,6 +243,33 @@ export function ServiceFormModal({
               {errors.title && (
                 <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
               )}
+            </div>
+
+            <div className="sm:col-span-3">
+              <Label htmlFor="categoryId">Category</Label>
+              <Controller
+                name="categoryId"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value || 'none'}
+                    onValueChange={(val) => field.onChange(val === 'none' ? null : val)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="categoryId">
+                      <SelectValue placeholder="Select a category (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {categoriesData?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name} ({cat.categoryId})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             <div className="sm:col-span-3">
