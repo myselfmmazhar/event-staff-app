@@ -51,10 +51,6 @@ export function calcScheduledHours(ct: CallTimeRow): number {
     if (!start || !end || end <= start) return 0;
     const hours = hoursFromMinutes(differenceInMinutes(end, start));
     
-    // If unassigned (no staff) and not a staff-specific row, multiply by required count
-    if (!ct.staff && !ct.mergedRows && ct.numberOfStaffRequired > 1) {
-        return hours * ct.numberOfStaffRequired;
-    }
     return hours;
 }
 
@@ -83,12 +79,6 @@ export function calcScheduledCost(ct: CallTimeRow): number {
     const type = ct.payRateType as RateType;
     const hours = calcScheduledHours(ct); // Already accounts for quantity if unassigned
     let total = type === 'PER_HOUR' ? hours * rate : rate;
-
-    // If unassigned and PER_SHIFT/FIXED, we need to multiply by quantity here 
-    // (since calcScheduledHours multiplier only covers the PER_HOUR case)
-    if (!ct.staff && !ct.mergedRows && ct.numberOfStaffRequired > 1 && type !== 'PER_HOUR') {
-        total *= ct.numberOfStaffRequired;
-    }
 
     return total;
 }
@@ -147,10 +137,6 @@ export function calcBillAmount(ct: CallTimeRow): number {
     const type = ct.billRateType as RateType;
     const hours = calcScheduledHours(ct); // Already accounts for quantity if unassigned
     let total = type === 'PER_HOUR' ? hours * billRate : billRate;
-
-    if (!ct.staff && !ct.mergedRows && ct.numberOfStaffRequired > 1 && type !== 'PER_HOUR') {
-        total *= ct.numberOfStaffRequired;
-    }
 
     return total;
 }

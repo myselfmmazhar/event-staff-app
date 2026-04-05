@@ -211,16 +211,12 @@ export default function TimeManagerPage() {
             {
                 onSuccess: (res: any) => {
                     utils.timeEntry.getTimeManagerRows.invalidate();
-                    if (type === 'APPROVE') {
-                        generateInvoicesMutation.mutate({ invitationIds: ids });
-                    } else {
-                        toast({
-                            title: type === 'REJECT' ? 'Rejected' : type === 'REVIEW' ? 'Reviewed' : 'Reset to Pending',
-                            description: ids.length > 1
-                                ? `Successfully processed ${ids.length} items.`
-                                : `Successfully processed the selected item.`,
-                        });
-                    }
+                    toast({
+                        title: type === 'APPROVE' ? 'Approved' : type === 'REJECT' ? 'Rejected' : type === 'REVIEW' ? 'Reviewed' : 'Reset to Pending',
+                        description: ids.length > 1
+                            ? `Successfully processed ${ids.length} items.`
+                            : `Successfully processed the selected item.`,
+                    });
                     setSelectedRows((prev) => {
                         const next = new Set(prev);
                         ids.forEach(id => next.delete(id));
@@ -252,11 +248,22 @@ export default function TimeManagerPage() {
         </th>
     );
 
+    const viewAssignments = useMemo(() => {
+        if (subTab === 'all') return assignments;
+        if (subTab === 'invoice' || subTab === 'bill') {
+            return assignments.filter((inv: any) => inv.internalReviewRating === 'MET_EXPECTATIONS');
+        }
+        if (subTab === 'commission') {
+            return assignments.filter((inv: any) => !!inv.commission);
+        }
+        return assignments;
+    }, [assignments, subTab]);
+
     // 1. Group by Task (Event)
     const eventGroups: EventGroup[] = useMemo(() => {
         const groupsMap = new Map<string, EventGroup>();
 
-        assignments.forEach((inv: any) => {
+        viewAssignments.forEach((inv: any) => {
             const eid = inv.callTime.event.id;
             const event = inv.callTime.event;
             if (!groupsMap.has(eid)) {
@@ -383,7 +390,7 @@ export default function TimeManagerPage() {
     const billGroups: EventGroup[] = useMemo(() => {
         const groupsMap = new Map<string, EventGroup>();
 
-        assignments.forEach((inv: any) => {
+        viewAssignments.forEach((inv: any) => {
             const eid = inv.callTime.event.id;
             const sid = inv.staffId;
             if (!sid) return;
@@ -430,7 +437,7 @@ export default function TimeManagerPage() {
     const clientGroups: ClientGroup[] = useMemo(() => {
         const groupsMap = new Map<string, ClientGroup>();
 
-        assignments.forEach((inv: any) => {
+        viewAssignments.forEach((inv: any) => {
             const client = inv.callTime.event.client;
             if (!client) return;
 
@@ -485,7 +492,7 @@ export default function TimeManagerPage() {
     const talentGroups: TalentGroup[] = useMemo(() => {
         const groupsMap = new Map<string, TalentGroup>();
 
-        assignments.forEach((inv: any) => {
+        viewAssignments.forEach((inv: any) => {
             const staff = inv.staff;
             if (!staff) return;
 
@@ -571,7 +578,7 @@ export default function TimeManagerPage() {
                     showFilters={showFilters}
                     onToggleFilters={() => setShowFilters(!showFilters)}
                     hasActiveFilters={dateFrom || dateTo || search}
-                    callTimes={assignments as any} // Header uses this for export
+                    callTimes={viewAssignments as any} // Header uses this for export
                     selectedCallTimes={[]} // TODO: implement
                     selectedCount={selectedRows.size}
                     onGenerateInvoices={handleGenerateInvoices}
@@ -660,7 +667,7 @@ export default function TimeManagerPage() {
                         onStaffingFilterChange={setStaffingFilter}
                         hasActiveFilters={dateFrom || dateTo || search}
                         onClearFilters={() => { setDateFrom(''); setDateTo(''); setSearch(''); }}
-                        totalAssignments={assignments.length}
+                        totalAssignments={viewAssignments.length}
                         totalEvents={eventGroups.length}
                         eventPluralLabel="Events"
                     />
@@ -678,14 +685,39 @@ export default function TimeManagerPage() {
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button
-                                size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-                                onClick={handleBatchApprove}
-                            >
-                                <CheckIcon className="h-3.5 w-3.5" />
-                                Approve Multiple
-                            </Button>
+                            {subTab === 'all' && (
+                                <Button
+                                    size="sm"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                                    onClick={handleBatchApprove}
+                                >
+                                    <CheckIcon className="h-3.5 w-3.5" />
+                                    Approve Multiple
+                                </Button>
+                            )}
+
+                            {subTab === 'invoice' && (
+                                <Button
+                                    size="sm"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+                                    onClick={handleGenerateInvoices}
+                                >
+                                    <CheckCircleIcon className="h-3.5 w-3.5" />
+                                    Generate Invoices
+                                </Button>
+                            )}
+
+                            {subTab === 'bill' && (
+                                <Button
+                                    size="sm"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+                                    onClick={handleGenerateBills}
+                                >
+                                    <CheckCircleIcon className="h-3.5 w-3.5" />
+                                    Generate Bills
+                                </Button>
+                            )}
+
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -704,6 +736,34 @@ export default function TimeManagerPage() {
                                 <CloseIcon className="h-3.5 w-3.5" />
                                 Reject Multiple
                             </Button>
+
+                            {subTab === 'invoice' && (
+                                <>
+                                    <div className="w-px h-6 bg-slate-200 mx-1" />
+                                    <Button
+                                        size="sm"
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+                                        onClick={handleGenerateInvoices}
+                                    >
+                                        <CheckCircleIcon className="h-3.5 w-3.5" />
+                                        Generate Invoices
+                                    </Button>
+                                </>
+                            )}
+
+                            {subTab === 'bill' && (
+                                <>
+                                    <div className="w-px h-6 bg-slate-200 mx-1" />
+                                    <Button
+                                        size="sm"
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+                                        onClick={handleBatchBills}
+                                    >
+                                        <CheckCircleIcon className="h-3.5 w-3.5" />
+                                        Generate Bills
+                                    </Button>
+                                </>
+                            )}
                             <div className="w-px h-6 bg-slate-200 mx-1" />
                             <Button
                                 size="sm"
@@ -721,10 +781,14 @@ export default function TimeManagerPage() {
                     <div className="h-48 flex items-center justify-center rounded-lg border border-dashed border-border bg-muted/20">
                         <span className="text-sm text-muted-foreground animate-pulse">Loading data...</span>
                     </div>
-                ) : assignments.length === 0 ? (
+                ) : viewAssignments.length === 0 ? (
                     <div className="h-48 flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 gap-2">
                         <span className="text-sm font-semibold text-foreground">No records found</span>
-                        <p className="text-xs text-muted-foreground">Try adjusting your filters or inviting staff in the Events module.</p>
+                        <p className="text-xs text-muted-foreground">
+                            {subTab === 'invoice' || subTab === 'bill'
+                                ? 'No approved assignments found to be invoiced or billed.'
+                                : 'Try adjusting your filters or inviting staff in the Events module.'}
+                        </p>
                     </div>
                 ) : !selectedEventId && !selectedClientId && !selectedStaffId ? (
                     <>
@@ -802,12 +866,14 @@ export default function TimeManagerPage() {
                                                         })()}
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    {subTab !== 'invoice' && subTab !== 'bill' && (
+                                                        <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    )}
                                                     {subTab === 'invoice' ? (
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[300px]">Description</th>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
                                                             <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                             <SortHeader id="price" label="Price" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
@@ -821,7 +887,7 @@ export default function TimeManagerPage() {
                                                     ) : subTab === 'bill' ? (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
                                                             <SortHeader id="bill" label="Bill Amount" align="text-right" />
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                         </>
@@ -949,12 +1015,14 @@ export default function TimeManagerPage() {
                                                         })()}
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    {subTab !== 'invoice' && subTab !== 'bill' && (
+                                                        <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    )}
                                                     {subTab === 'invoice' ? (
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="service" label="Services / Products" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[300px]">Description</th>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
                                                             <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                             <SortHeader id="price" label="Price" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
@@ -968,7 +1036,7 @@ export default function TimeManagerPage() {
                                                     ) : subTab === 'bill' ? (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
                                                             <SortHeader id="bill" label="Bill Amount" align="text-right" />
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                         </>
@@ -1154,12 +1222,14 @@ export default function TimeManagerPage() {
                                                         })()}
                                                     </th>
                                                     <th className="w-8 px-2 py-2" />
-                                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    {subTab !== 'invoice' && subTab !== 'bill' && (
+                                                        <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                                    )}
                                                     {subTab === 'invoice' ? (
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="service" label="Services / Products" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[300px]">Description</th>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
                                                             <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                             <SortHeader id="price" label="Price" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
@@ -1173,7 +1243,7 @@ export default function TimeManagerPage() {
                                                     ) : subTab === 'bill' ? (
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
+                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
                                                             <SortHeader id="bill" label="Bill Amount" align="text-right" />
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                         </>
