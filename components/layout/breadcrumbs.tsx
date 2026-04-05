@@ -131,7 +131,14 @@ export function Breadcrumbs() {
       hierarchy.push({ label: 'Catalog Manager' });
 
       const secondSegment = segments[1];
-      if (secondSegment === 'services') {
+      if (secondSegment === 'categories') {
+        hierarchy.push({ label: 'Categories' });
+        if (isCreate) {
+          hierarchy.push({ label: 'Add Category' });
+        } else {
+          hierarchy.push({ label: 'Overview' });
+        }
+      } else if (secondSegment === 'services') {
         hierarchy.push({ label: 'Services' });
         if (isCreate) {
           hierarchy.push({ label: 'Add Service' });
