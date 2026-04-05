@@ -38,9 +38,9 @@ export function AccountDetailsSection({
         Account Details
       </h3>
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
           <div>
-            <Label htmlFor="accountStatus" required>
+            <Label htmlFor="accountStatus">
               Account Status
             </Label>
             <Controller
@@ -71,7 +71,7 @@ export function AccountDetailsSection({
           </div>
 
           <div>
-            <Label htmlFor="staffType" required>
+            <Label htmlFor="staffType">
               Staff Type
             </Label>
             <Controller
@@ -102,7 +102,7 @@ export function AccountDetailsSection({
           </div>
 
           <div>
-            <Label htmlFor="staffRole" required>
+            <Label htmlFor="staffRole">
               Staff Role
             </Label>
             <Controller
@@ -133,7 +133,7 @@ export function AccountDetailsSection({
           </div>
 
           <div>
-            <Label htmlFor="skillLevel" required>
+            <Label htmlFor="skillLevel">
               Skill Level
             </Label>
             <Controller
@@ -164,7 +164,7 @@ export function AccountDetailsSection({
           </div>
 
           <div>
-            <Label htmlFor="staffRating" required>
+            <Label htmlFor="staffRating">
               Staff Rating
             </Label>
             <Controller
@@ -195,7 +195,7 @@ export function AccountDetailsSection({
           </div>
 
           <div>
-            <Label htmlFor="availabilityStatus" required>
+            <Label htmlFor="availabilityStatus">
               Availability Status
             </Label>
             <Controller

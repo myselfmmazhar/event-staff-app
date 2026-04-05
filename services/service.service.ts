@@ -28,6 +28,7 @@ export class ServiceService {
     expenditureCost: true,
     expenditurePrice: true,
     isActive: true,
+    categoryId: true,
     createdBy: true,
     createdAt: true,
     updatedAt: true,
@@ -51,6 +52,7 @@ export class ServiceService {
           expenditureAmountType: data.expenditureAmountType ?? null,
           expenditureCost: data.expenditureCost ?? null,
           expenditurePrice: data.expenditurePrice ?? null,
+          categoryId: data.categoryId ?? null,
           createdBy: createdByUserId,
         },
         select: this.serviceSelect,
@@ -168,6 +170,7 @@ export class ServiceService {
           expenditureAmountType: data.expenditureAmountType === undefined ? undefined : data.expenditureAmountType,
           expenditureCost: data.expenditureCost === undefined ? undefined : data.expenditureCost,
           expenditurePrice: data.expenditurePrice === undefined ? undefined : data.expenditurePrice,
+          categoryId: data.categoryId === undefined ? undefined : data.categoryId,
         },
         select: this.serviceSelect,
       }) as ServiceSelect;

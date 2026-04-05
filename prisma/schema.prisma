@@ -347,6 +347,24 @@ model EventTemplate {
   @@map("event_templates")
 }
 
+model ServiceCategory {
+  id          String    @id @default(uuid()) @db.Uuid
+  categoryId  String    @unique
+  name        String    @db.VarChar(200)
+  description String?   @db.VarChar(1000)
+  isActive    Boolean   @default(true)
+  createdBy   String
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamp(6)
+  services    Service[]
+  createdByUser User    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
+  @@index([name])
+  @@index([isActive])
+  @@map("service_categories")
+}
+
 model Service {
   id                    String                   @id @default(uuid()) @db.Uuid
   serviceId             String                   @unique
@@ -356,6 +374,7 @@ model Service {
   cost                  Decimal?                 @db.Decimal(10, 2)
   price                 Decimal?                 @db.Decimal(10, 2)
   isActive              Boolean                  @default(true)
+  categoryId            String?                  @db.Uuid
   createdBy             String
   createdAt             DateTime                 @default(now()) @db.Timestamp(6)
   updatedAt             DateTime                 @updatedAt @db.Timestamp(6)
@@ -370,12 +389,14 @@ model Service {
   estimateItems         EstimateItem[]
   invoiceItems          InvoiceItem[]
   billItems             BillItem[]
+  category              ServiceCategory?         @relation(fields: [categoryId], references: [id])
   createdByUser         User                     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   staff                 StaffServiceAssignment[]
 
   @@index([serviceId])
   @@index([title])
   @@index([isActive])
+  @@index([categoryId])
   @@map("services")
 }
 
@@ -712,6 +733,7 @@ model User {
   notifications                    Notification[]
   products                         Product[]
   services                         Service[]
+  serviceCategories                ServiceCategory[]
   sessions                         Session[]
   staff_staff_createdByTousers     Staff[]                 @relation("staff_createdByTousers")
   staff_staff_userIdTousers        Staff?                  @relation("staff_userIdTousers")

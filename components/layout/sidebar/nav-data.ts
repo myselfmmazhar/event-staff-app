@@ -117,6 +117,11 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           icon: SquaresIcon,
           subItems: [
             {
+              label: 'Categories',
+              href: '/catalog/categories',
+              icon: SquaresIcon,
+            },
+            {
               label: 'Services',
               href: '/catalog/services',
               icon: WrenchScrewdriverIcon,
