@@ -157,62 +157,65 @@ export class TimeEntryService {
         // Flatten callTimes into rows (CallTimeInvitation-like objects)
         let rows: any[] = [];
         for (const ct of callTimes) {
-            if (ct.invitations.length > 0) {
-                // Return one row for each accepted invitation
-                const invitationRows = ct.invitations.map((inv: any) => ({
-                    ...inv,
-                    commission: ct.commission,
-                    commissionAmount: ct.commissionAmount,
-                    commissionAmountType: ct.commissionAmountType,
-                    overtimeRate: ct.overtimeRate,
-                    overtimeRateType: ct.overtimeRateType,
-                    payRate: ct.payRate,
-                    payRateType: ct.payRateType,
-                    billRate: ct.billRate,
-                    billRateType: ct.billRateType,
-                    expenditure: ct.expenditure,
-                    expenditureAmount: ct.expenditureAmount,
-                    expenditureCost: ct.expenditureCost,
-                    expenditurePrice: ct.expenditurePrice,
-                    minimum: ct.minimum,
-                    callTime: {
-                        ...ct,
-                        invitations: undefined // Avoid circular/excessive data
-                    }
-                }));
+            const numRequired = ct.numberOfStaffRequired || 1;
+            const acceptedInvs = ct.invitations || [];
 
-                // If filtering by staff, only these rows matter
-                rows.push(...invitationRows);
-            } else if (!filters?.staffId && (ct.event.status === 'COMPLETED' || ct.event.status === 'IN_PROGRESS')) {
-                // If no staff accepted but event is active/important, show an unassigned row
-                // This ensures "Test Task One" shows up even with 0 staff
-                rows.push({
-                    id: `unassigned-${ct.id}`,
-                    status: 'PENDING',
-                    isConfirmed: false,
-                    staffId: null,
-                    staff: null,
-                    timeEntry: null,
-                    callTimeId: ct.id,
-                    commission: ct.commission,
-                    commissionAmount: ct.commissionAmount,
-                    commissionAmountType: ct.commissionAmountType,
-                    overtimeRate: ct.overtimeRate,
-                    overtimeRateType: ct.overtimeRateType,
-                    payRate: ct.payRate,
-                    payRateType: ct.payRateType,
-                    billRate: ct.billRate,
-                    billRateType: ct.billRateType,
-                    expenditure: ct.expenditure,
-                    expenditureAmount: ct.expenditureAmount,
-                    expenditureCost: ct.expenditureCost,
-                    expenditurePrice: ct.expenditurePrice,
-                    minimum: ct.minimum,
-                    callTime: {
-                        ...ct,
-                        invitations: undefined
-                    }
-                });
+            // 1. Add rows for accepted staff
+            const invitationRows = acceptedInvs.map((inv: any) => ({
+                ...inv,
+                commission: ct.commission,
+                commissionAmount: ct.commissionAmount,
+                commissionAmountType: ct.commissionAmountType,
+                overtimeRate: ct.overtimeRate,
+                overtimeRateType: ct.overtimeRateType,
+                payRate: ct.payRate,
+                payRateType: ct.payRateType,
+                billRate: ct.billRate,
+                billRateType: ct.billRateType,
+                expenditure: ct.expenditure,
+                expenditureAmount: ct.expenditureAmount,
+                expenditureCost: ct.expenditureCost,
+                expenditurePrice: ct.expenditurePrice,
+                minimum: ct.minimum,
+                callTime: {
+                    ...ct,
+                    invitations: undefined // Avoid circular/excessive data
+                }
+            }));
+            rows.push(...invitationRows);
+
+            // 2. Add unassigned rows for the remaining spots (only if not filtering by specific staff)
+            const remainingSpots = numRequired - acceptedInvs.length;
+            if (remainingSpots > 0 && !filters?.staffId && (ct.event.status === 'COMPLETED' || ct.event.status === 'IN_PROGRESS')) {
+                for (let i = 0; i < remainingSpots; i++) {
+                    rows.push({
+                        id: `unassigned-${ct.id}-${i}`,
+                        status: 'PENDING',
+                        isConfirmed: false,
+                        staffId: null,
+                        staff: null,
+                        timeEntry: null,
+                        callTimeId: ct.id,
+                        commission: ct.commission,
+                        commissionAmount: ct.commissionAmount,
+                        commissionAmountType: ct.commissionAmountType,
+                        overtimeRate: ct.overtimeRate,
+                        overtimeRateType: ct.overtimeRateType,
+                        payRate: ct.payRate,
+                        payRateType: ct.payRateType,
+                        billRate: ct.billRate,
+                        billRateType: ct.billRateType,
+                        expenditure: ct.expenditure,
+                        expenditureAmount: ct.expenditureAmount,
+                        expenditureCost: ct.expenditureCost,
+                        expenditurePrice: ct.expenditurePrice,
+                        minimum: ct.minimum,
+                        callTime: {
+                            ...ct,
+                            invitations: undefined
+                        }
+                    });
+                }
             }
         }
 

@@ -36,9 +36,9 @@ export function EventGroupTable({
     onSort,
     onSaveTimeEntry,
 }: EventGroupTableProps) {
-    const totalStaff = group.callTimes.reduce((s, ct) => s + ct.numberOfStaffRequired, 0);
-    const totalConfirmed = group.callTimes.reduce((s, ct) => s + ct.confirmedCount, 0);
-    const groupNeedsStaff = totalConfirmed < totalStaff;
+    const totalStaff = group.callTimes.length;
+    const totalAssigned = group.callTimes.filter(ct => ct.staffId !== null).length;
+    const groupNeedsStaff = totalAssigned < totalStaff;
 
     return (
         <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
@@ -58,7 +58,7 @@ export function EventGroupTable({
                 <Badge variant="outline" className="text-xs">{group.eventDisplayId}</Badge>
                 <div className="ml-auto flex items-center gap-2">
                     <Badge variant={groupNeedsStaff ? 'warning' : 'success'} className="text-xs">
-                        {totalConfirmed}/{totalStaff} staffed
+                        {totalAssigned}/{totalStaff} staffed
                     </Badge>
                     <Badge variant="secondary" className="text-xs">
                         {group.callTimes.length} row{group.callTimes.length !== 1 ? 's' : ''}

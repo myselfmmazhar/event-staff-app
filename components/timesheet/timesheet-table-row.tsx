@@ -253,9 +253,11 @@ export function TimesheetTableRow({
                 {subTab === 'invoice' ? (
                     <>
                         {/* Actions Dropdown */}
-                        <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
-                            <ActionDropdown actions={actions} align="start" />
-                        </td>
+                        {subTab !== 'invoice' && subTab !== 'bill' && (
+                            <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
+                                <ActionDropdown actions={actions} align="start" />
+                            </td>
+                        )}
 
                         {/* Service Date */}
                         <td className="px-3 py-2.5 whitespace-nowrap text-[11px] font-medium text-slate-600">
@@ -271,84 +273,43 @@ export function TimesheetTableRow({
 
 
 
-                        {/* Description - Multiline Structured (Matches Screenshot) */}
-                        <td className="px-3 py-4 text-[10px] leading-relaxed text-slate-600 min-w-[350px]">
-                            <div className="flex flex-col gap-3">
-                                {/* Scheduled Shift Section */}
+                        {/* Description - Simplified Format as requested */}
+                        <td className="px-3 py-4 text-[11px] leading-relaxed text-slate-600 min-w-[500px]">
+                            <div className="flex flex-col gap-1.5">
                                 <div className="flex flex-col">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Scheduled Shift</span>
-                                    </div>
-                                    <div className="flex flex-col font-medium text-slate-500">
-                                        <span>{formatDate(ct.startDate)} • {formatTime(ct.startTime)}</span>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">to</span>
-                                            <span>{formatDate(ct.endDate || ct.startDate)} • {formatTime(ct.endTime)}</span>
-                                            <span className="ml-1 text-slate-400 font-normal">({hoursScheduled.toFixed(2)} hrs)</span>
-                                        </div>
+                                    <span className="font-bold text-[10px] text-slate-400 uppercase tracking-tight">Scheduled shift</span>
+                                    <div className="font-medium text-slate-700">
+                                        <span>{formatDate(ct.startDate)} {formatTime(ct.startTime)} - {formatDate(ct.endDate || ct.startDate)} {formatTime(ct.endTime)} ({hoursScheduled.toFixed(2)} hrs)</span>
                                     </div>
                                 </div>
 
-                                {/* Actual Shift Section */}
-                                <div className="flex flex-col">
-                                    <div className="flex items-center justify-between">
-                                        <span className={`font-bold text-[8px] uppercase tracking-tight ${te?.clockIn ? 'text-emerald-500' : 'text-slate-400'}`}>Actual Shift</span>
-
-                                    </div>
-                                    {te?.clockIn ? (
-                                        <div className="flex flex-col font-bold text-emerald-600 italic">
-                                            <span>{formatDate(te.clockIn)} • {formatTime(getTimeOnly(te.clockIn))}</span>
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-[9px] opacity-60 font-bold uppercase tracking-tighter">to</span>
-                                                <span>{te.clockOut ? `${formatDate(te.clockOut)} • ${formatTime(getTimeOnly(te.clockOut))}` : 'No out'}</span>
-                                                <span className="ml-1 opacity-70 font-normal">({hoursClocked.toFixed(2)} hrs)</span>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <span className="text-slate-300 italic font-medium">Not clocked</span>
-                                    )}
-                                </div>
-
-                                {/* Notes Section */}
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-[8px] text-slate-400 uppercase tracking-tight">Notes</span>
+                                <div className="flex flex-col mt-1">
                                     {isEditingNotes ? (
-                                        <div className="mt-1" onClick={e => e.stopPropagation()}>
+                                        <div onClick={e => e.stopPropagation()}>
                                             <textarea
                                                 value={localNotes}
                                                 onChange={e => setLocalNotes(e.target.value)}
-                                                className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-primary outline-none min-h-[40px] bg-white text-slate-700 font-medium"
+                                                className="w-full text-[10px] border border-border rounded p-1.5 focus:ring-1 focus:ring-primary outline-none min-h-[50px] bg-white text-slate-700 font-medium"
                                                 autoFocus
+                                                onBlur={handleSave}
                                             />
                                             <div className="flex justify-end mt-1">
-                                                <button onClick={() => setIsEditingNotes(false)} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                <button onClick={handleSave} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
                                                     <CheckIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
                                         </div>
                                     ) : (
                                         <div
-                                            className="group relative cursor-pointer hover:bg-slate-50 p-1.5 rounded border border-transparent hover:border-slate-100 transition-all font-medium text-slate-500 italic"
+                                            className="group relative cursor-pointer hover:bg-slate-50 p-1.5 rounded transition-all font-medium text-slate-500 italic border border-transparent hover:border-slate-100"
                                             onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
                                         >
-                                            <p className="line-clamp-2">{localNotes || '—'}</p>
+                                            <p className="line-clamp-3">{localNotes || 'Click to add notes...'}</p>
                                             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <EditIcon className="h-3 w-3 text-slate-400" />
+                                                <EditIcon className="h-3.5 w-3.5 text-slate-400" />
                                             </div>
                                         </div>
                                     )}
-                                </div>
-
-                                {/* Quick Note Input */}
-                                <div className="pt-2 border-t border-dashed border-slate-100" onClick={e => e.stopPropagation()}>
-                                    <input
-                                        type="text"
-                                        placeholder="Add your own notes..."
-                                        value={localNotes}
-                                        onChange={e => setLocalNotes(e.target.value)}
-                                        onBlur={handleSave}
-                                        className="w-full text-[10px] bg-transparent border-none focus:outline-none placeholder:text-slate-300 font-medium italic text-slate-400"
-                                    />
                                 </div>
                             </div>
                         </td>
@@ -427,9 +388,11 @@ export function TimesheetTableRow({
                 ) : subTab === 'bill' ? (
                     <>
                         {/* Action */}
-                        <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
-                            <ActionDropdown actions={actions} align="start" />
-                        </td>
+                        {subTab !== 'invoice' && subTab !== 'bill' && (
+                            <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
+                                <ActionDropdown actions={actions} align="start" />
+                            </td>
+                        )}
 
                         {/* Category */}
                         <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
@@ -441,7 +404,7 @@ export function TimesheetTableRow({
                         </td>
 
                         {/* Bill Description - Matches Screenshot 2 + Notes */}
-                        <td className="px-3 py-4 text-[10px] leading-relaxed min-w-[350px]">
+                        <td className="px-3 py-4 text-[10px] leading-relaxed min-w-[500px]">
                             <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between">
                                     <div className="flex flex-col gap-1">
