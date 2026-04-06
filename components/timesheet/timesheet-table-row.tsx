@@ -55,6 +55,7 @@ export function TimesheetTableRow({
     onReject,
     onReview,
     onPending,
+    onEditTask,
     subTab = 'all',
 }: {
     ct: CallTimeRow;
@@ -255,12 +256,6 @@ export function TimesheetTableRow({
 
                 {subTab === 'invoice' ? (
                     <>
-                        {/* Actions Dropdown */}
-                        {subTab !== 'invoice' && subTab !== 'bill' && (
-                            <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
-                                <ActionDropdown actions={actions} align="start" />
-                            </td>
-                        )}
 
                         {/* Service Date */}
                         <td className="px-3 py-2.5 whitespace-nowrap text-[11px] font-medium text-slate-600">
@@ -367,12 +362,6 @@ export function TimesheetTableRow({
                     </>
                 ) : subTab === 'bill' ? (
                     <>
-                        {/* Action */}
-                        {subTab !== 'invoice' && subTab !== 'bill' && (
-                            <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
-                                <ActionDropdown actions={actions} align="start" />
-                            </td>
-                        )}
 
                         {/* Category */}
                         <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
