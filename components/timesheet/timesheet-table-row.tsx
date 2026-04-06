@@ -8,7 +8,9 @@ import {
     EditIcon,
     CheckIcon,
     CloseIcon,
-    CheckCircleIcon
+    CheckCircleIcon,
+    PlusIcon,
+    MinusIcon
 } from '@/components/ui/icons';
 import {
     fmtDateTime,
@@ -67,6 +69,7 @@ export function TimesheetTableRow({
     onReject?: (id: string) => void;
     onReview?: (id: string) => void;
     onPending?: (id: string) => void;
+    onEditTask?: (ct: CallTimeRow) => void;
     subTab?: 'all' | 'bill' | 'invoice' | 'commission';
 }) {
     const { toast } = useToast();
@@ -189,7 +192,7 @@ export function TimesheetTableRow({
         {
             label: 'Edit',
             icon: <EditIcon className="h-3.5 w-3.5" />,
-            onClick: () => setIsEditing(true),
+            onClick: () => onEditTask ? onEditTask(ct) : window.open(`/events/${ct.event.id}/call-times`, '_blank'),
         },
         {
             label: 'Approved',
@@ -319,41 +322,8 @@ export function TimesheetTableRow({
                             {ct.mergedRows?.length || (!ct.staff ? ct.numberOfStaffRequired : 1)}
                         </td>
 
-                        {/* Price */}
-                        <td className="px-3 py-2.5 text-right font-semibold text-slate-600 tabular-nums">
-                            <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
-                                <PopoverTrigger asChild>
-                                    <div className="cursor-pointer hover:bg-slate-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
-                                        {fmtCurrency(toNumber(ct.billRate))}
-                                    </div>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price/OT</Label>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-sm font-bold text-muted-foreground">$</span>
-                                                <Input
-                                                    type="number"
-                                                    value={otPriceManual}
-                                                    onChange={(e) => setOtPriceManual(e.target.value)}
-                                                    className="h-8 text-sm"
-                                                    placeholder="0.00"
-                                                    autoFocus
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-end gap-2">
-                                            <Button size="sm" variant="outline" onClick={() => setIsEditingOtPrice(false)}>Cancel</Button>
-                                            <Button size="sm" onClick={handleSave}>Save</Button>
-                                        </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </td>
-
-                        {/* Invoice Amount */}
-                        <td className="px-3 py-2.5 text-right font-extrabold text-primary tabular-nums text-[13px] pr-6">
+                        {/* Total Invoice (w/ Popover for editing) */}
+                        <td className="px-3 py-2.5 text-right font-extrabold text-primary tabular-nums text-[13px]">
                             <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
                                 <PopoverTrigger asChild>
                                     <div className="cursor-pointer hover:bg-primary/5 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
@@ -383,6 +353,16 @@ export function TimesheetTableRow({
                                     </div>
                                 </PopoverContent>
                             </Popover>
+                        </td>
+
+                        {/* Total Bill */}
+                        <td className="px-3 py-2.5 text-right font-semibold text-slate-500 tabular-nums text-[12px]">
+                            {fmtCurrency(totalBill)}
+                        </td>
+
+                        {/* Net Income */}
+                        <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums text-[13px] pr-6">
+                            {fmtCurrency(totalInvoice - totalBill)}
                         </td>
                     </>
                 ) : subTab === 'bill' ? (
@@ -478,8 +458,12 @@ export function TimesheetTableRow({
                                 </div>
                             </div>
                         </td>
+                        {/* Total Invoice */}
+                        <td className="px-3 py-2.5 text-right font-semibold text-slate-500 tabular-nums text-[12px]">
+                            {fmtCurrency(totalInvoice)}
+                        </td>
 
-                        {/* Bill Amount */}
+                        {/* Total Bill (w/ Popover for editing) */}
                         <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px]">
                             <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
                                 <PopoverTrigger asChild>
@@ -510,6 +494,11 @@ export function TimesheetTableRow({
                                     </div>
                                 </PopoverContent>
                             </Popover>
+                        </td>
+
+                        {/* Net Income */}
+                        <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums text-[13px]">
+                            {fmtCurrency(totalInvoice - totalBill)}
                         </td>
 
                         {/* Status */}
@@ -667,63 +656,50 @@ export function TimesheetTableRow({
                             </Badge>
                         </td>
 
-                        {/* Scheduled Shift */}
-                        <td className="px-3 py-2.5 min-w-[220px]">
-                            <div className="flex flex-col gap-1">
-                                <div className="text-[10px] font-semibold text-slate-700 flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-1">
-                                        <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.startDate)}</span>
-                                        <span className="font-bold">{formatTime(ct.startTime)}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">to</span>
-                                        <span className="bg-slate-100 px-1 rounded-sm">{formatDate(ct.endDate || ct.startDate)}</span>
-                                        <span className="font-bold">{formatTime(ct.endTime)}</span>
-                                    </div>
+                        {/* Scheduled Shift (Restored but Compact) */}
+                        <td className="px-3 py-2.5 min-w-[140px]">
+                            <div className="flex flex-col text-[10px] leading-tight text-slate-700">
+                                <div className="font-medium whitespace-nowrap">
+                                    {formatDate(ct.startDate)} {formatTime(ct.startTime)}
                                 </div>
-                                <div className="flex items-center gap-1.5 pt-0.5 border-t border-slate-50">
-                                    <span className="text-[10px] font-extrabold text-slate-500">{hoursScheduled.toFixed(2)} hrs</span>
+                                <div className="flex items-center gap-1 mt-0.5 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                    to {formatDate(ct.endDate || ct.startDate)} {formatTime(ct.endTime)}
+                                </div>
+                                <div className="mt-1 font-bold text-slate-600">
+                                    {hoursScheduled.toFixed(2)} hrs
                                 </div>
                             </div>
                         </td>
 
-                        {/* Actual Shift (formerly Clock In/Out) */}
-                        <td className="px-3 py-2.5 min-w-[240px]" onClick={e => e.stopPropagation()}>
+                        {/* Actual Shift (Restored but Compact) */}
+                        <td className="px-3 py-2.5 min-w-[140px]" onClick={e => e.stopPropagation()}>
                             <Popover open={isEditing} onOpenChange={setIsEditing}>
                                 <PopoverTrigger asChild>
                                     <div
-                                        className={`flex flex-col gap-1 rounded transition-colors ${ct.staff ? 'cursor-pointer hover:bg-slate-50/50' : 'opacity-60 cursor-not-allowed'}`}
+                                        className={`flex flex-col gap-0.5 rounded transition-colors ${ct.staff ? 'cursor-pointer hover:bg-slate-50/50' : 'opacity-60 cursor-not-allowed'}`}
                                         onClick={e => !ct.staff && e.stopPropagation()}
                                     >
-                                        <div className="text-[10px] font-semibold text-slate-700 flex flex-col gap-0.5">
-                                            {te?.clockIn ? (
-                                                <>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="bg-emerald-50 px-1 rounded-sm">{formatDate(te.clockIn)}</span>
-                                                        <span className="font-bold">{formatTime(getTimeOnly(te.clockIn))}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">to</span>
-                                                        {te?.clockOut ? (
-                                                            <>
-                                                                <span className="bg-red-50 px-1 rounded-sm">{formatDate(te.clockOut)}</span>
-                                                                <span className="font-bold">{formatTime(getTimeOnly(te.clockOut))}</span>
-                                                            </>
-                                                        ) : (
-                                                            <span className="text-slate-300 italic">No out</span>
-                                                        )}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <span className="text-slate-300 italic">Not clocked</span>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 pt-0.5 border-t border-emerald-50">
-                                            <span className="text-[10px] font-extrabold text-emerald-600">
-                                                {hoursClocked.toFixed(2)} hrs
-                                            </span>
-                                            {isEdited && <Badge variant="warning" className="text-[7px] h-2.5 px-0.5 leading-none">Edited</Badge>}
-                                        </div>
+                                        {te?.clockIn ? (
+                                            <div className="flex flex-col text-[10px] leading-tight text-emerald-600">
+                                                <div className="font-medium whitespace-nowrap">
+                                                    {formatDate(te.clockIn)} {formatTime(getTimeOnly(te.clockIn))}
+                                                </div>
+                                                <div className="flex items-center gap-1 mt-0.5 text-[8px] font-bold text-emerald-500/50 uppercase tracking-tighter">
+                                                    to {te?.clockOut ? formatDate(te.clockOut) : '??'} {te?.clockOut ? formatTime(getTimeOnly(te.clockOut)) : ''}
+                                                </div>
+                                                <div className="mt-1 flex items-center gap-1.5">
+                                                    <span className="font-bold">
+                                                        {hoursClocked.toFixed(2)} hrs
+                                                    </span>
+                                                    {isEdited && <Badge variant="warning" className="text-[7px] h-2.5 px-0.5 leading-none bg-amber-50 text-amber-600 border-none">Edited</Badge>}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col text-[10px] text-slate-300 font-medium">
+                                                <span>Not clocked</span>
+                                                <span>0.00 hrs</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </PopoverTrigger>
                                 {ct.staff && (
@@ -752,13 +728,7 @@ export function TimesheetTableRow({
                                             </div>
                                             <div className="flex justify-between items-center pt-2 border-t">
                                                 <div className="text-[10px] font-bold text-slate-500">
-                                                    Net: {(() => {
-                                                        if (!clockIn || !clockOut) return '0.00';
-                                                        const start = new Date(clockIn).getTime();
-                                                        const end = new Date(clockOut).getTime();
-                                                        const diffHrs = (end - start) / (1000 * 60 * 60);
-                                                        return Math.max(0, diffHrs - (breakMins / 60)).toFixed(2);
-                                                    })()} hrs
+                                                    Net: {hoursClocked.toFixed(2)} hrs
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="h-7 text-[10px]">Cancel</Button>
@@ -773,10 +743,25 @@ export function TimesheetTableRow({
 
                         {/* Variance */}
                         <td className="px-3 py-2.5 text-center">
-                            <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                                <span className={`text-[11px] font-bold ${Math.abs(hoursScheduled - hoursClocked) < 0.1 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                    {(hoursScheduled - hoursClocked).toFixed(2)}
-                                </span>
+                            <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                                {(() => {
+                                    const diff = hoursScheduled - hoursClocked;
+                                    if (Math.abs(diff) < 0.1) {
+                                        return <span className="text-[11px] font-bold text-emerald-600">0.00</span>;
+                                    }
+                                    return (
+                                        <div className="flex items-center gap-1">
+                                            {diff > 0 ? (
+                                                <PlusIcon className="h-3 w-3 text-red-500" />
+                                            ) : (
+                                                <MinusIcon className="h-3 w-3 text-red-500" />
+                                            )}
+                                            <span className="text-[11px] font-bold text-red-500">
+                                                {Math.abs(diff).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
                                 <span className="text-[8px] font-bold text-muted-foreground uppercase opacity-70">Hrs</span>
                             </div>
                         </td>
@@ -790,106 +775,7 @@ export function TimesheetTableRow({
                             {fmtCurrency(toNumber(ct.minimum))}
                         </td> */}
 
-                        {/* Cost Detail ... (Skipping the cost detail Popover part for brevity in TargetContent if possible, or just replacing the whole block) */}
-                        {/* I will replace the Commission part below */}
-
-                        {/* Cost Detail */}
-                        {(subTab === 'all' || subTab === 'bill') && (
-                            <td className="px-3 py-2.5 min-w-[140px]">
-                                <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
-                                    <PopoverTrigger asChild>
-                                        <div className="space-y-0.5 text-right tabular-nums cursor-pointer hover:bg-slate-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
-                                            <div className="flex justify-between items-center gap-2">
-                                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
-                                                <span className="text-[10px] font-semibold">{fmtCurrency(clockedCostVal)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center gap-2">
-                                                <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                                                    OT:
-                                                    {ct.approveOvertime && (
-                                                        <span className="text-[7px] lowercase font-normal opacity-70">
-                                                            ({ct.overtimeRateType === 'MULTIPLIER' ? `${toNumber(ct.overtimeRate || 1.5).toFixed(2)}x` : fmtCurrency(toNumber(ct.overtimeRate))})
-                                                        </span>
-                                                    )}
-                                                </span>
-                                                <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otCost)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center gap-2">
-                                                <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                                                    Travel:
-                                                    {ct.expenditureAmountType === 'MULTIPLIER' && (
-                                                        <span className="text-[7px] lowercase font-normal opacity-70">({(toNumber(ct.expenditureAmount) * 100).toFixed(0)}%)</span>
-                                                    )}
-                                                </span>
-                                                <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expCost)}</span>
-                                            </div>
-                                            <div className="pt-0.5 border-t flex justify-between items-center gap-2">
-                                                <span className="text-[9px] font-extrabold uppercase">Cost:</span>
-                                                <span className="text-[10px] font-extrabold">{fmtCurrency(clockedCostVal + otCost + expCost)}</span>
-                                            </div>
-                                        </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>
-                                        <div className="space-y-4">
-                                            <div className="space-y-3">
-                                                <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost Detail</Label>
-
-                                                <div className="grid gap-2">
-                                                    <div className="grid grid-cols-3 items-center gap-4">
-                                                        <Label htmlFor="shift-cost" className="text-[10px] font-bold text-muted-foreground">SHIFT</Label>
-                                                        <div className="col-span-2 flex items-center gap-1.5">
-                                                            <span className="text-xs font-bold text-muted-foreground">$</span>
-                                                            <Input
-                                                                id="shift-cost"
-                                                                type="number"
-                                                                value={shiftCostManual}
-                                                                onChange={(e) => setShiftCostManual(e.target.value)}
-                                                                className="h-8 text-sm"
-                                                                placeholder="Auto"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-3 items-center gap-4">
-                                                        <Label htmlFor="ot-cost" className="text-[10px] font-bold text-muted-foreground">OVERTIME</Label>
-                                                        <div className="col-span-2 flex items-center gap-1.5">
-                                                            <span className="text-xs font-bold text-muted-foreground">$</span>
-                                                            <Input
-                                                                id="ot-cost"
-                                                                type="number"
-                                                                value={otCostManual}
-                                                                onChange={(e) => setOtCostManual(e.target.value)}
-                                                                className="h-8 text-sm"
-                                                                placeholder="Auto"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-3 items-center gap-4">
-                                                        <Label htmlFor="travel-cost" className="text-[10px] font-bold text-muted-foreground">TRAVEL</Label>
-                                                        <div className="col-span-2 flex items-center gap-1.5">
-                                                            <span className="text-xs font-bold text-muted-foreground">$</span>
-                                                            <Input
-                                                                id="travel-cost"
-                                                                type="number"
-                                                                value={travelCostManual}
-                                                                onChange={(e) => setTravelCostManual(e.target.value)}
-                                                                className="h-8 text-sm"
-                                                                placeholder="Auto"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-end gap-2">
-                                                <Button size="sm" variant="outline" onClick={() => setIsEditingOtCost(false)}>Cancel</Button>
-                                                <Button size="sm" className="bg-red-500 hover:bg-red-600" onClick={handleSave}>Save</Button>
-                                            </div>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                            </td>
-                        )}
-
-                        {/* Price Detail */}
+                        {/* Total Invoice Detail */}
                         <td className="px-3 py-2.5 min-w-[140px]">
                             <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
                                 <PopoverTrigger asChild>
@@ -919,8 +805,8 @@ export function TimesheetTableRow({
                                             <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expPrice)}</span>
                                         </div>
                                         <div className="pt-0.5 border-t flex justify-between items-center gap-2">
-                                            <span className="text-[9px] font-extrabold uppercase">Price:</span>
-                                            <span className="text-[10px] font-extrabold">{fmtCurrency(clockedPriceVal + otPrice + expPrice)}</span>
+                                            <span className="text-[9px] font-extrabold uppercase">Total:</span>
+                                            <span className="text-[11px] font-extrabold text-primary">{fmtCurrency(totalInvoice)}</span>
                                         </div>
                                     </div>
                                 </PopoverTrigger>
@@ -928,7 +814,6 @@ export function TimesheetTableRow({
                                     <div className="space-y-4">
                                         <div className="space-y-3">
                                             <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price Detail</Label>
-
                                             <div className="grid gap-2">
                                                 <div className="grid grid-cols-3 items-center gap-4">
                                                     <Label htmlFor="shift-price" className="text-[10px] font-bold text-muted-foreground">SHIFT</Label>
@@ -981,6 +866,104 @@ export function TimesheetTableRow({
                                     </div>
                                 </PopoverContent>
                             </Popover>
+                        </td>
+
+                        {/* Total Bill Detail */}
+                        <td className="px-3 py-2.5 min-w-[140px]">
+                            <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
+                                <PopoverTrigger asChild>
+                                    <div className="space-y-0.5 text-right tabular-nums cursor-pointer hover:bg-slate-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
+                                        <div className="flex justify-between items-center gap-2">
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
+                                            <span className="text-[10px] font-semibold">{fmtCurrency(clockedCostVal)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center gap-2">
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                OT:
+                                                {ct.approveOvertime && (
+                                                    <span className="text-[7px] lowercase font-normal opacity-70">
+                                                        ({ct.overtimeRateType === 'MULTIPLIER' ? `${toNumber(ct.overtimeRate || 1.5).toFixed(2)}x` : fmtCurrency(toNumber(ct.overtimeRate))})
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otCost)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center gap-2">
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                Travel:
+                                                {ct.expenditureAmountType === 'MULTIPLIER' && (
+                                                    <span className="text-[7px] lowercase font-normal opacity-70">({(toNumber(ct.expenditureAmount) * 100).toFixed(0)}%)</span>
+                                                )}
+                                            </span>
+                                            <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expCost)}</span>
+                                        </div>
+                                        <div className="pt-0.5 border-t flex justify-between items-center gap-2">
+                                            <span className="text-[9px] font-extrabold uppercase">Total:</span>
+                                            <span className="text-[11px] font-extrabold text-red-600">{fmtCurrency(totalBill)}</span>
+                                        </div>
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>
+                                    <div className="space-y-4">
+                                        <div className="space-y-3">
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost Detail</Label>
+                                            <div className="grid gap-2">
+                                                <div className="grid grid-cols-3 items-center gap-4">
+                                                    <Label htmlFor="shift-cost" className="text-[10px] font-bold text-muted-foreground">SHIFT</Label>
+                                                    <div className="col-span-2 flex items-center gap-1.5">
+                                                        <span className="text-xs font-bold text-muted-foreground">$</span>
+                                                        <Input
+                                                            id="shift-cost"
+                                                            type="number"
+                                                            value={shiftCostManual}
+                                                            onChange={(e) => setShiftCostManual(e.target.value)}
+                                                            className="h-8 text-sm"
+                                                            placeholder="Auto"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-3 items-center gap-4">
+                                                    <Label htmlFor="ot-cost" className="text-[10px] font-bold text-muted-foreground">OVERTIME</Label>
+                                                    <div className="col-span-2 flex items-center gap-1.5">
+                                                        <span className="text-xs font-bold text-muted-foreground">$</span>
+                                                        <Input
+                                                            id="ot-cost"
+                                                            type="number"
+                                                            value={otCostManual}
+                                                            onChange={(e) => setOtCostManual(e.target.value)}
+                                                            className="h-8 text-sm"
+                                                            placeholder="Auto"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-3 items-center gap-4">
+                                                    <Label htmlFor="travel-cost" className="text-[10px] font-bold text-muted-foreground">TRAVEL</Label>
+                                                    <div className="col-span-2 flex items-center gap-1.5">
+                                                        <span className="text-xs font-bold text-muted-foreground">$</span>
+                                                        <Input
+                                                            id="travel-cost"
+                                                            type="number"
+                                                            value={travelCostManual}
+                                                            onChange={(e) => setTravelCostManual(e.target.value)}
+                                                            className="h-8 text-sm"
+                                                            placeholder="Auto"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="outline" onClick={() => setIsEditingOtCost(false)}>Cancel</Button>
+                                            <Button size="sm" className="bg-red-500 hover:bg-red-600" onClick={handleSave}>Save</Button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </td>
+
+                        {/* Net Income */}
+                        <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums">
+                            {fmtCurrency(totalInvoice - totalBill)}
                         </td>
 
                         <td className="px-3 py-2.5 text-center">

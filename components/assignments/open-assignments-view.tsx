@@ -200,8 +200,8 @@ export function OpenAssignmentsView() {
                 <Card
                   key={assignment.id}
                   className={`p-4 cursor-pointer transition-colors ${isSelected
-                      ? 'border-primary bg-primary/5'
-                      : 'hover:bg-muted/50'
+                    ? 'border-primary bg-primary/5'
+                    : 'hover:bg-muted/50'
                     }`}
                   onClick={() => handleSelectAssignment(assignment.id)}
                 >

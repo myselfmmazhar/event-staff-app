@@ -17,11 +17,16 @@ import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeftIcon, CheckIcon, CloseIcon, MoreVerticalIcon, CheckCircleIcon, ChevronUpIcon, ChevronDownIcon } from '@/components/ui/icons';
+import { ChevronLeftIcon, CheckIcon, CloseIcon, EditIcon, MoreVerticalIcon, CheckCircleIcon, ChevronUpIcon, ChevronDownIcon } from '@/components/ui/icons';
 import type { SortField, SortOrder, StaffingFilter, EventGroup, CallTimeRow, TimesheetTab, ClientGroup, TalentGroup } from '@/components/timesheet/types';
 import { TalentContactPopover } from '@/components/timesheet/talent-contact-popover';
 import { calcTotalBill, calcTotalInvoice, toNumber, calcScheduledHours, calcClockedHours, formatDate } from '@/components/timesheet/helpers';
 import { parseISO } from 'date-fns';
+import { CallTimeFormModal } from '@/components/call-times/call-time-form-modal';
+import { EventFormModal } from '@/components/events/event-form-modal';
+import { AmountType, EventStatus, SkillLevel, StaffRating, RateType } from '@prisma/client';
+import type { CreateCallTimeInput, UpdateCallTimeInput } from '@/lib/schemas/call-time.schema';
+import type { CreateEventInput, UpdateEventInput } from '@/lib/schemas/event.schema';
 
 export default function TimeManagerPage() {
     const { toast } = useToast();
@@ -53,6 +58,12 @@ export default function TimeManagerPage() {
         type: 'APPROVE' | 'REJECT' | 'REVIEW' | 'PENDING' | null;
         ids: string[];
     }>({ open: false, type: null, ids: [] });
+
+    // ── Edit Modal State ──
+    const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState<CallTimeRow | null>(null);
+    const [isEditEventOpen, setIsEditEventOpen] = useState(false);
+    const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
     // ── Data Fetching (using the new Time Manager rows query) ──
     const { data: assignments = [], isLoading, refetch } = trpc.timeEntry.getTimeManagerRows.useQuery({
@@ -87,6 +98,43 @@ export default function TimeManagerPage() {
         },
         onError: (e) => toast({ title: 'Error updating row', description: e.message, variant: 'error' }),
     });
+
+    const { data: fullEventData, isLoading: isLoadingEvent } = trpc.event.getById.useQuery(
+        { id: editingEventId || '' },
+        { enabled: !!editingEventId && isEditEventOpen }
+    );
+
+    const updateCallTimeMutation = trpc.callTime.update.useMutation({
+        onSuccess: () => {
+            toast({ title: 'Task updated successfully' });
+            setIsEditTaskOpen(false);
+            utils.timeEntry.getTimeManagerRows.invalidate();
+        },
+        onError: (e) => toast({ title: 'Error updating task', description: e.message, variant: 'error' }),
+    });
+
+    const updateEventMutation = trpc.event.update.useMutation({
+        onSuccess: () => {
+            toast({ title: 'Event updated successfully' });
+            setIsEditEventOpen(false);
+            utils.timeEntry.getTimeManagerRows.invalidate();
+        },
+        onError: (e) => toast({ title: 'Error updating event', description: e.message, variant: 'error' }),
+    });
+
+    // Bulk update mutations for attachments (if needed by EventFormModal)
+    const bulkSyncCallTimesMutation = trpc.callTime.bulkSyncForEvent.useMutation();
+    const bulkUpdateProductsMutation = trpc.eventAttachment.bulkUpdateProducts.useMutation();
+
+    const handleEditTask = (ct: CallTimeRow) => {
+        setEditingTask(ct);
+        setIsEditTaskOpen(true);
+    };
+
+    const handleEditEvent = (eventId: string) => {
+        setEditingEventId(eventId);
+        setIsEditEventOpen(true);
+    };
 
     // ── Helpers ──
     const toggleExpand = (id: string, e: React.MouseEvent) => {
@@ -686,14 +734,34 @@ export default function TimeManagerPage() {
                         </div>
                         <div className="flex items-center gap-2">
                             {subTab === 'all' && (
-                                <Button
-                                    size="sm"
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-                                    onClick={handleBatchApprove}
-                                >
-                                    <CheckIcon className="h-3.5 w-3.5" />
-                                    Approve Multiple
-                                </Button>
+                                <>
+                                    <Button
+                                        size="sm"
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                                        onClick={handleBatchApprove}
+                                    >
+                                        <CheckIcon className="h-3.5 w-3.5" />
+                                        Approve Multiple
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-blue-200 text-blue-700 hover:bg-blue-50 gap-1.5"
+                                        onClick={handleBatchReview}
+                                    >
+                                        <CheckCircleIcon className="h-3.5 w-3.5" />
+                                        Review Multiple
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-red-200 text-red-700 hover:bg-red-50 gap-1.5"
+                                        onClick={handleBatchReject}
+                                    >
+                                        <CloseIcon className="h-3.5 w-3.5" />
+                                        Reject Multiple
+                                    </Button>
+                                </>
                             )}
 
                             {subTab === 'invoice' && (
@@ -718,52 +786,6 @@ export default function TimeManagerPage() {
                                 </Button>
                             )}
 
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-blue-200 text-blue-700 hover:bg-blue-50 gap-1.5"
-                                onClick={handleBatchReview}
-                            >
-                                <CheckCircleIcon className="h-3.5 w-3.5" />
-                                Review Multiple
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-red-200 text-red-700 hover:bg-red-50 gap-1.5"
-                                onClick={handleBatchReject}
-                            >
-                                <CloseIcon className="h-3.5 w-3.5" />
-                                Reject Multiple
-                            </Button>
-
-                            {subTab === 'invoice' && (
-                                <>
-                                    <div className="w-px h-6 bg-slate-200 mx-1" />
-                                    <Button
-                                        size="sm"
-                                        className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
-                                        onClick={handleGenerateInvoices}
-                                    >
-                                        <CheckCircleIcon className="h-3.5 w-3.5" />
-                                        Generate Invoices
-                                    </Button>
-                                </>
-                            )}
-
-                            {subTab === 'bill' && (
-                                <>
-                                    <div className="w-px h-6 bg-slate-200 mx-1" />
-                                    <Button
-                                        size="sm"
-                                        className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
-                                        onClick={handleBatchBills}
-                                    >
-                                        <CheckCircleIcon className="h-3.5 w-3.5" />
-                                        Generate Bills
-                                    </Button>
-                                </>
-                            )}
                             <div className="w-px h-6 bg-slate-200 mx-1" />
                             <Button
                                 size="sm"
@@ -796,6 +818,7 @@ export default function TimeManagerPage() {
                             <TimesheetSummaryTable
                                 eventGroups={subTab === 'bill' ? billGroups : eventGroups}
                                 onEventClick={(id) => setSelectedEventId(id)}
+                                onEditEvent={handleEditEvent}
                                 sortBy={sortBy}
                                 sortOrder={sortOrder}
                                 onSort={handleSort}
@@ -846,6 +869,17 @@ export default function TimeManagerPage() {
                                                 )}
                                             </div>
                                         </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="bg-primary/5 hover:bg-primary/10 text-primary border-primary/20 gap-1.5 h-8 text-[11px]"
+                                                onClick={() => handleEditEvent(group.eventId)}
+                                            >
+                                                <EditIcon className="h-3.5 w-3.5" />
+                                                Edit Assignments
+                                            </Button>
+                                        </div>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
@@ -875,8 +909,9 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
                                                             <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                            <SortHeader id="price" label="Price" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                         </>
                                                     ) : subTab === 'commission' ? (
                                                         <>
@@ -888,7 +923,9 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                            <SortHeader id="bill" label="Bill Amount" align="text-right" />
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                         </>
                                                     ) : (
@@ -900,8 +937,9 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="actualShift" label="Actual Shift" />
                                                             <SortHeader id="variance" label="Variance" align="text-center" />
                                                             <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                            <SortHeader id="cost" label="Cost" align="text-right" />
-                                                            <SortHeader id="price" label="Price" align="text-right" />
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="commission" label="Commission" align="text-center" />
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                             <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
@@ -944,6 +982,7 @@ export default function TimeManagerPage() {
                                                                 onReject={handleReject}
                                                                 onReview={handleReview}
                                                                 onPending={handlePending}
+                                                                onEditTask={handleEditTask}
                                                                 subTab={subTab}
                                                             />
                                                         ));
@@ -963,6 +1002,7 @@ export default function TimeManagerPage() {
                                                             onReject={handleReject}
                                                             onReview={handleReview}
                                                             onPending={handlePending}
+                                                            onEditTask={handleEditTask}
                                                             subTab={subTab}
                                                         />
                                                     ));
@@ -1024,8 +1064,9 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="service" label="Services / Products" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
                                                             <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                            <SortHeader id="price" label="Price" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                         </>
                                                     ) : subTab === 'commission' ? (
                                                         <>
@@ -1037,7 +1078,9 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                            <SortHeader id="bill" label="Bill Amount" align="text-right" />
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                         </>
                                                     ) : (
@@ -1049,8 +1092,9 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="actualShift" label="Actual Shift" />
                                                             <SortHeader id="variance" label="Variance" align="text-center" />
                                                             <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                            <SortHeader id="cost" label="Cost" align="text-right" />
-                                                            <SortHeader id="price" label="Price" align="text-right" />
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="commission" label="Commission" align="text-center" />
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                             <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
@@ -1096,6 +1140,7 @@ export default function TimeManagerPage() {
                                                                 onReject={handleReject}
                                                                 onReview={handleReview}
                                                                 onPending={handlePending}
+                                                                onEditTask={handleEditTask}
                                                                 subTab={subTab}
                                                             />
                                                         ));
@@ -1116,6 +1161,7 @@ export default function TimeManagerPage() {
                                                                 onReject={handleReject}
                                                                 onReview={handleReview}
                                                                 onPending={handlePending}
+                                                                onEditTask={handleEditTask}
                                                                 subTab={subTab}
                                                             />
                                                         ));
@@ -1156,6 +1202,7 @@ export default function TimeManagerPage() {
                                                             onReject={handleReject}
                                                             onReview={handleReview}
                                                             onPending={handlePending}
+                                                            onEditTask={handleEditTask}
                                                             subTab={subTab}
                                                         />
                                                     ));
@@ -1198,9 +1245,15 @@ export default function TimeManagerPage() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Badge variant="secondary">
-                                                {group.callTimes.length} positions
-                                            </Badge>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="bg-primary/5 hover:bg-primary/10 text-primary border-primary/20 gap-1.5 h-8 text-[11px]"
+                                                onClick={() => handleEditEvent(group.eventId)}
+                                            >
+                                                <EditIcon className="h-3.5 w-3.5" />
+                                                Edit Assignments
+                                            </Button>
                                         </div>
                                     </div>
                                     <div className="overflow-x-auto">
@@ -1231,8 +1284,9 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="service" label="Services / Products" />
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
                                                             <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                            <SortHeader id="price" label="Price" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Invoice Amount</th>
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                         </>
                                                     ) : subTab === 'commission' ? (
                                                         <>
@@ -1244,7 +1298,9 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
                                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                            <SortHeader id="bill" label="Bill Amount" align="text-right" />
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                         </>
                                                     ) : (
@@ -1256,8 +1312,9 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="actualShift" label="Actual Shift" />
                                                             <SortHeader id="variance" label="Variance" align="text-center" />
                                                             <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                            <SortHeader id="cost" label="Cost" align="text-right" />
-                                                            <SortHeader id="price" label="Price" align="text-right" />
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="commission" label="Commission" align="text-center" />
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                             <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
@@ -1303,6 +1360,7 @@ export default function TimeManagerPage() {
                                                                 onReject={handleReject}
                                                                 onReview={handleReview}
                                                                 onPending={handlePending}
+                                                                onEditTask={handleEditTask}
                                                                 subTab={subTab}
                                                             />
                                                         ));
@@ -1323,6 +1381,7 @@ export default function TimeManagerPage() {
                                                                 onReject={handleReject}
                                                                 onReview={handleReview}
                                                                 onPending={handlePending}
+                                                                onEditTask={handleEditTask}
                                                                 subTab={subTab}
                                                             />
                                                         ));
@@ -1363,6 +1422,7 @@ export default function TimeManagerPage() {
                                                             onReject={handleReject}
                                                             onReview={handleReview}
                                                             onPending={handlePending}
+                                                            onEditTask={handleEditTask}
                                                             subTab={subTab}
                                                         />
                                                     ));
@@ -1403,6 +1463,86 @@ export default function TimeManagerPage() {
                                 confirmState.type === 'REVIEW' ? 'info' : 'default'
                     }
                     isLoading={reviewInvitationMutation.isPending}
+                />
+
+                {/* Task Manager Edit Modal */}
+                {editingTask && (
+                    <CallTimeFormModal
+                        open={isEditTaskOpen}
+                        onClose={() => {
+                            setIsEditTaskOpen(false);
+                            setEditingTask(null);
+                        }}
+                        eventId={editingTask.event.id}
+                        callTime={{
+                            id: editingTask.id,
+                            callTimeId: editingTask.callTimeId,
+                            serviceId: editingTask.service?.id || '',
+                            numberOfStaffRequired: editingTask.numberOfStaffRequired,
+                            skillLevel: editingTask.skillLevel as any,
+                            ratingRequired: (editingTask as any).ratingRequired ?? null,
+                            startDate: editingTask.startDate ? (typeof editingTask.startDate === 'string' ? parseISO(editingTask.startDate) : editingTask.startDate) : null,
+                            startTime: editingTask.startTime,
+                            endDate: editingTask.endDate ? (typeof editingTask.endDate === 'string' ? parseISO(editingTask.endDate) : editingTask.endDate) : null,
+                            endTime: editingTask.endTime,
+                            payRate: editingTask.payRate as any,
+                            payRateType: editingTask.payRateType as any,
+                            billRate: editingTask.billRate as any,
+                            billRateType: editingTask.billRateType as any,
+                            customCost: (editingTask as any).customCost ?? null,
+                            customPrice: (editingTask as any).customPrice ?? null,
+                            approveOvertime: editingTask.approveOvertime ?? false,
+                            overtimeRate: (editingTask.overtimeRate as any) ?? null,
+                            overtimeRateType: (editingTask.overtimeRateType as any) ?? null,
+                            commission: editingTask.commission ?? false,
+                            commissionAmount: editingTask.commissionAmount as any,
+                            commissionAmountType: editingTask.commissionAmountType as any,
+                            notes: editingTask.notes,
+                        }}
+                        onSubmit={(data) => {
+                            updateCallTimeMutation.mutate({
+                                id: editingTask.callTimeId,
+                                ...data as any,
+                            });
+                        }}
+                        isSubmitting={updateCallTimeMutation.isPending}
+                    />
+                )}
+
+                {/* Event Form Modal */}
+                <EventFormModal
+                    open={isEditEventOpen}
+                    onClose={() => {
+                        setIsEditEventOpen(false);
+                        setEditingEventId(null);
+                    }}
+                    event={fullEventData ? {
+                        ...fullEventData,
+                        dailyDigestMode: (fullEventData as any).dailyDigestMode ?? false,
+                        requireStaff: (fullEventData as any).requireStaff ?? false,
+                    } as any : null}
+                    onSubmit={async (data, attachments) => {
+                        if (editingEventId) {
+                            try {
+                                await updateEventMutation.mutateAsync({ id: editingEventId, ...data as any });
+                                if (attachments) {
+                                    await bulkSyncCallTimesMutation.mutateAsync({
+                                        eventId: editingEventId,
+                                        assignments: attachments.callTimes as any,
+                                    });
+                                    await bulkUpdateProductsMutation.mutateAsync({
+                                        eventId: editingEventId,
+                                        products: attachments.products as any,
+                                    });
+                                }
+                                utils.timeEntry.getTimeManagerRows.invalidate();
+                                setIsEditEventOpen(false);
+                            } catch (error) {
+                                // Error handled by mutation
+                            }
+                        }
+                    }}
+                    isSubmitting={updateEventMutation.isPending || bulkSyncCallTimesMutation.isPending || bulkUpdateProductsMutation.isPending}
                 />
             </div>
         </div>
