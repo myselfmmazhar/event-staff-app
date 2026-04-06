@@ -37,7 +37,7 @@ export function EventGroupTable({
     onSaveTimeEntry,
 }: EventGroupTableProps) {
     const totalStaff = group.callTimes.length;
-    const totalAssigned = group.callTimes.filter(ct => ct.staffId !== null).length;
+    const totalAssigned = group.callTimes.filter(ct => !!ct.staff).length;
     const groupNeedsStaff = totalAssigned < totalStaff;
 
     return (
