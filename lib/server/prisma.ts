@@ -10,25 +10,13 @@ const globalForPrisma = globalThis as unknown as {
 
 const pooledConnectionString = process.env.DATABASE_URL;
 const directConnectionString = process.env.DIRECT_URL;
-const useDirectUrl = process.env.PRISMA_USE_DIRECT_URL === "true";
-
-if (!pooledConnectionString && !directConnectionString) {
-  throw new Error("Missing DATABASE_URL and DIRECT_URL for Prisma");
-}
-
-if (pooledConnectionString && directConnectionString && pooledConnectionString !== directConnectionString) {
-  console.warn(
-    "Prisma warning: DATABASE_URL and DIRECT_URL are both set and differ. " +
-    "Ensure PM2 runtime env vars match and use the same connection string."
-  );
-}
-
-const connectionString = useDirectUrl
-  ? directConnectionString ?? pooledConnectionString
-  : pooledConnectionString ?? directConnectionString;
+const connectionString =
+  process.env.PRISMA_USE_DIRECT_URL === "true"
+    ? directConnectionString ?? pooledConnectionString
+    : pooledConnectionString ?? directConnectionString;
 
 if (!connectionString) {
-  throw new Error("Missing Prisma connection string after resolving DATABASE_URL/DIRECT_URL");
+  throw new Error("Missing DATABASE_URL (or DIRECT_URL) for Prisma");
 }
 
 function normalizePgConnectionString(raw: string) {
@@ -38,9 +26,6 @@ function normalizePgConnectionString(raw: string) {
     url.searchParams.delete("pgbouncer");
     url.searchParams.delete("connection_limit");
     url.searchParams.delete("pool_timeout");
-    if (!url.searchParams.has("schema")) {
-      url.searchParams.set("schema", "public");
-    }
     return url.toString();
   } catch {
     return raw;
