@@ -14,13 +14,14 @@ import type {
   StaffRating,
   AvailabilityStatus,
 } from '@prisma/client';
+import type { z } from 'zod';
+import type { StaffSchema } from '@/lib/schemas/staff.schema';
 
 /**
  * Form data structure for staff creation/editing
- * Uses generic `any` to avoid complex react-hook-form type inference issues
- * that arise from Zod transforms and conditional field logic
+ * Matches the Zod input schema type to avoid react-hook-form type conflicts
  */
-export type StaffFormData = any;
+export type StaffFormData = z.input<typeof StaffSchema.create>;
 
 /**
  * Base props for all form sections
