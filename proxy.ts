@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Next.js Middleware for Dynamic URL Routing
+ * Next.js Proxy for Dynamic URL Routing
  *
  * Intercepts requests and rewrites custom terminology routes to actual file paths.
- * Example: /talent → /staff (internal rewrite)
- * Example: /tasks → /events (internal rewrite)
+ * Example: /talent -> /staff (internal rewrite)
+ * Example: /tasks -> /events (internal rewrite)
  *
- * The middleware uses cookies to access terminology settings since it runs on Edge Runtime
+ * The proxy uses cookies to access terminology settings since it runs on Edge Runtime
  * and cannot directly query the database.
  */
 
@@ -32,9 +32,7 @@ function getTerminologyRoutes(request: NextRequest) {
   }
 
   // Fallback to environment variables
-  const staffSingular = process.env.NEXT_PUBLIC_TERM_STAFF_SINGULAR || "Staff";
   const staffPlural = process.env.NEXT_PUBLIC_TERM_STAFF_PLURAL || "Staff";
-  const eventSingular = process.env.NEXT_PUBLIC_TERM_EVENT_SINGULAR || "Event";
   const eventPlural = process.env.NEXT_PUBLIC_TERM_EVENT_PLURAL || "Events";
 
   return {
@@ -43,7 +41,7 @@ function getTerminologyRoutes(request: NextRequest) {
   };
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { staffRoute, eventRoute } = getTerminologyRoutes(request);
   const pathname = request.nextUrl.pathname;
 
@@ -57,28 +55,22 @@ export async function middleware(request: NextRequest) {
   }
 
   // Rewrite custom staff routes to /staff
-  // Example: /talent → /staff, /talent/123 → /staff/123
+  // Example: /talent -> /staff, /talent/123 -> /staff/123
   if (staffRoute !== "staff" && pathname.startsWith(`/${staffRoute}`)) {
-    const rewritePath = pathname.replace(
-      new RegExp(`^/${staffRoute}`),
-      "/staff"
-    );
+    const rewritePath = pathname.replace(new RegExp(`^/${staffRoute}`), "/staff");
     const url = request.nextUrl.clone();
     url.pathname = rewritePath;
     return NextResponse.rewrite(url);
   }
 
   // Rewrite custom event routes to /events
-  // Example: /tasks → /events, /tasks/123 → /events/123
+  // Example: /tasks -> /events, /tasks/123 -> /events/123
   // Exclude /tasks/timesheet and /tasks/shift as they have dedicated pages
-  const excludedTaskRoutes = ['/tasks/timesheet', '/tasks/shift'];
-  const isExcluded = excludedTaskRoutes.some(route => pathname.startsWith(route));
+  const excludedTaskRoutes = ["/tasks/timesheet", "/tasks/shift"];
+  const isExcluded = excludedTaskRoutes.some((route) => pathname.startsWith(route));
 
   if (!isExcluded && eventRoute !== "events" && pathname.startsWith(`/${eventRoute}`)) {
-    const rewritePath = pathname.replace(
-      new RegExp(`^/${eventRoute}`),
-      "/events"
-    );
+    const rewritePath = pathname.replace(new RegExp(`^/${eventRoute}`), "/events");
     const url = request.nextUrl.clone();
     url.pathname = rewritePath;
     return NextResponse.rewrite(url);
@@ -88,7 +80,7 @@ export async function middleware(request: NextRequest) {
 }
 
 /**
- * Middleware Configuration
+ * Proxy Configuration
  *
  * Matcher excludes:
  * - API routes
