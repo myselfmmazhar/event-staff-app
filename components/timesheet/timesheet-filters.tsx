@@ -49,7 +49,7 @@ export function TimesheetFilters({
                 <div className="relative flex-1 max-w-sm">
                     <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder={`Search ${eventPluralLabel} or positions...`}
+                        placeholder={`Search ${eventPluralLabel} or assignments...`}
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
                         className="pl-9"
@@ -114,7 +114,7 @@ export function TimesheetFilters({
                                     {(['all', 'needsStaff', 'fullyStaffed'] as const).map((value) => {
                                         const labels: Record<StaffingFilter, string> = {
                                             all: 'All',
-                                            needsStaff: 'Needs Staff',
+                                            needsStaff: 'Need Talents',
                                             fullyStaffed: 'Fully Staffed',
                                         };
                                         const isActive = staffingFilter === value;

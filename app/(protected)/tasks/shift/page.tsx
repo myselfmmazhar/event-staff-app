@@ -130,7 +130,7 @@ export default function ShiftPage() {
             render: (shift) => {
                 const staffNeeded = shift.numberOfStaffRequired - shift.confirmedCount;
                 return staffNeeded > 0 ? (
-                    <Badge variant="warning">Needs {staffNeeded}</Badge>
+                    <Badge variant="warning">Need Talents</Badge>
                 ) : (
                     <Badge variant="success">Full</Badge>
                 );
@@ -161,7 +161,7 @@ export default function ShiftPage() {
                     <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="text"
-                        placeholder={`Search ${terminology.event.plural.toLowerCase()} or positions...`}
+                        placeholder={`Search ${terminology.event.plural.toLowerCase()} or assignments...`}
                         value={search}
                         onChange={handleSearch}
                         className="pl-10"

@@ -16,7 +16,7 @@ import {
     calcTotalInvoice,
     formatTime
 } from './helpers';
-import { MapPinIcon, UploadIcon, ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
+import { MapPinIcon, UploadIcon, ChevronDownIcon, ChevronUpIcon, EditIcon } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/use-toast';
 
 interface TimesheetSummaryTableProps {
@@ -26,9 +26,10 @@ interface TimesheetSummaryTableProps {
     sortOrder?: SortOrder;
     onSort?: (field: SortField) => void;
     subTab?: 'all' | 'bill' | 'invoice' | 'commission';
+    onEditEvent?: (eventId: string) => void;
 }
 
-export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortOrder, onSort, subTab }: TimesheetSummaryTableProps) {
+export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortOrder, onSort, subTab, onEditEvent }: TimesheetSummaryTableProps) {
     const { toast } = useToast();
 
     const handleUpload = async (file: File, eventTitle: string) => {
@@ -73,28 +74,26 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
         return format(d, 'MMM d, yyyy (EEE)');
     };
 
-    // Remove local formatTime since it's now imported
-
     return (
         <Card className="overflow-hidden border border-border shadow-sm">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-muted/50 border-b border-border">
+                    <thead className="bg-[#f8fafc] border-b border-border">
                         <tr>
                             {[
                                 { id: 'startDate', label: 'Date / Time' },
                                 { id: 'event', label: 'Task' },
                                 { id: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
-                                { id: 'location', label: 'Location', align: 'text-center' },
+                                { id: 'location', label: 'Location' },
                                 { id: 'assignments', label: 'Assignments', align: 'text-center' },
-                                { id: 'status', label: 'Status' },
+                                { id: 'status', label: 'Status', align: 'text-center' },
                                 { id: 'invoice', label: 'Total Invoice', align: 'text-right' },
                                 { id: 'bill', label: 'Total Bill', align: 'text-right' },
                                 { id: 'netIncome', label: 'Net Income', align: 'text-right' },
                             ].map((col) => (
                                 <th
                                     key={col.id}
-                                    className={`px-4 py-3 font-semibold text-foreground cursor-pointer hover:bg-muted transition-colors ${col.align || ''}`}
+                                    className={`px-4 py-4 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors ${col.align || ''}`}
                                     onClick={() => onSort?.(col.id as SortField)}
                                 >
                                     <div className={`flex items-center gap-1 ${col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : ''}`}>
@@ -105,10 +104,10 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     </div>
                                 </th>
                             ))}
-                            <th className="px-4 py-3 font-semibold text-foreground text-center">Upload</th>
+                            <th className="px-4 py-4 font-semibold text-slate-600 text-right pr-6">Upload</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-border bg-card">
+                    <tbody className="divide-y divide-slate-100 bg-white">
                         {eventGroups.map((group) => {
                             const firstRow = group.callTimes[0];
                             const event = firstRow?.event;
@@ -118,100 +117,94 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                 return [typeof ct.startDate === 'string' ? parseISO(ct.startDate) : ct.startDate];
                             });
 
-                            const minDate = groupDates.length > 0
-                                ? new Date(Math.min(...groupDates.map((date) => date.getTime())))
-                                : null;
-                            const maxDate = groupDates.length > 0
-                                ? new Date(Math.max(...groupDates.map((date) => date.getTime())))
-                                : null;
-                            const hasDateRange = !!minDate && !!maxDate && minDate.getTime() !== maxDate.getTime();
+                            const eventDate = event?.startDate;
+                            const eventEndDate = event?.endDate;
 
                             const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
                             const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
                             const profit = totalInvoice - totalBill;
 
                             const completedCount = group.callTimes.filter(ct => ct.timeEntry?.clockIn && ct.timeEntry?.clockOut).length;
-                            const progress = group.callTimes.length > 0 ? (completedCount / group.callTimes.length) * 100 : 0;
-
-
 
                             return (
                                 <tr
                                     key={group.eventId}
-                                    className="hover:bg-muted/30 transition-colors"
+                                    className="hover:bg-slate-50/50 transition-colors group"
                                 >
-                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
+                                    <td className="px-4 py-5 text-slate-900 whitespace-nowrap align-top">
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-foreground">
-                                                {minDate ? formatDate(minDate) : 'TBD'}
-                                                {firstRow?.startTime && ` ${formatTime(firstRow.startTime)}`}
+                                            <span className="font-bold">
+                                                {eventDate ? formatDate(eventDate) : 'TBD'}
+                                                {event?.startTime && (
+                                                    <>
+                                                        {` • ${formatTime(event.startTime)}`}
+                                                        {event?.endTime && (!eventEndDate || eventDate && new Date(eventDate).getTime() === new Date(eventEndDate).getTime()) && (
+                                                            ` - ${formatTime(event.endTime)}`
+                                                        )}
+                                                    </>
+                                                )}
                                             </span>
-                                            {maxDate && (minDate?.getTime() !== maxDate.getTime()) && (
-                                                <span className="text-xs">
-                                                    to {formatDate(maxDate)}
-                                                    {firstRow?.endTime && ` ${formatTime(firstRow.endTime)}`}
+                                            {eventEndDate && eventDate && new Date(eventDate).getTime() !== new Date(eventEndDate).getTime() && (
+                                                <span className="text-[11px] text-slate-400 font-medium">
+                                                    to {formatDate(eventEndDate)} {event?.endTime && `• ${formatTime(event.endTime)}`}
                                                 </span>
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-4">
+                                    <td className="px-4 py-5 align-top">
                                         <button
                                             onClick={() => onEventClick(group.eventId)}
-                                            className="font-medium text-primary hover:underline text-left"
+                                            className="font-bold text-primary hover:underline text-left text-sm"
                                         >
                                             {group.eventTitle}
                                         </button>
+                                        <div className="text-[10px] text-slate-400 mt-0.5">#{group.eventDisplayId}</div>
                                     </td>
-                                    {/* <td className="px-4 py-4">
-                                        <Badge variant="outline" className="font-mono text-xs">
-                                            {group.eventDisplayId}
-                                        </Badge>
-                                    </td> */}
-                                    <td className="px-4 py-4 text-muted-foreground">
-                                        {
-                                            subTab === 'bill'
-                                                ? (firstRow?.staff ? `${firstRow.staff.firstName} ${firstRow.staff.lastName}` : 'No Staff')
-                                                : (event?.client?.businessName || 'No Client')
-                                        }
+                                    <td className="px-4 py-5 text-slate-500 align-top font-medium">
+                                        {subTab === 'bill'
+                                            ? (firstRow?.staff ? `${firstRow.staff.firstName} ${firstRow.staff.lastName}` : 'Multiple Talent')
+                                            : (group.clientName || 'No Client')}
                                     </td>
-                                    <td className="px-4 py-4 text-center">
-                                        <div className="text-sm text-muted-foreground">
-                                            <div className="font-medium text-foreground">{event?.venueName || '—'}</div>
-                                            {(event?.city || event?.state) && (
-                                                <div className="text-xs opacity-75">
-                                                    {[event?.city, event?.state].filter(Boolean).join(', ')}
-                                                </div>
+                                    <td className="px-4 py-5 align-top">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-slate-800">
+                                                {group.venueName || '—'}
+                                            </span>
+                                            {(group.city || group.state) && (
+                                                <span className="text-[11px] text-slate-400">
+                                                    {[group.city, group.state].filter(Boolean).join(', ')}
+                                                </span>
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-4 text-center">
-                                        <Badge variant="secondary">
-                                            {group.callTimes.length}
-                                        </Badge>
+                                    <td className="px-4 py-5 text-center align-top">
+                                        <div className="flex justify-center">
+                                            <Badge className="bg-orange-50 text-orange-600 border-none shadow-none font-bold px-2.5 py-0.5 pointer-events-none text-xs">
+                                                {group.callTimes.length}
+                                            </Badge>
+                                        </div>
                                     </td>
-                                    <td className="px-4 py-4">
-                                        {event?.status === 'COMPLETED' ? (
-                                            <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Completed</Badge>
-                                        ) : event?.status === 'IN_PROGRESS' || (completedCount > 0 && completedCount < group.callTimes.length) ? (
-                                            <Badge variant="warning" className="bg-amber-500/10 text-amber-600 border-amber-500/20">In Progress</Badge>
-                                        ) : event?.status === 'CANCELLED' ? (
-                                            <Badge variant="destructive" className="bg-red-500/10 text-red-600 border-red-500/20">Cancelled</Badge>
-                                        ) : event?.status === 'ASSIGNED' ? (
-                                            <Badge variant="info" className="bg-blue-500/10 text-blue-600 border-blue-500/20">Assigned</Badge>
-                                        ) : (
-                                            <Badge variant="outline" className="text-muted-foreground border-border">Draft</Badge>
-                                        )}
+                                    <td className="px-4 py-5 text-center align-top">
+                                        <div className="flex justify-center">
+                                            {event?.status === 'COMPLETED' ? (
+                                                <Badge className="bg-emerald-50 text-emerald-600 border-none shadow-none font-bold px-3 py-1 pointer-events-none text-xs">Completed</Badge>
+                                            ) : event?.status === 'IN_PROGRESS' || (completedCount > 0 && completedCount < group.callTimes.length) ? (
+                                                <Badge className="bg-amber-50 text-amber-600 border-none shadow-none font-bold px-3 py-1 pointer-events-none text-xs">In Progress</Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="text-slate-400 bg-slate-50 border-slate-200 font-bold px-3 py-1 pointer-events-none text-xs">Pending</Badge>
+                                            )}
+                                        </div>
                                     </td>
-                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-foreground">
+                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-slate-900">
                                         {fmtCurrency(totalInvoice)}
                                     </td>
-                                    <td className="px-4 py-4 text-right tabular-nums font-medium text-red-600">
+                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-red-500">
                                         {fmtCurrency(totalBill)}
                                     </td>
-                                    <td className={`px-4 py-4 text-right tabular-nums font-bold ${profit >= 0 ? 'text-foreground' : 'text-red-600'}`}>
+                                    <td className={`px-4 py-5 text-right tabular-nums align-top font-bold ${profit >= 0 ? 'text-slate-900' : 'text-red-500'}`}>
                                         {fmtCurrency(profit)}
                                     </td>
-                                    <td className="px-4 py-4 text-center">
+                                    <td className="px-4 py-5 text-right align-top pr-6">
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -223,18 +216,18 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                                 };
                                                 input.click();
                                             }}
-                                            className="p-1.5 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-primary"
+                                            className="p-1.5 text-slate-300 hover:text-primary transition-colors"
                                             title="Upload document"
                                         >
                                             <UploadIcon className="h-4 w-4" />
                                         </button>
                                     </td>
-                                </tr >
-                    );
-})}
-                </tbody >
-            </table >
-        </div >
-        </Card >
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </Card>
     );
 }

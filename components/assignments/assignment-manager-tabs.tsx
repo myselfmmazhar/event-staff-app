@@ -120,13 +120,13 @@ export function AssignmentManagerTabs({
           </Badge>
         </TabsTrigger>
         <TabsTrigger value="accepted" className="flex items-center gap-2">
-          Accepted
+          Accepted Assignments
           <Badge variant="secondary" className="ml-1 text-xs">
             {acceptedCount}
           </Badge>
         </TabsTrigger>
         <TabsTrigger value="open" className="flex items-center gap-2">
-          Open
+          Open Assignments
           {openCount > 0 && (
             <Badge variant="info" className="ml-1 text-xs">
               {openCount}

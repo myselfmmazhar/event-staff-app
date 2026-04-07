@@ -216,7 +216,7 @@ export class StaffService {
         const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
         const invitations: Array<{ email: string; firstName: string; token: string }> = [
-            { email: staffData.email, firstName: staffData.firstName, token: invitationToken }
+            { email: staffData.email ?? "", firstName: staffData.firstName ?? "", token: invitationToken }
         ];
 
         try {
@@ -225,6 +225,8 @@ export class StaffService {
                 data: {
                     staffId,
                     ...restStaffData,
+                    firstName: restStaffData.firstName ?? "",
+                    lastName: restStaffData.lastName ?? "",
                     documents: documents as Prisma.InputJsonValue ?? Prisma.JsonNull,
                     accountStatus: AccountStatus.PENDING, // Always start as pending
                     invitationToken,

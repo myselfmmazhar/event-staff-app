@@ -13,7 +13,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
-import { CloseIcon, EyeIcon } from '@/components/ui/icons';
+import { CloseIcon, EyeIcon, ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
 import { AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
@@ -153,6 +153,7 @@ function StaffFormContent({
 }: StaffFormContentProps) {
     const isEdit = !!staff;
     const [serviceSearch, setServiceSearch] = useState('');
+    const [showAccountDetails, setShowAccountDetails] = useState(false);
     const taxFormRef = useRef<TaxDetailsFormRef>(null);
 
     // Team members state for TEAM role
@@ -290,14 +291,43 @@ function StaffFormContent({
                     </div>
                 )}
 
-                {/* Account Details Section */}
-                <AccountDetailsSection
-                    {...sectionProps}
-                    companies={companies}
-                    terminology={terminology}
-                    labels={labels.global}
-                    className="mb-6"
-                />
+                {/* Account Details Section Toggle */}
+                <div className="mb-6">
+                    <button
+                        type="button"
+                        onClick={() => setShowAccountDetails(!showAccountDetails)}
+                        className="flex items-center gap-2 w-full p-3 bg-muted/20 hover:bg-muted/30 rounded-md border border-border transition-colors text-left"
+                    >
+                        {showAccountDetails ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
+                        <span className="font-semibold text-lg">Account Details</span>
+                        {!showAccountDetails && (
+                            <span className="text-sm text-muted-foreground ml-auto italic">
+                                (Status, Type, Role, Skill Level, Rating, Availability)
+                            </span>
+                        )}
+                    </button>
+
+                    {showAccountDetails && (
+                        <div className="mt-4 border-l-2 border-primary/30 pl-4 py-2 space-y-6">
+                            <AccountDetailsSection
+                                {...sectionProps}
+                                companies={companies}
+                                terminology={terminology}
+                                labels={labels.global}
+                            />
+                            
+                            {/* Tax Details Section (also part of account/legal info) */}
+                            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                                <h4 className="text-base font-semibold border-b border-border pb-2 mb-4">Tax Details</h4>
+                                <TaxDetailsForm
+                                    ref={isEdit ? undefined : taxFormRef}
+                                    staffId={staff?.id}
+                                    initialData={staff?.taxDetails ?? null}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Service Details Section */}
                 <ServiceDetailsSection
@@ -306,13 +336,13 @@ function StaffFormContent({
                     serviceSearch={serviceSearch}
                     onServiceSearchChange={setServiceSearch}
                     onCreateService={onCreateService}
-                    className="mb-6"
+                    className="mb-6 border-b pb-6"
                 />
 
                 {/* Talent Details Section */}
                 <TalentDetailsSection
                     {...sectionProps}
-                    className="mb-6"
+                    className="mb-6 border-b pb-6"
                 />
 
                 {/* Team Details Section - Only for TEAM role */}
@@ -320,7 +350,7 @@ function StaffFormContent({
                     <>
                         <TeamDetailsSection
                             {...sectionProps}
-                            className="mb-6"
+                            className="mb-6 border-b pb-6"
                         />
 
                         <TeamMembersSection
@@ -332,23 +362,13 @@ function StaffFormContent({
                             onRemoveTeamMember={removeTeamMember}
                             services={services}
                             disabled={isSubmitting}
-                            className="mb-6"
+                            className="mb-6 border-b pb-6"
                         />
                     </>
                 )}
 
                 {/* Documents Section */}
                 <DocumentsSection {...sectionProps} className="mb-6" />
-
-                {/* Tax Details Section */}
-                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Tax Details</h3>
-                    <TaxDetailsForm
-                        ref={isEdit ? undefined : taxFormRef}
-                        staffId={staff?.id}
-                        initialData={staff?.taxDetails ?? null}
-                    />
-                </div>
             </DialogContent>
 
             <DialogFooter>
@@ -422,21 +442,23 @@ export function StaffFormModal({
 
     return (
         <>
-            <Dialog open={open} onClose={onClose} fullScreen>
-                {/* Key on the form content forces complete remount when staff changes */}
-                <StaffFormContent
-                    key={formKey}
-                    staff={staff}
-                    onClose={onClose}
-                    onSubmit={onSubmit}
-                    isSubmitting={isSubmitting}
-                    onViewDetails={onViewDetails}
-                    onCreateService={() => setShowCreateService(true)}
-                    services={services}
-                    companies={companies}
-                    terminology={terminology}
-                    labels={labels}
-                />
+            <Dialog open={open} onClose={onClose}>
+                <DialogContent className="sm:max-w-4xl h-[90vh] flex flex-col p-6">
+                    {/* Key on the form content forces complete remount when staff changes */}
+                    <StaffFormContent
+                        key={formKey}
+                        staff={staff}
+                        onClose={onClose}
+                        onSubmit={onSubmit}
+                        isSubmitting={isSubmitting}
+                        onViewDetails={onViewDetails}
+                        onCreateService={() => setShowCreateService(true)}
+                        services={services}
+                        companies={companies}
+                        terminology={terminology}
+                        labels={labels}
+                    />
+                </DialogContent>
             </Dialog>
             {/* Service Modal rendered via portal to avoid nested form issues */}
             {mounted && showCreateService && createPortal(

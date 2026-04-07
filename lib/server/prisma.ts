@@ -48,13 +48,13 @@ const pgPool =
 const adapter = new PrismaPg(pgPool);
 
 export const prisma =
-  (globalForPrisma.prisma && (globalForPrisma.prisma as any).bill) ? globalForPrisma.prisma :
+  (globalForPrisma.prisma && (globalForPrisma.prisma as any).serviceCategory) ? globalForPrisma.prisma :
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
     adapter,
   });
 
-// Last updated: 2026-04-01T05:25:00Z - Triggering schema reload
+// Last updated: 2026-04-05T12:59:00Z - Triggering schema reload
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
   globalForPrisma.pgPool = pgPool;

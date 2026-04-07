@@ -53,6 +53,7 @@ export const ServiceSchema = {
       .transform((value) => Number.parseFloat(value.toFixed(2)))
       .optional()
       .nullable(),
+    categoryId: z.string().uuid('Invalid category ID').optional().nullable(),
   }),
 
   update: z.object({
@@ -108,6 +109,7 @@ export const ServiceSchema = {
       .transform((value) => Number.parseFloat(value.toFixed(2)))
       .optional()
       .nullable(),
+    categoryId: z.string().uuid('Invalid category ID').optional().nullable(),
   }),
 
   query: z.object({
