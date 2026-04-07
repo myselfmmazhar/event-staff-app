@@ -17,8 +17,8 @@ import type {
 
 /**
  * Form data structure for staff creation/editing
- * This matches the schema used in staff-form-modal
- * Using generic `any` for better compatibility with react-hook-form
+ * Uses generic `any` to avoid complex react-hook-form type inference issues
+ * that arise from Zod transforms and conditional field logic
  */
 export type StaffFormData = any;
 

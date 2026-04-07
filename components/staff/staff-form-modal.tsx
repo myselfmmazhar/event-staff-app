@@ -202,9 +202,9 @@ function StaffFormContent({
         control,
         watch,
         setValue,
-    } = useForm<StaffFormInput, undefined, StaffFormOutput>({
+    } = useForm<StaffFormInput>({
         resolver: zodResolver(formSchema),
-        defaultValues: initialValues,
+        defaultValues: initialValues as StaffFormInput,
     });
 
     const staffRole = watch('staffRole');
@@ -221,8 +221,8 @@ function StaffFormContent({
         setTeamMembers(prev => prev.filter((_, i) => i !== index));
     }, []);
 
-    // Properly typed submit handler
-    const handleFormSubmit: SubmitHandler<StaffFormOutput> = async (data) => {
+    // Properly typed submit handler (accepts Zod transformed output type)
+    const handleFormSubmit: SubmitHandler<StaffFormInput> = async (data) => {
         const submitData = {
             ...data,
             teamMembers: data.staffRole === StaffRole.TEAM ? teamMembers : undefined,
