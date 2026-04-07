@@ -113,7 +113,7 @@ const getFormValuesFromStaff = (staff: StaffWithRelations) => ({
 
 // Form schema for client-side
 const formSchema = StaffSchema.create;
-type StaffFormInput = z.input<typeof formSchema>;
+export type StaffFormInput = z.input<typeof formSchema>;
 type StaffFormOutput = z.infer<typeof formSchema>;
 
 interface StaffFormModalProps {

@@ -17,7 +17,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { forgetPassword } from '@/lib/client/auth';
+import { forgotPassword } from '@/lib/client/auth';
 import { trpc } from '@/lib/client/trpc';
 
 const ForgotPasswordSchema = z.object({
@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (data: ForgotPasswordInput) => {
     try {
-      const result = await forgetPassword({
+      const result = await forgotPassword({
         email: data.email,
         redirectTo: '/reset-password',
       });

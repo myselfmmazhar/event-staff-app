@@ -14,14 +14,13 @@ import type {
   StaffRating,
   AvailabilityStatus,
 } from '@prisma/client';
-import type { z } from 'zod';
-import type { StaffSchema } from '@/lib/schemas/staff.schema';
+import type { StaffFormInput } from '../staff-form-modal';
 
 /**
  * Form data structure for staff creation/editing
- * Matches the Zod input schema type to avoid react-hook-form type conflicts
+ * Matches the form input type used in staff-form-modal.tsx
  */
-export type StaffFormData = z.input<typeof StaffSchema.create>;
+export type StaffFormData = StaffFormInput;
 
 /**
  * Base props for all form sections
