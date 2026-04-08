@@ -105,20 +105,24 @@ export function TimesheetTableRow({
 
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
+    const hasActualShift = !!(te?.clockIn && te?.clockOut);
+    const effectiveBillBasis: 'ACTUAL' | 'SCHEDULED' = hasActualShift ? billBasis : 'SCHEDULED';
+    const effectiveInvoiceBasis: 'ACTUAL' | 'SCHEDULED' = hasActualShift ? invoiceBasis : 'SCHEDULED';
     const scheduledCost = calcScheduledCost(ct);
-    const clockedCostVal = calcClockedCost(te, ct);
+    const clockedCostVal = effectiveBillBasis === 'ACTUAL' ? calcClockedCost(te, ct) : scheduledCost;
     const otCost = calcOvertimeCost(te, ct);
     const otPrice = calcOvertimePrice(te, ct);
-    const clockedPriceVal = calcClockedPrice(te, ct);
-    const expCost = calcExpenditureCost(ct);
-    const expPrice = calcExpenditurePrice(ct);
+    const scheduledPrice = calcBillAmount(ct);
+    const clockedPriceVal = effectiveInvoiceBasis === 'ACTUAL' ? calcClockedPrice(te, ct) : scheduledPrice;
+    const expCost = calcExpenditureCost(ct, effectiveBillBasis);
+    const expPrice = calcExpenditurePrice(ct, effectiveInvoiceBasis);
     const billAmount = calcBillAmount(ct);
-    const totalBill = calcTotalBill(te, ct, isCommApp, billBasis);
-    const totalInvoice = calcTotalInvoice(te, ct, isCommApp, invoiceBasis);
+    const totalBill = calcTotalBill(te, ct, isCommApp, effectiveBillBasis);
+    const totalInvoice = calcTotalInvoice(te, ct, isCommApp, effectiveInvoiceBasis);
     const grossProfit = totalInvoice - totalBill;
 
-    const commissionCost = isCommApp ? totalBill - calcTotalBill(te, ct, false, billBasis) : 0;
-    const commissionPrice = isCommApp ? totalInvoice - calcTotalInvoice(te, ct, false, invoiceBasis) : 0;
+    const commissionCost = isCommApp ? totalBill - calcTotalBill(te, ct, false, effectiveBillBasis) : 0;
+    const commissionPrice = isCommApp ? totalInvoice - calcTotalInvoice(te, ct, false, effectiveInvoiceBasis) : 0;
 
 
 
@@ -378,7 +382,14 @@ export function TimesheetTableRow({
                                 <div className="flex items-center justify-between">
                                     <div className="flex flex-col gap-1">
                                         <span className="font-bold text-primary text-[12px] uppercase tracking-tight">
-                                            {ct.staff ? `${ct.staff.firstName} ${ct.staff.lastName}` : (ct.event?.title || '—')}
+                                            {ct.event?.title || '—'}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 font-medium">
+                                            {ct.event?.venueName || '—'}
+                                            {(ct.event?.city || ct.event?.state) ? ` (${[ct.event?.city, ct.event?.state].filter(Boolean).join(', ')})` : ''}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 font-medium">
+                                            Qty: {ct.mergedRows?.length || (!ct.staff ? ct.numberOfStaffRequired : 1)}
                                         </span>
                                         {ct.mergedRows && ct.mergedRows.length > 0 ? (
                                             <div className="flex flex-col gap-1 mt-1">
@@ -389,7 +400,9 @@ export function TimesheetTableRow({
                                                         </Badge>
                                                         <span className="text-slate-400 italic font-medium text-[9px]">
                                                             {billBasis === 'ACTUAL' ? (
-                                                                row.timeEntry?.clockIn ? `${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? formatTime(getTimeOnly(row.timeEntry.clockOut)) : '??'}` : 'Not clocked'
+                                                                row.timeEntry?.clockIn
+                                                                    ? `${formatDate(row.timeEntry.clockIn)} ${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? `${formatDate(row.timeEntry.clockOut)} ${formatTime(getTimeOnly(row.timeEntry.clockOut))}` : '??'}`
+                                                                    : 'Not clocked'
                                                             ) : (
                                                                 `${formatTime(row.startTime)} - ${formatTime(row.endTime)}`
                                                             )}
@@ -402,14 +415,11 @@ export function TimesheetTableRow({
                                                 <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100 text-[9px] px-1.5 py-0 font-bold uppercase">
                                                     {ct.service?.title || '—'}
                                                 </Badge>
-                                                <td className="text-center px-3 py-2 whitespace-nowrap">
-                                                    <Badge variant="outline" className="bg-muted/30 font-semibold">
-                                                        {ct.mergedRows?.length || (!ct.staff ? ct.numberOfStaffRequired : 1)}
-                                                    </Badge>
-                                                </td>
                                                 <span className="text-slate-400 italic font-medium">
                                                     {billBasis === 'ACTUAL' ? (
-                                                        te?.clockIn ? `${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '??'}` : 'Actual shift not clocked'
+                                                        te?.clockIn
+                                                            ? `${formatDate(te.clockIn)} ${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? `${formatDate(te.clockOut)} ${formatTime(getTimeOnly(te.clockOut))}` : '??'}`
+                                                            : 'Actual shift not clocked'
                                                     ) : (
                                                         `${formatTime(ct.startTime)} - ${formatTime(ct.endTime)}`
                                                     )}

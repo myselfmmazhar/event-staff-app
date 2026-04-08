@@ -53,6 +53,10 @@ export default function StaffPage() {
         setCreatedFrom,
         createdTo,
         setCreatedTo,
+        sortBy,
+        setSortBy,
+        sortOrder,
+        setSortOrder,
         resetFilters,
     } = useStaffFilters();
 
@@ -102,9 +106,25 @@ export default function StaffPage() {
         skillLevels: skillLevels.length > 0 ? skillLevels : undefined,
         createdFrom: createdFrom ? new Date(createdFrom) : undefined,
         createdTo: createdTo ? new Date(createdTo) : undefined,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
+        sortBy,
+        sortOrder,
     });
+
+    const handleSort = (field: string) => {
+        const normalizedField =
+            field === 'status' ? 'accountStatus' :
+            field === 'type' ? 'staffType' :
+            field === 'availability' ? 'availabilityStatus' :
+            field;
+
+        if (sortBy === normalizedField) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(normalizedField as any);
+            setSortOrder('asc');
+        }
+        setPage(1);
+    };
 
     // tRPC mutations
     const updateMutation = api.staff.update.useMutation({
@@ -633,6 +653,9 @@ export default function StaffPage() {
                                 onDelete={handleDelete}
                                 onViewDetails={handleViewDetails}
                                 onMessage={handleMessage}
+                                onSort={handleSort}
+                                sortBy={sortBy}
+                                sortOrder={sortOrder}
                                 selectedIds={selectedIds}
                                 onSelectionChange={setSelectedIds}
                             />
