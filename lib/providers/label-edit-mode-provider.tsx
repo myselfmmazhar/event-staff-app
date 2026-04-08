@@ -284,18 +284,18 @@ export function useLabelEditModeContext(): LabelEditModeContextValue {
     if (typeof window === 'undefined') {
       return {
         isEditMode: false,
+        currentPage: null,
+        editedLabels: {},
         toggleEditMode: () => {},
-        setEditMode: () => {},
-        resetEditMode: () => {},
-        pageIdentifier: 'unknown',
-        labelEdits: {},
-        updateLabel: () => {},
-        resetLabel: () => {},
-        saveAllChanges: async () => {},
-        discardAllChanges: () => {},
-        hasUnsavedChanges: false,
+        enterEditMode: () => {},
+        exitEditMode: () => {},
+        setLabel: () => {},
+        saveLabels: async () => {},
+        cancelEdit: () => {},
+        hasChanges: false,
         isSaving: false,
-        saveError: null
+        isAutoSaving: false,
+        saveError: null,
       };
     }
     throw new Error(
