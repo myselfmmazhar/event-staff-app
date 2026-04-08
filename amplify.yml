@@ -12,11 +12,11 @@ frontend:
         - echo "NEXT_PUBLIC_SUPABASE_URL=https://mvvgeirkqxstxrzotsaj.supabase.co" >> .env
         - echo "SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12dmdlaXJrcXhzdHhyem90c2FqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Mzc0Mjc2NywiZXhwIjoyMDc5MzE4NzY3fQ.FTiB5m_dwKUJ5drWc1sBlVvlLkIWhgNDJFhpUF3WMqU" >> .env
         - echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12dmdlaXJrcXhzdHhyem90c2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NDI3NjcsImV4cCI6MjA3OTMxODc2N30.UbEKQ94G2AdYXcYDYSVg76K24tCkAHRgiwSHDvUOK6Y" >> .env
-        - echo "NEXT_PUBLIC_APP_URL=https://dev.event-staff-dev.amplifyapp.com" >> .env
-        - echo "BETTER_AUTH_URL=https://dev.event-staff-dev.amplifyapp.com" >> .env
+        - echo "NEXT_PUBLIC_APP_URL=https://dev.d335dtcvqjyxcf.amplifyapp.com" >> .env
+        - echo "BETTER_AUTH_URL=https://dev.d335dtcvqjyxcf.amplifyapp.com" >> .env
         - echo "BETTER_AUTH_SECRET=dev-secret-32-chars-minimum-change-this-to-secure" >> .env
         - echo "JWT_SECRET=dev-jwt-secret-change-this-to-secure-too" >> .env
-        - echo "NODE_ENV=development" >> .env
+        - echo "NODE_ENV=production" >> .env
         - echo "SEED_ADMIN_ON_BOOT=true" >> .env
         - echo "ADMIN_EMAIL=admin@eventstaffapp.com" >> .env
         - echo "ADMIN_PASSWORD=Admin@123!" >> .env
