@@ -37,7 +37,7 @@ frontend:
 
         # Run database migrations and build
         - npx prisma generate
-        - npx prisma migrate resolve --rolled-back 20260317_add_time_entry_revisions
+        - npx prisma migrate resolve --applied 20260317_add_time_entry_revisions
         - npx prisma migrate deploy
         - npm run build
   artifacts:
