@@ -38,11 +38,18 @@ const poolMax =
   Number(process.env.PRISMA_PG_POOL_MAX) ||
   (process.env.NODE_ENV === "development" ? 1 : 5);
 
+const sslConfig =
+  connectionString.includes("sslmode=require") ||
+  connectionString.includes("rds.amazonaws.com")
+    ? { rejectUnauthorized: false }
+    : undefined;
+
 const pgPool =
   globalForPrisma.pgPool ??
   new pg.Pool({
     connectionString: normalizePgConnectionString(connectionString),
     max: poolMax,
+    ssl: sslConfig,
   });
 
 const adapter = new PrismaPg(pgPool);
