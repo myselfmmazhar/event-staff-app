@@ -39,7 +39,6 @@ frontend:
         - npx prisma generate
         - npx prisma migrate resolve --applied 20260317_add_time_entry_revisions || true
         - npx prisma migrate deploy
-        - npm run db:seed
         - npm run build
   artifacts:
     baseDirectory: .next
