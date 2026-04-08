@@ -3,7 +3,11 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MailIcon, PhoneIcon, MapPinIcon, UserIcon } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
-import { useRouter } from 'next/navigation';
+
+function openCommunicationManager(path: string) {
+    if (typeof window === 'undefined') return;
+    window.open(path, '_blank', 'noopener,noreferrer');
+}
 
 interface TalentContactPopoverProps {
     talent: {
@@ -20,7 +24,6 @@ interface TalentContactPopoverProps {
 }
 
 export function TalentContactPopover({ talent, trigger }: TalentContactPopoverProps) {
-    const router = useRouter();
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -50,8 +53,17 @@ export function TalentContactPopover({ talent, trigger }: TalentContactPopoverPr
                         <MailIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Email Address</span>
-                            <button 
-                                onClick={() => talent.email && router.push(`/communication-manager?tab=email&recipient=${talent.email}`)}
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (talent.email) {
+                                        openCommunicationManager(
+                                            `/communication-manager?tab=email&recipient=${encodeURIComponent(talent.email)}`
+                                        );
+                                    }
+                                }}
                                 className="text-sm font-medium hover:text-primary transition-colors text-left"
                             >
                                 {talent.email || '—'}
@@ -62,8 +74,17 @@ export function TalentContactPopover({ talent, trigger }: TalentContactPopoverPr
                         <PhoneIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Phone Number</span>
-                            <button 
-                                onClick={() => talent.phone && router.push(`/communication-manager?tab=messages&recipient=${talent.phone}`)}
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (talent.phone) {
+                                        openCommunicationManager(
+                                            `/communication-manager?tab=messages&recipient=${encodeURIComponent(talent.phone)}`
+                                        );
+                                    }
+                                }}
                                 className="text-sm font-medium hover:text-primary transition-colors text-left"
                             >
                                 {talent.phone || '—'}

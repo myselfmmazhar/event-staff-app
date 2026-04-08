@@ -79,8 +79,8 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortB
                                 }
                             });
 
-                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
-                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
+                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
+                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
                             const profit = totalInvoice - totalBill;
 
                             return (

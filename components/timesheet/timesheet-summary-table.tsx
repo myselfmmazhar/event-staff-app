@@ -123,12 +123,12 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                             const totalBill = group.callTimes.reduce((acc, ct) => {
                                 const hasActualShift = !!(ct.timeEntry?.clockIn && ct.timeEntry?.clockOut);
                                 const basis = hasActualShift ? 'ACTUAL' : 'SCHEDULED';
-                                return acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission, basis);
+                                return acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission, basis, !!ct.applyMinimum);
                             }, 0);
                             const totalInvoice = group.callTimes.reduce((acc, ct) => {
                                 const hasActualShift = !!(ct.timeEntry?.clockIn && ct.timeEntry?.clockOut);
                                 const basis = hasActualShift ? 'ACTUAL' : 'SCHEDULED';
-                                return acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission, basis);
+                                return acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission, basis, !!ct.applyMinimum);
                             }, 0);
                             const profit = totalInvoice - totalBill;
 

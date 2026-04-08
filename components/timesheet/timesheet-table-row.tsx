@@ -64,7 +64,7 @@ export function TimesheetTableRow({
     onToggleExpand: (id: string, e: React.MouseEvent) => void;
     onToggleSelect: (id: string, e: React.MouseEvent) => void;
     onViewEvent: (id: string) => void;
-    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null, notes?: string | null, shiftCost?: number | null, shiftPrice?: number | null, travelCost?: number | null, travelPrice?: number | null, commission?: boolean) => void;
+    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null, notes?: string | null, shiftCost?: number | null, shiftPrice?: number | null, travelCost?: number | null, travelPrice?: number | null, commission?: boolean, applyMinimum?: boolean) => void;
     showEventName?: boolean;
     onApprove?: (id: string) => void;
     onReject?: (id: string) => void;
@@ -92,6 +92,7 @@ export function TimesheetTableRow({
     const [isEditingOtCost, setIsEditingOtCost] = useState(false);
     const [isEditingOtPrice, setIsEditingOtPrice] = useState(false);
     const [isCommApp, setIsCommApp] = useState(!!ct.commission);
+    const [isMinApp, setIsMinApp] = useState(!!ct.applyMinimum);
     const [billBasis, setBillBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
     const [invoiceBasis, setInvoiceBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
 
@@ -100,8 +101,16 @@ export function TimesheetTableRow({
     }, [ct.commission]);
 
     useEffect(() => {
+        setIsMinApp(!!ct.applyMinimum);
+    }, [ct.applyMinimum]);
+
+    useEffect(() => {
         ct.commission = isCommApp;
     }, [isCommApp, ct]);
+
+    useEffect(() => {
+        ct.applyMinimum = isMinApp;
+    }, [isMinApp, ct]);
 
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
@@ -117,12 +126,12 @@ export function TimesheetTableRow({
     const expCost = calcExpenditureCost(ct, effectiveBillBasis);
     const expPrice = calcExpenditurePrice(ct, effectiveInvoiceBasis);
     const billAmount = calcBillAmount(ct);
-    const totalBill = calcTotalBill(te, ct, isCommApp, effectiveBillBasis);
-    const totalInvoice = calcTotalInvoice(te, ct, isCommApp, effectiveInvoiceBasis);
+    const totalBill = calcTotalBill(te, ct, isCommApp, effectiveBillBasis, isMinApp);
+    const totalInvoice = calcTotalInvoice(te, ct, isCommApp, effectiveInvoiceBasis, isMinApp);
     const grossProfit = totalInvoice - totalBill;
 
-    const commissionCost = isCommApp ? totalBill - calcTotalBill(te, ct, false, effectiveBillBasis) : 0;
-    const commissionPrice = isCommApp ? totalInvoice - calcTotalInvoice(te, ct, false, effectiveInvoiceBasis) : 0;
+    const commissionCost = isCommApp ? totalBill - calcTotalBill(te, ct, false, effectiveBillBasis, isMinApp) : 0;
+    const commissionPrice = isCommApp ? totalInvoice - calcTotalInvoice(te, ct, false, effectiveInvoiceBasis, isMinApp) : 0;
 
 
 
@@ -154,7 +163,8 @@ export function TimesheetTableRow({
                 parsedShiftPrice !== null && !isNaN(parsedShiftPrice) ? parsedShiftPrice : (shiftPriceManual === '' ? null : undefined),
                 parsedTravelCost !== null && !isNaN(parsedTravelCost) ? parsedTravelCost : (travelCostManual === '' ? null : undefined),
                 parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined),
-                isCommApp
+                isCommApp,
+                isMinApp
             );
             toast({
                 title: 'Changes saved',
@@ -188,6 +198,35 @@ export function TimesheetTableRow({
                 parsedShiftPrice !== null && !isNaN(parsedShiftPrice) ? parsedShiftPrice : (shiftPriceManual === '' ? null : undefined),
                 parsedTravelCost !== null && !isNaN(parsedTravelCost) ? parsedTravelCost : (travelCostManual === '' ? null : undefined),
                 parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined),
+                val,
+                isMinApp
+            );
+        }
+    };
+
+    const handleToggleMinimum = (val: boolean) => {
+        setIsMinApp(val);
+        if (onSaveTimeEntry) {
+            const parsedOtCost = otCostManual !== '' ? parseFloat(otCostManual) : null;
+            const parsedOtPrice = otPriceManual !== '' ? parseFloat(otPriceManual) : null;
+            const parsedShiftCost = shiftCostManual !== '' ? parseFloat(shiftCostManual) : null;
+            const parsedShiftPrice = shiftPriceManual !== '' ? parseFloat(shiftPriceManual) : null;
+            const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
+            const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
+
+            onSaveTimeEntry(
+                ct.id,
+                clockIn || null,
+                clockOut || null,
+                breakMins,
+                parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
+                parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined),
+                localNotes,
+                parsedShiftCost !== null && !isNaN(parsedShiftCost) ? parsedShiftCost : (shiftCostManual === '' ? null : undefined),
+                parsedShiftPrice !== null && !isNaN(parsedShiftPrice) ? parsedShiftPrice : (shiftPriceManual === '' ? null : undefined),
+                parsedTravelCost !== null && !isNaN(parsedTravelCost) ? parsedTravelCost : (travelCostManual === '' ? null : undefined),
+                parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined),
+                isCommApp,
                 val
             );
         }
@@ -296,7 +335,15 @@ export function TimesheetTableRow({
                                                 onBlur={handleSave}
                                             />
                                             <div className="flex justify-end mt-1">
-                                                <button onClick={handleSave} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                <button
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSave();
+                                                    }}
+                                                    className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                                >
                                                     <CheckIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -439,9 +486,18 @@ export function TimesheetTableRow({
                                                 onChange={e => setLocalNotes(e.target.value)}
                                                 className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-red-500 outline-none min-h-[40px] bg-white text-slate-700 font-medium"
                                                 autoFocus
+                                                onBlur={handleSave}
                                             />
                                             <div className="flex justify-end mt-1">
-                                                <button onClick={() => setIsEditingNotes(false)} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                <button
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSave();
+                                                    }}
+                                                    className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                                >
                                                     <CheckIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -583,9 +639,18 @@ export function TimesheetTableRow({
                                                 onChange={e => setLocalNotes(e.target.value)}
                                                 className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-red-500 outline-none min-h-[40px] bg-white text-slate-700 font-medium"
                                                 autoFocus
+                                                onBlur={handleSave}
                                             />
                                             <div className="flex justify-end mt-1">
-                                                <button onClick={() => setIsEditingNotes(false)} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                <button
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSave();
+                                                    }}
+                                                    className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                                >
                                                     <CheckIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -768,11 +833,6 @@ export function TimesheetTableRow({
                         <td className="px-3 py-2.5 text-center text-muted-foreground whitespace-nowrap text-[9px] uppercase font-bold">
                             {ct.payRateType.replace('PER_', '')}
                         </td>
-
-                        {/* Minimum */}
-                        {/* <td className="px-3 py-2.5 text-right font-medium text-slate-600 tabular-nums">
-                            {fmtCurrency(toNumber(ct.minimum))}
-                        </td> */}
 
                         {/* Total Invoice Detail */}
                         <td className="px-3 py-2.5 min-w-[140px]">
@@ -984,6 +1044,37 @@ export function TimesheetTableRow({
                                         className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${isCommApp ? 'translate-x-4' : 'translate-x-0'}`}
                                     />
                                 </button>
+                            </div>
+                        </td>
+
+                        {/* Minimum (toggle + floor amount; matches Total Invoice / Total Bill when on) */}
+                        <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="flex items-center justify-center gap-2">
+                                    <span className={`text-[10px] font-bold ${isMinApp ? 'text-amber-700' : 'text-slate-500'} uppercase tracking-wider min-w-[24px]`}>
+                                        {isMinApp ? 'On' : 'Off'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={isMinApp}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleMinimum(!isMinApp);
+                                        }}
+                                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-amber-400 focus:ring-offset-1 ${isMinApp ? 'bg-amber-500' : 'bg-slate-200'}`}
+                                    >
+                                        <span
+                                            aria-hidden="true"
+                                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${isMinApp ? 'translate-x-4' : 'translate-x-0'}`}
+                                        />
+                                    </button>
+                                </div>
+                                {isMinApp && (
+                                    <span className="text-[10px] font-semibold text-amber-800 tabular-nums">
+                                        {fmtCurrency(toNumber(ct.minimum))}
+                                    </span>
+                                )}
                             </div>
                         </td>
 
