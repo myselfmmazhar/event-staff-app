@@ -123,6 +123,10 @@ export function useLabelsContext(): LabelsContextValue {
   const context = useContext(LabelsContext);
 
   if (context === undefined) {
+    // During SSR, context might be undefined, return default values
+    if (typeof window === 'undefined') {
+      return getDefaultLabels();
+    }
     throw new Error(
       "useLabelsContext must be used within a LabelsProvider"
     );

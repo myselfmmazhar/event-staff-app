@@ -280,6 +280,24 @@ export function useLabelEditModeContext(): LabelEditModeContextValue {
   const context = useContext(LabelEditModeContext);
 
   if (context === undefined) {
+    // During SSR, context might be undefined, return default values
+    if (typeof window === 'undefined') {
+      return {
+        isEditMode: false,
+        toggleEditMode: () => {},
+        setEditMode: () => {},
+        resetEditMode: () => {},
+        pageIdentifier: 'unknown',
+        labelEdits: {},
+        updateLabel: () => {},
+        resetLabel: () => {},
+        saveAllChanges: async () => {},
+        discardAllChanges: () => {},
+        hasUnsavedChanges: false,
+        isSaving: false,
+        saveError: null
+      };
+    }
     throw new Error(
       "useLabelEditModeContext must be used within a LabelEditModeProvider"
     );
