@@ -3,7 +3,9 @@
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  baseURL: typeof window !== "undefined"
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
 });
 
 export const {
@@ -17,7 +19,9 @@ export const {
 
 // Custom forgot password function since better-auth doesn't expose it on client
 export const forgotPassword = async (data: { email: string; redirectTo?: string }) => {
-  const baseURL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseURL = typeof window !== "undefined"
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000");
   const response = await fetch(`${baseURL}/api/auth/forgot-password`, {
     method: 'POST',
     headers: {
