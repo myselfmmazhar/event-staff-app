@@ -1,0 +1,48 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # Inject all environment variables at build time
+        - echo "DATABASE_URL=postgresql://postgres:IhPzc7yjEfWaD5enxJ3W@event-staff-dev.c3qagmoaqnko.eu-north-1.rds.amazonaws.com:5432/postgres" >> .env
+        - echo "DIRECT_URL=postgresql://postgres:IhPzc7yjEfWaD5enxJ3W@event-staff-dev.c3qagmoaqnko.eu-north-1.rds.amazonaws.com:5432/postgres" >> .env
+        - echo "NEXT_PUBLIC_SUPABASE_URL=https://mvvgeirkqxstxrzotsaj.supabase.co" >> .env
+        - echo "SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12dmdlaXJrcXhzdHhyem90c2FqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Mzc0Mjc2NywiZXhwIjoyMDc5MzE4NzY3fQ.FTiB5m_dwKUJ5drWc1sBlVvlLkIWhgNDJFhpUF3WMqU" >> .env
+        - echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12dmdlaXJrcXhzdHhyem90c2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NDI3NjcsImV4cCI6MjA3OTMxODc2N30.UbEKQ94G2AdYXcYDYSVg76K24tCkAHRgiwSHDvUOK6Y" >> .env
+        - echo "NEXT_PUBLIC_APP_URL=https://dev.event-staff-dev.amplifyapp.com" >> .env
+        - echo "BETTER_AUTH_URL=https://dev.event-staff-dev.amplifyapp.com" >> .env
+        - echo "BETTER_AUTH_SECRET=dev-secret-32-chars-minimum-change-this-to-secure" >> .env
+        - echo "JWT_SECRET=dev-jwt-secret-change-this-to-secure-too" >> .env
+        - echo "NODE_ENV=development" >> .env
+        - echo "SEED_ADMIN_ON_BOOT=true" >> .env
+        - echo "ADMIN_EMAIL=admin@eventstaffapp.com" >> .env
+        - echo "ADMIN_PASSWORD=Admin@123!" >> .env
+        - echo "ADMIN_FIRST_NAME=Admin" >> .env
+        - echo "ADMIN_LAST_NAME=User" >> .env
+        - echo "NEXT_PUBLIC_TERM_STAFF_SINGULAR=Talent" >> .env
+        - echo "NEXT_PUBLIC_TERM_STAFF_PLURAL=Talents" >> .env
+        - echo "NEXT_PUBLIC_TERM_EVENT_SINGULAR=Task" >> .env
+        - echo "NEXT_PUBLIC_TERM_EVENT_PLURAL=Tasks" >> .env
+        - echo "SMTP_HOST=sandbox.smtp.mailtrap.io" >> .env
+        - echo "SMTP_PORT=2525" >> .env
+        - echo "SMTP_USER=bc13c45ddd9f08" >> .env
+        - echo "SMTP_PASS=25161e516a1b66" >> .env
+        - echo "SMTP_SECURE=false" >> .env
+        - echo "EMAIL_FROM=noreply@eventstaffapp.com" >> .env
+        - echo "RESEND_API_KEY=re_6agCUWEi_34CSz9SdKQuFoyVxcpMG64gW" >> .env
+        - echo "NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoiM3Rncm91cCIsImEiOiJjbWtkbTVnN2wwZHlyM2NxNTV2czRjNXVoIn0.RL_Ym-LdVzP1VMcLBvK7Jg" >> .env
+        
+        # Run database migrations and build
+        - npx prisma migrate deploy
+        - npx prisma generate
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
