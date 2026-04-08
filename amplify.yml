@@ -36,7 +36,6 @@ frontend:
         - echo "NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoiM3Rncm91cCIsImEiOiJjbWtkbTVnN2wwZHlyM2NxNTV2czRjNXVoIn0.RL_Ym-LdVzP1VMcLBvK7Jg" >> .env
         
         # Run database migrations and build
-        - npx prisma migrate deploy
         - npx prisma generate
         - npm run build
   artifacts:
