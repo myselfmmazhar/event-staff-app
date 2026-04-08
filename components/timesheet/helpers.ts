@@ -193,9 +193,19 @@ export function calcExpenditurePrice(ct: CallTimeRow, basis: 'ACTUAL' | 'SCHEDUL
     return amt;
 }
 
-export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false, basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL'): number {
+export function calcTotalBill(
+    timeEntry: CallTimeRow['timeEntry'],
+    ct: CallTimeRow,
+    isCommApplied = false,
+    basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL',
+    isMinimumApplied?: boolean
+): number {
+    const applyMin = isMinimumApplied !== undefined ? isMinimumApplied : !!ct.applyMinimum;
     if (ct.mergedRows && ct.mergedRows.length > 0) {
-        return ct.mergedRows.reduce((sum, row) => sum + calcTotalBill(row.timeEntry, row, isCommApplied, basis), 0);
+        return ct.mergedRows.reduce(
+            (sum, row) => sum + calcTotalBill(row.timeEntry, row, isCommApplied, basis, applyMin),
+            0
+        );
     }
     const base = basis === 'ACTUAL' ? calcClockedCost(timeEntry, ct) : calcScheduledCost(ct);
     const ot = basis === 'ACTUAL' ? calcOvertimeCost(timeEntry, ct) : 0;
@@ -211,12 +221,26 @@ export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeR
         }
     }
 
+    if (applyMin && ct.minimum != null) {
+        total = Math.max(total, toNumber(ct.minimum));
+    }
+
     return total;
 }
 
-export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false, basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL'): number {
+export function calcTotalInvoice(
+    timeEntry: CallTimeRow['timeEntry'],
+    ct: CallTimeRow,
+    isCommApplied = false,
+    basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL',
+    isMinimumApplied?: boolean
+): number {
+    const applyMin = isMinimumApplied !== undefined ? isMinimumApplied : !!ct.applyMinimum;
     if (ct.mergedRows && ct.mergedRows.length > 0) {
-        return ct.mergedRows.reduce((sum, row) => sum + calcTotalInvoice(row.timeEntry, row, isCommApplied, basis), 0);
+        return ct.mergedRows.reduce(
+            (sum, row) => sum + calcTotalInvoice(row.timeEntry, row, isCommApplied, basis, applyMin),
+            0
+        );
     }
     const base = basis === 'ACTUAL' ? calcClockedPrice(timeEntry, ct) : calcBillAmount(ct);
     const ot = basis === 'ACTUAL' ? calcOvertimePrice(timeEntry, ct) : 0;
@@ -230,6 +254,10 @@ export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTi
         } else if (ct.commissionAmountType === 'MULTIPLIER') {
             total += total * comm;
         }
+    }
+
+    if (applyMin && ct.minimum != null) {
+        total = Math.max(total, toNumber(ct.minimum));
     }
 
     return total;

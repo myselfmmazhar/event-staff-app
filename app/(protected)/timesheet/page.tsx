@@ -207,7 +207,8 @@ export default function TimeManagerPage() {
         shiftPrice?: number | null,
         travelCost?: number | null,
         travelPrice?: number | null,
-        commission?: boolean
+        commission?: boolean,
+        applyMinimum?: boolean
     ) => {
         // Find the matching assignment to get staffId/callTimeId
         const assignment = assignments.find((a: any) => a.id === invitationId);
@@ -228,6 +229,7 @@ export default function TimeManagerPage() {
             travelPrice: travelPrice,
             notes: notes ?? undefined,
             commission: commission,
+            applyMinimum: applyMinimum,
         });
     };
 
@@ -446,13 +448,31 @@ export default function TimeManagerPage() {
                         comparison = (calcClockedHours(a.timeEntry) - calcScheduledHours(a)) - (calcClockedHours(b.timeEntry) - calcScheduledHours(b));
                         break;
                     case 'cost':
-                        comparison = calcTotalBill(a.timeEntry, a, !!a.commission) - calcTotalBill(b.timeEntry, b, !!b.commission);
+                        comparison = calcTotalBill(a.timeEntry, a, !!a.commission, 'ACTUAL', !!a.applyMinimum) - calcTotalBill(b.timeEntry, b, !!b.commission, 'ACTUAL', !!b.applyMinimum);
                         break;
                     case 'price':
-                        comparison = calcTotalInvoice(a.timeEntry, a, !!a.commission) - calcTotalInvoice(b.timeEntry, b, !!b.commission);
+                        comparison = calcTotalInvoice(a.timeEntry, a, !!a.commission, 'ACTUAL', !!a.applyMinimum) - calcTotalInvoice(b.timeEntry, b, !!b.commission, 'ACTUAL', !!b.applyMinimum);
                         break;
                     case 'notes':
                         comparison = (a.notes || '').localeCompare(b.notes || '');
+                        break;
+                    case 'minimum':
+                        comparison = (a.applyMinimum ? 1 : 0) - (b.applyMinimum ? 1 : 0);
+                        if (comparison === 0) {
+                            comparison = toNumber(a.minimum) - toNumber(b.minimum);
+                        }
+                        break;
+                    case 'commission':
+                        comparison = (a.commission ? 1 : 0) - (b.commission ? 1 : 0);
+                        break;
+                    case 'invoice':
+                        comparison = calcTotalInvoice(a.timeEntry, a, !!a.commission, 'ACTUAL', !!a.applyMinimum) - calcTotalInvoice(b.timeEntry, b, !!b.commission, 'ACTUAL', !!b.applyMinimum);
+                        break;
+                    case 'bill':
+                        comparison = calcTotalBill(a.timeEntry, a, !!a.commission, 'ACTUAL', !!a.applyMinimum) - calcTotalBill(b.timeEntry, b, !!b.commission, 'ACTUAL', !!b.applyMinimum);
+                        break;
+                    case 'rateType':
+                        comparison = (a.payRateType || '').localeCompare(b.payRateType || '');
                         break;
                     default:
                         comparison = (a.startDate ? new Date(a.startDate).getTime() : 0) - (b.startDate ? new Date(b.startDate).getTime() : 0);
@@ -481,22 +501,22 @@ export default function TimeManagerPage() {
                     comparison = (a.callTimes[0]?.event?.status || '').localeCompare(b.callTimes[0]?.event?.status || '');
                     break;
                 case 'invoice': {
-                    const aVal = a.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
-                    const bVal = b.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
+                    const aVal = a.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
+                    const bVal = b.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
                     comparison = aVal - bVal;
                     break;
                 }
                 case 'bill': {
-                    const aVal = a.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
-                    const bVal = b.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
+                    const aVal = a.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
+                    const bVal = b.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
                     comparison = aVal - bVal;
                     break;
                 }
                 case 'netIncome': {
-                    const aInv = a.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
-                    const aBill = a.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
-                    const bInv = b.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
-                    const bBill = b.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
+                    const aInv = a.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
+                    const aBill = a.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
+                    const bInv = b.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
+                    const bBill = b.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
                     comparison = (aInv - aBill) - (bInv - bBill);
                     break;
                 }
@@ -671,13 +691,31 @@ export default function TimeManagerPage() {
                         comparison = (calcClockedHours(a.timeEntry) - calcScheduledHours(a)) - (calcClockedHours(b.timeEntry) - calcScheduledHours(b));
                         break;
                     case 'cost':
-                        comparison = calcTotalBill(a.timeEntry, a, !!a.commission) - calcTotalBill(b.timeEntry, b, !!b.commission);
+                        comparison = calcTotalBill(a.timeEntry, a, !!a.commission, 'ACTUAL', !!a.applyMinimum) - calcTotalBill(b.timeEntry, b, !!b.commission, 'ACTUAL', !!b.applyMinimum);
                         break;
                     case 'price':
-                        comparison = calcTotalInvoice(a.timeEntry, a, !!a.commission) - calcTotalInvoice(b.timeEntry, b, !!b.commission);
+                        comparison = calcTotalInvoice(a.timeEntry, a, !!a.commission, 'ACTUAL', !!a.applyMinimum) - calcTotalInvoice(b.timeEntry, b, !!b.commission, 'ACTUAL', !!b.applyMinimum);
                         break;
                     case 'notes':
                         comparison = (a.notes || '').localeCompare(b.notes || '');
+                        break;
+                    case 'minimum':
+                        comparison = (a.applyMinimum ? 1 : 0) - (b.applyMinimum ? 1 : 0);
+                        if (comparison === 0) {
+                            comparison = toNumber(a.minimum) - toNumber(b.minimum);
+                        }
+                        break;
+                    case 'commission':
+                        comparison = (a.commission ? 1 : 0) - (b.commission ? 1 : 0);
+                        break;
+                    case 'invoice':
+                        comparison = calcTotalInvoice(a.timeEntry, a, !!a.commission, 'ACTUAL', !!a.applyMinimum) - calcTotalInvoice(b.timeEntry, b, !!b.commission, 'ACTUAL', !!b.applyMinimum);
+                        break;
+                    case 'bill':
+                        comparison = calcTotalBill(a.timeEntry, a, !!a.commission, 'ACTUAL', !!a.applyMinimum) - calcTotalBill(b.timeEntry, b, !!b.commission, 'ACTUAL', !!b.applyMinimum);
+                        break;
+                    case 'rateType':
+                        comparison = (a.payRateType || '').localeCompare(b.payRateType || '');
                         break;
                     default:
                         comparison = (a.startDate ? new Date(a.startDate).getTime() : 0) - (b.startDate ? new Date(b.startDate).getTime() : 0);
@@ -1020,6 +1058,7 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="commission" label="Commission" align="text-center" />
+                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                             <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
                                                         </>
@@ -1175,6 +1214,7 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="commission" label="Commission" align="text-center" />
+                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                             <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
                                                         </>
@@ -1395,6 +1435,7 @@ export default function TimeManagerPage() {
                                                             <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="commission" label="Commission" align="text-center" />
+                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                             <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
                                                         </>

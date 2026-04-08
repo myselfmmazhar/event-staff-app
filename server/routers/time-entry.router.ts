@@ -44,6 +44,7 @@ export const timeEntryRouter = router({
             travelPrice: z.number().optional().nullable(),
             notes: z.string().optional(),
             commission: z.boolean().optional(),
+            applyMinimum: z.boolean().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
             const service = new TimeEntryService(ctx.prisma);
@@ -62,6 +63,7 @@ export const timeEntryRouter = router({
                 travelPrice: input.travelPrice,
                 notes: input.notes,
                 commission: input.commission,
+                applyMinimum: input.applyMinimum,
                 createdBy: ctx.userId as string,
             });
         }),

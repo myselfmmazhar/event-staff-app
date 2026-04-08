@@ -14,7 +14,7 @@ export function ExpandedRowDetail({ ct, onViewEvent }: { ct: CallTimeRow; onView
 
     return (
         <tr>
-            <td colSpan={19} className="px-6 py-4 bg-muted/10 border-b border-border">
+            <td colSpan={17} className="px-6 py-4 bg-muted/10 border-b border-border">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
                     {/* Profile Status */}
                     <div className="space-y-2">
