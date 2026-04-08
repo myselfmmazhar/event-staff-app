@@ -2,7 +2,17 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { AccountStatus, StaffType, SkillLevel } from "@prisma/client";
 
-export type StaffSortBy = "staffId" | "name" | "createdAt";
+export type StaffSortBy =
+  | "createdAt"
+  | "updatedAt"
+  | "staffId"
+  | "firstName"
+  | "lastName"
+  | "email"
+  | "accountStatus"
+  | "staffType"
+  | "skillLevel"
+  | "availabilityStatus";
 export type SortOrder = "asc" | "desc";
 
 interface StaffFiltersState {

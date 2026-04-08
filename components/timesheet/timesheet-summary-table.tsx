@@ -16,7 +16,7 @@ import {
     calcTotalInvoice,
     formatTime
 } from './helpers';
-import { MapPinIcon, UploadIcon, ChevronDownIcon, ChevronUpIcon, EditIcon } from '@/components/ui/icons';
+import { MapPinIcon, UploadIcon, ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon, EditIcon } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/use-toast';
 
 interface TimesheetSummaryTableProps {
@@ -98,9 +98,9 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                 >
                                     <div className={`flex items-center gap-1 ${col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : ''}`}>
                                         {col.label}
-                                        {sortBy === col.id && (
-                                            sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />
-                                        )}
+                                        {sortBy === col.id
+                                            ? (sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />)
+                                            : <ChevronsUpDownIcon className="h-4 w-4 opacity-50" />}
                                     </div>
                                 </th>
                             ))}
@@ -120,8 +120,16 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                             const eventDate = event?.startDate;
                             const eventEndDate = event?.endDate;
 
-                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
-                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
+                            const totalBill = group.callTimes.reduce((acc, ct) => {
+                                const hasActualShift = !!(ct.timeEntry?.clockIn && ct.timeEntry?.clockOut);
+                                const basis = hasActualShift ? 'ACTUAL' : 'SCHEDULED';
+                                return acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission, basis);
+                            }, 0);
+                            const totalInvoice = group.callTimes.reduce((acc, ct) => {
+                                const hasActualShift = !!(ct.timeEntry?.clockIn && ct.timeEntry?.clockOut);
+                                const basis = hasActualShift ? 'ACTUAL' : 'SCHEDULED';
+                                return acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission, basis);
+                            }, 0);
                             const profit = totalInvoice - totalBill;
 
                             const completedCount = group.callTimes.filter(ct => ct.timeEntry?.clockIn && ct.timeEntry?.clockOut).length;
@@ -135,18 +143,11 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                         <div className="flex flex-col">
                                             <span className="font-bold">
                                                 {eventDate ? formatDate(eventDate) : 'TBD'}
-                                                {event?.startTime && (
-                                                    <>
-                                                        {` • ${formatTime(event.startTime)}`}
-                                                        {event?.endTime && (!eventEndDate || eventDate && new Date(eventDate).getTime() === new Date(eventEndDate).getTime()) && (
-                                                            ` - ${formatTime(event.endTime)}`
-                                                        )}
-                                                    </>
-                                                )}
+                                                {event?.startTime ? ` • ${formatTime(event.startTime)}` : ''}
                                             </span>
-                                            {eventEndDate && eventDate && new Date(eventDate).getTime() !== new Date(eventEndDate).getTime() && (
+                                            {(eventEndDate || event?.endTime) && (
                                                 <span className="text-[11px] text-slate-400 font-medium">
-                                                    to {formatDate(eventEndDate)} {event?.endTime && `• ${formatTime(event.endTime)}`}
+                                                    to {formatDate(eventEndDate || eventDate || null)} {event?.endTime ? `• ${formatTime(event.endTime)}` : ''}
                                                 </span>
                                             )}
                                         </div>

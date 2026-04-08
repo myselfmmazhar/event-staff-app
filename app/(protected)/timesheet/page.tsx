@@ -17,7 +17,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeftIcon, CheckIcon, CloseIcon, EditIcon, MoreVerticalIcon, CheckCircleIcon, ChevronUpIcon, ChevronDownIcon } from '@/components/ui/icons';
+import { ChevronLeftIcon, CheckIcon, CloseIcon, EditIcon, MoreVerticalIcon, CheckCircleIcon, ChevronUpIcon, ChevronDownIcon, ChevronsUpDownIcon } from '@/components/ui/icons';
 import type { SortField, SortOrder, StaffingFilter, EventGroup, CallTimeRow, TimesheetTab, ClientGroup, TalentGroup } from '@/components/timesheet/types';
 import { TalentContactPopover } from '@/components/timesheet/talent-contact-popover';
 import { calcTotalBill, calcTotalInvoice, toNumber, calcScheduledHours, calcClockedHours, formatDate } from '@/components/timesheet/helpers';
@@ -158,8 +158,14 @@ export default function TimeManagerPage() {
 
     const isRejectedInvitation = (invitationId: string) => {
         const inv = assignments.find((a: any) => a.id === invitationId);
+        if (!inv || !inv.staffId) return true; // Unassigned placeholder rows are not actionable
         const rating = inv?.internalReviewRating ?? inv?.invitations?.[0]?.internalReviewRating ?? null;
         return rating === 'DID_NOT_MEET' || rating === 'NO_CALL_NO_SHOW';
+    };
+
+    const isActionableInvitation = (invitationId: string) => {
+        const inv = assignments.find((a: any) => a.id === invitationId);
+        return !!(inv && inv.staffId);
     };
 
     const toggleSelectAll = (ids: string[]) => {
@@ -240,10 +246,50 @@ export default function TimeManagerPage() {
         router.push('/finance/bills');
     };
 
-    const handleApprove = (id: string) => setConfirmState({ open: true, type: 'APPROVE', ids: [id] });
-    const handleReject = (id: string) => setConfirmState({ open: true, type: 'REJECT', ids: [id] });
-    const handleReview = (id: string) => setConfirmState({ open: true, type: 'REVIEW', ids: [id] });
-    const handlePending = (id: string) => setConfirmState({ open: true, type: 'PENDING', ids: [id] });
+    const handleApprove = (id: string) => {
+        if (!isActionableInvitation(id)) {
+            toast({
+                title: 'Cannot approve this row',
+                description: 'This task is unassigned. Please assign a staff member first, then approve.',
+                variant: 'destructive'
+            });
+            return;
+        }
+        setConfirmState({ open: true, type: 'APPROVE', ids: [id] });
+    };
+    const handleReject = (id: string) => {
+        if (!isActionableInvitation(id)) {
+            toast({
+                title: 'Cannot reject this row',
+                description: 'This task is unassigned. Please assign a staff member first.',
+                variant: 'destructive'
+            });
+            return;
+        }
+        setConfirmState({ open: true, type: 'REJECT', ids: [id] });
+    };
+    const handleReview = (id: string) => {
+        if (!isActionableInvitation(id)) {
+            toast({
+                title: 'Cannot review this row',
+                description: 'This task is unassigned. Please assign a staff member first.',
+                variant: 'destructive'
+            });
+            return;
+        }
+        setConfirmState({ open: true, type: 'REVIEW', ids: [id] });
+    };
+    const handlePending = (id: string) => {
+        if (!isActionableInvitation(id)) {
+            toast({
+                title: 'Cannot update this row',
+                description: 'This task is unassigned. Please assign a staff member first.',
+                variant: 'destructive'
+            });
+            return;
+        }
+        setConfirmState({ open: true, type: 'PENDING', ids: [id] });
+    };
 
     const handleBatchApprove = () => setConfirmState({ open: true, type: 'APPROVE', ids: Array.from(selectedRows) });
     const handleBatchReject = () => setConfirmState({ open: true, type: 'REJECT', ids: Array.from(selectedRows) });
@@ -253,21 +299,40 @@ export default function TimeManagerPage() {
     const executeConfirmedAction = () => {
         const { type, ids } = confirmState;
         if (!type || ids.length === 0) return;
+        const actionableIds = ids.filter((id) => isActionableInvitation(id));
+        const skippedCount = ids.length - actionableIds.length;
+
+        if (actionableIds.length === 0) {
+            toast({
+                title: 'No valid tasks selected',
+                description: 'Selected rows are unassigned. Please assign staff first.',
+                variant: 'destructive'
+            });
+            setConfirmState({ open: false, type: null, ids: [] });
+            return;
+        }
 
         reviewInvitationMutation.mutate(
-            { invitationIds: ids, decision: type },
+            { invitationIds: actionableIds, decision: type },
             {
                 onSuccess: (res: any) => {
                     utils.timeEntry.getTimeManagerRows.invalidate();
                     toast({
                         title: type === 'APPROVE' ? 'Approved' : type === 'REJECT' ? 'Rejected' : type === 'REVIEW' ? 'Reviewed' : 'Reset to Pending',
-                        description: ids.length > 1
-                            ? `Successfully processed ${ids.length} items.`
+                        description: actionableIds.length > 1
+                            ? `Successfully processed ${actionableIds.length} items.`
                             : `Successfully processed the selected item.`,
                     });
+                    if (skippedCount > 0) {
+                        toast({
+                            title: 'Some rows were skipped',
+                            description: `${skippedCount} unassigned row(s) were not processed.`,
+                            type: 'info'
+                        });
+                    }
                     setSelectedRows((prev) => {
                         const next = new Set(prev);
-                        ids.forEach(id => next.delete(id));
+                        actionableIds.forEach(id => next.delete(id));
                         return next;
                     });
                     setConfirmState({ open: false, type: null, ids: [] });
@@ -289,9 +354,11 @@ export default function TimeManagerPage() {
         >
             <div className={`flex items-center gap-1 ${align === 'text-right' ? 'justify-end' : align === 'text-center' ? 'justify-center' : ''}`}>
                 {label}
-                {sortBy === id && (
-                    sortOrder === 'asc' ? <ChevronUpIcon className="h-3.5 w-3.5 shrink-0" /> : <ChevronDownIcon className="h-3.5 w-3.5 shrink-0" />
-                )}
+                {sortBy === id
+                    ? (sortOrder === 'asc'
+                        ? <ChevronUpIcon className="h-3.5 w-3.5 shrink-0" />
+                        : <ChevronDownIcon className="h-3.5 w-3.5 shrink-0" />)
+                    : <ChevronsUpDownIcon className="h-3.5 w-3.5 shrink-0 opacity-50" />}
             </div>
         </th>
     );
@@ -299,13 +366,25 @@ export default function TimeManagerPage() {
     const viewAssignments = useMemo(() => {
         if (subTab === 'all') return assignments;
         if (subTab === 'invoice' || subTab === 'bill') {
-            return assignments.filter((inv: any) => inv.internalReviewRating === 'MET_EXPECTATIONS');
+            return assignments.filter((inv: any) => {
+                const rating = inv.internalReviewRating ?? inv.invitations?.[0]?.internalReviewRating ?? null;
+                return rating === 'MET_EXPECTATIONS';
+            });
         }
         if (subTab === 'commission') {
             return assignments.filter((inv: any) => !!inv.commission);
         }
         return assignments;
     }, [assignments, subTab]);
+
+    const shouldIncludeRowForSubTab = (ct: CallTimeRow) => {
+        if (subTab === 'commission') return !!ct.commission;
+        if (subTab === 'invoice' || subTab === 'bill') {
+            const rating = ct.invitations?.[0]?.internalReviewRating ?? null;
+            return rating === 'MET_EXPECTATIONS';
+        }
+        return true;
+    };
 
     // 1. Group by Task (Event)
     const eventGroups: EventGroup[] = useMemo(() => {
@@ -949,7 +1028,7 @@ export default function TimeManagerPage() {
                                             </thead>
                                             <tbody>
                                                 {(() => {
-                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
+                                                    const filtered = group.callTimes.filter(shouldIncludeRowForSubTab);
 
                                                     if (subTab === 'invoice') {
                                                         const serviceMap = new Map<string, CallTimeRow>();
@@ -1107,7 +1186,7 @@ export default function TimeManagerPage() {
                                             </thead>
                                             <tbody>
                                                 {(() => {
-                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
+                                                    const filtered = group.callTimes.filter(shouldIncludeRowForSubTab);
 
                                                     if (subTab === 'invoice') {
                                                         const serviceMap = new Map<string, CallTimeRow>();
@@ -1252,7 +1331,7 @@ export default function TimeManagerPage() {
                                                 onClick={() => handleEditEvent(group.eventId)}
                                             >
                                                 <EditIcon className="h-3.5 w-3.5" />
-                                                Edit Assignments
+                                                Edit Tasks
                                             </Button>
                                         </div>
                                     </div>
@@ -1327,7 +1406,7 @@ export default function TimeManagerPage() {
                                             </thead>
                                             <tbody>
                                                 {(() => {
-                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
+                                                    const filtered = group.callTimes.filter(shouldIncludeRowForSubTab);
 
                                                     if (subTab === 'invoice') {
                                                         const serviceMap = new Map<string, CallTimeRow>();
