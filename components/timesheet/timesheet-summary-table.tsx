@@ -78,7 +78,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
         <Card className="overflow-hidden border border-border shadow-sm">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-[#f8fafc] border-b border-border">
+                    <thead className="bg-muted/30 border-b border-border">
                         <tr>
                             {[
                                 { id: 'startDate', label: 'Date / Time' },
@@ -155,7 +155,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     <td className="px-4 py-5 align-top">
                                         <button
                                             onClick={() => onEventClick(group.eventId)}
-                                            className="font-bold text-primary hover:underline text-left text-sm"
+                                            className="font-bold text-foreground hover:underline text-left text-sm"
                                         >
                                             {group.eventTitle}
                                         </button>
@@ -180,7 +180,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     </td>
                                     <td className="px-4 py-5 text-center align-top">
                                         <div className="flex justify-center">
-                                            <Badge className="bg-orange-50 text-orange-600 border-none shadow-none font-bold px-2.5 py-0.5 pointer-events-none text-xs">
+                                            <Badge variant="secondary" className="font-bold px-2.5 py-0.5 pointer-events-none text-xs border border-border">
                                                 {group.callTimes.length}
                                             </Badge>
                                         </div>
@@ -188,21 +188,21 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     <td className="px-4 py-5 text-center align-top">
                                         <div className="flex justify-center">
                                             {event?.status === 'COMPLETED' ? (
-                                                <Badge className="bg-emerald-50 text-emerald-600 border-none shadow-none font-bold px-3 py-1 pointer-events-none text-xs">Completed</Badge>
+                                                <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">Completed</Badge>
                                             ) : event?.status === 'IN_PROGRESS' || (completedCount > 0 && completedCount < group.callTimes.length) ? (
-                                                <Badge className="bg-amber-50 text-amber-600 border-none shadow-none font-bold px-3 py-1 pointer-events-none text-xs">In Progress</Badge>
+                                                <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">In Progress</Badge>
                                             ) : (
-                                                <Badge variant="outline" className="text-slate-400 bg-slate-50 border-slate-200 font-bold px-3 py-1 pointer-events-none text-xs">Pending</Badge>
+                                                <Badge variant="outline" className="text-muted-foreground font-bold px-3 py-1 pointer-events-none text-xs">Pending</Badge>
                                             )}
                                         </div>
                                     </td>
                                     <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-slate-900">
                                         {fmtCurrency(totalInvoice)}
                                     </td>
-                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-red-500">
+                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground">
                                         {fmtCurrency(totalBill)}
                                     </td>
-                                    <td className={`px-4 py-5 text-right tabular-nums align-top font-bold ${profit >= 0 ? 'text-slate-900' : 'text-red-500'}`}>
+                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground">
                                         {fmtCurrency(profit)}
                                     </td>
                                     <td className="px-4 py-5 text-right align-top pr-6">
