@@ -51,51 +51,28 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon")
+    pathname.startsWith("/favicon") ||
+    pathname.includes(".") ||
+    pathname === "/"
   ) {
     return NextResponse.next();
   }
 
-  // Rewrite custom staff routes to /staff
-  // Example: /talent → /staff, /talent/123 → /staff/123
-  if (staffRoute !== "staff" && pathname.startsWith(`/${staffRoute}`)) {
-    const rewritePath = pathname.replace(
-      new RegExp(`^/${staffRoute}`),
-      "/staff"
-    );
-    const url = request.nextUrl.clone();
-    url.pathname = rewritePath;
-    return NextResponse.rewrite(url);
+  // Handle staff routes
+  if (pathname.startsWith(`/${staffRoute}`)) {
+    const newPathname = pathname.replace(`/${staffRoute}`, "/staff");
+    return NextResponse.rewrite(new URL(newPathname, request.url));
   }
 
-  // Rewrite custom event routes to /events
-  // Example: /tasks → /events, /tasks/123 → /events/123
-  // Exclude /tasks/timesheet and /tasks/shift as they have dedicated pages
-  const excludedTaskRoutes = ['/tasks/timesheet', '/tasks/shift'];
-  const isExcluded = excludedTaskRoutes.some(route => pathname.startsWith(route));
-
-  if (!isExcluded && eventRoute !== "events" && pathname.startsWith(`/${eventRoute}`)) {
-    const rewritePath = pathname.replace(
-      new RegExp(`^/${eventRoute}`),
-      "/events"
-    );
-    const url = request.nextUrl.clone();
-    url.pathname = rewritePath;
-    return NextResponse.rewrite(url);
+  // Handle event routes
+  if (pathname.startsWith(`/${eventRoute}`)) {
+    const newPathname = pathname.replace(`/${eventRoute}`, "/events");
+    return NextResponse.rewrite(new URL(newPathname, request.url));
   }
 
   return NextResponse.next();
 }
 
-/**
- * Middleware Configuration
- *
- * Matcher excludes:
- * - API routes
- * - Static files (_next/static)
- * - Image optimization (_next/image)
- * - Favicon
- */
 export const config = {
   matcher: [
     /*

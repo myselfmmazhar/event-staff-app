@@ -13,6 +13,13 @@ const TabsContext = createContext<TabsContextValue | null>(null);
 function useTabsContext() {
   const context = useContext(TabsContext);
   if (!context) {
+    // During SSR, context might be null, return default values
+    if (typeof window === 'undefined') {
+      return {
+        value: '',
+        onValueChange: () => {}
+      };
+    }
     throw new Error('Tabs components must be used within a Tabs provider');
   }
   return context;
