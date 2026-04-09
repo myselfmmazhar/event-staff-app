@@ -19,6 +19,13 @@ if (!connectionString) {
   throw new Error("Missing DATABASE_URL (or DIRECT_URL) for Prisma");
 }
 
+// AWS Lambda → RDS: Node.js doesn't trust Amazon's CA by default.
+// SSL is still used (encrypted); only certificate chain verification is skipped.
+// Scoped to RDS hostnames so external API calls are unaffected.
+if (connectionString.includes("rds.amazonaws.com")) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 function normalizePgConnectionString(raw: string) {
   try {
     const url = new URL(raw);

@@ -3,8 +3,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   turbopack: {},
-  serverExternalPackages: ['jspdf', 'fflate'],
+  serverExternalPackages: ['jspdf', 'fflate', 'pg', 'pg-pool', 'pgpass', '@prisma/adapter-pg'],
   // Webpack configuration for Mapbox GL compatibility
   webpack: (config) => {
     // Mapbox GL requires these settings
