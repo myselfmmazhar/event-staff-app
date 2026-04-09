@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { EditIcon, TrashIcon } from '@/components/ui/icons';
 import type { CategoryTableRow } from '@/lib/types/category';
+import { CATEGORY_REQUIREMENT_LABELS } from '@/lib/category-requirements';
 import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 
 interface CategoryTableProps {
@@ -132,6 +133,26 @@ export function CategoryTable({
       ),
     },
     {
+      key: 'requirementType',
+      label: 'Collection',
+      className: 'py-4 px-4 whitespace-nowrap text-sm',
+      render: (category) => (
+        <span className="text-foreground">
+          {CATEGORY_REQUIREMENT_LABELS[category.requirementType]}
+        </span>
+      ),
+    },
+    {
+      key: 'talentRequired',
+      label: 'Talent required',
+      className: 'py-4 px-4 whitespace-nowrap',
+      render: (category) => (
+        <Badge variant={category.isRequired ? 'primary' : 'secondary'} asSpan>
+          {category.isRequired ? 'Yes' : 'No'}
+        </Badge>
+      ),
+    },
+    {
       key: 'name',
       label: 'Name',
       sortable: true,
@@ -153,6 +174,14 @@ export function CategoryTable({
           <div className="flex-1">
             <div className="font-mono text-xs text-muted-foreground mb-1">{category.categoryId}</div>
             <h3 className="font-semibold text-card-foreground">{category.name}</h3>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <Badge variant="secondary" size="sm" asSpan>
+                {CATEGORY_REQUIREMENT_LABELS[category.requirementType]}
+              </Badge>
+              <Badge variant={category.isRequired ? 'primary' : 'secondary'} size="sm" asSpan>
+                {category.isRequired ? 'Required' : 'Optional'}
+              </Badge>
+            </div>
             {category.description && (
               <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
                 {category.description}

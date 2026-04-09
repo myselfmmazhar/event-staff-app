@@ -129,6 +129,8 @@ export default function CategoriesPage() {
     categoryId: category.categoryId,
     name: category.name,
     description: category.description ?? null,
+    requirementType: category.requirementType,
+    isRequired: category.isRequired,
     isActive: category.isActive,
     createdAt: category.createdAt,
   }));

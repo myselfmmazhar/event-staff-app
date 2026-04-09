@@ -348,17 +348,28 @@ model EventTemplate {
   @@map("event_templates")
 }
 
+enum CategoryRequirementType {
+  STANDARD
+  ESIGNATURE
+  FILE_UPLOAD
+  DRIVER_LICENSE
+  HEADSHOT
+  RESUME
+}
+
 model ServiceCategory {
-  id          String    @id @default(uuid()) @db.Uuid
-  categoryId  String    @unique
-  name        String    @db.VarChar(200)
-  description String?   @db.VarChar(1000)
-  isActive    Boolean   @default(true)
-  createdBy   String
-  createdAt   DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime  @updatedAt @db.Timestamp(6)
-  services    Service[]
-  createdByUser User    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  id              String                  @id @default(uuid()) @db.Uuid
+  categoryId      String                  @unique
+  name            String                  @db.VarChar(200)
+  description     String?                 @db.VarChar(1000)
+  requirementType CategoryRequirementType @default(STANDARD)
+  isRequired      Boolean                 @default(false)
+  isActive        Boolean                 @default(true)
+  createdBy       String
+  createdAt       DateTime                @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime                @updatedAt @db.Timestamp(6)
+  services        Service[]
+  createdByUser   User                    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([categoryId])
   @@index([name])
@@ -1072,6 +1083,7 @@ enum NotificationType {
   EVENT_FULLY_STAFFED
   EVENT_STARTED
   EVENT_COMPLETED
+  INVITATION_BATCH
 }
 
 enum RateType {
