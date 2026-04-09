@@ -15,6 +15,14 @@ const AccordionContext = createContext<AccordionContextValue | null>(null);
 function useAccordionContext() {
   const context = useContext(AccordionContext);
   if (!context) {
+    // During SSR, context might be null, return default values
+    if (typeof window === 'undefined') {
+      return {
+        openItems: [],
+        toggleItem: () => {},
+        type: 'single' as const
+      };
+    }
     throw new Error('Accordion components must be used within an Accordion provider');
   }
   return context;
@@ -30,6 +38,13 @@ const AccordionItemContext = createContext<AccordionItemContextValue | null>(nul
 function useAccordionItemContext() {
   const context = useContext(AccordionItemContext);
   if (!context) {
+    // During SSR, context might be null, return default values
+    if (typeof window === 'undefined') {
+      return {
+        value: '',
+        isOpen: false
+      };
+    }
     throw new Error('AccordionTrigger/Content must be used within an AccordionItem');
   }
   return context;

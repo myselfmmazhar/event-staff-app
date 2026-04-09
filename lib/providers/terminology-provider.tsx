@@ -142,6 +142,15 @@ export function useTerminologyContext(): TerminologyContextValue {
   const context = useContext(TerminologyContext);
 
   if (context === undefined) {
+    // During SSR, context might be undefined, return default values
+    if (typeof window === 'undefined') {
+      return {
+        terminology: getDefaultTerminology(),
+        isLoading: false,
+        error: null,
+        refreshTerminology: async () => {},
+      };
+    }
     throw new Error(
       "useTerminologyContext must be used within a TerminologyProvider"
     );
