@@ -64,7 +64,7 @@ export function TimesheetTableRow({
     onToggleExpand: (id: string, e: React.MouseEvent) => void;
     onToggleSelect: (id: string, e: React.MouseEvent) => void;
     onViewEvent: (id: string) => void;
-    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null, notes?: string | null, shiftCost?: number | null, shiftPrice?: number | null, travelCost?: number | null, travelPrice?: number | null, commission?: boolean) => void;
+    onSaveTimeEntry?: (invitationId: string, clockIn: string | null, clockOut: string | null, breakMins: number, otCost?: number | null, otPrice?: number | null, notes?: string | null, shiftCost?: number | null, shiftPrice?: number | null, travelCost?: number | null, travelPrice?: number | null, commission?: boolean, applyMinimum?: boolean) => void;
     showEventName?: boolean;
     onApprove?: (id: string) => void;
     onReject?: (id: string) => void;
@@ -92,6 +92,7 @@ export function TimesheetTableRow({
     const [isEditingOtCost, setIsEditingOtCost] = useState(false);
     const [isEditingOtPrice, setIsEditingOtPrice] = useState(false);
     const [isCommApp, setIsCommApp] = useState(!!ct.commission);
+    const [isMinApp, setIsMinApp] = useState(!!ct.applyMinimum);
     const [billBasis, setBillBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
     const [invoiceBasis, setInvoiceBasis] = useState<'ACTUAL' | 'SCHEDULED'>('ACTUAL');
 
@@ -100,25 +101,37 @@ export function TimesheetTableRow({
     }, [ct.commission]);
 
     useEffect(() => {
+        setIsMinApp(!!ct.applyMinimum);
+    }, [ct.applyMinimum]);
+
+    useEffect(() => {
         ct.commission = isCommApp;
     }, [isCommApp, ct]);
 
+    useEffect(() => {
+        ct.applyMinimum = isMinApp;
+    }, [isMinApp, ct]);
+
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
+    const hasActualShift = !!(te?.clockIn && te?.clockOut);
+    const effectiveBillBasis: 'ACTUAL' | 'SCHEDULED' = hasActualShift ? billBasis : 'SCHEDULED';
+    const effectiveInvoiceBasis: 'ACTUAL' | 'SCHEDULED' = hasActualShift ? invoiceBasis : 'SCHEDULED';
     const scheduledCost = calcScheduledCost(ct);
-    const clockedCostVal = calcClockedCost(te, ct);
+    const clockedCostVal = effectiveBillBasis === 'ACTUAL' ? calcClockedCost(te, ct) : scheduledCost;
     const otCost = calcOvertimeCost(te, ct);
     const otPrice = calcOvertimePrice(te, ct);
-    const clockedPriceVal = calcClockedPrice(te, ct);
-    const expCost = calcExpenditureCost(ct);
-    const expPrice = calcExpenditurePrice(ct);
+    const scheduledPrice = calcBillAmount(ct);
+    const clockedPriceVal = effectiveInvoiceBasis === 'ACTUAL' ? calcClockedPrice(te, ct) : scheduledPrice;
+    const expCost = calcExpenditureCost(ct, effectiveBillBasis);
+    const expPrice = calcExpenditurePrice(ct, effectiveInvoiceBasis);
     const billAmount = calcBillAmount(ct);
-    const totalBill = calcTotalBill(te, ct, isCommApp, billBasis);
-    const totalInvoice = calcTotalInvoice(te, ct, isCommApp, invoiceBasis);
+    const totalBill = calcTotalBill(te, ct, isCommApp, effectiveBillBasis, isMinApp);
+    const totalInvoice = calcTotalInvoice(te, ct, isCommApp, effectiveInvoiceBasis, isMinApp);
     const grossProfit = totalInvoice - totalBill;
 
-    const commissionCost = isCommApp ? totalBill - calcTotalBill(te, ct, false, billBasis) : 0;
-    const commissionPrice = isCommApp ? totalInvoice - calcTotalInvoice(te, ct, false, invoiceBasis) : 0;
+    const commissionCost = isCommApp ? totalBill - calcTotalBill(te, ct, false, effectiveBillBasis, isMinApp) : 0;
+    const commissionPrice = isCommApp ? totalInvoice - calcTotalInvoice(te, ct, false, effectiveInvoiceBasis, isMinApp) : 0;
 
 
 
@@ -150,7 +163,8 @@ export function TimesheetTableRow({
                 parsedShiftPrice !== null && !isNaN(parsedShiftPrice) ? parsedShiftPrice : (shiftPriceManual === '' ? null : undefined),
                 parsedTravelCost !== null && !isNaN(parsedTravelCost) ? parsedTravelCost : (travelCostManual === '' ? null : undefined),
                 parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined),
-                isCommApp
+                isCommApp,
+                isMinApp
             );
             toast({
                 title: 'Changes saved',
@@ -184,6 +198,35 @@ export function TimesheetTableRow({
                 parsedShiftPrice !== null && !isNaN(parsedShiftPrice) ? parsedShiftPrice : (shiftPriceManual === '' ? null : undefined),
                 parsedTravelCost !== null && !isNaN(parsedTravelCost) ? parsedTravelCost : (travelCostManual === '' ? null : undefined),
                 parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined),
+                val,
+                isMinApp
+            );
+        }
+    };
+
+    const handleToggleMinimum = (val: boolean) => {
+        setIsMinApp(val);
+        if (onSaveTimeEntry) {
+            const parsedOtCost = otCostManual !== '' ? parseFloat(otCostManual) : null;
+            const parsedOtPrice = otPriceManual !== '' ? parseFloat(otPriceManual) : null;
+            const parsedShiftCost = shiftCostManual !== '' ? parseFloat(shiftCostManual) : null;
+            const parsedShiftPrice = shiftPriceManual !== '' ? parseFloat(shiftPriceManual) : null;
+            const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
+            const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
+
+            onSaveTimeEntry(
+                ct.id,
+                clockIn || null,
+                clockOut || null,
+                breakMins,
+                parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
+                parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined),
+                localNotes,
+                parsedShiftCost !== null && !isNaN(parsedShiftCost) ? parsedShiftCost : (shiftCostManual === '' ? null : undefined),
+                parsedShiftPrice !== null && !isNaN(parsedShiftPrice) ? parsedShiftPrice : (shiftPriceManual === '' ? null : undefined),
+                parsedTravelCost !== null && !isNaN(parsedTravelCost) ? parsedTravelCost : (travelCostManual === '' ? null : undefined),
+                parsedTravelPrice !== null && !isNaN(parsedTravelPrice) ? parsedTravelPrice : (travelPriceManual === '' ? null : undefined),
+                isCommApp,
                 val
             );
         }
@@ -292,7 +335,15 @@ export function TimesheetTableRow({
                                                 onBlur={handleSave}
                                             />
                                             <div className="flex justify-end mt-1">
-                                                <button onClick={handleSave} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                <button
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSave();
+                                                    }}
+                                                    className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                                >
                                                     <CheckIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -378,7 +429,14 @@ export function TimesheetTableRow({
                                 <div className="flex items-center justify-between">
                                     <div className="flex flex-col gap-1">
                                         <span className="font-bold text-primary text-[12px] uppercase tracking-tight">
-                                            {ct.staff ? `${ct.staff.firstName} ${ct.staff.lastName}` : (ct.event?.title || '—')}
+                                            {ct.event?.title || '—'}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 font-medium">
+                                            {ct.event?.venueName || '—'}
+                                            {(ct.event?.city || ct.event?.state) ? ` (${[ct.event?.city, ct.event?.state].filter(Boolean).join(', ')})` : ''}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 font-medium">
+                                            Qty: {ct.mergedRows?.length || (!ct.staff ? ct.numberOfStaffRequired : 1)}
                                         </span>
                                         {ct.mergedRows && ct.mergedRows.length > 0 ? (
                                             <div className="flex flex-col gap-1 mt-1">
@@ -389,7 +447,9 @@ export function TimesheetTableRow({
                                                         </Badge>
                                                         <span className="text-slate-400 italic font-medium text-[9px]">
                                                             {billBasis === 'ACTUAL' ? (
-                                                                row.timeEntry?.clockIn ? `${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? formatTime(getTimeOnly(row.timeEntry.clockOut)) : '??'}` : 'Not clocked'
+                                                                row.timeEntry?.clockIn
+                                                                    ? `${formatDate(row.timeEntry.clockIn)} ${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? `${formatDate(row.timeEntry.clockOut)} ${formatTime(getTimeOnly(row.timeEntry.clockOut))}` : '??'}`
+                                                                    : 'Not clocked'
                                                             ) : (
                                                                 `${formatTime(row.startTime)} - ${formatTime(row.endTime)}`
                                                             )}
@@ -402,14 +462,11 @@ export function TimesheetTableRow({
                                                 <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100 text-[9px] px-1.5 py-0 font-bold uppercase">
                                                     {ct.service?.title || '—'}
                                                 </Badge>
-                                                <td className="text-center px-3 py-2 whitespace-nowrap">
-                                                    <Badge variant="outline" className="bg-muted/30 font-semibold">
-                                                        {ct.mergedRows?.length || (!ct.staff ? ct.numberOfStaffRequired : 1)}
-                                                    </Badge>
-                                                </td>
                                                 <span className="text-slate-400 italic font-medium">
                                                     {billBasis === 'ACTUAL' ? (
-                                                        te?.clockIn ? `${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '??'}` : 'Actual shift not clocked'
+                                                        te?.clockIn
+                                                            ? `${formatDate(te.clockIn)} ${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? `${formatDate(te.clockOut)} ${formatTime(getTimeOnly(te.clockOut))}` : '??'}`
+                                                            : 'Actual shift not clocked'
                                                     ) : (
                                                         `${formatTime(ct.startTime)} - ${formatTime(ct.endTime)}`
                                                     )}
@@ -429,9 +486,18 @@ export function TimesheetTableRow({
                                                 onChange={e => setLocalNotes(e.target.value)}
                                                 className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-red-500 outline-none min-h-[40px] bg-white text-slate-700 font-medium"
                                                 autoFocus
+                                                onBlur={handleSave}
                                             />
                                             <div className="flex justify-end mt-1">
-                                                <button onClick={() => setIsEditingNotes(false)} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                <button
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSave();
+                                                    }}
+                                                    className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                                >
                                                     <CheckIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -573,9 +639,18 @@ export function TimesheetTableRow({
                                                 onChange={e => setLocalNotes(e.target.value)}
                                                 className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-red-500 outline-none min-h-[40px] bg-white text-slate-700 font-medium"
                                                 autoFocus
+                                                onBlur={handleSave}
                                             />
                                             <div className="flex justify-end mt-1">
-                                                <button onClick={() => setIsEditingNotes(false)} className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+                                                <button
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSave();
+                                                    }}
+                                                    className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                                >
                                                     <CheckIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -758,11 +833,6 @@ export function TimesheetTableRow({
                         <td className="px-3 py-2.5 text-center text-muted-foreground whitespace-nowrap text-[9px] uppercase font-bold">
                             {ct.payRateType.replace('PER_', '')}
                         </td>
-
-                        {/* Minimum */}
-                        {/* <td className="px-3 py-2.5 text-right font-medium text-slate-600 tabular-nums">
-                            {fmtCurrency(toNumber(ct.minimum))}
-                        </td> */}
 
                         {/* Total Invoice Detail */}
                         <td className="px-3 py-2.5 min-w-[140px]">
@@ -974,6 +1044,37 @@ export function TimesheetTableRow({
                                         className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${isCommApp ? 'translate-x-4' : 'translate-x-0'}`}
                                     />
                                 </button>
+                            </div>
+                        </td>
+
+                        {/* Minimum (toggle + floor amount; matches Total Invoice / Total Bill when on) */}
+                        <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="flex items-center justify-center gap-2">
+                                    <span className={`text-[10px] font-bold ${isMinApp ? 'text-amber-700' : 'text-slate-500'} uppercase tracking-wider min-w-[24px]`}>
+                                        {isMinApp ? 'On' : 'Off'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={isMinApp}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleMinimum(!isMinApp);
+                                        }}
+                                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-amber-400 focus:ring-offset-1 ${isMinApp ? 'bg-amber-500' : 'bg-slate-200'}`}
+                                    >
+                                        <span
+                                            aria-hidden="true"
+                                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${isMinApp ? 'translate-x-4' : 'translate-x-0'}`}
+                                        />
+                                    </button>
+                                </div>
+                                {isMinApp && (
+                                    <span className="text-[10px] font-semibold text-amber-800 tabular-nums">
+                                        {fmtCurrency(toNumber(ct.minimum))}
+                                    </span>
+                                )}
                             </div>
                         </td>
 

@@ -160,6 +160,8 @@ export function TeamMembersSection({
                 }
                 placeholder="Select services"
                 disabled={disabled}
+                searchable
+                searchPlaceholder="Search services..."
               />
             </div>
           </div>

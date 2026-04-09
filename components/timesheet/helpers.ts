@@ -161,7 +161,7 @@ export function calcClockedPrice(timeEntry: CallTimeRow['timeEntry'], ct: CallTi
     return type === 'PER_HOUR' ? hours * rate : rate;
 }
 
-export function calcExpenditureCost(ct: CallTimeRow): number {
+export function calcExpenditureCost(ct: CallTimeRow, basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL'): number {
     if (ct.timeEntry?.travelCost !== undefined && ct.timeEntry?.travelCost !== null) {
         return toNumber(ct.timeEntry.travelCost);
     }
@@ -169,13 +169,15 @@ export function calcExpenditureCost(ct: CallTimeRow): number {
     
     const amt = toNumber(ct.expenditureCost ?? ct.expenditureAmount);
     if (ct.expenditureAmountType === 'MULTIPLIER') {
-        const base = calcClockedCost(ct.timeEntry, ct) + calcOvertimeCost(ct.timeEntry, ct);
+        const base = basis === 'ACTUAL'
+            ? calcClockedCost(ct.timeEntry, ct) + calcOvertimeCost(ct.timeEntry, ct)
+            : calcScheduledCost(ct);
         return base * amt;
     }
     return amt;
 }
 
-export function calcExpenditurePrice(ct: CallTimeRow): number {
+export function calcExpenditurePrice(ct: CallTimeRow, basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL'): number {
     if (ct.timeEntry?.travelPrice !== undefined && ct.timeEntry?.travelPrice !== null) {
         return toNumber(ct.timeEntry.travelPrice);
     }
@@ -183,19 +185,31 @@ export function calcExpenditurePrice(ct: CallTimeRow): number {
     
     const amt = toNumber(ct.expenditurePrice ?? ct.expenditureAmount);
     if (ct.expenditureAmountType === 'MULTIPLIER') {
-        const base = calcClockedPrice(ct.timeEntry, ct) + calcOvertimePrice(ct.timeEntry, ct);
+        const base = basis === 'ACTUAL'
+            ? calcClockedPrice(ct.timeEntry, ct) + calcOvertimePrice(ct.timeEntry, ct)
+            : calcBillAmount(ct);
         return base * amt;
     }
     return amt;
 }
 
-export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false, basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL'): number {
+export function calcTotalBill(
+    timeEntry: CallTimeRow['timeEntry'],
+    ct: CallTimeRow,
+    isCommApplied = false,
+    basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL',
+    isMinimumApplied?: boolean
+): number {
+    const applyMin = isMinimumApplied !== undefined ? isMinimumApplied : !!ct.applyMinimum;
     if (ct.mergedRows && ct.mergedRows.length > 0) {
-        return ct.mergedRows.reduce((sum, row) => sum + calcTotalBill(row.timeEntry, row, isCommApplied, basis), 0);
+        return ct.mergedRows.reduce(
+            (sum, row) => sum + calcTotalBill(row.timeEntry, row, isCommApplied, basis, applyMin),
+            0
+        );
     }
     const base = basis === 'ACTUAL' ? calcClockedCost(timeEntry, ct) : calcScheduledCost(ct);
     const ot = basis === 'ACTUAL' ? calcOvertimeCost(timeEntry, ct) : 0;
-    const exp = calcExpenditureCost(ct);
+    const exp = calcExpenditureCost(ct, basis);
     let total = base + ot + exp;
 
     if (isCommApplied && ct.commissionAmount) {
@@ -205,18 +219,32 @@ export function calcTotalBill(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeR
         } else if (ct.commissionAmountType === 'MULTIPLIER') {
             total += total * comm;
         }
+    }
+
+    if (applyMin && ct.minimum != null) {
+        total = Math.max(total, toNumber(ct.minimum));
     }
 
     return total;
 }
 
-export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow, isCommApplied = false, basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL'): number {
+export function calcTotalInvoice(
+    timeEntry: CallTimeRow['timeEntry'],
+    ct: CallTimeRow,
+    isCommApplied = false,
+    basis: 'ACTUAL' | 'SCHEDULED' = 'ACTUAL',
+    isMinimumApplied?: boolean
+): number {
+    const applyMin = isMinimumApplied !== undefined ? isMinimumApplied : !!ct.applyMinimum;
     if (ct.mergedRows && ct.mergedRows.length > 0) {
-        return ct.mergedRows.reduce((sum, row) => sum + calcTotalInvoice(row.timeEntry, row, isCommApplied, basis), 0);
+        return ct.mergedRows.reduce(
+            (sum, row) => sum + calcTotalInvoice(row.timeEntry, row, isCommApplied, basis, applyMin),
+            0
+        );
     }
     const base = basis === 'ACTUAL' ? calcClockedPrice(timeEntry, ct) : calcBillAmount(ct);
     const ot = basis === 'ACTUAL' ? calcOvertimePrice(timeEntry, ct) : 0;
-    const exp = calcExpenditurePrice(ct);
+    const exp = calcExpenditurePrice(ct, basis);
     let total = base + ot + exp;
 
     if (isCommApplied && ct.commissionAmount) {
@@ -226,6 +254,10 @@ export function calcTotalInvoice(timeEntry: CallTimeRow['timeEntry'], ct: CallTi
         } else if (ct.commissionAmountType === 'MULTIPLIER') {
             total += total * comm;
         }
+    }
+
+    if (applyMin && ct.minimum != null) {
+        total = Math.max(total, toNumber(ct.minimum));
     }
 
     return total;

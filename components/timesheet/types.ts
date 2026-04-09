@@ -20,6 +20,7 @@ export type CallTimeRow = {
     commissionAmount?: number | { toNumber?: () => number } | string | null;
     commissionAmountType?: string | null;
     minimum?: number | { toNumber?: () => number } | string | null;
+    applyMinimum?: boolean;
     expenditure?: boolean;
     expenditureAmount?: number | { toNumber?: () => number } | string | null;
     expenditureAmountType?: string | null;
@@ -126,6 +127,6 @@ export interface TalentGroup {
 
 export type TimesheetTab = 'task' | 'client' | 'talent';
 
-export type SortField = 'startDate' | 'event' | 'client' | 'location' | 'assignments' | 'invoice' | 'bill' | 'netIncome' | 'status' | 'staffName' | 'service' | 'scheduledShift' | 'actualShift' | 'variance' | 'rateType' | 'cost' | 'price' | 'commission' | 'notes';
+export type SortField = 'startDate' | 'event' | 'client' | 'location' | 'assignments' | 'invoice' | 'bill' | 'netIncome' | 'status' | 'staffName' | 'service' | 'scheduledShift' | 'actualShift' | 'variance' | 'rateType' | 'cost' | 'price' | 'commission' | 'minimum' | 'notes';
 export type SortOrder = 'asc' | 'desc';
 export type StaffingFilter = 'all' | 'needsStaff' | 'fullyStaffed';

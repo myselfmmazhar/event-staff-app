@@ -181,6 +181,7 @@ export class TimeEntryService {
                 expenditureCost: ct.expenditureCost,
                 expenditurePrice: ct.expenditurePrice,
                 minimum: ct.minimum,
+                applyMinimum: ct.applyMinimum,
                 callTime: {
                     ...ct,
                     invitations: undefined // Avoid circular/excessive data
@@ -214,6 +215,7 @@ export class TimeEntryService {
                         expenditureCost: ct.expenditureCost,
                         expenditurePrice: ct.expenditurePrice,
                         minimum: ct.minimum,
+                        applyMinimum: ct.applyMinimum,
                         callTime: {
                             ...ct,
                             invitations: undefined
@@ -264,15 +266,19 @@ export class TimeEntryService {
         travelPrice?: number | null;
         notes?: string;
         commission?: boolean;
+        applyMinimum?: boolean;
         createdBy: string;
     }) {
         const breakMinutes = data.breakMinutes ?? 0;
 
         return await (this.prisma as any).$transaction(async (tx: any) => {
-            if (data.commission !== undefined) {
+            if (data.commission !== undefined || data.applyMinimum !== undefined) {
                 await tx.callTime.update({
                     where: { id: data.callTimeId },
-                    data: { commission: data.commission },
+                    data: {
+                        ...(data.commission !== undefined ? { commission: data.commission } : {}),
+                        ...(data.applyMinimum !== undefined ? { applyMinimum: data.applyMinimum } : {}),
+                    },
                 });
             }
 

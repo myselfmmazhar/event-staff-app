@@ -102,12 +102,15 @@ interface StaffTableProps {
     onDelete: (staff: StaffWithRelations) => void;
     onViewDetails?: (staff: StaffWithRelations) => void;
     onMessage?: (staff: StaffWithRelations) => void;
+    onSort?: (field: string) => void;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
     // Optional selection props
     selectedIds?: Set<string>;
     onSelectionChange?: (ids: Set<string>) => void;
 }
 
-export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, selectedIds, onSelectionChange }: StaffTableProps) {
+export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, onSort, sortBy, sortOrder, selectedIds, onSelectionChange }: StaffTableProps) {
     const staffTerm = useStaffTerm();
     const { terminology } = useTerminology();
 
@@ -272,12 +275,14 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
         {
             key: 'status',
             label: columnLabels.status,
+            sortable: true,
             className: 'py-4 px-4',
             render: (member) => getStatusBadge(member.accountStatus),
         },
         {
             key: 'staffId',
             label: columnLabels.staffId,
+            sortable: true,
             className: 'py-4 px-4 whitespace-nowrap',
             render: (member) => (
                 <span className="font-mono text-sm text-muted-foreground">
@@ -286,8 +291,9 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
             ),
         },
         {
-            key: 'name',
+            key: 'firstName',
             label: columnLabels.name,
+            sortable: true,
             className: 'py-4 px-4',
             render: (member) => (
                 <span className="font-medium">{member.firstName} {member.lastName}</span>
@@ -296,6 +302,7 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
         {
             key: 'email',
             label: columnLabels.email,
+            sortable: true,
             className: 'py-4 px-4 text-sm text-muted-foreground',
             render: (member) => member.email,
         },
@@ -306,20 +313,23 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
             render: (member) => member.phone,
         },
         {
-            key: 'type',
+            key: 'staffType',
             label: columnLabels.type,
+            sortable: true,
             className: 'py-4 px-4',
             render: (member) => getTypeBadge(member.staffType),
         },
         {
             key: 'skillLevel',
             label: columnLabels.skillLevel,
+            sortable: true,
             className: 'py-4 px-4 text-sm capitalize',
             render: (member) => member.skillLevel.toLowerCase(),
         },
         {
-            key: 'availability',
+            key: 'availabilityStatus',
             label: columnLabels.availability,
+            sortable: true,
             className: 'py-4 px-4',
             render: (member) => getAvailabilityBadge(member.availabilityStatus),
         },
@@ -386,6 +396,9 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
         <DataTable
             data={staff}
             columns={columns}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={onSort}
             emptyMessage={`No ${staffTerm.lower} members found`}
             emptyDescription="Try adjusting your search or filters"
             mobileCard={renderMobileCard}

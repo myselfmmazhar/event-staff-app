@@ -24,7 +24,7 @@ export function SortableHeader({
 
   const getSortIcon = () => {
     if (!isActive) {
-      return <ChevronsUpDownIcon className="ml-2 h-4 w-4" />;
+      return <ChevronsUpDownIcon className="ml-2 h-4 w-4 opacity-50" />;
     }
     return currentSortOrder === 'asc' ? (
       <ChevronUpIcon className="ml-2 h-4 w-4" />

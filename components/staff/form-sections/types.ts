@@ -91,8 +91,6 @@ export interface AccountDetailsSectionProps extends StaffFormSectionProps {
  */
 export interface ServiceDetailsSectionProps extends StaffFormSectionProps {
   services: ServiceOption[];
-  serviceSearch: string;
-  onServiceSearchChange: (value: string) => void;
   onCreateService?: () => void;
 }
 
