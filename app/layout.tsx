@@ -12,8 +12,6 @@ export const metadata: Metadata = {
   description: "Comprehensive staff management and scheduling platform",
 };
 
-export const dynamic = 'force-dynamic';
-
 export default function RootLayout({
   children,
 }: Readonly<{

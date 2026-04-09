@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
+import { CATEGORY_REQUIREMENT_TYPE } from '@/lib/category-requirements';
 import { TRPCError } from '@trpc/server';
 import type {
   CreateCategoryInput,
@@ -18,6 +19,8 @@ export class CategoryService {
     categoryId: true,
     name: true,
     description: true,
+    requirementType: true,
+    isRequired: true,
     isActive: true,
     createdBy: true,
     createdAt: true,
@@ -28,11 +31,19 @@ export class CategoryService {
     try {
       const categoryId = await generateCategoryId(this.prisma);
 
+      const requirementType = data.requirementType ?? CATEGORY_REQUIREMENT_TYPE.STANDARD;
+      const isRequired =
+        requirementType === CATEGORY_REQUIREMENT_TYPE.STANDARD
+          ? false
+          : (data.isRequired ?? false);
+
       return await this.prisma.serviceCategory.create({
         data: {
           categoryId,
           name: data.name.trim(),
           description: data.description?.trim() || null,
+          requirementType,
+          isRequired,
           createdBy: createdByUserId,
         },
         select: this.categorySelect,
@@ -120,14 +131,24 @@ export class CategoryService {
   }
 
   async update(id: string, data: Omit<UpdateCategoryInput, 'id'>): Promise<CategorySelect> {
-    await this.findOne(id);
+    const current = await this.findOne(id);
 
     try {
+      const mergedType = data.requirementType ?? current.requirementType;
+      const mergedRequired =
+        mergedType === CATEGORY_REQUIREMENT_TYPE.STANDARD
+          ? false
+          : (data.isRequired ?? current.isRequired);
+
       return await this.prisma.serviceCategory.update({
         where: { id },
         data: {
-          name: data.name?.trim(),
-          description: data.description === null ? null : data.description?.trim(),
+          ...(data.name !== undefined && { name: data.name.trim() }),
+          ...(data.description !== undefined && {
+            description: data.description === null ? null : data.description.trim(),
+          }),
+          ...(data.requirementType !== undefined && { requirementType: data.requirementType }),
+          isRequired: mergedRequired,
         },
         select: this.categorySelect,
       }) as CategorySelect;
