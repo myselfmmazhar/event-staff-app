@@ -9,12 +9,15 @@ import {
     X,
     Clock,
     Users,
-    AlertCircle,
     UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/lib/hooks/useNotifications";
-import type { NotificationType, NotificationPriority } from "@prisma/client";
+import { NotificationType as NotificationTypeEnum } from "@prisma/client";
+import type { NotificationPriority } from "@prisma/client";
+
+/** Union derived from Prisma's runtime enum object (avoids stale `import type { NotificationType }` vs schema). */
+type NotificationType = (typeof NotificationTypeEnum)[keyof typeof NotificationTypeEnum];
 
 interface NotificationItemProps {
     notification: {
@@ -31,8 +34,11 @@ interface NotificationItemProps {
     onRead?: () => void;
 }
 
-// Icon mapping for notification types
-const typeIcons: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
+// Icon mapping for notification types (keys must match `NotificationTypeEnum` from Prisma generate)
+const typeIcons: Record<
+    keyof typeof NotificationTypeEnum,
+    React.ComponentType<{ className?: string }>
+> = {
     CALL_TIME_INVITATION: Calendar,
     INVITATION_RESPONSE: Check,
     INVITATION_CONFIRMED: Check,
@@ -46,10 +52,11 @@ const typeIcons: Record<NotificationType, React.ComponentType<{ className?: stri
     EVENT_FULLY_STAFFED: Check,
     EVENT_STARTED: Calendar,
     EVENT_COMPLETED: Check,
+    INVITATION_BATCH: Users,
 };
 
 // Color mapping for notification types
-const typeColors: Record<NotificationType, string> = {
+const typeColors: Record<keyof typeof NotificationTypeEnum, string> = {
     CALL_TIME_INVITATION: "text-blue-500",
     INVITATION_RESPONSE: "text-green-500",
     INVITATION_CONFIRMED: "text-green-600",
@@ -63,6 +70,7 @@ const typeColors: Record<NotificationType, string> = {
     EVENT_FULLY_STAFFED: "text-green-500",
     EVENT_STARTED: "text-blue-600",
     EVENT_COMPLETED: "text-green-700",
+    INVITATION_BATCH: "text-indigo-600",
 };
 
 /**

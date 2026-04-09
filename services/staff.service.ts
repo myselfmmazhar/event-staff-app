@@ -1,4 +1,20 @@
-import { PrismaClient, Prisma, AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus, UserRole } from "@prisma/client";
+import {
+    PrismaClient,
+    Prisma,
+    AccountStatus,
+    StaffType,
+    StaffRole,
+    SkillLevel,
+    StaffRating,
+    AvailabilityStatus,
+    UserRole,
+} from "@prisma/client";
+import {
+    CATEGORY_REQUIREMENT_LABELS,
+    type CategoryRequirementRule,
+    requirementTypeNeedsDocuments,
+    requirementTypeNeedsEsignature,
+} from "@/lib/category-requirements";
 import { TRPCError } from "@trpc/server";
 import { randomBytes } from "crypto";
 import { hashPassword } from "better-auth/crypto";
@@ -174,6 +190,75 @@ export class StaffService {
         this.settingsService = new SettingsService(prisma);
     }
 
+    private async getCategoryRulesForServiceIds(serviceIds: string[]): Promise<CategoryRequirementRule[]> {
+        if (serviceIds.length === 0) return [];
+        const services = await this.prisma.service.findMany({
+            where: { id: { in: serviceIds } },
+            select: {
+                category: {
+                    select: {
+                        requirementType: true,
+                        isRequired: true,
+                        name: true,
+                    },
+                },
+            },
+        });
+        const rules: CategoryRequirementRule[] = [];
+        for (const s of services) {
+            if (!s.category) continue;
+            rules.push({
+                requirementType: s.category.requirementType,
+                isRequired: s.category.isRequired,
+                categoryName: s.category.name,
+            });
+        }
+        return rules;
+    }
+
+    /**
+     * Enforces catalog category rules (document upload, e-signature on tax form) for assigned services.
+     */
+    private assertCategoryRequirementsMet(
+        rules: CategoryRequirementRule[],
+        opts: {
+            documents?: Array<{ name: string; url: string }> | null;
+            taxSignatureUrl?: string | null;
+            /** When true, e-signature is not enforced (e.g. tax saved after staff create). */
+            allowMissingTaxSignature?: boolean;
+        }
+    ): void {
+        const docs = opts.documents ?? [];
+        const needDocs = rules.some(
+            (r) => r.isRequired && requirementTypeNeedsDocuments(r.requirementType)
+        );
+        if (needDocs && docs.length === 0) {
+            const labels = rules
+                .filter((r) => r.isRequired && requirementTypeNeedsDocuments(r.requirementType))
+                .map((r) => `${CATEGORY_REQUIREMENT_LABELS[r.requirementType]} (${r.categoryName})`);
+            throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `Please upload at least one document. Required for: ${[...new Set(labels)].join(", ")}`,
+            });
+        }
+        const needSign = rules.some(
+            (r) => r.isRequired && requirementTypeNeedsEsignature(r.requirementType)
+        );
+        if (
+            needSign &&
+            !opts.allowMissingTaxSignature &&
+            !(opts.taxSignatureUrl && String(opts.taxSignatureUrl).trim().length > 0)
+        ) {
+            const names = rules
+                .filter((r) => r.isRequired && requirementTypeNeedsEsignature(r.requirementType))
+                .map((r) => r.categoryName);
+            throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `Tax form e-signature is required for services in: ${[...new Set(names)].join(", ")}`,
+            });
+        }
+    }
+
     /**
      * Generate invitation token
      */
@@ -221,6 +306,14 @@ export class StaffService {
 
         try {
             const { documents, ...restStaffData } = staffData;
+            const rules = await this.getCategoryRulesForServiceIds(serviceIds);
+            const docList =
+                (documents as Array<{ name: string; url: string }> | null | undefined) ?? null;
+            this.assertCategoryRequirementsMet(rules, {
+                documents: docList,
+                allowMissingTaxSignature: true,
+            });
+
             const staff = await this.prisma.staff.create({
                 data: {
                     staffId,
@@ -392,12 +485,16 @@ export class StaffService {
     async acceptInvitation(
         data: AcceptStaffInvitationInput
     ): Promise<StaffSelect> {
-        const { token, password, ...profileData } = data;
-        const terminology = await this.settingsService.getTerminology();
+        const { token, password, documents, ...profileData } = data;
 
         // Find staff by invitation token
         const staff = await this.prisma.staff.findUnique({
             where: { invitationToken: token },
+            include: {
+                services: {
+                    select: { serviceId: true },
+                },
+            },
         });
 
         if (!staff) {
@@ -413,6 +510,19 @@ export class StaffService {
                 message: "Invitation has expired. Please request a new invitation.",
             });
         }
+
+        const rules = await this.getCategoryRulesForServiceIds(
+            staff.services.map((s) => s.serviceId)
+        );
+        this.assertCategoryRequirementsMet(rules, {
+            documents: documents ?? [],
+            allowMissingTaxSignature: true,
+        });
+
+        const documentsPatch =
+            documents !== undefined
+                ? { documents: documents as Prisma.InputJsonValue }
+                : {};
 
         try {
             // Check if user already exists with this email
@@ -464,6 +574,7 @@ export class StaffService {
                     where: { id: staff.id },
                     data: {
                         ...profileData,
+                        ...documentsPatch,
                         accountStatus: AccountStatus.ACTIVE,
                         hasLoginAccess: true,
                         userId: existingUser.id,
@@ -509,6 +620,7 @@ export class StaffService {
                 where: { id: staff.id },
                 data: {
                     ...profileData,
+                    ...documentsPatch,
                     accountStatus: AccountStatus.ACTIVE,
                     hasLoginAccess: true,
                     userId: authResult.user.id,
@@ -569,6 +681,7 @@ export class StaffService {
                             where: { id: staff.id },
                             data: {
                                 ...profileData,
+                                ...documentsPatch,
                                 accountStatus: AccountStatus.ACTIVE,
                                 hasLoginAccess: true,
                                 userId: createdUser.id,
@@ -645,6 +758,10 @@ export class StaffService {
         lastName: string;
         staffType: string;
         isExpired: boolean;
+        /** True when assigned services use categories that require at least one document upload */
+        requiresDocumentUpload: boolean;
+        /** Human-readable labels for required document types (e.g. Driver's license) */
+        documentRequirementLabels: string[];
     }> {
         const staff = await this.prisma.staff.findUnique({
             where: { invitationToken: token },
@@ -655,6 +772,11 @@ export class StaffService {
                 lastName: true,
                 staffType: true,
                 invitationExpiresAt: true,
+                services: {
+                    select: {
+                        serviceId: true,
+                    },
+                },
             },
         });
 
@@ -667,6 +789,20 @@ export class StaffService {
 
         const isExpired = !staff.invitationExpiresAt || staff.invitationExpiresAt < new Date();
 
+        const rules = await this.getCategoryRulesForServiceIds(
+            staff.services.map((s) => s.serviceId)
+        );
+        const docRules = rules.filter(
+            (r) => r.isRequired && requirementTypeNeedsDocuments(r.requirementType)
+        );
+        const documentRequirementLabels = [
+            ...new Set(
+                docRules.map(
+                    (r) => `${CATEGORY_REQUIREMENT_LABELS[r.requirementType]} (${r.categoryName})`
+                )
+            ),
+        ];
+
         return {
             id: staff.id,
             email: staff.email,
@@ -674,6 +810,8 @@ export class StaffService {
             lastName: staff.lastName,
             staffType: staff.staffType,
             isExpired,
+            requiresDocumentUpload: documentRequirementLabels.length > 0,
+            documentRequirementLabels,
         };
     }
 
@@ -913,6 +1051,31 @@ export class StaffService {
 
         try {
             const { documents, ...restUpdateData } = updateData as typeof updateData & { documents?: unknown };
+
+            const effectiveServiceIds =
+                serviceIds !== undefined
+                    ? serviceIds
+                    : (
+                          await this.prisma.staffServiceAssignment.findMany({
+                              where: { staffId: id },
+                              select: { serviceId: true },
+                          })
+                      ).map((r) => r.serviceId);
+            const rules = await this.getCategoryRulesForServiceIds(effectiveServiceIds);
+            const docList =
+                documents !== undefined
+                    ? (documents as Array<{ name: string; url: string }> | null)
+                    : ((existing.documents as Array<{ name: string; url: string }> | null) ?? null);
+            const taxRow = await this.prisma.staffTaxDetails.findUnique({
+                where: { staffId: id },
+                select: { signatureUrl: true },
+            });
+            this.assertCategoryRequirementsMet(rules, {
+                documents: docList,
+                taxSignatureUrl: taxRow?.signatureUrl ?? null,
+                allowMissingTaxSignature: false,
+            });
+
             const staff = await this.prisma.staff.update({
                 where: { id },
                 data: {

@@ -390,6 +390,16 @@ export class StaffSchema {
             .min(1, "Country is required")
             .max(100, "Country must be 100 characters or less")
             .transform((val) => val.trim()),
+        documents: z
+            .array(
+                z.object({
+                    name: z.string(),
+                    url: z.string().url(),
+                    type: z.string().optional(),
+                    size: z.number().optional(),
+                })
+            )
+            .optional(),
     });
 
     /**

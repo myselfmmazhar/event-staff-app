@@ -8,6 +8,8 @@ export type CategoryTableRow = Pick<
   | 'categoryId'
   | 'name'
   | 'description'
+  | 'requirementType'
+  | 'isRequired'
   | 'isActive'
   | 'createdAt'
 >;

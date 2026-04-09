@@ -9,6 +9,10 @@ if (!connectionString) {
   throw new Error('Missing DATABASE_URL for Prisma seed');
 }
 
+if (connectionString.includes('rds.amazonaws.com')) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 const pool = new pg.Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
