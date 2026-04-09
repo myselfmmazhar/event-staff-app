@@ -24,6 +24,10 @@ import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BusinessStructure } from '@prisma/client';
+import {
+    StaffDocumentUpload,
+    type StaffDocument,
+} from '@/components/staff/staff-document-upload';
 
 // Base form schema without refinements (for type inference)
 const baseFormSchema = z.object({
@@ -77,6 +81,7 @@ function AcceptStaffInvitationContent() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [showTaxSection, setShowTaxSection] = useState(false);
+    const [documents, setDocuments] = useState<StaffDocument[]>([]);
 
     // Fetch invitation info
     const { data: invitationInfo, isLoading: isLoadingInfo, error: infoError } = trpc.staff.getInvitationInfo.useQuery(
@@ -214,6 +219,7 @@ function AcceptStaffInvitationContent() {
             state: data.state,
             zipCode: data.zipCode,
             country: data.country,
+            ...(invitationInfo?.requiresDocumentUpload && { documents }),
         });
     };
 
@@ -521,6 +527,31 @@ function AcceptStaffInvitationContent() {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Documents (when required by service categories) */}
+                            {invitationInfo?.requiresDocumentUpload && (
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-medium border-b pb-2">Documents</h3>
+                                    {invitationInfo.documentRequirementLabels.length > 0 && (
+                                        <p className="text-sm text-muted-foreground">
+                                            Your assigned services require the following. Upload at least one file
+                                            to continue.
+                                        </p>
+                                    )}
+                                    <ul className="text-sm list-disc list-inside text-muted-foreground space-y-1">
+                                        {invitationInfo.documentRequirementLabels.map((label) => (
+                                            <li key={label}>{label}</li>
+                                        ))}
+                                    </ul>
+                                    <StaffDocumentUpload
+                                        documents={documents}
+                                        onChange={setDocuments}
+                                        disabled={
+                                            form.formState.isSubmitting || acceptMutation.isPending
+                                        }
+                                    />
+                                </div>
+                            )}
 
                             {/* Tax Details Section (Optional) */}
                             <div className="space-y-4">
