@@ -90,10 +90,10 @@ export function EventGroupTable({
                                         })()}
                                     </th>
                                     <th className="w-8 px-2 py-2" />
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Talent</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service / Product</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Date</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Actual Shift</th>
                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Variance</th>

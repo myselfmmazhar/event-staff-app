@@ -74,23 +74,32 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
         return format(d, 'MMM d, yyyy (EEE)');
     };
 
+    const effectiveSubTab = subTab ?? 'all';
+    const showNetIncomeColumn = effectiveSubTab !== 'all';
+
+    const summaryColumns: Array<{
+        id: string;
+        label: string;
+        align?: 'text-center' | 'text-right';
+    }> = [
+        { id: 'startDate', label: 'Date / Time' },
+        { id: 'event', label: 'Task' },
+        { id: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
+        { id: 'location', label: 'Location' },
+        { id: 'assignments', label: 'Assignments', align: 'text-center' },
+        { id: 'status', label: 'Status', align: 'text-center' },
+        { id: 'invoice', label: 'Total Invoice', align: 'text-right' },
+        { id: 'bill', label: 'Total Bill', align: 'text-right' },
+        ...(showNetIncomeColumn ? [{ id: 'netIncome', label: 'Net Income', align: 'text-right' as const }] : []),
+    ];
+
     return (
         <Card className="overflow-hidden border border-border shadow-sm">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted/30 border-b border-border">
                         <tr>
-                            {[
-                                { id: 'startDate', label: 'Date / Time' },
-                                { id: 'event', label: 'Task' },
-                                { id: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
-                                { id: 'location', label: 'Location' },
-                                { id: 'assignments', label: 'Assignments', align: 'text-center' },
-                                { id: 'status', label: 'Status', align: 'text-center' },
-                                { id: 'invoice', label: 'Total Invoice', align: 'text-right' },
-                                { id: 'bill', label: 'Total Bill', align: 'text-right' },
-                                { id: 'netIncome', label: 'Net Income', align: 'text-right' },
-                            ].map((col) => (
+                            {summaryColumns.map((col) => (
                                 <th
                                     key={col.id}
                                     className={`px-4 py-4 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors ${col.align || ''}`}
@@ -202,9 +211,11 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground">
                                         {fmtCurrency(totalBill)}
                                     </td>
-                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground">
-                                        {fmtCurrency(profit)}
-                                    </td>
+                                    {showNetIncomeColumn && (
+                                        <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground">
+                                            {fmtCurrency(profit)}
+                                        </td>
+                                    )}
                                     <td className="px-4 py-5 text-right align-top pr-6">
                                         <button
                                             onClick={(e) => {

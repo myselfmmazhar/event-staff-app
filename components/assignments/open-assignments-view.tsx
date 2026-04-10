@@ -20,6 +20,7 @@ import {
   MapPinIcon,
   ChevronRightIcon,
   AlertIcon,
+  CheckCircleIcon,
 } from '@/components/ui/icons';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import type { AssignmentData } from './assignment-table';
@@ -132,6 +133,42 @@ export function OpenAssignmentsView() {
     },
   });
 
+  const assignInvitations = trpc.callTime.assignInvitations.useMutation({
+    onSuccess: (data) => {
+      const confirmed = data.results.filter((r) => r.outcome === 'confirmed').length;
+      const waitlisted = data.results.filter((r) => r.outcome === 'waitlisted').length;
+      const skipped = data.results.filter((r) => r.outcome === 'already_assigned').length;
+      let description: string;
+      if (data.processed === 0 && skipped > 0) {
+        description = `All selected ${staffTerm.lowerPlural} were already assigned.`;
+      } else if (data.processed > 0) {
+        const bits: string[] = [];
+        if (confirmed) bits.push(`${confirmed} confirmed`);
+        if (waitlisted) bits.push(`${waitlisted} waitlisted`);
+        description = `${bits.join(', ')}. Confirmation or waitlist email sent.`;
+        if (skipped > 0) description += ` ${skipped} were already assigned.`;
+      } else {
+        description = 'No changes were needed.';
+      }
+      toast({
+        title: 'Assignment updated',
+        description,
+      });
+      setSelectedStaffIds([]);
+      if (selectedAssignmentId) {
+        utils.callTime.getAll.invalidate();
+        utils.callTime.searchStaff.invalidate({ callTimeIds: [selectedAssignmentId] });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'error',
+      });
+    },
+  });
+
   const handleResend = () => {
     if (resendPayload) {
       sendInvitations.mutate({
@@ -144,6 +181,14 @@ export function OpenAssignmentsView() {
   const handleSendInvitations = () => {
     if (selectedStaffIds.length === 0 || !selectedAssignmentId) return;
     sendInvitations.mutate({
+      callTimeIds: [selectedAssignmentId],
+      staffIds: selectedStaffIds,
+    });
+  };
+
+  const handleAssignOnBehalf = () => {
+    if (selectedStaffIds.length === 0 || !selectedAssignmentId) return;
+    assignInvitations.mutate({
       callTimeIds: [selectedAssignmentId],
       staffIds: selectedStaffIds,
     });
@@ -287,13 +332,26 @@ export function OpenAssignmentsView() {
               </label>
 
               {selectedStaffIds.length > 0 && (
-                <Button
-                  onClick={handleSendInvitations}
-                  disabled={sendInvitations.isPending}
-                >
-                  <SendIcon className="h-4 w-4 mr-2" />
-                  Send {selectedStaffIds.length} Offer{selectedStaffIds.length > 1 ? 's' : ''}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2 justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAssignOnBehalf}
+                    disabled={sendInvitations.isPending || assignInvitations.isPending}
+                  >
+                    <CheckCircleIcon className="h-4 w-4 mr-2" />
+                    Assign {selectedStaffIds.length} assignment
+                    {selectedStaffIds.length > 1 ? 's' : ''}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSendInvitations}
+                    disabled={sendInvitations.isPending || assignInvitations.isPending}
+                  >
+                    <SendIcon className="h-4 w-4 mr-2" />
+                    Send {selectedStaffIds.length} Offer{selectedStaffIds.length > 1 ? 's' : ''}
+                  </Button>
+                </div>
               )}
             </div>
 

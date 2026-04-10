@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, ClockIcon } from '@/components/ui/icons';
@@ -30,7 +31,8 @@ import {
     toInputDatetime,
     calcExpenditureCost,
     calcExpenditurePrice,
-    getTimeOnly
+    getTimeOnly,
+    combineDateTime,
 } from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
@@ -40,6 +42,40 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+function formatShiftInstant(d: Date | null): string {
+    if (!d) return '—';
+    return format(d, "MMM d, yyyy '•' h:mm a");
+}
+
+/** Invoice description: "03/02/2026 4:00 PM - 03/03/2026 12:44 AM" */
+function formatInvoiceDateTimeRange(start: Date | null, end: Date | null): string {
+    if (!start) return '—';
+    const left = format(start, 'MM/dd/yyyy h:mm a');
+    if (!end) return `${left} - —`;
+    return `${left} - ${format(end, 'MM/dd/yyyy h:mm a')}`;
+}
+
+function invoiceScheduledRange(row: CallTimeRow): string {
+    const schedStart = combineDateTime(row.startDate, row.startTime);
+    const schedEnd = combineDateTime(row.endDate ?? row.startDate, row.endTime);
+    return formatInvoiceDateTimeRange(schedStart, schedEnd);
+}
+
+function invoiceActualRange(tev: CallTimeRow['timeEntry']): string {
+    if (!tev?.clockIn) return 'No clock';
+    return formatInvoiceDateTimeRange(new Date(tev.clockIn), tev.clockOut ? new Date(tev.clockOut) : null);
+}
+
+function invoiceStaffHeadline(row: CallTimeRow, event: CallTimeRow['event'] | undefined): string {
+    const loc = [event?.city, event?.state].filter(Boolean).join(', ');
+    if (row.staff) {
+        const name = `${row.staff.firstName} ${row.staff.lastName}`.trim();
+        return loc ? `${name} (${loc})` : name;
+    }
+    return loc ? `Open shift (${loc})` : 'Open shift';
+}
+
 export function TimesheetTableRow({
     ct,
     isExpanded,
@@ -319,23 +355,123 @@ export function TimesheetTableRow({
 
 
 
-                        {/* Description - Simplified Format as requested */}
+                        {/* Description — name (city, state), service, Schedule / Actual / Notes (invoice line item style) */}
                         <td className="px-3 py-4 text-[11px] leading-relaxed text-slate-600 min-w-[500px]">
-                            <div className="flex flex-col gap-1.5">
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-[10px] text-slate-400 uppercase tracking-tight">Scheduled shift</span>
-                                    <div className="font-medium text-slate-700">
-                                        <span>{formatDate(ct.startDate)} {formatTime(ct.startTime)} - {formatDate(ct.endDate || ct.startDate)} {formatTime(ct.endTime)} ({hoursScheduled.toFixed(2)} hrs)</span>
-                                    </div>
-                                </div>
+                            <div className="flex flex-col gap-3">
+                                {(() => {
+                                    const invoiceRows =
+                                        ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
+                                    const isSoloInvoiceRow = invoiceRows.length === 1;
 
-                                <div className="flex flex-col mt-1">
+                                    return invoiceRows.map((row, idx) => {
+                                        const rowTe = row.timeEntry;
+                                        const rowSchedHrs = calcScheduledHours(row);
+                                        const rowClockHrs = calcClockedHours(rowTe);
+
+                                        const actualLine = (
+                                            <span className="text-slate-800">
+                                                {invoiceActualRange(rowTe)}
+                                                <span className="text-muted-foreground font-normal">
+                                                    {' '}
+                                                    ({rowClockHrs.toFixed(2)} hrs)
+                                                </span>
+                                                {isSoloInvoiceRow && isEdited && (
+                                                    <Badge variant="secondary" className="ml-1.5 text-[9px] h-4 px-1 py-0 leading-none font-medium align-middle">
+                                                        Edited
+                                                    </Badge>
+                                                )}
+                                            </span>
+                                        );
+
+                                        return (
+                                            <div
+                                                key={row.id ?? idx}
+                                                className={`flex flex-col gap-1 ${idx > 0 ? 'pt-3 border-t border-border/60' : ''}`}
+                                            >
+                                                <div className="font-semibold text-slate-900 text-[12px] leading-snug">
+                                                    {invoiceStaffHeadline(row, row.event ?? ct.event)}
+                                                </div>
+                                                <div className="text-slate-800">{row.service?.title || ct.service?.title || '—'}</div>
+                                                <div>
+                                                    <span className="font-medium text-slate-600">Schedule: </span>
+                                                    <span className="text-slate-800">
+                                                        {invoiceScheduledRange(row)}
+                                                        <span className="text-muted-foreground font-normal">
+                                                            {' '}
+                                                            ({rowSchedHrs.toFixed(2)} hrs)
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                                                    <span className="font-medium text-slate-600 shrink-0">Actual: </span>
+                                                    {isSoloInvoiceRow ? (
+                                                        <div onClick={(e) => e.stopPropagation()} className="min-w-0">
+                                                            <Popover open={isEditing} onOpenChange={setIsEditing}>
+                                                                <PopoverTrigger asChild>
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={!ct.staff}
+                                                                        className={`text-left rounded px-0.5 -mx-0.5 ${ct.staff ? 'cursor-pointer hover:bg-slate-50' : 'opacity-60 cursor-not-allowed'}`}
+                                                                        onClick={(e) => !ct.staff && e.stopPropagation()}
+                                                                    >
+                                                                        {actualLine}
+                                                                    </button>
+                                                                </PopoverTrigger>
+                                                                {ct.staff && (
+                                                                    <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                                                        <div className="space-y-3">
+                                                                            <Label className="text-xs font-bold uppercase tracking-tight text-foreground">Edit actual shift</Label>
+                                                                            <div className="space-y-2">
+                                                                                <div className="space-y-1">
+                                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Clock In</span>
+                                                                                    <Input
+                                                                                        type="datetime-local"
+                                                                                        value={clockIn}
+                                                                                        onChange={(e) => setClockIn(e.target.value)}
+                                                                                        className="h-8 text-xs"
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="space-y-1">
+                                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Clock Out</span>
+                                                                                    <Input
+                                                                                        type="datetime-local"
+                                                                                        value={clockOut}
+                                                                                        onChange={(e) => setClockOut(e.target.value)}
+                                                                                        className="h-8 text-xs"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center pt-2 border-t">
+                                                                                <div className="text-[10px] font-bold text-slate-500">
+                                                                                    Net: {hoursClocked.toFixed(2)} hrs
+                                                                                </div>
+                                                                                <div className="flex gap-2">
+                                                                                    <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="h-7 text-[10px]">Cancel</Button>
+                                                                                    <Button size="sm" onClick={handleSave} className="h-7 text-[10px]">Save</Button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </PopoverContent>
+                                                                )}
+                                                            </Popover>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-slate-800">{actualLine}</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                })()}
+
+                                <div className="flex flex-col gap-1 pt-2 border-t border-border/60">
+                                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Notes</span>
                                     {isEditingNotes ? (
-                                        <div onClick={e => e.stopPropagation()}>
+                                        <div onClick={(e) => e.stopPropagation()}>
                                             <textarea
                                                 value={localNotes}
-                                                onChange={e => setLocalNotes(e.target.value)}
-                                                className="w-full text-[10px] border border-border rounded p-1.5 focus:ring-1 focus:ring-primary outline-none min-h-[50px] bg-white text-slate-700 font-medium"
+                                                onChange={(e) => setLocalNotes(e.target.value)}
+                                                className="w-full text-[11px] border border-border rounded p-1.5 focus:ring-1 focus:ring-primary outline-none min-h-[50px] bg-white text-slate-700 font-medium"
                                                 autoFocus
                                                 onBlur={handleSave}
                                             />
@@ -356,9 +492,12 @@ export function TimesheetTableRow({
                                     ) : (
                                         <div
                                             className="group relative cursor-pointer hover:bg-slate-50 p-1.5 rounded transition-all font-medium text-slate-500 italic border border-transparent hover:border-slate-100"
-                                            onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setIsEditingNotes(true);
+                                            }}
                                         >
-                                            <p className="line-clamp-3">{localNotes || 'Click to add notes...'}</p>
+                                            <p className="line-clamp-3 text-[11px] not-italic text-slate-700">{localNotes || 'Click to add notes...'}</p>
                                             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <EditIcon className="h-3.5 w-3.5 text-slate-400" />
                                             </div>
@@ -687,6 +826,16 @@ export function TimesheetTableRow({
                     </>
                 ) : (
                     <>
+                        {/* Actions — first data column (after checkbox + expand) */}
+                        <td
+                            className={
+                                rowVariant === 'card' ? 'w-10 px-2 py-3.5 text-center relative' : 'w-10 px-2 py-2.5 text-center relative'
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <ActionDropdown actions={actions} align="start" />
+                        </td>
+
                         {/* Talent */}
                         <td className={rowVariant === 'card' ? 'px-3 py-3.5 font-bold text-foreground whitespace-nowrap' : 'px-3 py-2.5 font-bold text-foreground whitespace-nowrap'}>
                             {!showEventName ? (
@@ -712,7 +861,8 @@ export function TimesheetTableRow({
                                     />
                                 ) : (
                                     <div className="flex flex-col">
-                                        <span>UNASSIGNED STAFF</span>
+                                        <span className="font-bold leading-tight">UNASSIGNED</span>
+                                        <span className="font-bold leading-tight">STAFF</span>
                                         <span className="text-[10px] font-normal text-muted-foreground mt-0.5">Needs assignment</span>
                                     </div>
                                 )
@@ -738,41 +888,27 @@ export function TimesheetTableRow({
                             </div>
                         </td>
 
-                        {/* Actions */}
-                        <td className={rowVariant === 'card' ? 'w-10 px-2 py-3.5 text-center relative' : 'w-10 px-2 py-2.5 text-center relative'} onClick={e => e.stopPropagation()}>
-                            <ActionDropdown actions={actions} align="start" />
+                        {/* Scheduled shift — start & end date + time */}
+                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[160px]' : 'px-3 py-2.5 min-w-[170px]'}>
+                            {(() => {
+                                const schedStart = combineDateTime(ct.startDate, ct.startTime);
+                                const schedEnd = combineDateTime(ct.endDate ?? ct.startDate, ct.endTime);
+                                return (
+                                    <div className="flex flex-col gap-1.5 text-[11px] leading-snug text-foreground">
+                                        <div>
+                                            <p className="font-bold">{formatShiftInstant(schedStart)} -</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold">{formatShiftInstant(schedEnd)}</p>
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground">{hoursScheduled.toFixed(2)} hrs scheduled</span>
+                                    </div>
+                                );
+                            })()}
                         </td>
 
-                        {/* Scheduled shift */}
-                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[140px]' : 'px-3 py-2.5 min-w-[160px]'}>
-                            <div className="flex flex-col gap-0.5 text-[11px] leading-snug text-foreground">
-                                <span className="font-bold whitespace-normal">
-                                    {rowVariant === 'card' ? (
-                                        <>
-                                            {formatTime(ct.startTime)} – {formatTime(ct.endTime)}
-                                            {ct.endDate &&
-                                                ct.startDate &&
-                                                formatDate(ct.endDate) !== formatDate(ct.startDate) && (
-                                                    <span className="text-[10px] font-normal text-muted-foreground block mt-0.5">
-                                                        {formatDate(ct.startDate)} – {formatDate(ct.endDate)}
-                                                    </span>
-                                                )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            {formatDate(ct.startDate)} {formatTime(ct.startTime)} –{' '}
-                                            {formatDate(ct.endDate || ct.startDate)} {formatTime(ct.endTime)}
-                                        </>
-                                    )}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground">
-                                    {hoursScheduled.toFixed(2)} hrs scheduled
-                                </span>
-                            </div>
-                        </td>
-
-                        {/* Actual shift */}
-                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[140px]' : 'px-3 py-2.5 min-w-[160px]'} onClick={e => e.stopPropagation()}>
+                        {/* Actual shift — start & end date + time */}
+                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[160px]' : 'px-3 py-2.5 min-w-[170px]'} onClick={e => e.stopPropagation()}>
                             <Popover open={isEditing} onOpenChange={setIsEditing}>
                                 <PopoverTrigger asChild>
                                     <div
@@ -780,29 +916,15 @@ export function TimesheetTableRow({
                                         onClick={e => !ct.staff && e.stopPropagation()}
                                     >
                                         {te?.clockIn ? (
-                                            <div className="flex flex-col text-[11px] leading-snug text-foreground">
-                                                <span className="font-bold whitespace-normal">
-                                                    {rowVariant === 'card' ? (
-                                                        <>
-                                                            {formatTime(getTimeOnly(te.clockIn))} –{' '}
-                                                            {te?.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '—'}
-                                                            {te?.clockOut &&
-                                                                te?.clockIn &&
-                                                                formatDate(te.clockOut) !== formatDate(te.clockIn) && (
-                                                                    <span className="text-[10px] font-normal text-muted-foreground block mt-0.5">
-                                                                        {formatDate(te.clockIn)} – {formatDate(te.clockOut)}
-                                                                    </span>
-                                                                )}
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            {formatDate(te.clockIn)} {formatTime(getTimeOnly(te.clockIn))} –{' '}
-                                                            {te?.clockOut
-                                                                ? `${formatDate(te.clockOut)} ${formatTime(getTimeOnly(te.clockOut))}`
-                                                                : '—'}
-                                                        </>
-                                                    )}
-                                                </span>
+                                            <div className="flex flex-col gap-1.5 text-[11px] leading-snug text-foreground">
+                                                <div>
+                                                    <p className="font-bold">{formatShiftInstant(new Date(te.clockIn))}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold">
+                                                        {te.clockOut ? formatShiftInstant(new Date(te.clockOut)) : '—'}
+                                                    </p>
+                                                </div>
                                                 <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                                                     {hoursClocked.toFixed(2)} hrs worked
                                                     {isEdited && (
@@ -1151,7 +1273,20 @@ export function TimesheetTableRow({
 
             {/* Expanded detail */}
             {isExpanded && (
-                <ExpandedRowDetail ct={ct} onViewEvent={onViewEvent} cardStyle={rowVariant === 'card'} />
+                <ExpandedRowDetail
+                    ct={ct}
+                    onViewEvent={onViewEvent}
+                    cardStyle={rowVariant === 'card'}
+                    colSpan={
+                        subTab === 'invoice'
+                            ? 9
+                            : subTab === 'bill'
+                              ? 8
+                              : subTab === 'commission'
+                                ? 6
+                                : 17
+                    }
+                />
             )}
         </>
     );
