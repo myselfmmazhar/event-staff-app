@@ -230,6 +230,16 @@ export class CallTimeSchema {
   });
 
   /**
+   * Assign on behalf — accept immediately (no invitation email); confirmation/waitlist email only.
+   */
+  static assignInvitations = z.object({
+    callTimeIds: z.array(z.string().uuid(FieldErrors.callTimeId)).min(1),
+    staffIds: z
+      .array(z.string().uuid(FieldErrors.staffId))
+      .min(1, 'At least one staff member is required'),
+  });
+
+  /**
    * Respond to Invitation Schema (for staff)
    */
   static respondToInvitation = z
@@ -439,6 +449,7 @@ export type CreateCallTimeInput = z.infer<typeof CallTimeSchema.create>;
 export type UpdateCallTimeInput = z.infer<typeof CallTimeSchema.update>;
 export type QueryCallTimesInput = z.infer<typeof CallTimeSchema.query>;
 export type SendInvitationsInput = z.infer<typeof CallTimeSchema.sendInvitations>;
+export type AssignInvitationsInput = z.infer<typeof CallTimeSchema.assignInvitations>;
 export type RespondToInvitationInput = z.infer<typeof CallTimeSchema.respondToInvitation>;
 export type StaffSearchInput = z.infer<typeof CallTimeSchema.staffSearch>;
 export type ResendInvitationInput = z.infer<typeof CallTimeSchema.resendInvitation>;
