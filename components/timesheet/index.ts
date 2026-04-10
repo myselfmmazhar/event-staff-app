@@ -8,6 +8,8 @@ export { TimesheetTableRow } from './timesheet-table-row';
 export { TimesheetSummaryTable } from './timesheet-summary-table';
 export { TimesheetClientSummaryTable } from './timesheet-client-summary-table';
 export { TimesheetTalentSummaryTable } from './timesheet-talent-summary-table';
+export { TimesheetEventSummaryCards } from './timesheet-event-summary-cards';
+export { TimesheetDetailToolbar } from './timesheet-detail-toolbar';
 export { ConfirmDialog } from './confirm-dialog';
 
 export type {

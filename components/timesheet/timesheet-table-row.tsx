@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, ClockIcon } from '@/components/ui/icons';
@@ -9,8 +10,6 @@ import {
     CheckIcon,
     CloseIcon,
     CheckCircleIcon,
-    PlusIcon,
-    MinusIcon
 } from '@/components/ui/icons';
 import {
     fmtDateTime,
@@ -32,7 +31,8 @@ import {
     toInputDatetime,
     calcExpenditureCost,
     calcExpenditurePrice,
-    getTimeOnly
+    getTimeOnly,
+    combineDateTime,
 } from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
@@ -42,6 +42,40 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+function formatShiftInstant(d: Date | null): string {
+    if (!d) return '—';
+    return format(d, "MMM d, yyyy '•' h:mm a");
+}
+
+/** Invoice description: "03/02/2026 4:00 PM - 03/03/2026 12:44 AM" */
+function formatInvoiceDateTimeRange(start: Date | null, end: Date | null): string {
+    if (!start) return '—';
+    const left = format(start, 'MM/dd/yyyy h:mm a');
+    if (!end) return `${left} - —`;
+    return `${left} - ${format(end, 'MM/dd/yyyy h:mm a')}`;
+}
+
+function invoiceScheduledRange(row: CallTimeRow): string {
+    const schedStart = combineDateTime(row.startDate, row.startTime);
+    const schedEnd = combineDateTime(row.endDate ?? row.startDate, row.endTime);
+    return formatInvoiceDateTimeRange(schedStart, schedEnd);
+}
+
+function invoiceActualRange(tev: CallTimeRow['timeEntry']): string {
+    if (!tev?.clockIn) return 'No clock';
+    return formatInvoiceDateTimeRange(new Date(tev.clockIn), tev.clockOut ? new Date(tev.clockOut) : null);
+}
+
+function invoiceStaffHeadline(row: CallTimeRow, event: CallTimeRow['event'] | undefined): string {
+    const loc = [event?.city, event?.state].filter(Boolean).join(', ');
+    if (row.staff) {
+        const name = `${row.staff.firstName} ${row.staff.lastName}`.trim();
+        return loc ? `${name} (${loc})` : name;
+    }
+    return loc ? `Open shift (${loc})` : 'Open shift';
+}
+
 export function TimesheetTableRow({
     ct,
     isExpanded,
@@ -57,6 +91,7 @@ export function TimesheetTableRow({
     onPending,
     onEditTask,
     subTab = 'all',
+    rowVariant = 'default',
 }: {
     ct: CallTimeRow;
     isExpanded: boolean;
@@ -72,6 +107,8 @@ export function TimesheetTableRow({
     onPending?: (id: string) => void;
     onEditTask?: (ct: CallTimeRow) => void;
     subTab?: 'all' | 'bill' | 'invoice' | 'commission';
+    /** Card-style row (separate borders, rounded) for event detail table */
+    rowVariant?: 'default' | 'card';
 }) {
     const { toast } = useToast();
     const [isEditing, setIsEditing] = useState(false);
@@ -270,10 +307,14 @@ export function TimesheetTableRow({
     return (
         <>
             <tr
-                className={`border-b border-border last:border-b-0 hover:bg-muted/20 cursor-default transition-colors ${isExpanded ? 'bg-muted/10' : ''} ${isSelected ? 'bg-primary/5' : ''}`}
+                className={
+                    rowVariant === 'card'
+                        ? `cursor-default transition-colors bg-card border border-border shadow-sm hover:bg-muted/15 [&>td]:border-0 ${isExpanded ? 'rounded-t-lg rounded-b-none' : 'rounded-lg'} ${isSelected ? 'ring-1 ring-primary/20' : ''}`
+                        : `border-b border-border last:border-b-0 hover:bg-muted/20 cursor-default transition-colors ${isExpanded ? 'bg-muted/10' : ''} ${isSelected ? 'bg-primary/5' : ''}`
+                }
             >
                 {/* Checkbox */}
-                <td className="w-8 px-2 py-2.5 text-center">
+                <td className={`w-8 px-2 text-center ${rowVariant === 'card' ? 'py-3.5 rounded-l-lg' : 'py-2.5'}`}>
                     <input
                         type="checkbox"
                         checked={isSelected}
@@ -284,13 +325,13 @@ export function TimesheetTableRow({
                     />
                 </td>
                 {/* Expand toggle */}
-                <td className="w-8 px-2 py-2.5 text-center">
+                <td className={`w-8 px-2 text-center ${rowVariant === 'card' ? 'py-3.5' : 'py-2.5'}`}>
                     <button
                         onClick={(e) => onToggleExpand(ct.id, e)}
                         className="inline-flex items-center justify-center h-5 w-5 rounded hover:bg-muted transition-colors"
                     >
                         {isExpanded ? (
-                            <ChevronUpIcon className="h-3 w-3 text-primary" />
+                            <ChevronUpIcon className="h-3 w-3 text-muted-foreground" />
                         ) : (
                             <ChevronDownIcon className="h-3 w-3 text-muted-foreground" />
                         )}
@@ -314,23 +355,123 @@ export function TimesheetTableRow({
 
 
 
-                        {/* Description - Simplified Format as requested */}
+                        {/* Description — name (city, state), service, Schedule / Actual / Notes (invoice line item style) */}
                         <td className="px-3 py-4 text-[11px] leading-relaxed text-slate-600 min-w-[500px]">
-                            <div className="flex flex-col gap-1.5">
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-[10px] text-slate-400 uppercase tracking-tight">Scheduled shift</span>
-                                    <div className="font-medium text-slate-700">
-                                        <span>{formatDate(ct.startDate)} {formatTime(ct.startTime)} - {formatDate(ct.endDate || ct.startDate)} {formatTime(ct.endTime)} ({hoursScheduled.toFixed(2)} hrs)</span>
-                                    </div>
-                                </div>
+                            <div className="flex flex-col gap-3">
+                                {(() => {
+                                    const invoiceRows =
+                                        ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
+                                    const isSoloInvoiceRow = invoiceRows.length === 1;
 
-                                <div className="flex flex-col mt-1">
+                                    return invoiceRows.map((row, idx) => {
+                                        const rowTe = row.timeEntry;
+                                        const rowSchedHrs = calcScheduledHours(row);
+                                        const rowClockHrs = calcClockedHours(rowTe);
+
+                                        const actualLine = (
+                                            <span className="text-slate-800">
+                                                {invoiceActualRange(rowTe)}
+                                                <span className="text-muted-foreground font-normal">
+                                                    {' '}
+                                                    ({rowClockHrs.toFixed(2)} hrs)
+                                                </span>
+                                                {isSoloInvoiceRow && isEdited && (
+                                                    <Badge variant="secondary" className="ml-1.5 text-[9px] h-4 px-1 py-0 leading-none font-medium align-middle">
+                                                        Edited
+                                                    </Badge>
+                                                )}
+                                            </span>
+                                        );
+
+                                        return (
+                                            <div
+                                                key={row.id ?? idx}
+                                                className={`flex flex-col gap-1 ${idx > 0 ? 'pt-3 border-t border-border/60' : ''}`}
+                                            >
+                                                <div className="font-semibold text-slate-900 text-[12px] leading-snug">
+                                                    {invoiceStaffHeadline(row, row.event ?? ct.event)}
+                                                </div>
+                                                <div className="text-slate-800">{row.service?.title || ct.service?.title || '—'}</div>
+                                                <div>
+                                                    <span className="font-medium text-slate-600">Schedule: </span>
+                                                    <span className="text-slate-800">
+                                                        {invoiceScheduledRange(row)}
+                                                        <span className="text-muted-foreground font-normal">
+                                                            {' '}
+                                                            ({rowSchedHrs.toFixed(2)} hrs)
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                                                    <span className="font-medium text-slate-600 shrink-0">Actual: </span>
+                                                    {isSoloInvoiceRow ? (
+                                                        <div onClick={(e) => e.stopPropagation()} className="min-w-0">
+                                                            <Popover open={isEditing} onOpenChange={setIsEditing}>
+                                                                <PopoverTrigger asChild>
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={!ct.staff}
+                                                                        className={`text-left rounded px-0.5 -mx-0.5 ${ct.staff ? 'cursor-pointer hover:bg-slate-50' : 'opacity-60 cursor-not-allowed'}`}
+                                                                        onClick={(e) => !ct.staff && e.stopPropagation()}
+                                                                    >
+                                                                        {actualLine}
+                                                                    </button>
+                                                                </PopoverTrigger>
+                                                                {ct.staff && (
+                                                                    <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                                                        <div className="space-y-3">
+                                                                            <Label className="text-xs font-bold uppercase tracking-tight text-foreground">Edit actual shift</Label>
+                                                                            <div className="space-y-2">
+                                                                                <div className="space-y-1">
+                                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Clock In</span>
+                                                                                    <Input
+                                                                                        type="datetime-local"
+                                                                                        value={clockIn}
+                                                                                        onChange={(e) => setClockIn(e.target.value)}
+                                                                                        className="h-8 text-xs"
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="space-y-1">
+                                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Clock Out</span>
+                                                                                    <Input
+                                                                                        type="datetime-local"
+                                                                                        value={clockOut}
+                                                                                        onChange={(e) => setClockOut(e.target.value)}
+                                                                                        className="h-8 text-xs"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center pt-2 border-t">
+                                                                                <div className="text-[10px] font-bold text-slate-500">
+                                                                                    Net: {hoursClocked.toFixed(2)} hrs
+                                                                                </div>
+                                                                                <div className="flex gap-2">
+                                                                                    <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="h-7 text-[10px]">Cancel</Button>
+                                                                                    <Button size="sm" onClick={handleSave} className="h-7 text-[10px]">Save</Button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </PopoverContent>
+                                                                )}
+                                                            </Popover>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-slate-800">{actualLine}</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                })()}
+
+                                <div className="flex flex-col gap-1 pt-2 border-t border-border/60">
+                                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Notes</span>
                                     {isEditingNotes ? (
-                                        <div onClick={e => e.stopPropagation()}>
+                                        <div onClick={(e) => e.stopPropagation()}>
                                             <textarea
                                                 value={localNotes}
-                                                onChange={e => setLocalNotes(e.target.value)}
-                                                className="w-full text-[10px] border border-border rounded p-1.5 focus:ring-1 focus:ring-primary outline-none min-h-[50px] bg-white text-slate-700 font-medium"
+                                                onChange={(e) => setLocalNotes(e.target.value)}
+                                                className="w-full text-[11px] border border-border rounded p-1.5 focus:ring-1 focus:ring-primary outline-none min-h-[50px] bg-white text-slate-700 font-medium"
                                                 autoFocus
                                                 onBlur={handleSave}
                                             />
@@ -351,9 +492,12 @@ export function TimesheetTableRow({
                                     ) : (
                                         <div
                                             className="group relative cursor-pointer hover:bg-slate-50 p-1.5 rounded transition-all font-medium text-slate-500 italic border border-transparent hover:border-slate-100"
-                                            onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setIsEditingNotes(true);
+                                            }}
                                         >
-                                            <p className="line-clamp-3">{localNotes || 'Click to add notes...'}</p>
+                                            <p className="line-clamp-3 text-[11px] not-italic text-slate-700">{localNotes || 'Click to add notes...'}</p>
                                             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <EditIcon className="h-3.5 w-3.5 text-slate-400" />
                                             </div>
@@ -682,30 +826,46 @@ export function TimesheetTableRow({
                     </>
                 ) : (
                     <>
-                        {/* Actions Dropdown */}
-                        <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
+                        {/* Actions — first data column (after checkbox + expand) */}
+                        <td
+                            className={
+                                rowVariant === 'card' ? 'w-10 px-2 py-3.5 text-center relative' : 'w-10 px-2 py-2.5 text-center relative'
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <ActionDropdown actions={actions} align="start" />
                         </td>
 
-                        {/* Service Date */}
-                        <td className="px-3 py-2.5 whitespace-nowrap text-[11px] font-medium text-slate-600">
-                            {formatDate(ct.startDate)}
-                        </td>
-
-                        {/* Full Name */}
-                        <td className="px-3 py-2.5 font-bold text-primary whitespace-nowrap">
+                        {/* Talent */}
+                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 font-bold text-foreground whitespace-nowrap' : 'px-3 py-2.5 font-bold text-foreground whitespace-nowrap'}>
                             {!showEventName ? (
                                 ct.staff ? (
                                     <TalentContactPopover
                                         talent={ct.staff}
                                         trigger={
-                                            <div className="flex flex-col leading-tight cursor-pointer hover:underline">
-                                                <span>{ct.staff.firstName}</span>
-                                                <span className="text-slate-500 font-semibold">{ct.staff.lastName}</span>
+                                            <div className="flex flex-col leading-tight cursor-pointer hover:underline text-left">
+                                                <span>
+                                                    {ct.staff.firstName} {ct.staff.lastName}
+                                                </span>
+                                                <span className="text-[10px] font-normal text-muted-foreground mt-0.5">
+                                                    {(() => {
+                                                        const inv0 = ct.invitations?.[0];
+                                                        if (inv0?.status === 'ACCEPTED') return 'Accepted · Assigned';
+                                                        if (inv0?.status === 'PENDING') return 'Pending invitation';
+                                                        if (inv0?.status) return inv0.status.replace(/_/g, ' ');
+                                                        return '—';
+                                                    })()}
+                                                </span>
                                             </div>
                                         }
                                     />
-                                ) : 'UNASSIGNED STAFF'
+                                ) : (
+                                    <div className="flex flex-col">
+                                        <span className="font-bold leading-tight">UNASSIGNED</span>
+                                        <span className="font-bold leading-tight">STAFF</span>
+                                        <span className="text-[10px] font-normal text-muted-foreground mt-0.5">Needs assignment</span>
+                                    </div>
+                                )
                             ) : (
                                 <div className="whitespace-normal max-w-[200px] leading-tight">
                                     {ct.event?.title || '—'}
@@ -713,55 +873,71 @@ export function TimesheetTableRow({
                             )}
                         </td>
 
-                        {/* Services / Product (Position) */}
-                        <td className="px-3 py-2.5">
-                            <Badge variant="primary" className="text-[10px] whitespace-nowrap bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight py-1 font-bold">
+                        {/* Service */}
+                        <td className={rowVariant === 'card' ? 'px-3 py-3.5' : 'px-3 py-2.5'}>
+                            <span className="inline-flex text-[10px] font-medium whitespace-nowrap rounded-md border border-border bg-muted/40 px-2 py-1 text-foreground">
                                 {ct.service?.title || '—'}
-                            </Badge>
+                            </span>
                         </td>
 
-                        {/* Scheduled Shift (Restored but Compact) */}
-                        <td className="px-3 py-2.5 min-w-[140px]">
-                            <div className="flex flex-col text-[10px] leading-tight text-slate-700">
-                                <div className="font-medium whitespace-nowrap">
-                                    {formatDate(ct.startDate)} {formatTime(ct.startTime)}
-                                </div>
-                                <div className="flex items-center gap-1 mt-0.5 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                                    to {formatDate(ct.endDate || ct.startDate)} {formatTime(ct.endTime)}
-                                </div>
-                                <div className="mt-1 font-bold text-slate-600">
-                                    {hoursScheduled.toFixed(2)} hrs
-                                </div>
+                        {/* Date (shift date) */}
+                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 whitespace-nowrap' : 'px-3 py-2.5 whitespace-nowrap'}>
+                            <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-foreground">{formatDate(ct.startDate)}</span>
+                                <span className="text-[10px] text-muted-foreground">Shift date</span>
                             </div>
                         </td>
 
-                        {/* Actual Shift (Restored but Compact) */}
-                        <td className="px-3 py-2.5 min-w-[140px]" onClick={e => e.stopPropagation()}>
+                        {/* Scheduled shift — start & end date + time */}
+                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[160px]' : 'px-3 py-2.5 min-w-[170px]'}>
+                            {(() => {
+                                const schedStart = combineDateTime(ct.startDate, ct.startTime);
+                                const schedEnd = combineDateTime(ct.endDate ?? ct.startDate, ct.endTime);
+                                return (
+                                    <div className="flex flex-col gap-1.5 text-[11px] leading-snug text-foreground">
+                                        <div>
+                                            <p className="font-bold">{formatShiftInstant(schedStart)} -</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold">{formatShiftInstant(schedEnd)}</p>
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground">{hoursScheduled.toFixed(2)} hrs scheduled</span>
+                                    </div>
+                                );
+                            })()}
+                        </td>
+
+                        {/* Actual shift — start & end date + time */}
+                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[160px]' : 'px-3 py-2.5 min-w-[170px]'} onClick={e => e.stopPropagation()}>
                             <Popover open={isEditing} onOpenChange={setIsEditing}>
                                 <PopoverTrigger asChild>
                                     <div
-                                        className={`flex flex-col gap-0.5 rounded transition-colors ${ct.staff ? 'cursor-pointer hover:bg-slate-50/50' : 'opacity-60 cursor-not-allowed'}`}
+                                        className={`flex flex-col gap-0.5 rounded transition-colors ${ct.staff ? 'cursor-pointer hover:bg-muted/40' : 'opacity-60 cursor-not-allowed'}`}
                                         onClick={e => !ct.staff && e.stopPropagation()}
                                     >
                                         {te?.clockIn ? (
-                                            <div className="flex flex-col text-[10px] leading-tight text-emerald-600">
-                                                <div className="font-medium whitespace-nowrap">
-                                                    {formatDate(te.clockIn)} {formatTime(getTimeOnly(te.clockIn))}
+                                            <div className="flex flex-col gap-1.5 text-[11px] leading-snug text-foreground">
+                                                <div>
+                                                    <p className="font-bold">{formatShiftInstant(new Date(te.clockIn))}</p>
                                                 </div>
-                                                <div className="flex items-center gap-1 mt-0.5 text-[8px] font-bold text-emerald-500/50 uppercase tracking-tighter">
-                                                    to {te?.clockOut ? formatDate(te.clockOut) : '??'} {te?.clockOut ? formatTime(getTimeOnly(te.clockOut)) : ''}
+                                                <div>
+                                                    <p className="font-bold">
+                                                        {te.clockOut ? formatShiftInstant(new Date(te.clockOut)) : '—'}
+                                                    </p>
                                                 </div>
-                                                <div className="mt-1 flex items-center gap-1.5">
-                                                    <span className="font-bold">
-                                                        {hoursClocked.toFixed(2)} hrs
-                                                    </span>
-                                                    {isEdited && <Badge variant="warning" className="text-[7px] h-2.5 px-0.5 leading-none bg-amber-50 text-amber-600 border-none">Edited</Badge>}
-                                                </div>
+                                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                    {hoursClocked.toFixed(2)} hrs worked
+                                                    {isEdited && (
+                                                        <Badge variant="secondary" className="text-[9px] h-4 px-1 py-0 leading-none font-medium">
+                                                            Edited
+                                                        </Badge>
+                                                    )}
+                                                </span>
                                             </div>
                                         ) : (
-                                            <div className="flex flex-col text-[10px] text-slate-300 font-medium">
-                                                <span>Not clocked</span>
-                                                <span>0.00 hrs</span>
+                                            <div className="flex flex-col text-[11px]">
+                                                <span className="font-bold text-foreground">No clock</span>
+                                                <span className="text-[10px] text-muted-foreground">0.00 hrs worked</span>
                                             </div>
                                         )}
                                     </div>
@@ -769,7 +945,7 @@ export function TimesheetTableRow({
                                 {ct.staff && (
                                     <PopoverContent className="w-64 p-3" onClick={e => e.stopPropagation()}>
                                         <div className="space-y-3">
-                                            <Label className="text-xs font-bold uppercase tracking-tight text-emerald-600">Edit Actual Shift</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-foreground">Edit actual shift</Label>
                                             <div className="space-y-2">
                                                 <div className="space-y-1">
                                                     <span className="text-[9px] font-bold text-slate-400 uppercase">Clock In</span>
@@ -796,7 +972,7 @@ export function TimesheetTableRow({
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="h-7 text-[10px]">Cancel</Button>
-                                                    <Button size="sm" onClick={handleSave} className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700">Save</Button>
+                                                    <Button size="sm" onClick={handleSave} className="h-7 text-[10px]">Save</Button>
                                                 </div>
                                             </div>
                                         </div>
@@ -807,72 +983,60 @@ export function TimesheetTableRow({
 
                         {/* Variance */}
                         <td className="px-3 py-2.5 text-center">
-                            <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                            <div className="flex flex-col items-center gap-0.5">
                                 {(() => {
                                     const diff = hoursScheduled - hoursClocked;
                                     if (Math.abs(diff) < 0.1) {
-                                        return <span className="text-[11px] font-bold text-emerald-600">0.00</span>;
+                                        return (
+                                            <span className="text-[11px] font-bold text-foreground tabular-nums">0.00 hrs</span>
+                                        );
                                     }
+                                    const sign = diff > 0 ? '+' : '−';
                                     return (
-                                        <div className="flex items-center gap-1">
-                                            {diff > 0 ? (
-                                                <PlusIcon className="h-3 w-3 text-red-500" />
-                                            ) : (
-                                                <MinusIcon className="h-3 w-3 text-red-500" />
-                                            )}
-                                            <span className="text-[11px] font-bold text-red-500">
-                                                {Math.abs(diff).toFixed(2)}
-                                            </span>
-                                        </div>
+                                        <span className="text-[11px] font-bold text-foreground tabular-nums">
+                                            {sign}
+                                            {Math.abs(diff).toFixed(2)} hrs
+                                        </span>
                                     );
                                 })()}
-                                <span className="text-[8px] font-bold text-muted-foreground uppercase opacity-70">Hrs</span>
+                                <span className="text-[10px] text-muted-foreground">Difference</span>
                             </div>
                         </td>
 
-                        <td className="px-3 py-2.5 text-center text-muted-foreground whitespace-nowrap text-[9px] uppercase font-bold">
-                            {ct.payRateType.replace('PER_', '')}
+                        <td className="px-3 py-2.5 text-center">
+                            <div className="flex flex-col items-center">
+                                <span className="text-[11px] font-bold text-foreground whitespace-nowrap">
+                                    {(ct.payRateType || '').replace('PER_', '')}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">Billing model</span>
+                            </div>
                         </td>
 
-                        {/* Total Invoice Detail */}
-                        <td className="px-3 py-2.5 min-w-[140px]">
+                        {/* Total Invoice */}
+                        <td className="px-3 py-2.5 min-w-[120px]">
                             <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
                                 <PopoverTrigger asChild>
-                                    <div className="space-y-0.5 text-right tabular-nums cursor-pointer hover:bg-slate-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
-                                            <span className="text-[10px] font-semibold">{fmtCurrency(clockedPriceVal)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                                                OT:
-                                                {ct.approveOvertime && (
-                                                    <span className="text-[7px] lowercase font-normal opacity-70">
-                                                        ({ct.overtimeRateType === 'MULTIPLIER' ? `${toNumber(ct.overtimeRate || 1.5).toFixed(2)}x` : fmtCurrency(toNumber(ct.overtimeRate))})
-                                                    </span>
-                                                )}
-                                            </span>
-                                            <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otPrice)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                                                Travel:
-                                                {ct.expenditureAmountType === 'MULTIPLIER' && (
-                                                    <span className="text-[7px] lowercase font-normal opacity-70">({(toNumber(ct.expenditureAmount) * 100).toFixed(0)}%)</span>
-                                                )}
-                                            </span>
-                                            <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expPrice)}</span>
-                                        </div>
-                                        <div className="pt-0.5 border-t flex justify-between items-center gap-2">
-                                            <span className="text-[9px] font-extrabold uppercase">Total:</span>
-                                            <span className="text-[11px] font-extrabold text-primary">{fmtCurrency(totalInvoice)}</span>
+                                    <div
+                                        className="text-right tabular-nums cursor-pointer hover:bg-muted/40 transition-colors p-1 rounded-md"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <div className="text-[11px] font-bold text-foreground">{fmtCurrency(totalInvoice)}</div>
+                                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                                            {[
+                                                toNumber(clockedPriceVal) > 0 && 'Shift',
+                                                toNumber(otPrice) > 0 && 'OT',
+                                                toNumber(expPrice) > 0 && 'Travel',
+                                                isCommApp && 'C',
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' + ') || '—'}
                                         </div>
                                     </div>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>
                                     <div className="space-y-4">
                                         <div className="space-y-3">
-                                            <Label className="text-xs font-bold uppercase tracking-tight text-primary">Adjust Price Detail</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-foreground">Adjust price detail</Label>
                                             <div className="grid gap-2">
                                                 <div className="grid grid-cols-3 items-center gap-4">
                                                     <Label htmlFor="shift-price" className="text-[10px] font-bold text-muted-foreground">SHIFT</Label>
@@ -927,45 +1091,31 @@ export function TimesheetTableRow({
                             </Popover>
                         </td>
 
-                        {/* Total Bill Detail */}
-                        <td className="px-3 py-2.5 min-w-[140px]">
+                        {/* Total Bill */}
+                        <td className="px-3 py-2.5 min-w-[120px]">
                             <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
                                 <PopoverTrigger asChild>
-                                    <div className="space-y-0.5 text-right tabular-nums cursor-pointer hover:bg-slate-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift:</span>
-                                            <span className="text-[10px] font-semibold">{fmtCurrency(clockedCostVal)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                                                OT:
-                                                {ct.approveOvertime && (
-                                                    <span className="text-[7px] lowercase font-normal opacity-70">
-                                                        ({ct.overtimeRateType === 'MULTIPLIER' ? `${toNumber(ct.overtimeRate || 1.5).toFixed(2)}x` : fmtCurrency(toNumber(ct.overtimeRate))})
-                                                    </span>
-                                                )}
-                                            </span>
-                                            <span className="text-[10px] font-semibold text-amber-600">{fmtCurrency(otCost)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                                                Travel:
-                                                {ct.expenditureAmountType === 'MULTIPLIER' && (
-                                                    <span className="text-[7px] lowercase font-normal opacity-70">({(toNumber(ct.expenditureAmount) * 100).toFixed(0)}%)</span>
-                                                )}
-                                            </span>
-                                            <span className="text-[10px] font-semibold text-indigo-600">{fmtCurrency(expCost)}</span>
-                                        </div>
-                                        <div className="pt-0.5 border-t flex justify-between items-center gap-2">
-                                            <span className="text-[9px] font-extrabold uppercase">Total:</span>
-                                            <span className="text-[11px] font-extrabold text-red-600">{fmtCurrency(totalBill)}</span>
+                                    <div
+                                        className="text-right tabular-nums cursor-pointer hover:bg-muted/40 transition-colors p-1 rounded-md"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <div className="text-[11px] font-bold text-foreground">{fmtCurrency(totalBill)}</div>
+                                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                                            {[
+                                                toNumber(clockedCostVal) > 0 && 'Shift',
+                                                toNumber(otCost) > 0 && 'OT',
+                                                toNumber(expCost) > 0 && 'Travel',
+                                                isCommApp && 'C',
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' + ') || '—'}
                                         </div>
                                     </div>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>
                                     <div className="space-y-4">
                                         <div className="space-y-3">
-                                            <Label className="text-xs font-bold uppercase tracking-tight text-red-500">Adjust Cost Detail</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-tight text-foreground">Adjust cost detail</Label>
                                             <div className="grid gap-2">
                                                 <div className="grid grid-cols-3 items-center gap-4">
                                                     <Label htmlFor="shift-cost" className="text-[10px] font-bold text-muted-foreground">SHIFT</Label>
@@ -1013,7 +1163,7 @@ export function TimesheetTableRow({
                                         </div>
                                         <div className="flex justify-end gap-2">
                                             <Button size="sm" variant="outline" onClick={() => setIsEditingOtCost(false)}>Cancel</Button>
-                                            <Button size="sm" className="bg-red-500 hover:bg-red-600" onClick={handleSave}>Save</Button>
+                                            <Button size="sm" onClick={handleSave}>Save</Button>
                                         </div>
                                     </div>
                                 </PopoverContent>
@@ -1021,13 +1171,13 @@ export function TimesheetTableRow({
                         </td>
 
                         {/* Net Income */}
-                        <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums">
+                        <td className="px-3 py-2.5 text-right text-[11px] font-bold text-foreground tabular-nums">
                             {fmtCurrency(totalInvoice - totalBill)}
                         </td>
 
                         <td className="px-3 py-2.5 text-center">
                             <div className="flex items-center justify-center gap-2">
-                                <span className={`text-[10px] font-bold ${isCommApp ? 'text-indigo-600' : 'text-slate-500'} uppercase tracking-wider min-w-[24px]`}>
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[24px]">
                                     {isCommApp ? 'Yes' : 'No'}
                                 </span>
                                 <button
@@ -1037,7 +1187,7 @@ export function TimesheetTableRow({
                                         e.stopPropagation();
                                         handleToggleCommission(!isCommApp);
                                     }}
-                                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:ring-offset-1 ${isCommApp ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 ${isCommApp ? 'bg-primary' : 'bg-muted'}`}
                                 >
                                     <span
                                         aria-hidden="true"
@@ -1051,7 +1201,7 @@ export function TimesheetTableRow({
                         <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
                             <div className="flex flex-col items-center gap-1">
                                 <div className="flex items-center justify-center gap-2">
-                                    <span className={`text-[10px] font-bold ${isMinApp ? 'text-amber-700' : 'text-slate-500'} uppercase tracking-wider min-w-[24px]`}>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[24px]">
                                         {isMinApp ? 'On' : 'Off'}
                                     </span>
                                     <button
@@ -1062,7 +1212,7 @@ export function TimesheetTableRow({
                                             e.stopPropagation();
                                             handleToggleMinimum(!isMinApp);
                                         }}
-                                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-amber-400 focus:ring-offset-1 ${isMinApp ? 'bg-amber-500' : 'bg-slate-200'}`}
+                                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 ${isMinApp ? 'bg-primary' : 'bg-muted'}`}
                                     >
                                         <span
                                             aria-hidden="true"
@@ -1071,7 +1221,7 @@ export function TimesheetTableRow({
                                     </button>
                                 </div>
                                 {isMinApp && (
-                                    <span className="text-[10px] font-semibold text-amber-800 tabular-nums">
+                                    <span className="text-[10px] font-semibold text-foreground tabular-nums">
                                         {fmtCurrency(toNumber(ct.minimum))}
                                     </span>
                                 )}
@@ -1122,7 +1272,22 @@ export function TimesheetTableRow({
             </tr>
 
             {/* Expanded detail */}
-            {isExpanded && <ExpandedRowDetail ct={ct} onViewEvent={onViewEvent} />}
+            {isExpanded && (
+                <ExpandedRowDetail
+                    ct={ct}
+                    onViewEvent={onViewEvent}
+                    cardStyle={rowVariant === 'card'}
+                    colSpan={
+                        subTab === 'invoice'
+                            ? 9
+                            : subTab === 'bill'
+                              ? 8
+                              : subTab === 'commission'
+                                ? 6
+                                : 17
+                    }
+                />
+            )}
         </>
     );
 }

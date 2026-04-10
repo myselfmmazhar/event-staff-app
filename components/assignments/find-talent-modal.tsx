@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { StaffSearchTable } from '@/components/call-times/staff-search-table';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
-import { CloseIcon, SendIcon, FilterIcon, XIcon } from '@/components/ui/icons';
+import { CloseIcon, SendIcon, FilterIcon, XIcon, CheckCircleIcon } from '@/components/ui/icons';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
@@ -107,6 +107,8 @@ export function FindTalentModal({
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingOffers, setPendingOffers] = useState<{ callTimeIds: string[], staffIds: string[] } | null>(null);
+  const [isAssignConfirmOpen, setIsAssignConfirmOpen] = useState(false);
+  const [pendingAssign, setPendingAssign] = useState<{ callTimeIds: string[], staffIds: string[] } | null>(null);
   const [showResendConfirm, setShowResendConfirm] = useState(false);
 
   // Send offers mutation
@@ -146,6 +148,47 @@ export function FindTalentModal({
     },
   });
 
+  const assignInvitations = trpc.callTime.assignInvitations.useMutation({
+    onSuccess: (data) => {
+      const confirmed = data.results.filter((r) => r.outcome === 'confirmed').length;
+      const waitlisted = data.results.filter((r) => r.outcome === 'waitlisted').length;
+      const skipped = data.results.filter((r) => r.outcome === 'already_assigned').length;
+      let description: string;
+      if (data.processed === 0 && skipped > 0) {
+        description = `All selected ${staffTerm.lowerPlural} were already assigned.`;
+      } else if (data.processed > 0) {
+        const bits: string[] = [];
+        if (confirmed) bits.push(`${confirmed} confirmed`);
+        if (waitlisted) bits.push(`${waitlisted} waitlisted`);
+        description = `${bits.join(', ')}. Confirmation or waitlist email sent.`;
+        if (skipped > 0) description += ` ${skipped} were already assigned.`;
+      } else {
+        description = 'No changes were needed.';
+      }
+      toast({
+        title: 'Assignment updated',
+        description,
+      });
+      setSelectedStaffIds([]);
+      setPendingAssign(null);
+      setIsAssignConfirmOpen(false);
+      if (hasCallTimeIds) {
+        utils.callTime.getManyByIds.invalidate({ ids: effectiveCallTimeIds });
+        utils.callTime.searchStaff.invalidate({ callTimeIds: effectiveCallTimeIds });
+        utils.callTime.getAll.invalidate();
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'error',
+      });
+      setIsAssignConfirmOpen(false);
+      setPendingAssign(null);
+    },
+  });
+
   const handleSendOffers = () => {
     if (selectedStaffIds.length === 0 || !hasCallTimeIds) return;
 
@@ -180,9 +223,35 @@ export function FindTalentModal({
     }
   };
 
+  const handleAssignAssignment = () => {
+    if (selectedStaffIds.length === 0 || !hasCallTimeIds) return;
+
+    if (effectiveCallTimeIds.length > 1) {
+      setPendingAssign({
+        callTimeIds: effectiveCallTimeIds,
+        staffIds: selectedStaffIds,
+      });
+      setIsAssignConfirmOpen(true);
+      return;
+    }
+
+    assignInvitations.mutate({
+      callTimeIds: effectiveCallTimeIds,
+      staffIds: selectedStaffIds,
+    });
+  };
+
+  const handleConfirmAssign = () => {
+    if (pendingAssign) {
+      assignInvitations.mutate(pendingAssign);
+    }
+  };
+
   const handleClose = () => {
     setSelectedStaffIds([]);
     setIncludeAlreadyInvited(false);
+    setIsAssignConfirmOpen(false);
+    setPendingAssign(null);
     clearFilters();
     onClose();
   };
@@ -324,14 +393,27 @@ export function FindTalentModal({
             </label>
 
             {selectedStaffIds.length > 0 && (
-              <Button
-                onClick={handleSendOffers}
-                disabled={sendInvitations.isPending}
-              >
-                <SendIcon className="h-4 w-4 mr-2" />
-                Send {selectedStaffIds.length} Offer
-                {selectedStaffIds.length > 1 ? 's' : ''}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAssignAssignment}
+                  disabled={sendInvitations.isPending || assignInvitations.isPending}
+                >
+                  <CheckCircleIcon className="h-4 w-4 mr-2" />
+                  Assign {selectedStaffIds.length} assignment
+                  {selectedStaffIds.length > 1 ? 's' : ''}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSendOffers}
+                  disabled={sendInvitations.isPending || assignInvitations.isPending}
+                >
+                  <SendIcon className="h-4 w-4 mr-2" />
+                  Send {selectedStaffIds.length} Offer
+                  {selectedStaffIds.length > 1 ? 's' : ''}
+                </Button>
+              </div>
             )}
           </div>
 
@@ -361,6 +443,21 @@ export function FindTalentModal({
         confirmText="Yes, Send Offers"
         variant="default"
         isLoading={sendInvitations.isPending}
+      />
+
+      <ConfirmModal
+        open={isAssignConfirmOpen}
+        onClose={() => {
+          setIsAssignConfirmOpen(false);
+          setPendingAssign(null);
+        }}
+        onConfirm={handleConfirmAssign}
+        title="Confirm assign on behalf"
+        description={`You are about to assign ${selectedStaffIds.length} ${staffTerm.lowerPlural} across ${effectiveCallTimeIds.length} assignments immediately. They will be marked as accepted (no invitation email).`}
+        warningMessage="We will send a call time confirmation or waitlist email only—not an invitation."
+        confirmText="Yes, assign"
+        variant="default"
+        isLoading={assignInvitations.isPending}
       />
 
       <ConfirmModal

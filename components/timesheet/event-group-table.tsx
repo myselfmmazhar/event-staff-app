@@ -45,13 +45,13 @@ export function EventGroupTable({
             {/* ── Group Header ── */}
             <button
                 onClick={() => onToggleGroup(group.eventId)}
-                className="flex items-center gap-3 w-full px-4 py-3 text-left bg-gradient-to-r from-muted/50 to-muted/20 hover:from-muted/70 hover:to-muted/30 transition-all border-b border-border"
+                className="flex items-center gap-3 w-full px-4 py-3 text-left bg-muted/30 hover:bg-muted/45 transition-all border-b border-border"
             >
-                <div className={`flex items-center justify-center h-6 w-6 rounded-md transition-colors ${isCollapsed ? 'bg-muted' : 'bg-primary/10'}`}>
+                <div className={`flex items-center justify-center h-6 w-6 rounded-md transition-colors ${isCollapsed ? 'bg-muted' : 'bg-muted'}`}>
                     {isCollapsed ? (
                         <ChevronDownIcon className="h-3.5 w-3.5 text-muted-foreground" />
                     ) : (
-                        <ChevronUpIcon className="h-3.5 w-3.5 text-primary" />
+                        <ChevronUpIcon className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
                 </div>
                 <span className="font-semibold text-sm text-foreground">{group.eventTitle}</span>
@@ -73,7 +73,7 @@ export function EventGroupTable({
                     <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b border-border bg-muted/15">
+                                <tr className="border-b border-border bg-muted/30">
                                     <th className="w-8 px-2 py-2">
                                         {(() => {
                                             const groupIds = group.callTimes.map((ct) => ct.id);
@@ -90,23 +90,21 @@ export function EventGroupTable({
                                         })()}
                                     </th>
                                     <th className="w-8 px-2 py-2" />
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service Date</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Talent</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service / Product</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Date</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Actual Shift</th>
                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Variance</th>
                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Cost</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Price</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Notes</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Total Bill</th>
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Total Invoice</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap pr-6">Net Income</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Total Bill</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
+                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground pr-6">Notes</th>
                                 </tr>
                             </thead>
                             <tbody>
