@@ -30,6 +30,27 @@ import { EventFormModal } from '@/components/events/event-form-modal';
 import { AmountType, EventStatus, SkillLevel, StaffRating, RateType } from '@prisma/client';
 import type { CreateCallTimeInput, UpdateCallTimeInput } from '@/lib/schemas/call-time.schema';
 import type { CreateEventInput, UpdateEventInput } from '@/lib/schemas/event.schema';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+
+/**
+ * Sort key for task summary rows — must match Date/Time shown in TimesheetSummaryTable (event start),
+ * not only min(callTime.startDate), which can disagree (e.g. event 1992 vs assignments in 2026).
+ */
+function getEventGroupListSortTime(group: EventGroup): number {
+    const ev = group.callTimes[0]?.event;
+    const eventStart = ev?.startDate;
+    if (eventStart != null && !isDateNullOrUBD(eventStart)) {
+        const t = new Date(eventStart).getTime();
+        if (!Number.isNaN(t)) return t;
+    }
+    const callTimes = group.callTimes
+        .map((ct) => ct.startDate)
+        .filter((d): d is string | Date => d != null && !isDateNullOrUBD(d))
+        .map((d) => new Date(d).getTime())
+        .filter((t) => !Number.isNaN(t));
+    if (callTimes.length === 0) return Number.MAX_SAFE_INTEGER;
+    return Math.min(...callTimes);
+}
 
 export default function TimeManagerPage() {
     const { toast } = useToast();
@@ -619,9 +640,7 @@ export default function TimeManagerPage() {
                 }
                 case 'startDate':
                 default: {
-                    const aMin = Math.min(...a.callTimes.map(ct => ct.startDate ? new Date(ct.startDate).getTime() : 0));
-                    const bMin = Math.min(...b.callTimes.map(ct => ct.startDate ? new Date(ct.startDate).getTime() : 0));
-                    comparison = aMin - bMin;
+                    comparison = getEventGroupListSortTime(a) - getEventGroupListSortTime(b);
                 }
             }
             return sortOrder === 'asc' ? comparison : -comparison;
@@ -1168,12 +1187,12 @@ export default function TimeManagerPage() {
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <SortHeader id="staffName" label="Talent" variant="detail" />
-                                                            <SortHeader id="service" label="Services / Products" variant="detail" />
-                                                            <SortHeader id="startDate" label="Date" variant="detail" />
                                                             <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                 Action
                                                             </th>
+                                                            <SortHeader id="staffName" label="Talent" variant="detail" />
+                                                            <SortHeader id="service" label="Services / Products" variant="detail" />
+                                                            <SortHeader id="startDate" label="Date" variant="detail" />
                                                             <SortHeader id="scheduledShift" label="Scheduled Shift" variant="detail" />
                                                             <SortHeader id="actualShift" label="Actual Shift" variant="detail" />
                                                             <SortHeader id="variance" label="Variance" align="text-center" variant="detail" />
@@ -1394,12 +1413,12 @@ export default function TimeManagerPage() {
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <SortHeader id="staffName" label="Talent" variant="detail" />
-                                                            <SortHeader id="service" label="Services / Products" variant="detail" />
-                                                            <SortHeader id="startDate" label="Date" variant="detail" />
                                                             <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                 Action
                                                             </th>
+                                                            <SortHeader id="staffName" label="Talent" variant="detail" />
+                                                            <SortHeader id="service" label="Services / Products" variant="detail" />
+                                                            <SortHeader id="startDate" label="Date" variant="detail" />
                                                             <SortHeader id="scheduledShift" label="Scheduled Shift" variant="detail" />
                                                             <SortHeader id="actualShift" label="Actual Shift" variant="detail" />
                                                             <SortHeader id="variance" label="Variance" align="text-center" variant="detail" />
@@ -1670,12 +1689,12 @@ export default function TimeManagerPage() {
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <SortHeader id="staffName" label="Talent" variant="detail" />
-                                                            <SortHeader id="service" label="Services / Products" variant="detail" />
-                                                            <SortHeader id="startDate" label="Date" variant="detail" />
                                                             <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                 Action
                                                             </th>
+                                                            <SortHeader id="staffName" label="Talent" variant="detail" />
+                                                            <SortHeader id="service" label="Services / Products" variant="detail" />
+                                                            <SortHeader id="startDate" label="Date" variant="detail" />
                                                             <SortHeader id="scheduledShift" label="Scheduled Shift" variant="detail" />
                                                             <SortHeader id="actualShift" label="Actual Shift" variant="detail" />
                                                             <SortHeader id="variance" label="Variance" align="text-center" variant="detail" />

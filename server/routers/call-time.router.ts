@@ -162,6 +162,70 @@ export const callTimeRouter = router({
     }),
 
   /**
+   * Assign on behalf: accept immediately, send confirmation (or waitlist) email — not invitation email.
+   */
+  assignInvitations: protectedProcedure
+    .input(CallTimeSchema.assignInvitations)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      const result = await service.assignInvitationsOnBehalf(
+        input,
+        ctx.userId!,
+        ctx.userRole
+      );
+
+      for (const row of result.results) {
+        if (row.outcome === 'already_assigned') continue;
+
+        const inv = row.invitation;
+        if (row.outcome === 'confirmed') {
+          try {
+            await emailService.sendCallTimeConfirmation(
+              inv.staff.email,
+              inv.staff.firstName,
+              {
+                positionName: inv.callTime.service?.title || 'Service',
+                eventTitle: inv.callTime.event.title,
+                eventVenue: inv.callTime.event.venueName ?? '',
+                eventLocation: `${inv.callTime.event.city}, ${inv.callTime.event.state}`,
+                startDate: inv.callTime.startDate,
+                startTime: inv.callTime.startTime,
+                description: inv.callTime.event.description,
+                requirements: inv.callTime.event.requirements,
+                preEventInstructions: inv.callTime.event.preEventInstructions,
+                privateComments: inv.callTime.event.privateComments,
+                instructions: inv.callTime.instructions,
+              }
+            );
+          } catch (error) {
+            console.error(
+              `Failed to send confirmation email to ${inv.staff.email}:`,
+              error
+            );
+          }
+        } else {
+          try {
+            await emailService.sendCallTimeWaitlisted(
+              inv.staff.email,
+              inv.staff.firstName,
+              {
+                positionName: inv.callTime.service?.title || 'Service',
+                eventTitle: inv.callTime.event.title,
+              }
+            );
+          } catch (error) {
+            console.error(
+              `Failed to send waitlist email to ${inv.staff.email}:`,
+              error
+            );
+          }
+        }
+      }
+
+      return result;
+    }),
+
+  /**
    * Respond to call time invitation
    * Requires: Authentication (staff member who received invitation)
    */
@@ -195,7 +259,7 @@ export const callTimeRouter = router({
               {
                 positionName: staffRecord.callTime.service?.title || 'Service',
                 eventTitle: staffRecord.callTime.event.title,
-                eventVenue: staffRecord.callTime.event.venueName,
+                eventVenue: staffRecord.callTime.event.venueName ?? '',
                 eventLocation: `${staffRecord.callTime.event.city}, ${staffRecord.callTime.event.state}`,
                 startDate: staffRecord.callTime.startDate,
                 startTime: staffRecord.callTime.startTime,
