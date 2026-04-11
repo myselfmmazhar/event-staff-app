@@ -397,7 +397,7 @@ export function TimesheetTableRow({
                                             >
                                                 <div className="font-semibold text-slate-900 text-[12px] leading-snug">
                                                     {invoiceStaffHeadline(row, row.event ?? ct.event)}
-                                    </div>
+                                                </div>
                                                 <div className="text-slate-800">{row.service?.title || ct.service?.title || '—'}</div>
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-slate-600">Schedule: </span>
@@ -919,10 +919,10 @@ export function TimesheetTableRow({
                                     s && e
                                         ? `${s} \u2013 ${e}`
                                         : s
-                                          ? `${s} \u2013 \u2014`
-                                          : e
-                                            ? `\u2014 \u2013 ${e}`
-                                            : '\u2014';
+                                            ? `${s} \u2013 \u2014`
+                                            : e
+                                                ? `\u2014 \u2013 ${e}`
+                                                : '\u2014';
                                 return (
                                     <div className="flex flex-col gap-1 text-left">
                                         <div className="text-sm font-bold text-foreground tabular-nums leading-tight">
@@ -1319,10 +1319,10 @@ export function TimesheetTableRow({
                         subTab === 'invoice'
                             ? 9
                             : subTab === 'bill'
-                              ? 8
-                              : subTab === 'commission'
-                                ? 6
-                                : 17
+                                ? 8
+                                : subTab === 'commission'
+                                    ? 6
+                                    : 17
                     }
                 />
             )}
