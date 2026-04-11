@@ -27,6 +27,7 @@ export function AccountDetailsSection({
   className,
   companies,
   terminology,
+  omitCustomBasicFields = false,
 }: AccountDetailsSectionProps) {
   const { labels } = useLabels();
   const availabilityStatus = watch('availabilityStatus');
@@ -309,6 +310,8 @@ export function AccountDetailsSection({
             </>
           )}
 
+          {!omitCustomBasicFields && (
+            <>
           <div>
             <Label htmlFor="customField1">{labels.global.staffCustomFields.customField1}</Label>
             <Input
@@ -336,6 +339,8 @@ export function AccountDetailsSection({
               <p className="text-sm text-destructive mt-1">{String(errors.customField2?.message || "")}</p>
             )}
           </div>
+            </>
+          )}
  
           <div>
             <Label htmlFor="customField3">{labels.global.staffCustomFields.customField3}</Label>

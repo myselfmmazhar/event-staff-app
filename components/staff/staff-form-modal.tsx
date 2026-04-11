@@ -4,18 +4,15 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
 } from '@/components/ui/dialog';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
-import { CloseIcon, EyeIcon, ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
+import { CloseIcon, EyeIcon, ChevronDownIcon } from '@/components/ui/icons';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
-import { AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
+import { AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus, TaxFilledBy } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useLabels } from '@/lib/hooks/use-labels';
@@ -36,6 +33,126 @@ import {
     type TeamMemberInput,
 } from './form-sections';
 import { TaxDetailsForm, type TaxDetailsFormRef } from './tax-details-form';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { phoneValidation } from '@/lib/utils/validation';
+import {
+    FileText,
+    Cloud,
+    PenLine,
+    Smartphone,
+    Search,
+    Camera,
+} from 'lucide-react';
+
+const STAFF_FORM_DRAFT_KEY = 'staff-add-form-draft-v1';
+
+/** Toggle to show the collapsible “Profile, services & account settings” block on the Review step. */
+const SHOW_REVIEW_PROFILE_ACCOUNT_SETTINGS = false;
+
+/** Toggle to show the Documents upload block on the Requirements step. */
+const SHOW_REQUIREMENTS_DOCUMENT_UPLOAD = false;
+
+/**
+ * Toggle to show the nested Form W-9 when “Company completes the tax form” (TaxFilledBy.STAFF) is selected.
+ * When false, the mode switch still works; tax data is submitted without the inline W-9 UI.
+ */
+const SHOW_TAX_STAFF_W9_FORM = false;
+
+const WIZARD_STEPS = ['basic', 'talentType', 'requirements', 'tax', 'review'] as const;
+type WizardStep = (typeof WIZARD_STEPS)[number];
+
+const STEP_LABELS: Record<WizardStep, string> = {
+    basic: 'Basic Info',
+    talentType: 'Talent Type',
+    requirements: 'Requirements',
+    tax: 'Tax Flow',
+    review: 'Review',
+};
+
+const STAFF_TYPE_CHIPS: { id: string; label: string; value: StaffType }[] = [
+    { id: 'contractor', label: 'Contractor', value: StaffType.CONTRACTOR },
+    { id: 'employee', label: 'Employee', value: StaffType.EMPLOYEE },
+    { id: 'freelancer', label: 'Freelancer', value: StaffType.FREELANCE },
+    { id: 'vendor', label: 'Vendor', value: StaffType.COMPANY },
+    { id: 'volunteer', label: 'Volunteer', value: StaffType.EMPLOYEE },
+    { id: 'custom', label: 'Custom', value: StaffType.CONTRACTOR },
+];
+
+function defaultTalentChipIdForStaffType(t: StaffType): string {
+    switch (t) {
+        case StaffType.EMPLOYEE:
+            return 'employee';
+        case StaffType.FREELANCE:
+            return 'freelancer';
+        case StaffType.COMPANY:
+            return 'vendor';
+        case StaffType.CONTRACTOR:
+        default:
+            return 'contractor';
+    }
+}
+
+type ReqTemplateId = 'w9' | 'upload' | 'esign' | 'idv' | 'bg' | 'headshot';
+
+const REQ_TEMPLATE_CARDS: {
+    id: ReqTemplateId;
+    title: string;
+    badge: 'Standard' | 'Smart';
+    description: string;
+    footer: string;
+    Icon: typeof FileText;
+}[] = [
+    {
+        id: 'w9',
+        title: 'Tax form - W-9',
+        badge: 'Standard',
+        description: 'Contractor tax requirement with acknowledgement and signature.',
+        footer: 'Included for contractor',
+        Icon: FileText,
+    },
+    {
+        id: 'upload',
+        title: 'File upload',
+        badge: 'Standard',
+        description: 'Upload certifications, insurance, IDs, or supporting documents.',
+        footer: 'Add supporting docs',
+        Icon: Cloud,
+    },
+    {
+        id: 'esign',
+        title: 'E-signature',
+        badge: 'Standard',
+        description: 'Signature-only requirement for policies, agreements, or acknowledgements.',
+        footer: 'Signature required',
+        Icon: PenLine,
+    },
+    {
+        id: 'idv',
+        title: 'ID verification',
+        badge: 'Smart',
+        description: 'Identity or document verification based on role and compliance need.',
+        footer: 'Optional requirement',
+        Icon: Smartphone,
+    },
+    {
+        id: 'bg',
+        title: 'Background check',
+        badge: 'Smart',
+        description: 'Use when the role, client, venue, or market requires it.',
+        footer: 'Optional requirement',
+        Icon: Search,
+    },
+    {
+        id: 'headshot',
+        title: 'Headshot / profile photo',
+        badge: 'Smart',
+        description: 'Useful for promotional talent, models, and client-facing roles.',
+        footer: 'Optional requirement',
+        Icon: Camera,
+    },
+];
 
 // Helper to get default form values
 const getDefaultFormValues = () => ({
@@ -114,7 +231,6 @@ const getFormValuesFromStaff = (staff: StaffWithRelations) => ({
 // Form schema for client-side
 const formSchema = StaffSchema.create;
 export type StaffFormInput = z.input<typeof formSchema>;
-type StaffFormOutput = z.infer<typeof formSchema>;
 
 interface StaffFormModalProps {
     staff: StaffWithRelations | null;
@@ -152,12 +268,17 @@ function StaffFormContent({
     labels,
 }: StaffFormContentProps) {
     const isEdit = !!staff;
-    const [showAccountDetails, setShowAccountDetails] = useState(false);
     const taxFormRef = useRef<TaxDetailsFormRef>(null);
+    const [wizardStep, setWizardStep] = useState<WizardStep>('basic');
+    const [selectedReqTemplates, setSelectedReqTemplates] = useState<Set<ReqTemplateId>>(
+        () => new Set<ReqTemplateId>(['w9'])
+    );
+    const [createTaxFilledBy, setCreateTaxFilledBy] = useState<TaxFilledBy>(TaxFilledBy.TALENT);
+    const [talentTypeChipId, setTalentTypeChipId] = useState<string>(() =>
+        staff ? defaultTalentChipIdForStaffType(staff.staffType) : 'contractor'
+    );
 
-    // Team members state for TEAM role
     const [teamMembers, setTeamMembers] = useState<TeamMemberInput[]>(() => {
-        // Initialize from staff data
         if (staff?.staffRole === StaffRole.TEAM && staff.teamMembers && staff.teamMembers.length > 0) {
             return staff.teamMembers.map((tm) => ({
                 firstName: tm.firstName,
@@ -177,13 +298,12 @@ function StaffFormContent({
         serviceIds: [],
     });
 
-    // Compute initial form values - only once on mount
     const initialValues = useMemo(() => {
         if (staff) {
             return getFormValuesFromStaff(staff);
         }
         return getDefaultFormValues();
-    }, []); // Empty deps - only compute once on mount
+    }, []);
 
     const {
         register,
@@ -193,32 +313,92 @@ function StaffFormContent({
         control,
         watch,
         setValue,
+        getValues,
     } = useForm<StaffFormInput>({
         resolver: zodResolver(formSchema),
         defaultValues: initialValues as StaffFormInput,
     });
 
     const staffRole = watch('staffRole');
+    const firstName = watch('firstName');
+    const lastName = watch('lastName');
+    const email = watch('email');
+    const phone = watch('phone');
 
-    // Helper functions for team members
+    useEffect(() => {
+        if (staff) return;
+        try {
+            const raw = sessionStorage.getItem(STAFF_FORM_DRAFT_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw) as {
+                values?: StaffFormInput;
+                teamMembers?: TeamMemberInput[];
+                wizardStep?: WizardStep;
+                selectedReqTemplates?: ReqTemplateId[];
+                createTaxFilledBy?: TaxFilledBy;
+            };
+            if (parsed.values) {
+                reset(parsed.values as StaffFormInput);
+                setTalentTypeChipId(
+                    defaultTalentChipIdForStaffType(
+                        (parsed.values as StaffFormInput).staffType ?? StaffType.CONTRACTOR
+                    )
+                );
+            }
+            if (parsed.teamMembers) setTeamMembers(parsed.teamMembers);
+            if (parsed.wizardStep && WIZARD_STEPS.includes(parsed.wizardStep)) {
+                setWizardStep(parsed.wizardStep);
+            }
+            if (parsed.selectedReqTemplates?.length) {
+                setSelectedReqTemplates(new Set(parsed.selectedReqTemplates));
+            }
+            if (parsed.createTaxFilledBy) {
+                setCreateTaxFilledBy(parsed.createTaxFilledBy);
+            }
+        } catch {
+            /* ignore */
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- draft restore once on mount for new staff
+    }, []);
+
+    useEffect(() => {
+        if (!isEdit && wizardStep === 'tax' && taxFormRef.current) {
+            taxFormRef.current.setTaxFilledBy(createTaxFilledBy);
+        }
+    }, [wizardStep, isEdit, createTaxFilledBy]);
+
     const addTeamMember = useCallback(() => {
         if (newTeamMember.firstName && newTeamMember.email) {
-            setTeamMembers(prev => [...prev, { ...newTeamMember }]);
+            setTeamMembers((prev) => [...prev, { ...newTeamMember }]);
             setNewTeamMember({ firstName: '', lastName: '', email: '', phone: '', serviceIds: [] });
         }
     }, [newTeamMember]);
 
     const removeTeamMember = useCallback((index: number) => {
-        setTeamMembers(prev => prev.filter((_, i) => i !== index));
+        setTeamMembers((prev) => prev.filter((_, i) => i !== index));
     }, []);
 
-    // Properly typed submit handler (accepts Zod transformed output type)
+    const emailValid = Boolean(email?.trim() && z.string().email().safeParse(email.trim()).success);
+    const phoneValid = Boolean(phone?.trim() && phoneValidation.isValid(phone));
+    const canProceedBasic =
+        Boolean(firstName?.trim()) &&
+        Boolean(lastName?.trim()) &&
+        (emailValid || phoneValid);
+
     const handleFormSubmit: SubmitHandler<StaffFormInput> = async (data) => {
+        if (!isEdit && !data.email?.trim()) {
+            toast({
+                title: 'Email required',
+                description: 'A valid email is required to create the record and send an invitation.',
+                variant: 'error',
+            });
+            setWizardStep('basic');
+            return;
+        }
         const submitData = {
             ...data,
             teamMembers: data.staffRole === StaffRole.TEAM ? teamMembers : undefined,
         };
-        // In create mode, collect tax data from the ref
         if (!isEdit && taxFormRef.current) {
             const taxData = await taxFormRef.current.getFormData();
             onSubmit(submitData, taxData ? (taxData as unknown as Record<string, unknown>) : undefined);
@@ -227,7 +407,6 @@ function StaffFormContent({
         }
     };
 
-    // Shared props for form sections
     const sectionProps = {
         register,
         control,
@@ -238,141 +417,629 @@ function StaffFormContent({
         disabled: isSubmitting,
     };
 
+    const stepIndex = WIZARD_STEPS.indexOf(wizardStep);
+    const isLastStep = wizardStep === 'review';
+
+    const goNext = () => {
+        if (wizardStep === 'basic' && !canProceedBasic) return;
+        if (stepIndex < WIZARD_STEPS.length - 1) {
+            const nextStep = WIZARD_STEPS[stepIndex + 1];
+            if (nextStep) setWizardStep(nextStep);
+        }
+    };
+
+    const goBack = () => {
+        if (stepIndex > 0) {
+            const prevStep = WIZARD_STEPS[stepIndex - 1];
+            if (prevStep) setWizardStep(prevStep);
+        }
+    };
+
+    const handleSaveDraft = () => {
+        try {
+            const payload = {
+                values: getValues(),
+                teamMembers,
+                wizardStep,
+                selectedReqTemplates: [...selectedReqTemplates],
+                createTaxFilledBy,
+            };
+            sessionStorage.setItem(STAFF_FORM_DRAFT_KEY, JSON.stringify(payload));
+            toast({
+                title: 'Draft saved',
+                description: 'Your progress is stored in this browser until you submit or clear it.',
+            });
+        } catch {
+            toast({
+                title: 'Could not save draft',
+                description: 'Try again or continue without saving.',
+                variant: 'error',
+            });
+        }
+    };
+
+    const toggleReqTemplate = (id: ReqTemplateId) => {
+        setSelectedReqTemplates((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const setCreateTaxMode = (mode: TaxFilledBy) => {
+        setCreateTaxFilledBy(mode);
+        taxFormRef.current?.setTaxFilledBy(mode);
+    };
+
+    const titleText = isEdit ? `Edit ${terminology.staff.singular}` : `Add ${terminology.staff.singular.toLowerCase()}`;
+
     return (
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
-            <DialogHeader>
-                <div className="flex items-center justify-between">
-                    <DialogTitle>{isEdit ? `Edit ${terminology.staff.singular}` : `Add New ${terminology.staff.singular}`}</DialogTitle>
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex h-full min-h-0 flex-col bg-white">
+            {/* Header + step tabs */}
+            <div className="shrink-0 border-b border-slate-200 px-6 pb-0 pt-5 sm:px-8">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1 pr-2">
+                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">{titleText}</h2>
+                        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
+                            After adding a {terminology.staff.lower}, they will be invited by email or phone to join your
+                            network, complete onboarding requirements, review any company-entered information, and sign
+                            where required.
+                        </p>
+                    </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="shrink-0 rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                        aria-label="Close"
                     >
                         <CloseIcon className="h-5 w-5" />
                     </button>
                 </div>
-                {!isEdit && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                        An invitation email will be sent to complete their registration.
-                    </p>
-                )}
-            </DialogHeader>
 
-            <DialogContent className="flex-1 overflow-y-auto">
-                {/* Staff ID (Read-only in edit mode) */}
-                {isEdit && staff && (
-                    <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
-                        <p className="text-sm text-muted-foreground">{terminology.staff.singular} ID</p>
-                        <p className="text-base font-medium">{staff.staffId}</p>
-                    </div>
-                )}
+                <div className="mt-6 flex gap-1 overflow-x-auto border-t border-slate-200/90 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {WIZARD_STEPS.map((step) => {
+                        const active = wizardStep === step;
+                        return (
+                            <button
+                                key={step}
+                                type="button"
+                                onClick={() => setWizardStep(step)}
+                                className={cn(
+                                    'relative shrink-0 whitespace-nowrap px-3 py-3 text-sm transition-colors',
+                                    active
+                                        ? 'font-bold text-slate-900'
+                                        : 'font-medium text-slate-500 hover:text-slate-700'
+                                )}
+                            >
+                                {STEP_LABELS[step]}
+                                {active && (
+                                    <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-slate-900" />
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
 
-                {/* Team Membership Info (Read-only - shown if staff belongs to a team) */}
-                {isEdit && staff?.company && (
-                    <div className="mb-6 p-4 bg-primary/10 rounded-md border border-primary/30">
-                        <p className="text-sm font-medium text-foreground mb-2">Team Membership</p>
-                        <p className="text-sm text-muted-foreground">
-                            This {terminology.staff.lower} is a member of team:{' '}
-                            <span className="font-semibold text-foreground">
-                                {staff.company.teamEntityName || `${staff.company.firstName} ${staff.company.lastName}`}
-                            </span>
-                            {' '}({staff.company.staffId})
+            {/* Body */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+                {wizardStep === 'basic' && (
+                    <div className="mx-auto max-w-4xl">
+                        <h3 className="text-base font-bold text-slate-900">1. Basic invite information</h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                            These are the core fields used to create the record and send an invitation. At least one of
+                            email or phone must be valid before you can continue.
                         </p>
-                    </div>
-                )}
 
-                {/* Account Details Section Toggle */}
-                <div className="mb-6">
-                    <button
-                        type="button"
-                        onClick={() => setShowAccountDetails(!showAccountDetails)}
-                        className="flex items-center gap-2 w-full p-3 bg-muted/20 hover:bg-muted/30 rounded-md border border-border transition-colors text-left"
-                    >
-                        {showAccountDetails ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
-                        <span className="font-semibold text-lg">Account Details</span>
-                        {!showAccountDetails && (
-                            <span className="text-sm text-muted-foreground ml-auto italic">
-                                (Status, Type, Role, Skill Level, Rating, Availability)
-                            </span>
-                        )}
-                    </button>
-
-                    {showAccountDetails && (
-                        <div className="mt-4 border-l-2 border-primary/30 pl-4 py-2 space-y-6">
-                            <AccountDetailsSection
-                                {...sectionProps}
-                                companies={companies}
-                                terminology={terminology}
-                                labels={labels.global}
-                            />
-                            
-                            {/* Tax Details Section (also part of account/legal info) */}
-                            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                                <h4 className="text-base font-semibold border-b border-border pb-2 mb-4">Tax Details</h4>
-                                <TaxDetailsForm
-                                    ref={isEdit ? undefined : taxFormRef}
-                                    staffId={staff?.id}
-                                    initialData={staff?.taxDetails ?? null}
+                        <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                            <div>
+                                <Label htmlFor="sf-firstName" className="text-sm font-bold text-slate-900" required>
+                                    First name
+                                </Label>
+                                <Input
+                                    id="sf-firstName"
+                                    {...register('firstName')}
+                                    disabled={isSubmitting}
+                                    error={!!errors.firstName}
+                                    placeholder="Enter first name"
+                                    className="mt-2 rounded-lg border-slate-200"
+                                />
+                                {errors.firstName && (
+                                    <p className="mt-1 text-sm text-destructive">{String(errors.firstName?.message || '')}</p>
+                                )}
+                            </div>
+                            <div>
+                                <Label htmlFor="sf-lastName" className="text-sm font-bold text-slate-900" required>
+                                    Last name
+                                </Label>
+                                <Input
+                                    id="sf-lastName"
+                                    {...register('lastName')}
+                                    disabled={isSubmitting}
+                                    error={!!errors.lastName}
+                                    placeholder="Enter last name"
+                                    className="mt-2 rounded-lg border-slate-200"
+                                />
+                                {errors.lastName && (
+                                    <p className="mt-1 text-sm text-destructive">{String(errors.lastName?.message || '')}</p>
+                                )}
+                            </div>
+                            <div>
+                                <Label htmlFor="sf-email" className="text-sm font-bold text-slate-900">
+                                    Email
+                                </Label>
+                                <p className="mt-1 text-xs text-slate-500">Used for invite and account setup</p>
+                                <Input
+                                    id="sf-email"
+                                    type="email"
+                                    {...register('email')}
+                                    disabled={isSubmitting}
+                                    error={!!errors.email}
+                                    placeholder="talent@email.com"
+                                    className="mt-2 rounded-lg border-slate-200"
+                                />
+                                {errors.email && (
+                                    <p className="mt-1 text-sm text-destructive">{String(errors.email?.message || '')}</p>
+                                )}
+                            </div>
+                            <div>
+                                <Label htmlFor="sf-phone" className="text-sm font-bold text-slate-900">
+                                    Phone
+                                </Label>
+                                <p className="mt-1 text-xs text-slate-500">Used for invite if SMS is enabled</p>
+                                <Input
+                                    id="sf-phone"
+                                    type="tel"
+                                    {...register('phone')}
+                                    disabled={isSubmitting}
+                                    error={!!errors.phone}
+                                    placeholder="(000) 000-0000"
+                                    className="mt-2 rounded-lg border-slate-200"
+                                />
+                                {errors.phone && (
+                                    <p className="mt-1 text-sm text-destructive">{String(errors.phone?.message || '')}</p>
+                                )}
+                            </div>
+                            <div>
+                                <Label htmlFor="sf-cf1" className="text-sm font-bold text-slate-900">
+                                    Company / business name
+                                </Label>
+                                <Input
+                                    id="sf-cf1"
+                                    {...register('customField1')}
+                                    disabled={isSubmitting}
+                                    placeholder="Optional"
+                                    className="mt-2 rounded-lg border-slate-200"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="sf-cf2" className="text-sm font-bold text-slate-900">
+                                    External ID
+                                </Label>
+                                <Input
+                                    id="sf-cf2"
+                                    {...register('customField2')}
+                                    disabled={isSubmitting}
+                                    placeholder="Optional internal reference"
+                                    className="mt-2 rounded-lg border-slate-200"
                                 />
                             </div>
                         </div>
-                    )}
+
+                        <div className="mt-6">
+                            <Label htmlFor="sf-invite-rule" className="text-sm font-bold text-slate-900">
+                                Invite rule
+                            </Label>
+                            <Input
+                                id="sf-invite-rule"
+                                readOnly
+                                disabled
+                                value="At least one of Email or Phone is required before Continue is enabled."
+                                className="mt-2 cursor-default rounded-lg border-slate-200 bg-slate-50 text-slate-600"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {wizardStep === 'talentType' && (
+                    <div className="mx-auto max-w-4xl">
+                        <h3 className="text-base font-bold text-slate-900">2. Talent type</h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Talent type helps determine onboarding and tax expectations for this {terminology.staff.lower}.
+                        </p>
+                        <div className="mt-5 flex flex-wrap gap-2">
+                            {STAFF_TYPE_CHIPS.map(({ id, label, value }) => {
+                                const selected = talentTypeChipId === id;
+                                return (
+                                    <button
+                                        key={id}
+                                        type="button"
+                                        onClick={() => {
+                                            setTalentTypeChipId(id);
+                                            setValue('staffType', value, { shouldDirty: true });
+                                        }}
+                                        disabled={isSubmitting}
+                                        className={cn(
+                                            'rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                                            selected
+                                                ? 'border-slate-900 bg-slate-900 text-white'
+                                                : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+                                        )}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {/* <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                            <p className="text-sm font-bold text-slate-900">Example logic</p>
+                            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                                Contractor flows typically include W-9, payment method, and optional business details.
+                                Employee flows swap in W-4 and employment-specific requirements. You can refine account
+                                settings in the review step.
+                            </p>
+                        </div> */}
+                    </div>
+                )}
+
+                {wizardStep === 'requirements' && (
+                    <div className="mx-auto max-w-4xl">
+                        <h3 className="text-base font-bold text-slate-900">3. Requirement templates</h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Select reusable requirement cards to plan the onboarding packet.
+                            {SHOW_REQUIREMENTS_DOCUMENT_UPLOAD
+                                ? ' Upload documents below when you have files ready.'
+                                : ''}
+                        </p>
+                        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {REQ_TEMPLATE_CARDS.map((card) => {
+                                const selected = selectedReqTemplates.has(card.id);
+                                const Icon = card.Icon;
+                                return (
+                                    <button
+                                        key={card.id}
+                                        type="button"
+                                        onClick={() => toggleReqTemplate(card.id)}
+                                        disabled={isSubmitting}
+                                        className={cn(
+                                            'flex flex-col rounded-xl border bg-white p-4 text-left transition-shadow',
+                                            selected
+                                                ? 'border-slate-900 shadow-sm ring-1 ring-slate-900/10'
+                                                : 'border-slate-200 hover:border-slate-300'
+                                        )}
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <span className="text-sm font-bold text-slate-900">{card.title}</span>
+                                            <span
+                                                className={cn(
+                                                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                                                    card.badge === 'Smart'
+                                                        ? 'bg-sky-100 text-sky-800'
+                                                        : 'bg-slate-100 text-slate-700'
+                                                )}
+                                            >
+                                                {card.badge}
+                                            </span>
+                                        </div>
+                                        <p className="mt-2 flex-1 text-xs leading-relaxed text-slate-500">
+                                            {card.description}
+                                        </p>
+                                        <div className="mt-4 flex h-24 items-center justify-center rounded-lg bg-slate-100/90">
+                                            <Icon className="h-10 w-10 text-slate-400" strokeWidth={1.25} />
+                                        </div>
+                                        <p className="mt-3 text-xs font-bold text-slate-900">{card.footer}</p>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {SHOW_REQUIREMENTS_DOCUMENT_UPLOAD && (
+                            <div className="mt-10">
+                                <DocumentsSection {...sectionProps} className="border-t border-slate-200 pt-8" />
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {wizardStep === 'tax' && (
+                    <div className="mx-auto max-w-4xl">
+                        <h3 className="text-base font-bold text-slate-900">4. Tax completion mode</h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Choose who completes tax information for this {terminology.staff.lower}.
+                        </p>
+
+                        {!isEdit && (
+                            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setCreateTaxMode(TaxFilledBy.TALENT)}
+                                    disabled={isSubmitting}
+                                    className={cn(
+                                        'relative rounded-xl border p-5 text-left transition-all',
+                                        createTaxFilledBy === TaxFilledBy.TALENT
+                                            ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
+                                            : 'border-slate-200 hover:border-slate-300'
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900">
+                                                {terminology.staff.singular} completes the tax form
+                                            </p>
+                                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                                Best when they should enter tax details directly during onboarding.
+                                            </p>
+                                        </div>
+                                        <span
+                                            className={cn(
+                                                'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+                                                createTaxFilledBy === TaxFilledBy.TALENT ? 'bg-slate-900' : 'bg-slate-200'
+                                            )}
+                                            aria-hidden
+                                        >
+                                            <span
+                                                className={cn(
+                                                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
+                                                    createTaxFilledBy === TaxFilledBy.TALENT ? 'left-5' : 'left-0.5'
+                                                )}
+                                            />
+                                        </span>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCreateTaxMode(TaxFilledBy.STAFF)}
+                                    disabled={isSubmitting}
+                                    className={cn(
+                                        'relative rounded-xl border p-5 text-left transition-all',
+                                        createTaxFilledBy === TaxFilledBy.STAFF
+                                            ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
+                                            : 'border-slate-200 hover:border-slate-300'
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900">Company completes the tax form</p>
+                                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                                Admin pre-fills W-9 details now; the {terminology.staff.lower} reviews later.
+                                            </p>
+                                        </div>
+                                        <span
+                                            className={cn(
+                                                'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+                                                createTaxFilledBy === TaxFilledBy.STAFF ? 'bg-slate-900' : 'bg-slate-200'
+                                            )}
+                                            aria-hidden
+                                        >
+                                            <span
+                                                className={cn(
+                                                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
+                                                    createTaxFilledBy === TaxFilledBy.STAFF ? 'left-5' : 'left-0.5'
+                                                )}
+                                            />
+                                        </span>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+
+                        <div className={cn('mt-8', !isEdit && 'rounded-xl border border-slate-200 bg-slate-50/50 p-4')}>
+                            <TaxDetailsForm
+                                ref={isEdit ? undefined : taxFormRef}
+                                taxFilledByControl={isEdit ? 'select' : 'hidden'}
+                                staffW9Presentation={SHOW_TAX_STAFF_W9_FORM ? 'full' : 'hidden'}
+                                staffId={staff?.id}
+                                initialData={staff?.taxDetails ?? null}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {wizardStep === 'review' && (
+                    <div className="mx-auto max-w-4xl space-y-8">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-900">5. Review</h3>
+                            <p className="mt-1 text-xs text-slate-500">
+                                Confirm the flow matches how this {terminology.staff.lower} will onboard.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            <div className="rounded-xl border border-slate-200 bg-slate-100/70 p-4">
+                                <p className="text-sm font-bold text-slate-900">
+                                    Scenario A · {terminology.staff.singular} entered their own information
+                                </p>
+                                <ul className="mt-3 space-y-2">
+                                    {[
+                                        'Review all entered fields',
+                                        'Acknowledge accuracy of tax information',
+                                        'Sign digitally',
+                                        'Submit onboarding packet',
+                                    ].map((line) => (
+                                        <li
+                                            key={line}
+                                            className="rounded-lg border border-slate-200/80 bg-white px-3 py-2 text-sm text-slate-700"
+                                        >
+                                            {line}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 bg-slate-100/70 p-4">
+                                <p className="text-sm font-bold text-slate-900">
+                                    Scenario B · Company pre-filled tax information
+                                </p>
+                                <ul className="mt-3 space-y-2">
+                                    {[
+                                        'Review company-entered fields',
+                                        'Confirm the information is correct',
+                                        'Sign digitally',
+                                        'Accept and complete onboarding',
+                                    ].map((line) => (
+                                        <li
+                                            key={line}
+                                            className="rounded-lg border border-slate-200/80 bg-white px-3 py-2 text-sm text-slate-700"
+                                        >
+                                            {line}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-slate-100/70 px-4 py-3">
+                            <p className="text-sm font-bold text-slate-900">Suggested statuses after send</p>
+                            <p className="mt-1 text-sm text-slate-600">
+                                Draft · Invited · In Progress · Awaiting Signature · Completed
+                            </p>
+                        </div>
+
+                        {isEdit && staff && (
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p className="text-xs font-medium text-slate-500">{terminology.staff.singular} ID</p>
+                                <p className="text-base font-semibold text-slate-900">{staff.staffId}</p>
+                            </div>
+                        )}
+
+                        {isEdit && staff?.company && (
+                            <div className="rounded-lg border border-primary/25 bg-primary/5 p-4">
+                                <p className="text-sm font-semibold text-slate-900">Team membership</p>
+                                <p className="mt-1 text-sm text-slate-600">
+                                    This {terminology.staff.lower} is a member of team:{' '}
+                                    <span className="font-semibold text-slate-900">
+                                        {staff.company.teamEntityName ||
+                                            `${staff.company.firstName} ${staff.company.lastName}`}
+                                    </span>{' '}
+                                    ({staff.company.staffId})
+                                </p>
+                            </div>
+                        )}
+
+                        {SHOW_REVIEW_PROFILE_ACCOUNT_SETTINGS && (
+                            <div className="rounded-xl border border-slate-200">
+                                <details className="group">
+                                    <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                                        <ChevronDownIcon className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+                                        Profile, services &amp; account settings
+                                    </summary>
+                                    <div className="space-y-8 border-t border-slate-200 px-4 py-6">
+                                        <AccountDetailsSection
+                                            {...sectionProps}
+                                            companies={companies}
+                                            terminology={terminology}
+                                            labels={labels}
+                                            omitCustomBasicFields
+                                        />
+                                        <ServiceDetailsSection
+                                            {...sectionProps}
+                                            services={services}
+                                            onCreateService={onCreateService}
+                                            className="border-t border-slate-200 pt-6"
+                                        />
+                                        <TalentDetailsSection
+                                            {...sectionProps}
+                                            fields="address"
+                                            className="border-t border-slate-200 pt-6"
+                                        />
+                                        {staffRole === StaffRole.TEAM && (
+                                            <>
+                                                <TeamDetailsSection
+                                                    {...sectionProps}
+                                                    className="border-t border-slate-200 pt-6"
+                                                />
+                                                <TeamMembersSection
+                                                    teamMembers={teamMembers}
+                                                    newTeamMember={newTeamMember}
+                                                    onTeamMembersChange={setTeamMembers}
+                                                    onNewTeamMemberChange={setNewTeamMember}
+                                                    onAddTeamMember={addTeamMember}
+                                                    onRemoveTeamMember={removeTeamMember}
+                                                    services={services}
+                                                    disabled={isSubmitting}
+                                                    className="border-t border-slate-200 pt-6"
+                                                />
+                                            </>
+                                        )}
+                                    </div>
+                                </details>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Footer */}
+            <div className="shrink-0 border-t border-slate-200 px-6 py-4 sm:px-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="hidden min-h-[1.25rem] text-xs text-slate-400 sm:block sm:max-w-sm" />
+                    <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            {isEdit && onViewDetails && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onViewDetails}
+                                    className="rounded-lg border-slate-200"
+                                >
+                                    <EyeIcon className="mr-2 h-4 w-4" />
+                                    View Details
+                                </Button>
+                            )}
+                            {stepIndex > 0 && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={goBack}
+                                    disabled={isSubmitting}
+                                    className="rounded-lg border-slate-200"
+                                >
+                                    Back
+                                </Button>
+                            )}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={onClose}
+                                disabled={isSubmitting}
+                                className="rounded-lg border-slate-200"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleSaveDraft}
+                                disabled={isSubmitting}
+                                className="rounded-lg border-slate-200"
+                            >
+                                Save Draft
+                            </Button>
+                        </div>
+                        {!isLastStep ? (
+                            <Button
+                                type="button"
+                                onClick={goNext}
+                                disabled={isSubmitting || (wizardStep === 'basic' && !canProceedBasic)}
+                                className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                            >
+                                Continue
+                            </Button>
+                        ) : (
+                            <Button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                            >
+                                {isSubmitting
+                                    ? 'Saving...'
+                                    : isEdit
+                                      ? `Update ${terminology.staff.singular}`
+                                      : 'Send invite'}
+                            </Button>
+                        )}
+                    </div>
                 </div>
-
-                {/* Service Details Section */}
-                <ServiceDetailsSection
-                    {...sectionProps}
-                    services={services}
-                    onCreateService={onCreateService}
-                    className="mb-6 border-b pb-6"
-                />
-
-                {/* Talent Details Section */}
-                <TalentDetailsSection
-                    {...sectionProps}
-                    className="mb-6 border-b pb-6"
-                />
-
-                {/* Team Details Section - Only for TEAM role */}
-                {staffRole === StaffRole.TEAM && (
-                    <>
-                        <TeamDetailsSection
-                            {...sectionProps}
-                            className="mb-6 border-b pb-6"
-                        />
-
-                        <TeamMembersSection
-                            teamMembers={teamMembers}
-                            newTeamMember={newTeamMember}
-                            onTeamMembersChange={setTeamMembers}
-                            onNewTeamMemberChange={setNewTeamMember}
-                            onAddTeamMember={addTeamMember}
-                            onRemoveTeamMember={removeTeamMember}
-                            services={services}
-                            disabled={isSubmitting}
-                            className="mb-6 border-b pb-6"
-                        />
-                    </>
-                )}
-
-                {/* Documents Section */}
-                <DocumentsSection {...sectionProps} className="mb-6" />
-            </DialogContent>
-
-            <DialogFooter>
-                {isEdit && onViewDetails && (
-                    <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto">
-                        <EyeIcon className="h-4 w-4 mr-2" />
-                        View Details
-                    </Button>
-                )}
-                <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-                    Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.staff.singular}` : `Create & Send Invitation`}
-                </Button>
-            </DialogFooter>
+            </div>
         </form>
     );
 }
@@ -425,14 +1092,16 @@ export function StaffFormModal({
         createServiceMutation.mutate(data);
     };
 
-    // Key based on staff ID to force remount of form content
     const formKey = staff?.id ?? 'new';
 
     return (
         <>
-            <Dialog open={open} onClose={onClose}>
-                <DialogContent className="sm:max-w-4xl h-[90vh] flex flex-col p-6">
-                    {/* Key on the form content forces complete remount when staff changes */}
+            <Dialog
+                open={open}
+                onClose={onClose}
+                className="mx-4 flex h-[min(90vh,800px)] w-full max-h-[min(90vh,800px)] max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+            >
+                <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
                     <StaffFormContent
                         key={formKey}
                         staff={staff}
@@ -448,17 +1117,18 @@ export function StaffFormModal({
                     />
                 </DialogContent>
             </Dialog>
-            {/* Service Modal rendered via portal to avoid nested form issues */}
-            {mounted && showCreateService && createPortal(
-                <ServiceFormModal
-                    service={null}
-                    open={showCreateService}
-                    onClose={() => setShowCreateService(false)}
-                    onSubmit={handleServiceSubmit}
-                    isSubmitting={createServiceMutation.isPending}
-                />,
-                document.body
-            )}
+            {mounted &&
+                showCreateService &&
+                createPortal(
+                    <ServiceFormModal
+                        service={null}
+                        open={showCreateService}
+                        onClose={() => setShowCreateService(false)}
+                        onSubmit={handleServiceSubmit}
+                        isSubmitting={createServiceMutation.isPending}
+                    />,
+                    document.body
+                )}
         </>
     );
 }
