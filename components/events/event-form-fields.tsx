@@ -1,0 +1,223 @@
+'use client';
+
+import { useFieldArray, type Control, type FieldErrors, type UseFormRegister, type UseFormWatch, type UseFormSetValue } from 'react-hook-form';
+import {
+  BasicInfoSection,
+  DateTimeSection,
+  VenueSection,
+  RequestInfoSection,
+  OnsiteContactSection,
+  PreEventSection,
+  DocumentsSection,
+  BillingSection,
+  PrivateNotesSection,
+  CustomFieldsSection,
+  AssignmentsSection,
+  type EventFormData,
+  type ClientOption,
+  type TerminologyConfig,
+  type Assignment,
+} from './form-sections';
+
+export interface EventFormFieldsProps {
+  register: UseFormRegister<EventFormData>;
+  control: Control<EventFormData>;
+  errors: FieldErrors<EventFormData>;
+  watch: UseFormWatch<EventFormData>;
+  setValue: UseFormSetValue<EventFormData>;
+  clients: ClientOption[];
+  terminology: TerminologyConfig;
+  startDateUBD: boolean;
+  setStartDateUBD: (value: boolean) => void;
+  endDateUBD: boolean;
+  setEndDateUBD: (value: boolean) => void;
+  startTimeTBD: boolean;
+  setStartTimeTBD: (value: boolean) => void;
+  endTimeTBD: boolean;
+  setEndTimeTBD: (value: boolean) => void;
+  assignments?: Assignment[];
+  onAssignmentsChange?: (assignments: Assignment[]) => void;
+  onClientCreated?: (clientId: string) => void;
+  disabled?: boolean;
+  compact?: boolean;
+}
+
+export function EventFormFields({
+  register,
+  control,
+  errors,
+  watch,
+  setValue,
+  clients,
+  terminology,
+  startDateUBD,
+  setStartDateUBD,
+  endDateUBD,
+  setEndDateUBD,
+  startTimeTBD,
+  setStartTimeTBD,
+  endTimeTBD,
+  setEndTimeTBD,
+  assignments = [],
+  onAssignmentsChange,
+  onClientCreated,
+  disabled = false,
+  compact = false,
+}: EventFormFieldsProps) {
+  // File links field array
+  const fileLinksFieldArray = useFieldArray<EventFormData, 'fileLinks'>({
+    control,
+    name: 'fileLinks',
+  });
+
+  // Custom fields field array
+  const customFieldsFieldArray = useFieldArray<EventFormData, 'customFields'>({
+    control,
+    name: 'customFields',
+  });
+
+  const spacing = compact ? 'mb-4' : 'mb-6';
+  const gridGap = compact ? 'gap-4' : 'gap-6';
+
+  return (
+    <>
+      {/* === ROW 1: Basic Information + Date & Time === */}
+      <div className={`grid grid-cols-1 lg:grid-cols-5 ${gridGap} ${spacing}`}>
+        <BasicInfoSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          clients={clients}
+          terminology={terminology}
+          onClientCreated={onClientCreated}
+          disabled={disabled}
+          className="lg:col-span-3"
+        />
+        <DateTimeSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          startDateUBD={startDateUBD}
+          setStartDateUBD={setStartDateUBD}
+          endDateUBD={endDateUBD}
+          setEndDateUBD={setEndDateUBD}
+          startTimeTBD={startTimeTBD}
+          setStartTimeTBD={setStartTimeTBD}
+          endTimeTBD={endTimeTBD}
+          setEndTimeTBD={setEndTimeTBD}
+          disabled={disabled}
+          className="lg:col-span-2"
+        />
+      </div>
+
+      {/* === ROW 2: Pre-Task Instructions + Private Notes (after description/requirements) === */}
+      <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
+        <PreEventSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+        <PrivateNotesSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+      </div>
+
+      {/* === ROW 3: Venue Information (full width) === */}
+      <VenueSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        disabled={disabled}
+        className={spacing}
+      />
+
+      {/* === ROW 4: Request Information + Onsite Contact === */}
+      <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
+        <RequestInfoSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+        <OnsiteContactSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+      </div>
+
+      {/* === ROW 5: Custom Fields === */}
+      <CustomFieldsSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        customFieldsFieldArray={customFieldsFieldArray}
+        disabled={disabled}
+        className={spacing}
+      />
+
+      {/* === ROW 6: Documents + File Links === */}
+      <DocumentsSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        fileLinksFieldArray={fileLinksFieldArray}
+        disabled={disabled}
+        className={spacing}
+      />
+
+      {/* === ROW 7: Assignments (full width) === */}
+      {onAssignmentsChange ? (
+        <AssignmentsSection
+          assignments={assignments}
+          onAssignmentsChange={onAssignmentsChange}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+          className={spacing}
+        />
+      ) : (
+        <div className={`bg-accent/5 border border-border/30 p-5 rounded-lg ${spacing}`}>
+          <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Assignments</h3>
+          <p className="text-sm text-muted-foreground">
+            Assignments can be added after saving the event.
+          </p>
+        </div>
+      )}
+
+      {/* === ROW 8: Task Settings (Billing & Rates) === */}
+      <BillingSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        disabled={disabled}
+        className={spacing}
+      />
+    </>
+  );
+}

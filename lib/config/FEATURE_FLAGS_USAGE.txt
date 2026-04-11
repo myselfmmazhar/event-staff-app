@@ -1,0 +1,115 @@
+FEATURE FLAGS SYSTEM - USAGE GUIDE
+===================================
+
+## Quick Start: Mark "View Clients" as Beta
+
+Add this to your .env file:
+NEXT_PUBLIC_FEATURE_CLIENTS=beta
+
+Then restart your dev server. The feature will be displayed with a "Beta" badge and will be non-clickable.
+
+## Feature States
+
+Features can have three states:
+
+1. **enabled** - Feature is fully functional and clickable (default)
+2. **beta** - Feature is displayed with "Beta" badge, non-clickable
+3. **disabled** - Feature is displayed with "Disabled" badge, non-clickable
+
+## All Available Feature Flags
+
+NEXT_PUBLIC_FEATURE_CLIENTS=enabled       # View Clients navigation
+NEXT_PUBLIC_FEATURE_EVENTS=enabled        # Events navigation & View Events
+NEXT_PUBLIC_FEATURE_USERS=enabled         # Users management navigation
+NEXT_PUBLIC_FEATURE_PROFILE=enabled       # Profile navigation
+NEXT_PUBLIC_FEATURE_DASHBOARD=enabled     # Dashboard navigation
+
+## How to Set Feature States
+
+### Enable a Feature (default)
+NEXT_PUBLIC_FEATURE_CLIENTS=enabled
+# Or use legacy values: true, 1, yes, on
+
+### Mark as Beta
+NEXT_PUBLIC_FEATURE_CLIENTS=beta
+# Legacy "coming_soon" also works and maps to beta
+
+### Disable a Feature
+NEXT_PUBLIC_FEATURE_CLIENTS=disabled
+# Or use legacy values: false, 0, no, off
+
+## Visual Behavior
+
+- **Enabled**: Normal clickable link, no badge
+- **Beta**: Grayed out, "Beta" badge (blue), cursor-not-allowed
+- **Disabled**: Grayed out, "Disabled" badge (gray), cursor-not-allowed
+
+## Important Notes
+
+1. All feature flags MUST be prefixed with NEXT_PUBLIC_ to work in client-side code
+2. Features are ENABLED by default if not specified
+3. You MUST restart your dev server after changing environment variables
+4. Features are always visible in the sidebar (never hidden)
+5. Disabled/Coming Soon features show badges and are non-clickable
+6. In development, feature flags are logged to browser console
+
+## Adding a New Feature Flag
+
+1. Edit /lib/config/feature-flags.ts
+2. Add to FeatureFlags interface:
+   myNewFeature: FeatureStatus;
+
+3. Add to featureFlags object:
+   myNewFeature: parseFeatureStatus(process.env.NEXT_PUBLIC_FEATURE_MY_NEW_FEATURE, 'enabled'),
+
+4. Add to .env:
+   NEXT_PUBLIC_FEATURE_MY_NEW_FEATURE=enabled
+
+5. Use in sidebar (/components/layout/sidebar.tsx):
+   {
+     label: 'My Feature',
+     href: '/my-feature',
+     icon: MyIcon,
+     featureFlag: 'myNewFeature',
+   }
+
+## Using Feature Flags in Code
+
+import { getFeatureStatus, isFeatureEnabled, isFeatureBeta } from '@/lib/config/feature-flags';
+
+// Check if enabled
+if (isFeatureEnabled('clients')) {
+  // Feature is fully enabled
+}
+
+// Check if beta
+if (isFeatureBeta('clients')) {
+  // Show beta message
+}
+
+// Get status
+const status = getFeatureStatus('clients'); // 'enabled' | 'disabled' | 'beta'
+
+## Example Configurations
+
+### Development (all features enabled)
+NEXT_PUBLIC_FEATURE_CLIENTS=enabled
+NEXT_PUBLIC_FEATURE_EVENTS=enabled
+NEXT_PUBLIC_FEATURE_USERS=enabled
+
+### Production (some features in beta)
+NEXT_PUBLIC_FEATURE_CLIENTS=beta         # Still in development
+NEXT_PUBLIC_FEATURE_EVENTS=enabled
+NEXT_PUBLIC_FEATURE_USERS=enabled
+
+### Staging (testing disabled state)
+NEXT_PUBLIC_FEATURE_CLIENTS=disabled     # Temporarily disabled
+NEXT_PUBLIC_FEATURE_EVENTS=enabled
+NEXT_PUBLIC_FEATURE_USERS=beta
+
+## Files Modified
+
+- /lib/config/feature-flags.ts - Feature flags configuration (supports 3 states)
+- /components/layout/sidebar.tsx - Navigation integration with badges
+
+
