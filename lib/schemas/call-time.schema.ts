@@ -46,6 +46,8 @@ export class CallTimeSchema {
         .min(1, FieldErrors.numberOfStaffRequired)
         .default(1),
       skillLevel: z.nativeEnum(SkillLevel).default(SkillLevel.BEGINNER),
+      ratingRequired: z.enum([...staffRatingValues, 'ANY']).default('ANY'),
+      applyMinimum: z.boolean().default(false),
 
       // Date/Time (nullable for UBD support)
       // Note: z.null() must come first, otherwise z.coerce.date(null) produces epoch date
@@ -125,6 +127,8 @@ export class CallTimeSchema {
       serviceId: z.string().uuid(FieldErrors.serviceId).optional(),
       numberOfStaffRequired: z.number().int().min(1).optional(),
       skillLevel: z.nativeEnum(SkillLevel).optional(),
+      ratingRequired: z.enum([...staffRatingValues, 'ANY']).optional(),
+      applyMinimum: z.boolean().optional(),
       // Note: z.null() must come first, otherwise z.coerce.date(null) produces epoch date
       startDate: z.union([z.null(), z.coerce.date()]).optional(),
       startTime: z

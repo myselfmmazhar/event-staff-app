@@ -1126,143 +1126,143 @@ export default function TimeManagerPage() {
                                         <div className="p-4">
                                             <div className="overflow-x-auto">
                                                 <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
-                                            <thead>
-                                                <tr className="border-0 bg-transparent">
-                                                    <th className="w-8 px-2 py-3 align-bottom">
+                                                    <thead>
+                                                        <tr className="border-0 bg-transparent">
+                                                            <th className="w-8 px-2 py-3 align-bottom">
+                                                                {(() => {
+                                                                    const groupIds = group.callTimes.map((ct) => ct.id);
+                                                                    const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                                    return (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isGroupAllSelected}
+                                                                            onChange={() => toggleSelectAll(groupIds)}
+                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                        />
+                                                                    );
+                                                                })()}
+                                                            </th>
+                                                            <th className="w-8 px-2 py-3 align-bottom" />
+                                                            {subTab === 'commission' && (
+                                                                <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                    Action
+                                                                </th>
+                                                            )}
+                                                            {subTab === 'invoice' ? (
+                                                                <>
+                                                                    <SortHeader id="startDate" label="Service Date" />
+                                                                    <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                </>
+                                                            ) : subTab === 'commission' ? (
+                                                                <>
+                                                                    <SortHeader id="staffName" label="Team / User" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Bill Description</th>
+                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
+                                                                </>
+                                                            ) : subTab === 'bill' ? (
+                                                                <>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Action
+                                                                    </th>
+                                                                    <SortHeader id="staffName" label="Talent" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <SortHeader id="startDate" label="Date" />
+                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                                    <SortHeader id="actualShift" label="Actual Shift" />
+                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
+                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Net Income
+                                                                    </th>
+                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
+                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
                                                         {(() => {
-                                                            const groupIds = group.callTimes.map((ct) => ct.id);
-                                                            const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
-                                                            return (
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isGroupAllSelected}
-                                                                    onChange={() => toggleSelectAll(groupIds)}
-                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                                                                />
-                                                            );
-                                                        })()}
-                                                    </th>
-                                                    <th className="w-8 px-2 py-3 align-bottom" />
-                                                    {subTab === 'commission' && (
-                                                        <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                            Action
-                                                        </th>
-                                                    )}
-                                                    {subTab === 'invoice' ? (
-                                                        <>
-                                                            <SortHeader id="startDate" label="Service Date" />
-                                                            <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                            <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                        </>
-                                                    ) : subTab === 'commission' ? (
-                                                        <>
-                                                            <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                        </>
-                                                    ) : subTab === 'bill' ? (
-                                                        <>
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                Action
-                                                            </th>
-                                                            <SortHeader id="staffName" label="Talent" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <SortHeader id="startDate" label="Date" />
-                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                            <SortHeader id="actualShift" label="Actual Shift" />
-                                                            <SortHeader id="variance" label="Variance" align="text-center" />
-                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                Net Income
-                                                            </th>
-                                                            <SortHeader id="commission" label="Commission" align="text-center" />
-                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {(() => {
-                                                    const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
-                                                    const filtered = applyDetailToolbarFilters(baseFiltered);
+                                                            const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
+                                                            const filtered = applyDetailToolbarFilters(baseFiltered);
 
-                                                    if (subTab === 'invoice') {
-                                                        const serviceMap = new Map<string, CallTimeRow>();
-                                                        filtered.forEach(ct => {
-                                                            const sid = ct.service?.id || 'none';
-                                                            const sDate = formatDate(ct.startDate);
-                                                            const key = `${sDate}_${sid}_${ct.callTimeId}`;
-                                                            if (!serviceMap.has(key)) {
-                                                                serviceMap.set(key, { ...ct, mergedRows: [ct] });
-                                                            } else {
-                                                                const existing = serviceMap.get(key)!;
-                                                                if (ct.notes && !existing.notes?.includes(ct.notes)) {
-                                                                    existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
-                                                                }
-                                                                if (!existing.mergedRows) existing.mergedRows = [];
-                                                                existing.mergedRows.push(ct);
+                                                            if (subTab === 'invoice') {
+                                                                const serviceMap = new Map<string, CallTimeRow>();
+                                                                filtered.forEach(ct => {
+                                                                    const sid = ct.service?.id || 'none';
+                                                                    const sDate = formatDate(ct.startDate);
+                                                                    const key = `${sDate}_${sid}_${ct.callTimeId}`;
+                                                                    if (!serviceMap.has(key)) {
+                                                                        serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                                    } else {
+                                                                        const existing = serviceMap.get(key)!;
+                                                                        if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                            existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                        }
+                                                                        if (!existing.mergedRows) existing.mergedRows = [];
+                                                                        existing.mergedRows.push(ct);
+                                                                    }
+                                                                });
+                                                                return Array.from(serviceMap.values()).map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
                                                             }
-                                                        });
-                                                        return Array.from(serviceMap.values()).map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                                rowVariant="card"
-                                                            />
-                                                        ));
-                                                    }
 
-                                                    return filtered.map((ct) => (
-                                                        <TimesheetTableRow
-                                                            key={ct.id}
-                                                            ct={ct}
-                                                            isExpanded={expandedRows.has(ct.id)}
-                                                            isSelected={selectedRows.has(ct.id)}
-                                                            onToggleExpand={toggleExpand}
-                                                            onToggleSelect={toggleSelect}
-                                                            onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                            onSaveTimeEntry={handleSaveTimeEntry}
-                                                            onApprove={handleApprove}
-                                                            onReject={handleReject}
-                                                            onReview={handleReview}
-                                                            onPending={handlePending}
-                                                            onEditTask={handleEditTask}
-                                                            subTab={subTab}
-                                                            rowVariant="card"
-                                                        />
-                                                    ));
-                                                })()}
-                                            </tbody>
-                                        </table>
+                                                            return filtered.map((ct) => (
+                                                                <TimesheetTableRow
+                                                                    key={ct.id}
+                                                                    ct={ct}
+                                                                    isExpanded={expandedRows.has(ct.id)}
+                                                                    isSelected={selectedRows.has(ct.id)}
+                                                                    onToggleExpand={toggleExpand}
+                                                                    onToggleSelect={toggleSelect}
+                                                                    onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                    onSaveTimeEntry={handleSaveTimeEntry}
+                                                                    onApprove={handleApprove}
+                                                                    onReject={handleReject}
+                                                                    onReview={handleReview}
+                                                                    onPending={handlePending}
+                                                                    onEditTask={handleEditTask}
+                                                                    subTab={subTab}
+                                                                    rowVariant="card"
+                                                                />
+                                                            ));
+                                                        })()}
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
                                     </div>
@@ -1305,20 +1305,20 @@ export default function TimeManagerPage() {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0 sm:pt-1">
-                                            <CallTimeExportDropdown {...getDetailExportProps(group)} />
-                                            <Button
-                                                variant="default"
-                                                size="sm"
-                                                className="gap-1.5 h-9 px-4 text-sm font-medium"
-                                                disabled={!group.callTimes.some((ct) => ct.event?.id)}
-                                                onClick={() => {
-                                                    const eid = group.callTimes.find((ct) => ct.event?.id)?.event?.id;
-                                                    if (eid) handleEditEvent(eid);
-                                                }}
-                                            >
-                                                <EditIcon className="h-3.5 w-3.5" />
-                                                Edit Tasks
-                                            </Button>
+                                                <CallTimeExportDropdown {...getDetailExportProps(group)} />
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="gap-1.5 h-9 px-4 text-sm font-medium"
+                                                    disabled={!group.callTimes.some((ct) => ct.event?.id)}
+                                                    onClick={() => {
+                                                        const eid = group.callTimes.find((ct) => ct.event?.id)?.event?.id;
+                                                        if (eid) handleEditEvent(eid);
+                                                    }}
+                                                >
+                                                    <EditIcon className="h-3.5 w-3.5" />
+                                                    Edit Tasks
+                                                </Button>
                                             </div>
                                         </div>
                                     </div>
@@ -1349,189 +1349,189 @@ export default function TimeManagerPage() {
                                         <div className="p-4">
                                             <div className="overflow-x-auto">
                                                 <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
-                                            <thead>
-                                                <tr className="border-0 bg-transparent">
-                                                    <th className="w-8 px-2 py-3 align-bottom">
-                                                        {(() => {
-                                                            const groupIds = group.callTimes.map((ct) => ct.id);
-                                                            const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
-                                                            return (
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isGroupAllSelected}
-                                                                    onChange={() => toggleSelectAll(groupIds)}
-                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                                                                />
-                                                            );
-                                                        })()}
-                                                    </th>
-                                                    <th className="w-8 px-2 py-3 align-bottom" />
-                                                    {subTab === 'commission' && (
-                                                        <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                            Action
-                                                        </th>
-                                                    )}
-                                                    {subTab === 'invoice' ? (
-                                                        <>
-                                                            <SortHeader id="startDate" label="Service Date" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                            <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                        </>
-                                                    ) : subTab === 'commission' ? (
-                                                        <>
-                                                            <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
-                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                        </>
-                                                    ) : subTab === 'bill' ? (
-                                                        <>
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                Action
+                                                    <thead>
+                                                        <tr className="border-0 bg-transparent">
+                                                            <th className="w-8 px-2 py-3 align-bottom">
+                                                                {(() => {
+                                                                    const groupIds = group.callTimes.map((ct) => ct.id);
+                                                                    const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                                    return (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isGroupAllSelected}
+                                                                            onChange={() => toggleSelectAll(groupIds)}
+                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                        />
+                                                                    );
+                                                                })()}
                                                             </th>
-                                                            <SortHeader id="staffName" label="Talent" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <SortHeader id="startDate" label="Date" />
-                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                            <SortHeader id="actualShift" label="Actual Shift" />
-                                                            <SortHeader id="variance" label="Variance" align="text-center" />
-                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                Net Income
-                                                            </th>
-                                                            <SortHeader id="commission" label="Commission" align="text-center" />
-                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                        </>
-                                                    )}
-                                                    {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
+                                                            <th className="w-8 px-2 py-3 align-bottom" />
+                                                            {subTab === 'commission' && (
+                                                                <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                    Action
+                                                                </th>
+                                                            )}
+                                                            {subTab === 'invoice' ? (
+                                                                <>
+                                                                    <SortHeader id="startDate" label="Service Date" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                </>
+                                                            ) : subTab === 'commission' ? (
+                                                                <>
+                                                                    <SortHeader id="staffName" label="Team / User" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
+                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
+                                                                </>
+                                                            ) : subTab === 'bill' ? (
+                                                                <>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Action
+                                                                    </th>
+                                                                    <SortHeader id="staffName" label="Talent" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <SortHeader id="startDate" label="Date" />
+                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                                    <SortHeader id="actualShift" label="Actual Shift" />
+                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
+                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Net Income
+                                                                    </th>
+                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
+                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
+                                                                </>
+                                                            )}
+                                                            {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th> */}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {(() => {
-                                                    const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
-                                                    const filtered = applyDetailToolbarFilters(baseFiltered);
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {(() => {
+                                                            const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
+                                                            const filtered = applyDetailToolbarFilters(baseFiltered);
 
-                                                    if (subTab === 'invoice') {
-                                                        const serviceMap = new Map<string, CallTimeRow>();
-                                                        filtered.forEach(ct => {
-                                                            const sid = ct.service?.id || 'none';
-                                                            const sDate = formatDate(ct.startDate);
-                                                            const key = `${sDate}_${sid}_${ct.callTimeId}`;
-                                                            if (!serviceMap.has(key)) {
-                                                                serviceMap.set(key, { ...ct, mergedRows: [ct] });
-                                                            } else {
-                                                                const existing = serviceMap.get(key)!;
-                                                                if (ct.notes && !existing.notes?.includes(ct.notes)) {
-                                                                    existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                            if (subTab === 'invoice') {
+                                                                const serviceMap = new Map<string, CallTimeRow>();
+                                                                filtered.forEach(ct => {
+                                                                    const sid = ct.service?.id || 'none';
+                                                                    const sDate = formatDate(ct.startDate);
+                                                                    const key = `${sDate}_${sid}_${ct.callTimeId}`;
+                                                                    if (!serviceMap.has(key)) {
+                                                                        serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                                    } else {
+                                                                        const existing = serviceMap.get(key)!;
+                                                                        if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                            existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                        }
+                                                                        if (!existing.mergedRows) existing.mergedRows = [];
+                                                                        existing.mergedRows.push(ct);
+                                                                    }
+                                                                });
+                                                                return Array.from(serviceMap.values()).map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
+                                                            }
+
+                                                            if (subTab !== 'bill') {
+                                                                return filtered.map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
+                                                            }
+
+                                                            // Group by event for the staff detail view (if they have multiple assignments on same event)
+                                                            const eventMap = new Map<string, CallTimeRow>();
+                                                            filtered.forEach(ct => {
+                                                                const eid = ct.event?.id;
+                                                                if (!eid) return;
+                                                                if (!eventMap.has(eid)) {
+                                                                    eventMap.set(eid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
+                                                                } else {
+                                                                    const existing = eventMap.get(eid)!;
+                                                                    if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
+                                                                        existing.service.title = `${existing.service.title} & ${ct.service.title}`;
+                                                                    }
+                                                                    if (ct.notes && ct.notes !== existing.notes) {
+                                                                        existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                    }
+                                                                    existing.invitations.push(...ct.invitations);
+                                                                    if (!existing.mergedRows) existing.mergedRows = [];
+                                                                    existing.mergedRows.push(ct);
                                                                 }
-                                                                if (!existing.mergedRows) existing.mergedRows = [];
-                                                                existing.mergedRows.push(ct);
-                                                            }
-                                                        });
-                                                        return Array.from(serviceMap.values()).map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                                rowVariant="card"
-                                                            />
-                                                        ));
-                                                    }
+                                                            });
 
-                                                    if (subTab !== 'bill') {
-                                                        return filtered.map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                                rowVariant="card"
-                                                            />
-                                                        ));
-                                                    }
-
-                                                    // Group by event for the staff detail view (if they have multiple assignments on same event)
-                                                    const eventMap = new Map<string, CallTimeRow>();
-                                                    filtered.forEach(ct => {
-                                                        const eid = ct.event?.id;
-                                                        if (!eid) return;
-                                                        if (!eventMap.has(eid)) {
-                                                            eventMap.set(eid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
-                                                        } else {
-                                                            const existing = eventMap.get(eid)!;
-                                                            if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
-                                                                existing.service.title = `${existing.service.title} & ${ct.service.title}`;
-                                                            }
-                                                            if (ct.notes && ct.notes !== existing.notes) {
-                                                                existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
-                                                            }
-                                                            existing.invitations.push(...ct.invitations);
-                                                            if (!existing.mergedRows) existing.mergedRows = [];
-                                                            existing.mergedRows.push(ct);
-                                                        }
-                                                    });
-
-                                                    return Array.from(eventMap.values()).map(ct => (
-                                                        <TimesheetTableRow
-                                                            key={ct.id}
-                                                            ct={ct}
-                                                            isExpanded={expandedRows.has(ct.id)}
-                                                            isSelected={selectedRows.has(ct.id)}
-                                                            onToggleExpand={toggleExpand}
-                                                            onToggleSelect={toggleSelect}
-                                                            onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                            onSaveTimeEntry={handleSaveTimeEntry}
-                                                            onApprove={handleApprove}
-                                                            onReject={handleReject}
-                                                            onReview={handleReview}
-                                                            onPending={handlePending}
-                                                            onEditTask={handleEditTask}
-                                                            subTab={subTab}
-                                                            rowVariant="card"
-                                                        />
-                                                    ));
-                                                })()}
-                                            </tbody>
-                                        </table>
+                                                            return Array.from(eventMap.values()).map(ct => (
+                                                                <TimesheetTableRow
+                                                                    key={ct.id}
+                                                                    ct={ct}
+                                                                    isExpanded={expandedRows.has(ct.id)}
+                                                                    isSelected={selectedRows.has(ct.id)}
+                                                                    onToggleExpand={toggleExpand}
+                                                                    onToggleSelect={toggleSelect}
+                                                                    onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                    onSaveTimeEntry={handleSaveTimeEntry}
+                                                                    onApprove={handleApprove}
+                                                                    onReject={handleReject}
+                                                                    onReview={handleReview}
+                                                                    onPending={handlePending}
+                                                                    onEditTask={handleEditTask}
+                                                                    subTab={subTab}
+                                                                    rowVariant="card"
+                                                                />
+                                                            ));
+                                                        })()}
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
                                     </div>
@@ -1557,43 +1557,43 @@ export default function TimeManagerPage() {
                                                     <ChevronLeftIcon className="h-4 w-4 mr-0.5" />
                                                     Back to Summary
                                                 </Button>
-                                            <div className="flex flex-wrap items-center gap-3">
-                                                <span className="text-xl font-bold tracking-tight text-foreground">{group.eventTitle}</span>
-                                                <Badge variant="outline" className="shrink-0 text-xs font-medium">{group.eventDisplayId}</Badge>
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                                                <span className="inline-flex text-xs font-medium rounded-md border border-border bg-muted/40 px-2.5 py-1 text-foreground">
-                                                    {subTab === 'bill' ? (
-                                                        group.callTimes[0]?.staff
-                                                            ? `${group.callTimes[0].staff.firstName} ${group.callTimes[0].staff.lastName}`
-                                                            : 'No Talent'
-                                                    ) : (group.clientName || 'No Client')}
-                                                </span>
-                                                <span className="flex flex-wrap items-center gap-1.5">
-                                                    <span className="text-muted-foreground">Location:</span>
-                                                    <span className="font-medium text-foreground">
-                                                        {group.venueName || '—'}
-                                                        {(group.city || group.state) && (
-                                                            <span className="font-normal text-muted-foreground">
-                                                                {' '}
-                                                                ({[group.city, group.state].filter(Boolean).join(', ')})
-                                                            </span>
-                                                        )}
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="text-xl font-bold tracking-tight text-foreground">{group.eventTitle}</span>
+                                                    <Badge variant="outline" className="shrink-0 text-xs font-medium">{group.eventDisplayId}</Badge>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                                    <span className="inline-flex text-xs font-medium rounded-md border border-border bg-muted/40 px-2.5 py-1 text-foreground">
+                                                        {subTab === 'bill' ? (
+                                                            group.callTimes[0]?.staff
+                                                                ? `${group.callTimes[0].staff.firstName} ${group.callTimes[0].staff.lastName}`
+                                                                : 'No Talent'
+                                                        ) : (group.clientName || 'No Client')}
                                                     </span>
-                                                </span>
-                                            </div>
+                                                    <span className="flex flex-wrap items-center gap-1.5">
+                                                        <span className="text-muted-foreground">Location:</span>
+                                                        <span className="font-medium text-foreground">
+                                                            {group.venueName || '—'}
+                                                            {(group.city || group.state) && (
+                                                                <span className="font-normal text-muted-foreground">
+                                                                    {' '}
+                                                                    ({[group.city, group.state].filter(Boolean).join(', ')})
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </span>
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0 sm:pt-1">
-                                            <CallTimeExportDropdown {...getDetailExportProps(group)} />
-                                            <Button
-                                                variant="default"
-                                                size="sm"
-                                                className="gap-1.5 h-9 px-4 text-sm font-medium"
-                                                onClick={() => handleEditEvent(group.eventId)}
-                                            >
-                                                <EditIcon className="h-3.5 w-3.5" />
-                                                Edit Tasks
-                                            </Button>
+                                                <CallTimeExportDropdown {...getDetailExportProps(group)} />
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="gap-1.5 h-9 px-4 text-sm font-medium"
+                                                    onClick={() => handleEditEvent(group.eventId)}
+                                                >
+                                                    <EditIcon className="h-3.5 w-3.5" />
+                                                    Edit Tasks
+                                                </Button>
                                             </div>
                                         </div>
                                     </div>
@@ -1624,189 +1624,189 @@ export default function TimeManagerPage() {
                                         <div className="p-4">
                                             <div className="overflow-x-auto">
                                                 <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
-                                            <thead>
-                                                <tr className="border-0 bg-transparent">
-                                                    <th className="w-8 px-2 py-3 align-bottom">
-                                                        {(() => {
-                                                            const groupIds = group.callTimes.map((ct) => ct.id);
-                                                            const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
-                                                            return (
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isGroupAllSelected}
-                                                                    onChange={() => toggleSelectAll(groupIds)}
-                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                                                                />
-                                                            );
-                                                        })()}
-                                                    </th>
-                                                    <th className="w-8 px-2 py-3 align-bottom" />
-                                                    {subTab === 'commission' && (
-                                                        <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                            Action
-                                                        </th>
-                                                    )}
-                                                    {subTab === 'invoice' ? (
-                                                        <>
-                                                            <SortHeader id="startDate" label="Service Date" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                            <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                        </>
-                                                    ) : subTab === 'commission' ? (
-                                                        <>
-                                                            <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
-                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                        </>
-                                                    ) : subTab === 'bill' ? (
-                                                        <>
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                Action
+                                                    <thead>
+                                                        <tr className="border-0 bg-transparent">
+                                                            <th className="w-8 px-2 py-3 align-bottom">
+                                                                {(() => {
+                                                                    const groupIds = group.callTimes.map((ct) => ct.id);
+                                                                    const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                                    return (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isGroupAllSelected}
+                                                                            onChange={() => toggleSelectAll(groupIds)}
+                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                        />
+                                                                    );
+                                                                })()}
                                                             </th>
-                                                            <SortHeader id="staffName" label="Talent" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <SortHeader id="startDate" label="Date" />
-                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                            <SortHeader id="actualShift" label="Actual Shift" />
-                                                            <SortHeader id="variance" label="Variance" align="text-center" />
-                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                Net Income
-                                                            </th>
-                                                            <SortHeader id="commission" label="Commission" align="text-center" />
-                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                        </>
-                                                    )}
-                                                    {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
+                                                            <th className="w-8 px-2 py-3 align-bottom" />
+                                                            {subTab === 'commission' && (
+                                                                <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                    Action
+                                                                </th>
+                                                            )}
+                                                            {subTab === 'invoice' ? (
+                                                                <>
+                                                                    <SortHeader id="startDate" label="Service Date" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                </>
+                                                            ) : subTab === 'commission' ? (
+                                                                <>
+                                                                    <SortHeader id="staffName" label="Team / User" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
+                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
+                                                                </>
+                                                            ) : subTab === 'bill' ? (
+                                                                <>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Action
+                                                                    </th>
+                                                                    <SortHeader id="staffName" label="Talent" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <SortHeader id="startDate" label="Date" />
+                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                                    <SortHeader id="actualShift" label="Actual Shift" />
+                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
+                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Net Income
+                                                                    </th>
+                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
+                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
+                                                                </>
+                                                            )}
+                                                            {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th> */}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {(() => {
-                                                    const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
-                                                    const filtered = applyDetailToolbarFilters(baseFiltered);
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {(() => {
+                                                            const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
+                                                            const filtered = applyDetailToolbarFilters(baseFiltered);
 
-                                                    if (subTab === 'invoice') {
-                                                        const serviceMap = new Map<string, CallTimeRow>();
-                                                        filtered.forEach(ct => {
-                                                            const sid = ct.service?.id || 'none';
-                                                            const sDate = formatDate(ct.startDate);
-                                                            const key = `${sDate}_${sid}_${ct.callTimeId}`;
-                                                            if (!serviceMap.has(key)) {
-                                                                serviceMap.set(key, { ...ct, mergedRows: [ct] });
-                                                            } else {
-                                                                const existing = serviceMap.get(key)!;
-                                                                if (ct.notes && !existing.notes?.includes(ct.notes)) {
-                                                                    existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                            if (subTab === 'invoice') {
+                                                                const serviceMap = new Map<string, CallTimeRow>();
+                                                                filtered.forEach(ct => {
+                                                                    const sid = ct.service?.id || 'none';
+                                                                    const sDate = formatDate(ct.startDate);
+                                                                    const key = `${sDate}_${sid}_${ct.callTimeId}`;
+                                                                    if (!serviceMap.has(key)) {
+                                                                        serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                                    } else {
+                                                                        const existing = serviceMap.get(key)!;
+                                                                        if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                            existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                        }
+                                                                        if (!existing.mergedRows) existing.mergedRows = [];
+                                                                        existing.mergedRows.push(ct);
+                                                                    }
+                                                                });
+                                                                return Array.from(serviceMap.values()).map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
+                                                            }
+
+                                                            if (subTab !== 'bill') {
+                                                                return filtered.map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
+                                                            }
+
+                                                            // Group by staff for the event detail view
+                                                            const staffMap = new Map<string, CallTimeRow>();
+                                                            filtered.forEach(ct => {
+                                                                const sid = ct.staff?.id;
+                                                                if (!sid) return;
+                                                                if (!staffMap.has(sid)) {
+                                                                    staffMap.set(sid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
+                                                                } else {
+                                                                    const existing = staffMap.get(sid)!;
+                                                                    if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
+                                                                        existing.service.title = `${existing.service.title} & ${ct.service.title}`;
+                                                                    }
+                                                                    if (ct.notes && ct.notes !== existing.notes) {
+                                                                        existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                    }
+                                                                    existing.invitations.push(...ct.invitations);
+                                                                    if (!existing.mergedRows) existing.mergedRows = [];
+                                                                    existing.mergedRows.push(ct);
                                                                 }
-                                                                if (!existing.mergedRows) existing.mergedRows = [];
-                                                                existing.mergedRows.push(ct);
-                                                            }
-                                                        });
-                                                        return Array.from(serviceMap.values()).map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                                rowVariant="card"
-                                                            />
-                                                        ));
-                                                    }
+                                                            });
 
-                                                    if (subTab !== 'bill') {
-                                                        return filtered.map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                                rowVariant="card"
-                                                            />
-                                                        ));
-                                                    }
-
-                                                    // Group by staff for the event detail view
-                                                    const staffMap = new Map<string, CallTimeRow>();
-                                                    filtered.forEach(ct => {
-                                                        const sid = ct.staff?.id;
-                                                        if (!sid) return;
-                                                        if (!staffMap.has(sid)) {
-                                                            staffMap.set(sid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
-                                                        } else {
-                                                            const existing = staffMap.get(sid)!;
-                                                            if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
-                                                                existing.service.title = `${existing.service.title} & ${ct.service.title}`;
-                                                            }
-                                                            if (ct.notes && ct.notes !== existing.notes) {
-                                                                existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
-                                                            }
-                                                            existing.invitations.push(...ct.invitations);
-                                                            if (!existing.mergedRows) existing.mergedRows = [];
-                                                            existing.mergedRows.push(ct);
-                                                        }
-                                                    });
-
-                                                    return Array.from(staffMap.values()).map(ct => (
-                                                        <TimesheetTableRow
-                                                            key={ct.id}
-                                                            ct={ct}
-                                                            isExpanded={expandedRows.has(ct.id)}
-                                                            isSelected={selectedRows.has(ct.id)}
-                                                            onToggleExpand={toggleExpand}
-                                                            onToggleSelect={toggleSelect}
-                                                            onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                            onSaveTimeEntry={handleSaveTimeEntry}
-                                                            onApprove={handleApprove}
-                                                            onReject={handleReject}
-                                                            onReview={handleReview}
-                                                            onPending={handlePending}
-                                                            onEditTask={handleEditTask}
-                                                            subTab={subTab}
-                                                            rowVariant="card"
-                                                        />
-                                                    ));
-                                                })()}
-                                            </tbody>
-                                        </table>
+                                                            return Array.from(staffMap.values()).map(ct => (
+                                                                <TimesheetTableRow
+                                                                    key={ct.id}
+                                                                    ct={ct}
+                                                                    isExpanded={expandedRows.has(ct.id)}
+                                                                    isSelected={selectedRows.has(ct.id)}
+                                                                    onToggleExpand={toggleExpand}
+                                                                    onToggleSelect={toggleSelect}
+                                                                    onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                    onSaveTimeEntry={handleSaveTimeEntry}
+                                                                    onApprove={handleApprove}
+                                                                    onReject={handleReject}
+                                                                    onReview={handleReview}
+                                                                    onPending={handlePending}
+                                                                    onEditTask={handleEditTask}
+                                                                    subTab={subTab}
+                                                                    rowVariant="card"
+                                                                />
+                                                            ));
+                                                        })()}
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
                                     </div>
@@ -1877,11 +1877,18 @@ export default function TimeManagerPage() {
                             commission: editingTask.commission ?? false,
                             commissionAmount: editingTask.commissionAmount as any,
                             commissionAmountType: editingTask.commissionAmountType as any,
+                            applyMinimum: editingTask.applyMinimum ?? false,
+                            minimum: editingTask.minimum as any,
+                            travelInMinimum: editingTask.travelInMinimum ?? false,
+                            expenditure: editingTask.expenditure ?? false,
+                            expenditureCost: editingTask.expenditureCost as any,
+                            expenditurePrice: editingTask.expenditurePrice as any,
+                            expenditureAmountType: editingTask.expenditureAmountType as any,
                             notes: editingTask.notes,
                         }}
                         onSubmit={(data) => {
                             updateCallTimeMutation.mutate({
-                                id: editingTask.callTimeId,
+                                id: editingTask.id,
                                 ...data as any,
                             });
                         }}

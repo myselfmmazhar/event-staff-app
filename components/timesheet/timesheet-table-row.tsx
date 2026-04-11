@@ -49,20 +49,25 @@ function formatShiftInstant(d: Date | null): string {
 }
 
 /** Invoice description: "03/02/2026 4:00 PM - 03/03/2026 12:44 AM" */
-function formatInvoiceDateTimeRange(start: Date | null, end: Date | null): string {
+function formatInvoiceDateTimeRange(start: Date | null, end: Date | null) {
     if (!start) return '—';
     const left = format(start, 'MM/dd/yyyy h:mm a');
     if (!end) return `${left} - —`;
-    return `${left} - ${format(end, 'MM/dd/yyyy h:mm a')}`;
+    return (
+        <div className="flex flex-col leading-tight whitespace-nowrap">
+            <span>{left} -</span>
+            <span>{format(end, 'MM/dd/yyyy h:mm a')}</span>
+        </div>
+    );
 }
 
-function invoiceScheduledRange(row: CallTimeRow): string {
+function invoiceScheduledRange(row: CallTimeRow) {
     const schedStart = combineDateTime(row.startDate, row.startTime);
     const schedEnd = combineDateTime(row.endDate ?? row.startDate, row.endTime);
     return formatInvoiceDateTimeRange(schedStart, schedEnd);
 }
 
-function invoiceActualRange(tev: CallTimeRow['timeEntry']): string {
+function invoiceActualRange(tev: CallTimeRow['timeEntry']) {
     if (!tev?.clockIn) return 'No clock';
     return formatInvoiceDateTimeRange(new Date(tev.clockIn), tev.clockOut ? new Date(tev.clockOut) : null);
 }
@@ -140,14 +145,6 @@ export function TimesheetTableRow({
     useEffect(() => {
         setIsMinApp(!!ct.applyMinimum);
     }, [ct.applyMinimum]);
-
-    useEffect(() => {
-        ct.commission = isCommApp;
-    }, [isCommApp, ct]);
-
-    useEffect(() => {
-        ct.applyMinimum = isMinApp;
-    }, [isMinApp, ct]);
 
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
@@ -242,6 +239,17 @@ export function TimesheetTableRow({
     };
 
     const handleToggleMinimum = (val: boolean) => {
+        if (val) {
+            const minVal = toNumber(ct.minimum);
+            if (minVal <= 0) {
+                toast({
+                    title: 'Minimum price required',
+                    description: 'You did not assign a minimum price for this task. Please set a minimum price first.',
+                    variant: 'destructive',
+                });
+                return;
+            }
+        }
         setIsMinApp(val);
         if (onSaveTimeEntry) {
             const parsedOtCost = otCostManual !== '' ? parseFloat(otCostManual) : null;
@@ -369,18 +377,17 @@ export function TimesheetTableRow({
                                         const rowClockHrs = calcClockedHours(rowTe);
 
                                         const actualLine = (
-                                            <span className="text-slate-800">
+                                            <div className="text-slate-800">
                                                 {invoiceActualRange(rowTe)}
-                                                <span className="text-muted-foreground font-normal">
-                                                    {' '}
+                                                <div className="text-muted-foreground font-normal">
                                                     ({rowClockHrs.toFixed(2)} hrs)
-                                                </span>
+                                                </div>
                                                 {isSoloInvoiceRow && isEdited && (
                                                     <Badge variant="secondary" className="ml-1.5 text-[9px] h-4 px-1 py-0 leading-none font-medium align-middle">
                                                         Edited
                                                     </Badge>
                                                 )}
-                                            </span>
+                                            </div>
                                         );
 
                                         return (
@@ -392,16 +399,15 @@ export function TimesheetTableRow({
                                                     {invoiceStaffHeadline(row, row.event ?? ct.event)}
                                     </div>
                                                 <div className="text-slate-800">{row.service?.title || ct.service?.title || '—'}</div>
-                                                <div>
+                                                <div className="flex flex-col">
                                                     <span className="font-medium text-slate-600">Schedule: </span>
-                                                    <span className="text-slate-800">
+                                                    <div className="text-slate-800">
                                                         {invoiceScheduledRange(row)}
-                                                        <span className="text-muted-foreground font-normal">
-                                                            {' '}
+                                                        <div className="text-muted-foreground font-normal">
                                                             ({rowSchedHrs.toFixed(2)} hrs)
-                                                        </span>
-                                                    </span>
-                                </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                                 <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
                                                     <span className="font-medium text-slate-600 shrink-0">Actual: </span>
                                                     {isSoloInvoiceRow ? (
@@ -589,15 +595,23 @@ export function TimesheetTableRow({
                                                         <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] px-1.5 py-0 font-bold uppercase">
                                                             {row.service?.title || '—'}
                                                         </Badge>
-                                                        <span className="text-slate-400 italic font-medium text-[9px]">
+                                                        <div className="text-slate-800 font-bold whitespace-nowrap leading-tight text-[10px]">
                                                             {billBasis === 'ACTUAL' ? (
                                                                 row.timeEntry?.clockIn
-                                                                    ? `${formatDate(row.timeEntry.clockIn)} ${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? `${formatDate(row.timeEntry.clockOut)} ${formatTime(getTimeOnly(row.timeEntry.clockOut))}` : '??'}`
+                                                                    ? (
+                                                                        <>
+                                                                            <div>{formatDate(row.timeEntry.clockIn)} {formatTime(getTimeOnly(row.timeEntry.clockIn))} -</div>
+                                                                            <div>{row.timeEntry.clockOut ? `${formatDate(row.timeEntry.clockOut)} ${formatTime(getTimeOnly(row.timeEntry.clockOut))}` : '??'}</div>
+                                                                        </>
+                                                                    )
                                                                     : 'Not clocked'
                                                             ) : (
-                                                                `${formatTime(row.startTime)} - ${formatTime(row.endTime)}`
+                                                                <>
+                                                                    <div>{formatTime(row.startTime)} -</div>
+                                                                    <div>{formatTime(row.endTime)}</div>
+                                                                </>
                                                             )}
-                                                        </span>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -606,15 +620,23 @@ export function TimesheetTableRow({
                                                 <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100 text-[9px] px-1.5 py-0 font-bold uppercase">
                                                     {ct.service?.title || '—'}
                                                 </Badge>
-                                                <span className="text-slate-400 italic font-medium">
+                                                <div className="text-slate-800 font-bold leading-tight text-[11px]">
                                                     {billBasis === 'ACTUAL' ? (
                                                         te?.clockIn
-                                                            ? `${formatDate(te.clockIn)} ${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? `${formatDate(te.clockOut)} ${formatTime(getTimeOnly(te.clockOut))}` : '??'}`
+                                                            ? (
+                                                                <>
+                                                                    <div>{formatDate(te.clockIn)} {formatTime(getTimeOnly(te.clockIn))} -</div>
+                                                                    <div>{te.clockOut ? `${formatDate(te.clockOut)} ${formatTime(getTimeOnly(te.clockOut))}` : '??'}</div>
+                                                                </>
+                                                            )
                                                             : 'Actual shift not clocked'
                                                     ) : (
-                                                        `${formatTime(ct.startTime)} - ${formatTime(ct.endTime)}`
+                                                        <>
+                                                            <div>{formatTime(ct.startTime)} -</div>
+                                                            <div>{formatTime(ct.endTime)}</div>
+                                                        </>
                                                     )}
-                                                </span>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -903,7 +925,12 @@ export function TimesheetTableRow({
                                             : '\u2014';
                                 return (
                                     <div className="flex flex-col gap-1 text-left">
-                                        <p className="text-sm font-bold text-foreground tabular-nums">{range}</p>
+                                        <div className="text-sm font-bold text-foreground tabular-nums leading-tight">
+                                            {s} {e ? '-' : ''}
+                                            {e && (
+                                                <div className="mt-0.5">{e}</div>
+                                            )}
+                                        </div>
                                         <p className="text-xs font-normal text-slate-500">
                                             {hoursScheduled.toFixed(2)} hrs scheduled
                                         </p>
@@ -922,15 +949,20 @@ export function TimesheetTableRow({
                                     >
                                         {te?.clockIn ? (
                                             <div className="flex flex-col gap-1 text-left">
-                                                <p className="text-sm font-bold text-foreground tabular-nums">
+                                                <div className="text-sm font-bold text-foreground tabular-nums leading-tight">
                                                     {(() => {
                                                         const inT = formatTime(getTimeOnly(te.clockIn));
                                                         const outT = te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '';
-                                                        if (inT && outT) return `${inT} \u2013 ${outT}`;
-                                                        if (inT) return `${inT} \u2013 \u2014`;
+                                                        if (inT && outT) return (
+                                                            <>
+                                                                {inT} -
+                                                                <div className="mt-0.5">{outT}</div>
+                                                            </>
+                                                        );
+                                                        if (inT) return `${inT} - —`;
                                                         return '\u2014';
                                                     })()}
-                                                </p>
+                                                </div>
                                                 <p className="text-xs font-normal text-slate-500 flex flex-wrap items-center gap-1">
                                                     <span>{hoursClocked.toFixed(2)} hrs worked</span>
                                                     {isEdited && (
