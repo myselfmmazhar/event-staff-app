@@ -79,14 +79,15 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick, sortB
                             return (
                                 <tr key={group.staffId} className="hover:bg-muted/30 transition-colors">
                                     <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium text-foreground">
+                                        <div className="flex flex-col leading-tight">
+                                            <span className="text-sm font-bold text-foreground">
                                                 {min ? formatDate(min) : 'TBD'}
                                                 {firstRow?.startTime && ` ${formatTime(firstRow.startTime)}`}
+                                                {min && max && min.getTime() !== max.getTime() ? ' -' : ''}
                                             </span>
                                             {min && max && min.getTime() !== max.getTime() && (
-                                                <span className="text-xs">
-                                                    to {formatDate(max)}
+                                                <span className="text-sm font-bold text-foreground">
+                                                    {formatDate(max)}
                                                     {firstRow?.endTime && ` ${formatTime(firstRow.endTime)}`}
                                                 </span>
                                             )}

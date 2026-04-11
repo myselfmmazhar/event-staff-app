@@ -85,11 +85,18 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortB
 
                             return (
                                 <tr key={group.clientId} className="hover:bg-muted/30 transition-colors">
-                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap text-xs font-medium">
-                                        <span className="text-foreground">
-                                            {minDate ? formatDate(minDate) : 'TBD'} 
-                                            {maxDate && minDate?.getTime() !== maxDate.getTime() ? ` - ${formatDate(maxDate)}` : ''}
-                                        </span>
+                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap text-sm font-bold">
+                                        <div className="flex flex-col leading-tight">
+                                            <span className="text-foreground">
+                                                {minDate ? formatDate(minDate) : 'TBD'} 
+                                                {maxDate && minDate?.getTime() !== maxDate.getTime() ? ' -' : ''}
+                                            </span>
+                                            {maxDate && minDate?.getTime() !== maxDate.getTime() && (
+                                                <span className="text-foreground">
+                                                    {formatDate(maxDate)}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-4 py-4">
                                         <button

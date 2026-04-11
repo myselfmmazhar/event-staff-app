@@ -149,14 +149,15 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     className="hover:bg-slate-50/50 transition-colors group"
                                 >
                                     <td className="px-4 py-5 text-slate-900 whitespace-nowrap align-top">
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col leading-tight">
                                             <span className="font-bold">
                                                 {eventDate ? formatDate(eventDate) : 'TBD'}
                                                 {event?.startTime ? ` • ${formatTime(event.startTime)}` : ''}
+                                                {(eventEndDate || event?.endTime) ? ' -' : ''}
                                             </span>
                                             {(eventEndDate || event?.endTime) && (
-                                                <span className="text-[11px] text-slate-400 font-medium">
-                                                    to {formatDate(eventEndDate || eventDate || null)} {event?.endTime ? `• ${formatTime(event.endTime)}` : ''}
+                                                <span className="font-bold">
+                                                    {formatDate(eventEndDate || eventDate || null)} {event?.endTime ? `• ${formatTime(event.endTime)}` : ''}
                                                 </span>
                                             )}
                                         </div>

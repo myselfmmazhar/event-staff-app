@@ -58,7 +58,7 @@ const SHOW_REQUIREMENTS_DOCUMENT_UPLOAD = false;
  * Toggle to show the nested Form W-9 when “Company completes the tax form” (TaxFilledBy.STAFF) is selected.
  * When false, the mode switch still works; tax data is submitted without the inline W-9 UI.
  */
-const SHOW_TAX_STAFF_W9_FORM = false;
+const SHOW_TAX_STAFF_W9_FORM = true;
 
 const WIZARD_STEPS = ['basic', 'talentType', 'requirements', 'tax', 'review'] as const;
 type WizardStep = (typeof WIZARD_STEPS)[number];
@@ -104,55 +104,55 @@ const REQ_TEMPLATE_CARDS: {
     footer: string;
     Icon: typeof FileText;
 }[] = [
-    {
-        id: 'w9',
-        title: 'Tax form - W-9',
-        badge: 'Standard',
-        description: 'Contractor tax requirement with acknowledgement and signature.',
-        footer: 'Included for contractor',
-        Icon: FileText,
-    },
-    {
-        id: 'upload',
-        title: 'File upload',
-        badge: 'Standard',
-        description: 'Upload certifications, insurance, IDs, or supporting documents.',
-        footer: 'Add supporting docs',
-        Icon: Cloud,
-    },
-    {
-        id: 'esign',
-        title: 'E-signature',
-        badge: 'Standard',
-        description: 'Signature-only requirement for policies, agreements, or acknowledgements.',
-        footer: 'Signature required',
-        Icon: PenLine,
-    },
-    {
-        id: 'idv',
-        title: 'ID verification',
-        badge: 'Smart',
-        description: 'Identity or document verification based on role and compliance need.',
-        footer: 'Optional requirement',
-        Icon: Smartphone,
-    },
-    {
-        id: 'bg',
-        title: 'Background check',
-        badge: 'Smart',
-        description: 'Use when the role, client, venue, or market requires it.',
-        footer: 'Optional requirement',
-        Icon: Search,
-    },
-    {
-        id: 'headshot',
-        title: 'Headshot / profile photo',
-        badge: 'Smart',
-        description: 'Useful for promotional talent, models, and client-facing roles.',
-        footer: 'Optional requirement',
-        Icon: Camera,
-    },
-];
+        {
+            id: 'w9',
+            title: 'Tax form - W-9',
+            badge: 'Standard',
+            description: 'Contractor tax requirement with acknowledgement and signature.',
+            footer: 'Included for contractor',
+            Icon: FileText,
+        },
+        {
+            id: 'upload',
+            title: 'File upload',
+            badge: 'Standard',
+            description: 'Upload certifications, insurance, IDs, or supporting documents.',
+            footer: 'Add supporting docs',
+            Icon: Cloud,
+        },
+        {
+            id: 'esign',
+            title: 'E-signature',
+            badge: 'Standard',
+            description: 'Signature-only requirement for policies, agreements, or acknowledgements.',
+            footer: 'Signature required',
+            Icon: PenLine,
+        },
+        {
+            id: 'idv',
+            title: 'ID verification',
+            badge: 'Smart',
+            description: 'Identity or document verification based on role and compliance need.',
+            footer: 'Optional requirement',
+            Icon: Smartphone,
+        },
+        {
+            id: 'bg',
+            title: 'Background check',
+            badge: 'Smart',
+            description: 'Use when the role, client, venue, or market requires it.',
+            footer: 'Optional requirement',
+            Icon: Search,
+        },
+        {
+            id: 'headshot',
+            title: 'Headshot / profile photo',
+            badge: 'Smart',
+            description: 'Useful for promotional talent, models, and client-facing roles.',
+            footer: 'Optional requirement',
+            Icon: Camera,
+        },
+    ];
 
 // Helper to get default form values
 const getDefaultFormValues = () => ({
@@ -481,11 +481,11 @@ function StaffFormContent({
                 <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 pr-2">
                         <h2 className="text-2xl font-bold tracking-tight text-slate-900">{titleText}</h2>
-                        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
+                        {/* <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
                             After adding a {terminology.staff.lower}, they will be invited by email or phone to join your
                             network, complete onboarding requirements, review any company-entered information, and sign
                             where required.
-                        </p>
+                        </p> */}
                     </div>
                     <button
                         type="button"
@@ -627,7 +627,7 @@ function StaffFormContent({
                             </div>
                         </div>
 
-                        <div className="mt-6">
+                        {/* <div className="mt-6">
                             <Label htmlFor="sf-invite-rule" className="text-sm font-bold text-slate-900">
                                 Invite rule
                             </Label>
@@ -638,7 +638,7 @@ function StaffFormContent({
                                 value="At least one of Email or Phone is required before Continue is enabled."
                                 className="mt-2 cursor-default rounded-lg border-slate-200 bg-slate-50 text-slate-600"
                             />
-                        </div>
+                        </div> */}
                     </div>
                 )}
 
@@ -887,12 +887,12 @@ function StaffFormContent({
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-slate-200 bg-slate-100/70 px-4 py-3">
+                        {/* <div className="rounded-xl border border-slate-200 bg-slate-100/70 px-4 py-3">
                             <p className="text-sm font-bold text-slate-900">Suggested statuses after send</p>
                             <p className="mt-1 text-sm text-slate-600">
                                 Draft · Invited · In Progress · Awaiting Signature · Completed
                             </p>
-                        </div>
+                        </div> */}
 
                         {isEdit && staff && (
                             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -1033,8 +1033,8 @@ function StaffFormContent({
                                 {isSubmitting
                                     ? 'Saving...'
                                     : isEdit
-                                      ? `Update ${terminology.staff.singular}`
-                                      : 'Send invite'}
+                                        ? `Update ${terminology.staff.singular}`
+                                        : 'Send invite'}
                             </Button>
                         )}
                     </div>

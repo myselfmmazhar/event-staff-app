@@ -135,6 +135,7 @@ export function DuplicateAssignmentModal({
       serviceId: fullData?.serviceId || sourceAssignment.service?.id || '',
       numberOfStaffRequired: fullData?.numberOfStaffRequired || sourceAssignment.numberOfStaffRequired,
       skillLevel: fullData?.skillLevel || 'BEGINNER',
+      ratingRequired: fullData?.ratingRequired ?? null,
       startDate: fullData?.startDate
         ? (typeof fullData.startDate === 'string' ? new Date(fullData.startDate) : fullData.startDate)
         : (typeof sourceAssignment.startDate === 'string'
@@ -151,6 +152,19 @@ export function DuplicateAssignmentModal({
       payRateType: fullData?.payRateType || sourceAssignment.payRateType,
       billRate: billRateValue,
       billRateType: fullData?.billRateType || sourceAssignment.payRateType,
+      approveOvertime: fullData?.approveOvertime ?? false,
+      overtimeRate: fullData?.overtimeRate ?? null,
+      overtimeRateType: fullData?.overtimeRateType ?? null,
+      commission: fullData?.commission ?? false,
+      commissionAmount: fullData?.commissionAmount ?? null,
+      commissionAmountType: fullData?.commissionAmountType ?? null,
+      applyMinimum: fullData?.applyMinimum ?? false,
+      minimum: fullData?.minimum ?? null,
+      travelInMinimum: fullData?.travelInMinimum ?? false,
+      expenditure: fullData?.expenditure ?? false,
+      expenditureCost: fullData?.expenditureCost ?? null,
+      expenditurePrice: fullData?.expenditurePrice ?? null,
+      expenditureAmountType: fullData?.expenditureAmountType ?? null,
       notes: fullData?.notes || null,
     };
 
