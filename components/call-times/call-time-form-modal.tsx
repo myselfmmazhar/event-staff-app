@@ -48,6 +48,13 @@ interface CallTime {
   commissionAmount: number | { toNumber: () => number } | null;
   commissionAmountType: AmountType | null;
   notes: string | null;
+  applyMinimum?: boolean | null;
+  minimum?: number | { toNumber: () => number } | null;
+  travelInMinimum?: boolean | null;
+  expenditure?: boolean | null;
+  expenditureCost?: number | { toNumber: () => number } | null;
+  expenditurePrice?: number | { toNumber: () => number } | null;
+  expenditureAmountType?: AmountType | null;
 }
 
 interface CallTimeFormModalProps {
@@ -153,6 +160,19 @@ export function CallTimeFormModal({
         commission: callTime.commission,
         commissionAmount: toNumber(callTime.commissionAmount) ?? null,
         commissionAmountType: callTime.commissionAmountType ?? null,
+        minimum: (() => {
+          const minVal = toNumber(callTime.minimum);
+          if (callTime.applyMinimum === true) return true;
+          if (callTime.applyMinimum === false) return false;
+          return minVal != null && minVal > 0;
+        })(),
+        minimumAmount: toNumber(callTime.minimum),
+        minimumRateType: callTime.billRateType ?? null,
+        travelInMinimum: callTime.travelInMinimum ?? false,
+        expenditure: callTime.expenditure ?? false,
+        expenditureCost: toNumber(callTime.expenditureCost),
+        expenditurePrice: toNumber(callTime.expenditurePrice),
+        expenditureAmountType: callTime.expenditureAmountType ?? null,
         notes: callTime.notes || '',
       });
       setStartDateUBD(startDateIsUBD);
@@ -184,6 +204,14 @@ export function CallTimeFormModal({
         commission: false,
         commissionAmount: null,
         commissionAmountType: null,
+        minimum: false,
+        minimumAmount: null,
+        minimumRateType: null,
+        travelInMinimum: false,
+        expenditure: false,
+        expenditureCost: null,
+        expenditurePrice: null,
+        expenditureAmountType: null,
         notes: '',
       });
       setStartDateUBD(false);
@@ -217,11 +245,18 @@ export function CallTimeFormModal({
   }, [backendErrors, setError]);
 
   const handleFormSubmit = (data: AssignmentFieldsOutput) => {
+    const applyMinimum = data.minimum === true;
+    const minimumDollars =
+      applyMinimum && data.minimumAmount != null
+        ? parseFloat(Number(data.minimumAmount).toFixed(2))
+        : null;
+
     const submitData = {
       ...(isEdit ? {} : { eventId }),
       serviceId: data.serviceId,
       numberOfStaffRequired: data.numberOfStaffRequired,
       skillLevel: data.skillLevel,
+      ratingRequired: data.ratingRequired,
       startDate: startDateUBD ? null : (data.startDate ? new Date(data.startDate) : null),
       startTime: startTimeTBD ? null : data.startTime || null,
       endDate: endDateUBD ? null : (data.endDate ? new Date(data.endDate) : null),
@@ -238,6 +273,13 @@ export function CallTimeFormModal({
       commission: data.commission ?? false,
       commissionAmount: data.commissionAmount ?? undefined,
       commissionAmountType: data.commissionAmountType ?? undefined,
+      applyMinimum,
+      minimum: minimumDollars,
+      travelInMinimum: data.travelInMinimum ?? false,
+      expenditure: data.expenditure ?? false,
+      expenditureCost: data.expenditure ? (data.expenditureCost ?? null) : null,
+      expenditurePrice: data.expenditure ? (data.expenditurePrice ?? null) : null,
+      expenditureAmountType: data.expenditure ? (data.expenditureAmountType ?? null) : null,
     };
 
     // When creating a new assignment, check for an existing one with the same

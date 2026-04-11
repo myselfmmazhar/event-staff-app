@@ -14,6 +14,7 @@ import { StaffTaxDetailsSchema, type UpsertStaffTaxDetailsInput } from '@/lib/sc
 import { trpc } from '@/lib/client/trpc';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2Icon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Form schema - derived from the upsert schema but without staffId (passed as prop)
 const formSchema = StaffTaxDetailsSchema.upsert.omit({ staffId: true });
@@ -236,46 +237,49 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                 <>
                     {/* W-9 Header */}
                     <div>
-                        <div className="flex items-center gap-3 border-b border-border pb-2 mb-4">
+                        <div className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
                             <h3 className="text-lg font-semibold">Form W-9</h3>
-                            <span className="text-xs text-muted-foreground">Request for Taxpayer Identification Number and Certification</span>
+                            <span className="text-xs text-muted-foreground sm:max-w-[55%] sm:text-right">
+                                Request for Taxpayer Identification Number and Certification
+                            </span>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div>
-                                <Label htmlFor="taxName">
-                                    Name <span className="text-xs text-muted-foreground">(as shown on your income tax return)</span>
+                        {/* Two-column grid: aligned rows, no orphan cells */}
+                        <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                            <div className="min-w-0">
+                                <Label htmlFor="taxName" className="text-sm leading-snug">
+                                    Name <span className="font-normal text-muted-foreground">(as on income tax return)</span>
                                 </Label>
                                 <Input
                                     id="taxName"
+                                    className="mt-2 h-10"
                                     {...register('taxName')}
                                     disabled={isDisabled}
-                                    placeholder="Name of entity/individual"
+                                    placeholder="Name of entity or individual"
                                 />
                                 {errors.taxName && (
-                                    <p className="text-sm text-destructive mt-1">{errors.taxName.message}</p>
+                                    <p className="mt-1 text-sm text-destructive">{errors.taxName.message}</p>
                                 )}
                             </div>
 
-                            <div>
-                                <Label htmlFor="businessName">
+                            <div className="min-w-0">
+                                <Label htmlFor="businessName" className="text-sm leading-snug">
                                     Business name / disregarded entity name
                                 </Label>
                                 <Input
                                     id="businessName"
+                                    className="mt-2 h-10"
                                     {...register('businessName')}
                                     disabled={isDisabled}
                                     placeholder="Business name (if applicable)"
                                 />
                                 {errors.businessName && (
-                                    <p className="text-sm text-destructive mt-1">{errors.businessName.message}</p>
+                                    <p className="mt-1 text-sm text-destructive">{errors.businessName.message}</p>
                                 )}
                             </div>
 
-                            <div>
-                                <Label>
-                                    Federal tax classification
-                                </Label>
+                            <div className="min-w-0">
+                                <Label className="text-sm leading-snug">Federal tax classification</Label>
                                 <Controller
                                     name="businessStructure"
                                     control={control}
@@ -285,7 +289,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                             onValueChange={field.onChange}
                                             disabled={isDisabled}
                                         >
-                                            <SelectTrigger className="mt-1.5">
+                                            <SelectTrigger className="mt-2 h-10 w-full">
                                                 <SelectValue placeholder="Select classification" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -299,9 +303,9 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                             </div>
 
                             {businessStructure === BusinessStructure.LLC && (
-                                <div>
-                                    <Label htmlFor="llcClassification">
-                                        LLC Tax Classification
+                                <div className="min-w-0 md:col-span-2">
+                                    <Label htmlFor="llcClassification" className="text-sm leading-snug">
+                                        LLC tax classification
                                     </Label>
                                     <Controller
                                         name="llcClassification"
@@ -312,7 +316,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                                 onValueChange={field.onChange}
                                                 disabled={isDisabled}
                                             >
-                                                <SelectTrigger className="mt-1.5">
+                                                <SelectTrigger className="mt-2 h-10 w-full max-w-md">
                                                     <SelectValue placeholder="Select LLC classification" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -323,30 +327,32 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                             </Select>
                                         )}
                                     />
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Enter the tax classification (C=C corporation, S=S corporation, P=Partnership)
+                                    <p className="mt-1.5 text-xs text-muted-foreground">
+                                        C = C corporation, S = S corporation, P = Partnership
                                     </p>
                                 </div>
                             )}
 
-                            <div>
-                                <Label htmlFor="exemptPayeeCode">
-                                    Exempt payee code <span className="text-xs text-muted-foreground">(if any)</span>
+                            <div className="min-w-0">
+                                <Label htmlFor="exemptPayeeCode" className="text-sm leading-snug">
+                                    Exempt payee code <span className="font-normal text-muted-foreground">(if any)</span>
                                 </Label>
                                 <Input
                                     id="exemptPayeeCode"
+                                    className="mt-2 h-10"
                                     {...register('exemptPayeeCode')}
                                     disabled={isDisabled}
                                     placeholder="Code (if applicable)"
                                 />
                             </div>
 
-                            <div>
-                                <Label htmlFor="fatcaExemptionCode">
-                                    FATCA exemption code <span className="text-xs text-muted-foreground">(if any)</span>
+                            <div className="min-w-0">
+                                <Label htmlFor="fatcaExemptionCode" className="text-sm leading-snug">
+                                    FATCA exemption code <span className="font-normal text-muted-foreground">(if any)</span>
                                 </Label>
                                 <Input
                                     id="fatcaExemptionCode"
+                                    className="mt-2 h-10"
                                     {...register('fatcaExemptionCode')}
                                     disabled={isDisabled}
                                     placeholder="Code (if applicable)"
@@ -357,135 +363,160 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
 
                     {/* Address */}
                     <div>
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Address</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div>
-                                <Label htmlFor="taxAddress">
-                                    Address <span className="text-xs text-muted-foreground">(number, street, and apt. or suite no.)</span>
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-5">Address</h3>
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-12">
+                            <div className="min-w-0 md:col-span-12">
+                                <Label htmlFor="taxAddress" className="text-sm leading-snug">
+                                    Address <span className="font-normal text-muted-foreground">(street, apt. or suite)</span>
                                 </Label>
                                 <Input
                                     id="taxAddress"
+                                    className="mt-2 h-10"
                                     {...register('taxAddress')}
                                     disabled={isDisabled}
                                     placeholder="Street address"
                                 />
                             </div>
-                            <div>
+                            <div className="min-w-0 md:col-span-5">
                                 <Label htmlFor="taxCity">City</Label>
                                 <Input
                                     id="taxCity"
+                                    className="mt-2 h-10"
                                     {...register('taxCity')}
                                     disabled={isDisabled}
                                     placeholder="City"
                                 />
                             </div>
-                            <div>
+                            <div className="min-w-0 md:col-span-3">
                                 <Label htmlFor="taxState">State</Label>
                                 <Input
                                     id="taxState"
+                                    className="mt-2 h-10"
                                     {...register('taxState')}
                                     disabled={isDisabled}
                                     placeholder="State"
                                 />
                             </div>
-                            <div>
-                                <Label htmlFor="taxZip">ZIP Code</Label>
+                            <div className="min-w-0 md:col-span-4">
+                                <Label htmlFor="taxZip">ZIP code</Label>
                                 <Input
                                     id="taxZip"
+                                    className="mt-2 h-10"
                                     {...register('taxZip')}
                                     disabled={isDisabled}
                                     placeholder="ZIP"
                                 />
                             </div>
-                            <div>
-                                <Label htmlFor="accountNumbers">
-                                    Account number(s) <span className="text-xs text-muted-foreground">(optional)</span>
+                            <div className="min-w-0 md:col-span-12">
+                                <Label htmlFor="accountNumbers" className="text-sm leading-snug">
+                                    Account number(s) <span className="font-normal text-muted-foreground">(optional)</span>
                                 </Label>
                                 <Input
                                     id="accountNumbers"
+                                    className="mt-2 h-10"
                                     {...register('accountNumbers')}
                                     disabled={isDisabled}
-                                    placeholder="List account number(s) here (optional)"
+                                    placeholder="Optional account numbers"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* Part I: Taxpayer Identification Number */}
+                    {/* Part I: Taxpayer Identification Number — toggles on their own row; input below (no grid overlap) */}
                     <div>
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-2">
                             Taxpayer Identification Number (TIN)
                         </h3>
-                        <p className="text-sm text-muted-foreground mb-4">
+                        <p className="text-sm text-muted-foreground mb-5">
                             Enter your TIN in the appropriate box. This is securely stored and used for tax reporting purposes only.
                         </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                            {/* TIN Type toggle */}
-                            <div className="flex items-center gap-4">
-                                <button
-                                    type="button"
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tinType === 'SSN'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-muted text-muted-foreground hover:bg-accent'
-                                        }`}
-                                    onClick={() => setTinType('SSN')}
+                        <div className="space-y-5">
+                            <div>
+                                <span className="mb-3 block text-sm font-medium text-foreground">Identification type</span>
+                                <div
+                                    role="group"
+                                    aria-label="TIN type"
+                                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
                                 >
-                                    Social Security Number
-                                </button>
-                                <span className="text-sm text-muted-foreground">or</span>
-                                <button
-                                    type="button"
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tinType === 'EIN'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-muted text-muted-foreground hover:bg-accent'
-                                        }`}
-                                    onClick={() => setTinType('EIN')}
-                                >
-                                    Employer Identification Number
-                                </button>
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            'rounded-lg border px-4 py-2.5 text-left text-sm font-medium transition-colors sm:min-w-[10rem]',
+                                            tinType === 'SSN'
+                                                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                                                : 'border-border bg-background text-foreground hover:bg-muted/60'
+                                        )}
+                                        onClick={() => setTinType('SSN')}
+                                    >
+                                        Social Security Number
+                                    </button>
+                                    <span className="hidden px-1 text-center text-xs text-muted-foreground sm:block sm:self-center">
+                                        or
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            'rounded-lg border px-4 py-2.5 text-left text-sm font-medium transition-colors sm:min-w-[10rem]',
+                                            tinType === 'EIN'
+                                                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                                                : 'border-border bg-background text-foreground hover:bg-muted/60'
+                                        )}
+                                        onClick={() => setTinType('EIN')}
+                                    >
+                                        Employer Identification Number
+                                    </button>
+                                </div>
                             </div>
 
-                            {tinType === 'SSN' ? (
-                                <div>
-                                    <Label htmlFor="ssn">Social Security Number</Label>
-                                    <Input
-                                        id="ssn"
-                                        type="password"
-                                        {...register('ssn')}
-                                        disabled={isDisabled}
-                                        placeholder="XXX-XX-XXXX"
-                                        autoComplete="off"
-                                    />
-                                    {errors.ssn && (
-                                        <p className="text-sm text-destructive mt-1">{errors.ssn.message}</p>
-                                    )}
-                                </div>
-                            ) : (
-                                <div>
-                                    <Label htmlFor="ein">Employer Identification Number</Label>
-                                    <Input
-                                        id="ein"
-                                        {...register('ein')}
-                                        disabled={isDisabled}
-                                        placeholder="XX-XXXXXXX"
-                                    />
-                                    {errors.ein && (
-                                        <p className="text-sm text-destructive mt-1">{errors.ein.message}</p>
-                                    )}
-                                </div>
-                            )}
+                            <div className="max-w-md rounded-lg border border-border/60 bg-muted/20 p-4">
+                                {tinType === 'SSN' ? (
+                                    <>
+                                        <Label htmlFor="ssn" className="text-sm font-medium">
+                                            Social Security Number
+                                        </Label>
+                                        <Input
+                                            id="ssn"
+                                            type="password"
+                                            className="mt-2 h-10 bg-background"
+                                            {...register('ssn')}
+                                            disabled={isDisabled}
+                                            placeholder="XXX-XX-XXXX"
+                                            autoComplete="off"
+                                        />
+                                        {errors.ssn && (
+                                            <p className="mt-1.5 text-sm text-destructive">{errors.ssn.message}</p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Label htmlFor="ein" className="text-sm font-medium">
+                                            Employer Identification Number
+                                        </Label>
+                                        <Input
+                                            id="ein"
+                                            className="mt-2 h-10 bg-background"
+                                            {...register('ein')}
+                                            disabled={isDisabled}
+                                            placeholder="XX-XXXXXXX"
+                                        />
+                                        {errors.ein && (
+                                            <p className="mt-1.5 text-sm text-destructive">{errors.ein.message}</p>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     {/* Part II: Certification */}
                     <div>
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-4">
                             Certification
                         </h3>
-                        <div className="text-sm text-muted-foreground space-y-2 mb-4">
+                        <div className="mb-5 space-y-2 text-sm text-muted-foreground">
                             <p>Under penalties of perjury, I certify that:</p>
-                            <ol className="list-decimal list-outside ml-5 space-y-1">
+                            <ol className="ml-5 list-outside list-decimal space-y-1">
                                 <li>The number shown on this form is my correct taxpayer identification number, and</li>
                                 <li>I am not subject to backup withholding, and</li>
                                 <li>I am a U.S. citizen or other U.S. person, and</li>
@@ -493,11 +524,10 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                             </ol>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {/* Signature */}
-                            <div className="lg:col-span-2">
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                            <div className="min-w-0 md:col-span-2">
                                 <Label>Signature</Label>
-                                <div className="mt-1.5">
+                                <div className="mt-2">
                                     <Controller
                                         name="signatureUrl"
                                         control={control}
@@ -511,12 +541,11 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                     />
                                 </div>
                                 {errors.signatureUrl && (
-                                    <p className="text-sm text-destructive mt-1">{errors.signatureUrl.message}</p>
+                                    <p className="mt-1 text-sm text-destructive">{errors.signatureUrl.message}</p>
                                 )}
                             </div>
 
-                            {/* Certification Date */}
-                            <div>
+                            <div className="min-w-0 max-w-xs">
                                 <Label htmlFor="certificationDate">Date</Label>
                                 <Controller
                                     name="certificationDate"
@@ -525,6 +554,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                         <Input
                                             id="certificationDate"
                                             type="date"
+                                            className="mt-2 h-10"
                                             value={field.value instanceof Date && !isNaN(field.value.getTime())
                                                 ? field.value.toISOString().split('T')[0]
                                                 : ''
