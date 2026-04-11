@@ -306,10 +306,10 @@ export function EventTable({
       className: 'py-4 px-4 text-sm text-muted-foreground whitespace-nowrap',
       render: (event) => (
         <div>
-          <div>{formatDateTime(event.startDate, event.startTime)}</div>
+          <div>{formatDateTime(event.startDate, event.startTime)} -</div>
           {!isDateNullOrUBD(event.endDate) && (
-            <div className="text-xs opacity-75">
-              to {formatDateTime(event.endDate, event.endTime)}
+            <div>
+              {formatDateTime(event.endDate, event.endTime)}
             </div>
           )}
         </div>

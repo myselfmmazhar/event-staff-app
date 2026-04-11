@@ -34,14 +34,14 @@ export function TimesheetEventSummaryCards({ rows }: TimesheetEventSummaryCardsP
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {items.map((item) => (
                 <div
                     key={item.label}
-                    className="rounded-lg border border-border bg-card px-4 py-3 shadow-sm"
+                    className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm"
                 >
-                    <div className="text-[11px] font-medium text-muted-foreground mb-1">{item.label}</div>
-                    <div className="text-sm font-bold text-foreground tabular-nums">{item.value}</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1.5">{item.label}</div>
+                    <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{item.value}</div>
                 </div>
             ))}
         </div>

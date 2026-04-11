@@ -385,20 +385,14 @@ export default function TimeManagerPage() {
         label,
         align = 'text-left',
         className = '',
-        variant = 'default',
     }: {
         id: SortField;
         label: React.ReactNode;
         align?: 'text-left' | 'text-center' | 'text-right';
         className?: string;
-        variant?: 'default' | 'detail';
     }) => (
         <th
-            className={`px-3 whitespace-normal cursor-pointer hover:bg-muted/30 transition-colors ${align} ${className} ${
-                variant === 'detail'
-                    ? 'py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground'
-                    : 'py-2 font-medium text-muted-foreground'
-            }`}
+            className={`px-3 py-3 whitespace-normal cursor-pointer hover:bg-muted/30 transition-colors text-[10px] font-bold uppercase tracking-wide text-muted-foreground ${align} ${className}`}
             onClick={() => handleSort(id)}
         >
             <div className={`flex items-center gap-1 ${align === 'text-right' ? 'justify-end' : align === 'text-center' ? 'justify-center' : ''}`}>
@@ -851,6 +845,32 @@ export default function TimeManagerPage() {
         });
     }, [assignments, sortBy, sortOrder]);
 
+    const isTimesheetDrillDown = Boolean(selectedEventId || selectedClientId || selectedStaffId);
+
+    const clearTimesheetDrillDown = () => {
+        setSelectedEventId(null);
+        setSelectedClientId(null);
+        setSelectedStaffId(null);
+    };
+
+    const detailSubTabPills = (
+        <div className="flex flex-wrap items-center gap-2 py-1">
+            {(['all', 'invoice', 'bill', 'commission'] as const).map((tab) => (
+                <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setSubTab(tab)}
+                    className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${subTab === tab
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        }`}
+                >
+                    {tab === 'all' ? 'All' : tab === 'invoice' ? 'Invoices' : tab === 'bill' ? 'Bills' : 'Commissions'}
+                </button>
+            ))}
+        </div>
+    );
+
     return (
         <div className="flex flex-col min-h-screen">
             <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -873,43 +893,8 @@ export default function TimeManagerPage() {
                         setSubTab('all'); // Reset subTab
                     }}
                     subTab={subTab}
+                    drillDown={isTimesheetDrillDown}
                 />
-
-                {(selectedEventId || selectedClientId || selectedStaffId) && (
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                                setSelectedEventId(null);
-                                setSelectedClientId(null);
-                                setSelectedStaffId(null);
-                            }}
-                            className="flex items-center gap-1"
-                        >
-                            <ChevronLeftIcon className="h-4 w-4" />
-                            Back to Summary
-                        </Button>
-                    </div>
-                )}
-
-                {(selectedEventId || selectedClientId || selectedStaffId) && (
-                    <div className="flex flex-wrap items-center gap-2 mb-4">
-                        {(['all', 'invoice', 'bill', 'commission'] as const).map((tab) => (
-                            <button
-                                key={tab}
-                                type="button"
-                                onClick={() => setSubTab(tab)}
-                                className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${subTab === tab
-                                    ? 'border-primary bg-primary text-primary-foreground'
-                                    : 'border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                                    }`}
-                            >
-                                {tab === 'all' ? 'All' : tab === 'invoice' ? 'Invoices' : tab === 'bill' ? 'Bills' : 'Commissions'}
-                            </button>
-                        ))}
-                    </div>
-                )}
 
                 {!selectedEventId && !selectedClientId && !selectedStaffId && (
                     <TimesheetFilters
@@ -1062,41 +1047,62 @@ export default function TimeManagerPage() {
                                 return firstRow?.event?.client?.id === selectedClientId;
                             })
                             .map((group) => (
-                                <div key={group.eventId} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-                                    <div className="px-4 py-3 bg-muted/30 border-b border-border flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-semibold text-lg text-foreground">{group.eventTitle}</span>
-                                                <Badge variant="outline">{group.eventDisplayId}</Badge>
-                                            </div>
-                                            <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground font-medium">
-                                                <span className="text-muted-foreground">Location:</span>
-                                                {group.venueName || '—'}
-                                                {(group.city || group.state) && (
-                                                    <span className="opacity-90 font-normal">
-                                                        ({[group.city, group.state].filter(Boolean).join(', ')})
+                                <div key={group.eventId} className="space-y-4">
+                                    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="flex flex-col gap-2 min-w-0 flex-1">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={clearTimesheetDrillDown}
+                                                    className="h-8 w-fit -ml-2 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <ChevronLeftIcon className="h-4 w-4 mr-0.5" />
+                                                    Back to Summary
+                                                </Button>
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="text-xl font-bold tracking-tight text-foreground">{group.eventTitle}</span>
+                                                    <Badge variant="outline" className="shrink-0 text-xs font-medium">
+                                                        {group.eventDisplayId}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                                    <span className="inline-flex text-xs font-medium rounded-md border border-border bg-muted/40 px-2.5 py-1 text-foreground">
+                                                        {group.clientName || group.callTimes[0]?.event?.client?.businessName || 'No Client'}
                                                     </span>
-                                                )}
+                                                    <span className="flex flex-wrap items-center gap-1.5">
+                                                        <span className="text-muted-foreground">Location:</span>
+                                                        <span className="font-medium text-foreground">
+                                                            {group.venueName || '—'}
+                                                            {(group.city || group.state) && (
+                                                                <span className="font-normal text-muted-foreground">
+                                                                    {' '}
+                                                                    ({[group.city, group.state].filter(Boolean).join(', ')})
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <CallTimeExportDropdown {...getDetailExportProps(group)} />
-                                            <Button
-                                                variant={subTab === 'all' ? 'default' : 'outline'}
-                                                size="sm"
-                                                className="gap-1.5 h-8 text-[11px]"
-                                                onClick={() => handleEditEvent(group.eventId)}
-                                            >
-                                                <EditIcon className="h-3.5 w-3.5" />
-                                                Edit Assignments
-                                            </Button>
+                                            <div className="flex items-center gap-2 shrink-0 sm:pt-1">
+                                                <CallTimeExportDropdown {...getDetailExportProps(group)} />
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="gap-1.5 h-9 px-4 text-sm font-medium"
+                                                    onClick={() => handleEditEvent(group.eventId)}
+                                                >
+                                                    <EditIcon className="h-3.5 w-3.5" />
+                                                    Edit Tasks
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
-                                    {subTab === 'all' && (
-                                        <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
-                                    )}
-                                    {subTab === 'all' && (
-                                        <div className="px-3 pt-2">
+                                    {detailSubTabPills}
+                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
+                                    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                                        <div className="border-b border-border bg-muted/15 px-4 py-3">
                                             <TimesheetDetailToolbar
                                                 search={detailSearch}
                                                 onSearchChange={setDetailSearch}
@@ -1117,30 +1123,12 @@ export default function TimeManagerPage() {
                                                 exportControl={<span className="hidden" aria-hidden />}
                                             />
                                         </div>
-                                    )}
-                                    <div
-                                        className={
-                                            subTab === 'all'
-                                                ? 'overflow-x-auto rounded-xl border border-border bg-muted/20 p-3 mx-3 mb-3'
-                                                : 'overflow-x-auto'
-                                        }
-                                    >
-                                        <table
-                                            className={
-                                                subTab === 'all'
-                                                    ? 'w-full border-separate border-spacing-y-2 text-sm'
-                                                    : 'w-full text-sm'
-                                            }
-                                        >
+                                        <div className="p-4">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
                                             <thead>
-                                                <tr
-                                                    className={
-                                                        subTab === 'all'
-                                                            ? 'border-0 bg-transparent'
-                                                            : 'border-b border-border bg-muted/30'
-                                                    }
-                                                >
-                                                    <th className={`w-8 px-2 ${subTab === 'all' ? 'py-3 align-bottom' : 'py-2'}`}>
+                                                <tr className="border-0 bg-transparent">
+                                                    <th className="w-8 px-2 py-3 align-bottom">
                                                         {(() => {
                                                             const groupIds = group.callTimes.map((ct) => ct.id);
                                                             const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
@@ -1154,9 +1142,9 @@ export default function TimeManagerPage() {
                                                             );
                                                         })()}
                                                     </th>
-                                                    <th className={`w-8 px-2 ${subTab === 'all' ? 'py-3 align-bottom' : 'py-2'}`} />
+                                                    <th className="w-8 px-2 py-3 align-bottom" />
                                                     {subTab === 'commission' && (
-                                                        <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">
+                                                        <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                             Action
                                                         </th>
                                                     )}
@@ -1164,25 +1152,25 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
+                                                            <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                             <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                             <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                         </>
                                                     ) : subTab === 'commission' ? (
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Bill Description</th>
                                                             <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
                                                         <>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
                                                             <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                             <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                         </>
                                                     ) : (
@@ -1190,22 +1178,22 @@ export default function TimeManagerPage() {
                                                             <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                 Action
                                                             </th>
-                                                            <SortHeader id="staffName" label="Talent" variant="detail" />
-                                                            <SortHeader id="service" label="Services / Products" variant="detail" />
-                                                            <SortHeader id="startDate" label="Date" variant="detail" />
-                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" variant="detail" />
-                                                            <SortHeader id="actualShift" label="Actual Shift" variant="detail" />
-                                                            <SortHeader id="variance" label="Variance" align="text-center" variant="detail" />
-                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" variant="detail" />
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" variant="detail" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" variant="detail" />
+                                                            <SortHeader id="staffName" label="Talent" />
+                                                            <SortHeader id="service" label="Services / Products" />
+                                                            <SortHeader id="startDate" label="Date" />
+                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                            <SortHeader id="actualShift" label="Actual Shift" />
+                                                            <SortHeader id="variance" label="Variance" align="text-center" />
+                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                             <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                 Net Income
                                                             </th>
-                                                            <SortHeader id="commission" label="Commission" align="text-center" variant="detail" />
-                                                            <SortHeader id="minimum" label="Minimum" align="text-right" variant="detail" />
-                                                            <SortHeader id="status" label="Status" align="text-center" variant="detail" />
-                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" variant="detail" />
+                                                            <SortHeader id="commission" label="Commission" align="text-center" />
+                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                            <SortHeader id="status" label="Status" align="text-center" />
+                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
                                                         </>
                                                     )}
                                                 </tr>
@@ -1213,8 +1201,7 @@ export default function TimeManagerPage() {
                                             <tbody>
                                                 {(() => {
                                                     const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
-                                                    const filtered =
-                                                        subTab === 'all' ? applyDetailToolbarFilters(baseFiltered) : baseFiltered;
+                                                    const filtered = applyDetailToolbarFilters(baseFiltered);
 
                                                     if (subTab === 'invoice') {
                                                         const serviceMap = new Map<string, CallTimeRow>();
@@ -1249,6 +1236,7 @@ export default function TimeManagerPage() {
                                                                 onPending={handlePending}
                                                                 onEditTask={handleEditTask}
                                                                 subTab={subTab}
+                                                                rowVariant="card"
                                                             />
                                                         ));
                                                     }
@@ -1269,12 +1257,14 @@ export default function TimeManagerPage() {
                                                             onPending={handlePending}
                                                             onEditTask={handleEditTask}
                                                             subTab={subTab}
-                                                            rowVariant={subTab === 'all' ? 'card' : 'default'}
+                                                            rowVariant="card"
                                                         />
                                                     ));
                                                 })()}
                                             </tbody>
                                         </table>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -1284,29 +1274,42 @@ export default function TimeManagerPage() {
                         {talentGroups
                             .filter(g => g.staffId === selectedStaffId)
                             .map((group) => (
-                                <div key={group.staffId} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-                                    <div className="px-4 py-3 bg-muted/30 border-b border-border flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <TalentContactPopover
-                                                talent={group.callTimes[0]?.staff || { firstName: group.staffName.split(' ')[0], lastName: group.staffName.split(' ')[1] || '' } as any}
-                                                trigger={
-                                                    <span className="font-semibold text-lg text-foreground cursor-pointer hover:underline">{group.staffName}</span>
-                                                }
-                                            />
-                                            {subTab === 'invoice' ? (
-                                                <Badge variant="primary" className="bg-primary/5 text-primary border-primary/10">
-                                                    {group.callTimes[0]?.event?.client?.businessName || 'Multiple Clients'}
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline">Assignments</Badge>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
+                                <div key={group.staffId} className="space-y-4">
+                                    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="flex flex-col gap-2 min-w-0 flex-1">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={clearTimesheetDrillDown}
+                                                    className="h-8 w-fit -ml-2 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <ChevronLeftIcon className="h-4 w-4 mr-0.5" />
+                                                    Back to Summary
+                                                </Button>
+                                                <div className="flex flex-wrap items-center gap-3 min-w-0">
+                                                    <TalentContactPopover
+                                                        talent={group.callTimes[0]?.staff || { firstName: group.staffName.split(' ')[0], lastName: group.staffName.split(' ')[1] || '' } as any}
+                                                        trigger={
+                                                            <span className="text-xl font-bold tracking-tight text-foreground cursor-pointer hover:underline">{group.staffName}</span>
+                                                        }
+                                                    />
+                                                    {subTab === 'invoice' ? (
+                                                        <Badge variant="primary" className="bg-primary/5 text-primary border-primary/10">
+                                                            {group.callTimes[0]?.event?.client?.businessName || 'Multiple Clients'}
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline">Assignments</Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0 sm:pt-1">
                                             <CallTimeExportDropdown {...getDetailExportProps(group)} />
                                             <Button
-                                                variant={subTab === 'all' ? 'default' : 'outline'}
+                                                variant="default"
                                                 size="sm"
-                                                className="gap-1.5 h-8 text-[11px]"
+                                                className="gap-1.5 h-9 px-4 text-sm font-medium"
                                                 disabled={!group.callTimes.some((ct) => ct.event?.id)}
                                                 onClick={() => {
                                                     const eid = group.callTimes.find((ct) => ct.event?.id)?.event?.id;
@@ -1316,13 +1319,13 @@ export default function TimeManagerPage() {
                                                 <EditIcon className="h-3.5 w-3.5" />
                                                 Edit Tasks
                                             </Button>
+                                            </div>
                                         </div>
                                     </div>
-                                    {subTab === 'all' && (
-                                        <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
-                                    )}
-                                    {subTab === 'all' && (
-                                        <div className="px-3 pt-2">
+                                    {detailSubTabPills}
+                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
+                                    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                                        <div className="border-b border-border bg-muted/15 px-4 py-3">
                                             <TimesheetDetailToolbar
                                                 search={detailSearch}
                                                 onSearchChange={setDetailSearch}
@@ -1343,30 +1346,12 @@ export default function TimeManagerPage() {
                                                 exportControl={<span className="hidden" aria-hidden />}
                                             />
                                         </div>
-                                    )}
-                                    <div
-                                        className={
-                                            subTab === 'all'
-                                                ? 'overflow-x-auto rounded-xl border border-border bg-muted/20 p-3 mx-3 mb-3'
-                                                : 'overflow-x-auto'
-                                        }
-                                    >
-                                        <table
-                                            className={
-                                                subTab === 'all'
-                                                    ? 'w-full border-separate border-spacing-y-2 text-sm'
-                                                    : 'w-full text-sm'
-                                            }
-                                        >
+                                        <div className="p-4">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
                                             <thead>
-                                                <tr
-                                                    className={
-                                                        subTab === 'all'
-                                                            ? 'border-0 bg-transparent'
-                                                            : 'border-b border-border bg-muted/30'
-                                                    }
-                                                >
-                                                    <th className={`w-8 px-2 ${subTab === 'all' ? 'py-3 align-bottom' : 'py-2'}`}>
+                                                <tr className="border-0 bg-transparent">
+                                                    <th className="w-8 px-2 py-3 align-bottom">
                                                         {(() => {
                                                             const groupIds = group.callTimes.map((ct) => ct.id);
                                                             const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
@@ -1380,9 +1365,9 @@ export default function TimeManagerPage() {
                                                             );
                                                         })()}
                                                     </th>
-                                                    <th className={`w-8 px-2 ${subTab === 'all' ? 'py-3 align-bottom' : 'py-2'}`} />
+                                                    <th className="w-8 px-2 py-3 align-bottom" />
                                                     {subTab === 'commission' && (
-                                                        <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">
+                                                        <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                             Action
                                                         </th>
                                                     )}
@@ -1390,25 +1375,25 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="service" label="Services / Products" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
+                                                            <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                             <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                             <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                         </>
                                                     ) : subTab === 'commission' ? (
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Invoice Description</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
                                                             <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
                                                         <>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
                                                             <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                             <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                         </>
                                                     ) : (
@@ -1416,22 +1401,22 @@ export default function TimeManagerPage() {
                                                             <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                 Action
                                                             </th>
-                                                            <SortHeader id="staffName" label="Talent" variant="detail" />
-                                                            <SortHeader id="service" label="Services / Products" variant="detail" />
-                                                            <SortHeader id="startDate" label="Date" variant="detail" />
-                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" variant="detail" />
-                                                            <SortHeader id="actualShift" label="Actual Shift" variant="detail" />
-                                                            <SortHeader id="variance" label="Variance" align="text-center" variant="detail" />
-                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" variant="detail" />
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" variant="detail" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" variant="detail" />
+                                                            <SortHeader id="staffName" label="Talent" />
+                                                            <SortHeader id="service" label="Services / Products" />
+                                                            <SortHeader id="startDate" label="Date" />
+                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                            <SortHeader id="actualShift" label="Actual Shift" />
+                                                            <SortHeader id="variance" label="Variance" align="text-center" />
+                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                             <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                 Net Income
                                                             </th>
-                                                            <SortHeader id="commission" label="Commission" align="text-center" variant="detail" />
-                                                            <SortHeader id="minimum" label="Minimum" align="text-right" variant="detail" />
-                                                            <SortHeader id="status" label="Status" align="text-center" variant="detail" />
-                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" variant="detail" />
+                                                            <SortHeader id="commission" label="Commission" align="text-center" />
+                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                            <SortHeader id="status" label="Status" align="text-center" />
+                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
                                                         </>
                                                     )}
                                                     {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
@@ -1442,8 +1427,7 @@ export default function TimeManagerPage() {
                                             <tbody>
                                                 {(() => {
                                                     const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
-                                                    const filtered =
-                                                        subTab === 'all' ? applyDetailToolbarFilters(baseFiltered) : baseFiltered;
+                                                    const filtered = applyDetailToolbarFilters(baseFiltered);
 
                                                     if (subTab === 'invoice') {
                                                         const serviceMap = new Map<string, CallTimeRow>();
@@ -1478,6 +1462,7 @@ export default function TimeManagerPage() {
                                                                 onPending={handlePending}
                                                                 onEditTask={handleEditTask}
                                                                 subTab={subTab}
+                                                                rowVariant="card"
                                                             />
                                                         ));
                                                     }
@@ -1499,7 +1484,7 @@ export default function TimeManagerPage() {
                                                                 onPending={handlePending}
                                                                 onEditTask={handleEditTask}
                                                                 subTab={subTab}
-                                                                rowVariant={subTab === 'all' ? 'card' : 'default'}
+                                                                rowVariant="card"
                                                             />
                                                         ));
                                                     }
@@ -1541,11 +1526,14 @@ export default function TimeManagerPage() {
                                                             onPending={handlePending}
                                                             onEditTask={handleEditTask}
                                                             subTab={subTab}
+                                                            rowVariant="card"
                                                         />
                                                     ));
                                                 })()}
                                             </tbody>
                                         </table>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -1555,50 +1543,64 @@ export default function TimeManagerPage() {
                         {(subTab === 'bill' ? billGroups : eventGroups)
                             .filter(g => g.eventId === selectedEventId)
                             .map((group) => (
-                                <div key={group.eventId + (group.staffId ? '_' + group.staffId : '')} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-                                    <div className="px-4 py-3 bg-muted/30 border-b border-border flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-semibold text-lg text-foreground">{group.eventTitle}</span>
-                                                <Badge variant="outline">{group.eventDisplayId}</Badge>
+                                <div key={group.eventId + (group.staffId ? '_' + group.staffId : '')} className="space-y-4">
+                                    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="flex flex-col gap-2 min-w-0 flex-1">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={clearTimesheetDrillDown}
+                                                    className="h-8 w-fit -ml-2 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <ChevronLeftIcon className="h-4 w-4 mr-0.5" />
+                                                    Back to Summary
+                                                </Button>
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <span className="text-xl font-bold tracking-tight text-foreground">{group.eventTitle}</span>
+                                                <Badge variant="outline" className="shrink-0 text-xs font-medium">{group.eventDisplayId}</Badge>
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
-                                                <span className="inline-flex text-[10px] font-medium rounded-md border border-border bg-muted/40 px-2 py-0.5 text-foreground">
+                                            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                                <span className="inline-flex text-xs font-medium rounded-md border border-border bg-muted/40 px-2.5 py-1 text-foreground">
                                                     {subTab === 'bill' ? (
                                                         group.callTimes[0]?.staff
                                                             ? `${group.callTimes[0].staff.firstName} ${group.callTimes[0].staff.lastName}`
                                                             : 'No Talent'
                                                     ) : (group.clientName || 'No Client')}
                                                 </span>
-                                                <span className="flex items-center gap-1.5 font-medium text-[11px]">
+                                                <span className="flex flex-wrap items-center gap-1.5">
                                                     <span className="text-muted-foreground">Location:</span>
-                                                    {group.venueName || '—'}
-                                                    {(group.city || group.state) && (
-                                                        <span className="opacity-90 font-normal">
-                                                            ({[group.city, group.state].filter(Boolean).join(', ')})
-                                                        </span>
-                                                    )}
+                                                    <span className="font-medium text-foreground">
+                                                        {group.venueName || '—'}
+                                                        {(group.city || group.state) && (
+                                                            <span className="font-normal text-muted-foreground">
+                                                                {' '}
+                                                                ({[group.city, group.state].filter(Boolean).join(', ')})
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                 </span>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0 sm:pt-1">
                                             <CallTimeExportDropdown {...getDetailExportProps(group)} />
                                             <Button
-                                                variant={subTab === 'all' ? 'default' : 'outline'}
+                                                variant="default"
                                                 size="sm"
-                                                className="gap-1.5 h-8 text-[11px]"
+                                                className="gap-1.5 h-9 px-4 text-sm font-medium"
                                                 onClick={() => handleEditEvent(group.eventId)}
                                             >
                                                 <EditIcon className="h-3.5 w-3.5" />
                                                 Edit Tasks
                                             </Button>
+                                            </div>
                                         </div>
                                     </div>
-                                    {subTab === 'all' && (
-                                        <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
-                                    )}
-                                    {subTab === 'all' && (
-                                        <div className="px-3 pt-2">
+                                    {detailSubTabPills}
+                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
+                                    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                                        <div className="border-b border-border bg-muted/15 px-4 py-3">
                                             <TimesheetDetailToolbar
                                                 search={detailSearch}
                                                 onSearchChange={setDetailSearch}
@@ -1619,30 +1621,12 @@ export default function TimeManagerPage() {
                                                 exportControl={<span className="hidden" aria-hidden />}
                                             />
                                         </div>
-                                    )}
-                                    <div
-                                        className={
-                                            subTab === 'all'
-                                                ? 'overflow-x-auto rounded-xl border border-border bg-muted/20 p-3 mx-3 mb-3'
-                                                : 'overflow-x-auto'
-                                        }
-                                    >
-                                        <table
-                                            className={
-                                                subTab === 'all'
-                                                    ? 'w-full border-separate border-spacing-y-2 text-sm'
-                                                    : 'w-full text-sm'
-                                            }
-                                        >
+                                        <div className="p-4">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
                                             <thead>
-                                                <tr
-                                                    className={
-                                                        subTab === 'all'
-                                                            ? 'border-0 bg-transparent'
-                                                            : 'border-b border-border bg-muted/30'
-                                                    }
-                                                >
-                                                    <th className={`w-8 px-2 ${subTab === 'all' ? 'py-3 align-bottom' : 'py-2'}`}>
+                                                <tr className="border-0 bg-transparent">
+                                                    <th className="w-8 px-2 py-3 align-bottom">
                                                         {(() => {
                                                             const groupIds = group.callTimes.map((ct) => ct.id);
                                                             const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
@@ -1656,9 +1640,9 @@ export default function TimeManagerPage() {
                                                             );
                                                         })()}
                                                     </th>
-                                                    <th className={`w-8 px-2 ${subTab === 'all' ? 'py-3 align-bottom' : 'py-2'}`} />
+                                                    <th className="w-8 px-2 py-3 align-bottom" />
                                                     {subTab === 'commission' && (
-                                                        <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">
+                                                        <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                             Action
                                                         </th>
                                                     )}
@@ -1666,25 +1650,25 @@ export default function TimeManagerPage() {
                                                         <>
                                                             <SortHeader id="startDate" label="Service Date" />
                                                             <SortHeader id="service" label="Services / Products" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
+                                                            <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                             <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                             <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                         </>
                                                     ) : subTab === 'commission' ? (
                                                         <>
                                                             <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Invoice Description</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
                                                             <SortHeader id="price" label="Commission Price" align="text-right" />
                                                         </>
                                                     ) : subTab === 'bill' ? (
                                                         <>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                            <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
                                                             <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                             <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                            <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                             <SortHeader id="status" label="Status" align="text-center" />
                                                         </>
                                                     ) : (
@@ -1692,22 +1676,22 @@ export default function TimeManagerPage() {
                                                             <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                 Action
                                                             </th>
-                                                            <SortHeader id="staffName" label="Talent" variant="detail" />
-                                                            <SortHeader id="service" label="Services / Products" variant="detail" />
-                                                            <SortHeader id="startDate" label="Date" variant="detail" />
-                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" variant="detail" />
-                                                            <SortHeader id="actualShift" label="Actual Shift" variant="detail" />
-                                                            <SortHeader id="variance" label="Variance" align="text-center" variant="detail" />
-                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" variant="detail" />
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" variant="detail" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" variant="detail" />
+                                                            <SortHeader id="staffName" label="Talent" />
+                                                            <SortHeader id="service" label="Services / Products" />
+                                                            <SortHeader id="startDate" label="Date" />
+                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                            <SortHeader id="actualShift" label="Actual Shift" />
+                                                            <SortHeader id="variance" label="Variance" align="text-center" />
+                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                             <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                 Net Income
                                                             </th>
-                                                            <SortHeader id="commission" label="Commission" align="text-center" variant="detail" />
-                                                            <SortHeader id="minimum" label="Minimum" align="text-right" variant="detail" />
-                                                            <SortHeader id="status" label="Status" align="text-center" variant="detail" />
-                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" variant="detail" />
+                                                            <SortHeader id="commission" label="Commission" align="text-center" />
+                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                            <SortHeader id="status" label="Status" align="text-center" />
+                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
                                                         </>
                                                     )}
                                                     {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
@@ -1718,8 +1702,7 @@ export default function TimeManagerPage() {
                                             <tbody>
                                                 {(() => {
                                                     const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
-                                                    const filtered =
-                                                        subTab === 'all' ? applyDetailToolbarFilters(baseFiltered) : baseFiltered;
+                                                    const filtered = applyDetailToolbarFilters(baseFiltered);
 
                                                     if (subTab === 'invoice') {
                                                         const serviceMap = new Map<string, CallTimeRow>();
@@ -1754,6 +1737,7 @@ export default function TimeManagerPage() {
                                                                 onPending={handlePending}
                                                                 onEditTask={handleEditTask}
                                                                 subTab={subTab}
+                                                                rowVariant="card"
                                                             />
                                                         ));
                                                     }
@@ -1775,7 +1759,7 @@ export default function TimeManagerPage() {
                                                                 onPending={handlePending}
                                                                 onEditTask={handleEditTask}
                                                                 subTab={subTab}
-                                                                rowVariant={subTab === 'all' ? 'card' : 'default'}
+                                                                rowVariant="card"
                                                             />
                                                         ));
                                                     }
@@ -1817,11 +1801,14 @@ export default function TimeManagerPage() {
                                                             onPending={handlePending}
                                                             onEditTask={handleEditTask}
                                                             subTab={subTab}
+                                                            rowVariant="card"
                                                         />
                                                     ));
                                                 })()}
                                             </tbody>
                                         </table>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
