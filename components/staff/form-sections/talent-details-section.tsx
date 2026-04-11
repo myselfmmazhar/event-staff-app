@@ -12,13 +12,19 @@ export function TalentDetailsSection({
   setValue,
   disabled = false,
   className,
+  fields = 'all',
 }: TalentDetailsSectionProps) {
+  const showContact = fields === 'all' || fields === 'contact';
+  const showAddress = fields === 'all' || fields === 'address';
+
   return (
     <div className={cn(className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
         Talent Details
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+        {showContact && (
+          <>
         <div>
           <Label htmlFor="firstName">
             First Name
@@ -175,6 +181,8 @@ export function TalentDetailsSection({
             <p className="text-sm text-destructive mt-1">{String(errors.zipCode?.message || "")}</p>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );

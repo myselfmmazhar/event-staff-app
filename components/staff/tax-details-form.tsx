@@ -21,9 +21,17 @@ type TaxDetailsFormInput = z.input<typeof formSchema>;
 
 export interface TaxDetailsFormRef {
     getFormData: () => Promise<TaxDetailsFormInput | null>;
+    setTaxFilledBy: (value: TaxFilledBy) => void;
 }
 
 interface TaxDetailsFormProps {
+    /** When `hidden`, the "who provides tax details" block is omitted (e.g. wizard supplies its own UI). */
+    taxFilledByControl?: 'select' | 'hidden';
+    /**
+     * When `hidden`, the inline Form W-9 block is not shown for TaxFilledBy.STAFF (mode still stored for create/submit).
+     * Use when you want the toggle without the nested form UI.
+     */
+    staffW9Presentation?: 'full' | 'hidden';
     staffId?: string;
     initialData?: {
         taxFilledBy?: TaxFilledBy | string;
@@ -58,6 +66,8 @@ const BUSINESS_STRUCTURE_LABELS: Record<BusinessStructure, string> = {
 };
 
 export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>(function TaxDetailsForm({
+    taxFilledByControl = 'select',
+    staffW9Presentation = 'full',
     staffId,
     initialData,
     onSuccess,
@@ -170,54 +180,59 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                 )();
             });
         },
-    }), [handleSubmit]);
+        setTaxFilledBy: (value: TaxFilledBy) => {
+            setValue('taxFilledBy', value);
+        },
+    }), [handleSubmit, setValue]);
 
     const isDisabled = isSubmitting || upsertMutation.isPending;
 
     return (
         <div className="space-y-6">
             {/* Toggle: Who fills out tax details? */}
-            <div>
-                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-                    Tax Information Collection
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                        <Label>Who will provide tax details?</Label>
-                        <Controller
-                            name="taxFilledBy"
-                            control={control}
-                            render={({ field }) => (
-                                <Select
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                    disabled={isDisabled}
-                                >
-                                    <SelectTrigger className="mt-1.5">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value={TaxFilledBy.TALENT}>
-                                            Talent (will fill out their own W-9)
-                                        </SelectItem>
-                                        <SelectItem value={TaxFilledBy.STAFF}>
-                                            Staff / Admin (enter W-9 details now)
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
+            {taxFilledByControl !== 'hidden' && (
+                <div>
+                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
+                        Tax Information Collection
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <Label>Who will provide tax details?</Label>
+                            <Controller
+                                name="taxFilledBy"
+                                control={control}
+                                render={({ field }) => (
+                                    <Select
+                                        value={field.value}
+                                        onValueChange={field.onChange}
+                                        disabled={isDisabled}
+                                    >
+                                        <SelectTrigger className="mt-1.5">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={TaxFilledBy.TALENT}>
+                                                Talent (will fill out their own W-9)
+                                            </SelectItem>
+                                            <SelectItem value={TaxFilledBy.STAFF}>
+                                                Staff / Admin (enter W-9 details now)
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                            {taxFilledBy === TaxFilledBy.TALENT && (
+                                <p className="text-sm text-muted-foreground mt-2">
+                                    Tax details will be collected from the talent directly when they complete their profile.
+                                </p>
                             )}
-                        />
-                        {taxFilledBy === TaxFilledBy.TALENT && (
-                            <p className="text-sm text-muted-foreground mt-2">
-                                Tax details will be collected from the talent directly when they complete their profile.
-                            </p>
-                        )}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* W-9 Form — Only show when Staff/Admin fills it out */}
-            {taxFilledBy === TaxFilledBy.STAFF && (
+            {taxFilledBy === TaxFilledBy.STAFF && staffW9Presentation !== 'hidden' && (
                 <>
                     {/* W-9 Header */}
                     <div>

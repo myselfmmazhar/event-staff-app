@@ -16,6 +16,8 @@ interface TimesheetHeaderProps {
     activeTab: 'task' | 'client' | 'talent';
     onTabChange: (tab: 'task' | 'client' | 'talent') => void;
     subTab?: 'all' | 'bill' | 'invoice' | 'commission';
+    /** Hide title, subtitle, and tab row when viewing a task/client/talent drill-down */
+    drillDown?: boolean;
 }
 
 export function TimesheetHeader({
@@ -31,7 +33,12 @@ export function TimesheetHeader({
     activeTab,
     onTabChange,
     subTab = 'all',
+    drillDown = false,
 }: TimesheetHeaderProps) {
+    if (drillDown) {
+        return null;
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -91,6 +98,7 @@ export function TimesheetHeader({
                 </div>
             </div>
 
+            {/* Task / Client / Talent — hidden per product request (keep for later)
             <div className="flex items-center border-b border-border">
                 <button
                     onClick={() => onTabChange('task')}
@@ -120,6 +128,7 @@ export function TimesheetHeader({
                     Talent
                 </button>
             </div>
+            */}
         </div>
     );
 }
