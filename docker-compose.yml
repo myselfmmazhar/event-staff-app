@@ -1,0 +1,80 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: eventstaff-nextjs-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: eventstaff_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - event-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: eventstaff-nextjs-app
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/eventstaff_dev?schema=public
+      - DIRECT_URL=postgresql://postgres:postgres123@postgres:5432/eventstaff_dev?schema=public
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - BETTER_AUTH_URL=http://localhost:3000
+      - BETTER_AUTH_SECRET=change-this-to-a-secure-random-string-in-production-min-32-chars
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+      - "5555:5555"  # Prisma Studio
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Use node_modules from container (not from host)
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - event-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run dev"
+
+  # pgAdmin (Database Management Tool)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: eventstaff-nextjs-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - event-network
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  event-network:
+    driver: bridge
