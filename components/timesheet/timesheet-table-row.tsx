@@ -888,26 +888,31 @@ export function TimesheetTableRow({
                             </div>
                         </td>
 
-                        {/* Scheduled shift — start & end date + time */}
+                        {/* Scheduled shift — time range + hrs (design matches Time Manager spec) */}
                         <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[160px]' : 'px-3 py-2.5 min-w-[170px]'}>
                             {(() => {
-                                const schedStart = combineDateTime(ct.startDate, ct.startTime);
-                                const schedEnd = combineDateTime(ct.endDate ?? ct.startDate, ct.endTime);
+                                const s = formatTime(ct.startTime);
+                                const e = formatTime(ct.endTime);
+                                const range =
+                                    s && e
+                                        ? `${s} \u2013 ${e}`
+                                        : s
+                                            ? `${s} \u2013 \u2014`
+                                            : e
+                                                ? `\u2014 \u2013 ${e}`
+                                                : '\u2014';
                                 return (
-                                    <div className="flex flex-col gap-1.5 text-[11px] leading-snug text-foreground">
-                                        <div>
-                                            <p className="font-bold">{formatShiftInstant(schedStart)} -</p>
-                                        </div>
-                                        <div>
-                                            <p className="font-bold">{formatShiftInstant(schedEnd)}</p>
-                                        </div>
-                                        <span className="text-[10px] text-muted-foreground">{hoursScheduled.toFixed(2)} hrs scheduled</span>
+                                    <div className="flex flex-col gap-1 text-left">
+                                        <p className="text-sm font-bold text-foreground tabular-nums">{range}</p>
+                                        <p className="text-xs font-normal text-slate-500">
+                                            {hoursScheduled.toFixed(2)} hrs scheduled
+                                        </p>
                                     </div>
                                 );
                             })()}
                         </td>
 
-                        {/* Actual shift — start & end date + time */}
+                        {/* Actual shift — time range + hrs; popover unchanged */}
                         <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[160px]' : 'px-3 py-2.5 min-w-[170px]'} onClick={e => e.stopPropagation()}>
                             <Popover open={isEditing} onOpenChange={setIsEditing}>
                                 <PopoverTrigger asChild>
@@ -916,28 +921,29 @@ export function TimesheetTableRow({
                                         onClick={e => !ct.staff && e.stopPropagation()}
                                     >
                                         {te?.clockIn ? (
-                                            <div className="flex flex-col gap-1.5 text-[11px] leading-snug text-foreground">
-                                                <div>
-                                                    <p className="font-bold">{formatShiftInstant(new Date(te.clockIn))}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold">
-                                                        {te.clockOut ? formatShiftInstant(new Date(te.clockOut)) : '—'}
-                                                    </p>
-                                                </div>
-                                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                                    {hoursClocked.toFixed(2)} hrs worked
+                                            <div className="flex flex-col gap-1 text-left">
+                                                <p className="text-sm font-bold text-foreground tabular-nums">
+                                                    {(() => {
+                                                        const inT = formatTime(getTimeOnly(te.clockIn));
+                                                        const outT = te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '';
+                                                        if (inT && outT) return `${inT} \u2013 ${outT}`;
+                                                        if (inT) return `${inT} \u2013 \u2014`;
+                                                        return '\u2014';
+                                                    })()}
+                                                </p>
+                                                <p className="text-xs font-normal text-slate-500 flex flex-wrap items-center gap-1">
+                                                    <span>{hoursClocked.toFixed(2)} hrs worked</span>
                                                     {isEdited && (
                                                         <Badge variant="secondary" className="text-[9px] h-4 px-1 py-0 leading-none font-medium">
                                                             Edited
                                                         </Badge>
                                                     )}
-                                                </span>
+                                                </p>
                                             </div>
                                         ) : (
-                                            <div className="flex flex-col text-[11px]">
-                                                <span className="font-bold text-foreground">No clock</span>
-                                                <span className="text-[10px] text-muted-foreground">0.00 hrs worked</span>
+                                            <div className="flex flex-col gap-1 text-left">
+                                                <span className="text-sm font-bold text-foreground">No clock</span>
+                                                <span className="text-xs font-normal text-slate-500">0.00 hrs worked</span>
                                             </div>
                                         )}
                                     </div>
@@ -1281,10 +1287,10 @@ export function TimesheetTableRow({
                         subTab === 'invoice'
                             ? 9
                             : subTab === 'bill'
-                              ? 8
-                              : subTab === 'commission'
-                                ? 6
-                                : 17
+                                ? 8
+                                : subTab === 'commission'
+                                    ? 6
+                                    : 17
                     }
                 />
             )}
