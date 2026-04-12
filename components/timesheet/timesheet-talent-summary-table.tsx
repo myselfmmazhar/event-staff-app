@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { format, parseISO } from 'date-fns';
 import type { TalentGroup, SortField, SortOrder } from './types';
-import { ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
+import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon } from '@/components/ui/icons';
 import { 
     calcTotalBill, 
     calcTotalInvoice, 
@@ -47,9 +47,9 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick, sortB
                                 >
                                     <div className={`flex items-center gap-1 ${col.align === 'text-center' ? 'justify-center' : ''}`}>
                                         {col.label}
-                                        {sortBy === col.id && (
-                                            sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />
-                                        )}
+                                        {sortBy === col.id
+                                            ? (sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />)
+                                            : <ChevronsUpDownIcon className="h-4 w-4 opacity-50" />}
                                     </div>
                                 </th>
                             ))}

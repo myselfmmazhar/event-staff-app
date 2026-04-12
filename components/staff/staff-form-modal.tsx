@@ -152,7 +152,6 @@ function StaffFormContent({
     labels,
 }: StaffFormContentProps) {
     const isEdit = !!staff;
-    const [serviceSearch, setServiceSearch] = useState('');
     const [showAccountDetails, setShowAccountDetails] = useState(false);
     const taxFormRef = useRef<TaxDetailsFormRef>(null);
 
@@ -177,15 +176,6 @@ function StaffFormContent({
         phone: '',
         serviceIds: [],
     });
-
-    // Filter services by search term
-    const filteredServices = useMemo<ServiceOption[]>(() => {
-        if (!serviceSearch.trim()) return services;
-        const searchLower = serviceSearch.toLowerCase();
-        return services.filter((service) =>
-            service.title.toLowerCase().includes(searchLower)
-        );
-    }, [services, serviceSearch]);
 
     // Compute initial form values - only once on mount
     const initialValues = useMemo(() => {
@@ -332,9 +322,7 @@ function StaffFormContent({
                 {/* Service Details Section */}
                 <ServiceDetailsSection
                     {...sectionProps}
-                    services={filteredServices}
-                    serviceSearch={serviceSearch}
-                    onServiceSearchChange={setServiceSearch}
+                    services={services}
                     onCreateService={onCreateService}
                     className="mb-6 border-b pb-6"
                 />

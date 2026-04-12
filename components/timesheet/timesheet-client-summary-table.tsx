@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ChevronDownIcon, ChevronUpIcon } from '@/components/ui/icons';
+import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon } from '@/components/ui/icons';
 import { format, parseISO } from 'date-fns';
 import type { ClientGroup, SortField, SortOrder } from './types';
 import { 
@@ -54,9 +54,9 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortB
                                 >
                                     <div className={`flex items-center gap-1 ${col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : ''}`}>
                                         {col.label}
-                                        {sortBy === col.id && (
-                                            sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />
-                                        )}
+                                        {sortBy === col.id
+                                            ? (sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />)
+                                            : <ChevronsUpDownIcon className="h-4 w-4 opacity-50" />}
                                     </div>
                                 </th>
                             ))}
@@ -79,8 +79,8 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortB
                                 }
                             });
 
-                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
-                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
+                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
+                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission, 'ACTUAL', !!ct.applyMinimum), 0);
                             const profit = totalInvoice - totalBill;
 
                             return (
