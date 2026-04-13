@@ -240,6 +240,7 @@ export function ServiceTable({
 
   return (
     <DataTable
+      tableId="catalog-services"
       data={services}
       columns={columns}
       isLoading={isLoading}

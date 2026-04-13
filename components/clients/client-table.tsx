@@ -233,6 +233,7 @@ export function ClientTable({
 
   return (
     <DataTable
+      tableId="clients"
       data={clients}
       columns={columns}
       isLoading={isLoading}

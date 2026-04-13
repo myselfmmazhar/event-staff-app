@@ -3,9 +3,12 @@
 import { ReactNode, Fragment } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SortableHeader } from './sortable-header';
+import { cn } from '@/lib/utils';
 import { handleSort } from '@/lib/utils/table-utils';
 import { useTableLabels } from '@/lib/hooks/use-labels';
 import { ChevronDownIcon, ChevronRightIcon } from '@/components/ui/icons';
+import { useTableResize } from '@/hooks/use-table-resize';
+import { TableColumnResizeHandle } from './table-column-resize-handle';
 
 export interface ColumnDef<T> {
   key: string;
@@ -20,6 +23,7 @@ export interface ColumnDef<T> {
 interface DataTableProps<T> {
   data: T[];
   columns: ColumnDef<T>[];
+  tableId: string;
   isLoading?: boolean;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -41,6 +45,7 @@ interface DataTableProps<T> {
 export function DataTable<T>({
   data,
   columns,
+  tableId,
   isLoading = false,
   sortBy,
   sortOrder = 'desc',
@@ -57,6 +62,7 @@ export function DataTable<T>({
   expandedKeys,
   onToggleExpand,
 }: DataTableProps<T>) {
+  const { columnWidths, onMouseDown, getTableStyle } = useTableResize(tableId);
   const tableLabels = useTableLabels();
   // Use provided emptyMessage or fallback to global label
   const noDataMessage = emptyMessage ?? tableLabels.noData;
@@ -92,7 +98,10 @@ export function DataTable<T>({
       {/* Desktop Table */}
       <div className={mobileCard ? 'hidden lg:block overflow-x-auto' : 'overflow-x-auto'}>
         <div className="min-w-full inline-block">
-          <table className="w-full" style={{ minWidth }}>
+          <table 
+            className="w-full table-fixed" 
+            style={{ ...getTableStyle(), minWidth }}
+          >
             <thead>
               <tr className="border-b border-border">
                 {expandableContent && (
@@ -101,7 +110,11 @@ export function DataTable<T>({
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    className={col.headerClassName || 'text-left py-3 px-4'}
+                    className={cn(
+                      'relative group transition-colors truncate',
+                      col.headerClassName || 'text-left py-3 px-4'
+                    )}
+                    style={{ width: `var(--col-${col.key})` }}
                   >
                     {col.sortable && sortBy ? (
                       <SortableHeader
@@ -116,6 +129,7 @@ export function DataTable<T>({
                         {col.label}
                       </span>
                     )}
+                    <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.key, e)} />
                   </th>
                 ))}
               </tr>
@@ -154,7 +168,8 @@ export function DataTable<T>({
                       {columns.map((col) => (
                         <td
                           key={col.key}
-                          className={col.className || 'py-4 px-4'}
+                          className={cn('truncate', col.className || 'py-4 px-4')}
+                          style={{ width: `var(--col-${col.key})` }}
                         >
                           {col.render(item)}
                         </td>

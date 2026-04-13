@@ -16,6 +16,9 @@ import {
     calcTotalInvoice,
     formatTime
 } from './helpers';
+import { useTableResize } from '@/hooks/use-table-resize';
+import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
+import { cn } from '@/lib/utils';
 import { MapPinIcon, UploadIcon, ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon, EditIcon } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -30,6 +33,7 @@ interface TimesheetSummaryTableProps {
 }
 
 export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortOrder, onSort, subTab, onEditEvent }: TimesheetSummaryTableProps) {
+    const { onMouseDown, getTableStyle } = useTableResize('timesheet-summary');
     const { toast } = useToast();
 
     const handleUpload = async (file: File, eventTitle: string) => {
@@ -86,23 +90,27 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
         { id: 'event', label: 'Task' },
         { id: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
         { id: 'location', label: 'Location' },
-        { id: 'assignments', label: 'Assignments', align: 'text-center' },
+        { id: 'assignments', label: subTab === 'invoice' ? 'Total Approve Shifts' : 'Assignments', align: 'text-center' },
         { id: 'status', label: 'Status', align: 'text-center' },
-        { id: 'invoice', label: 'Total Invoice', align: 'text-right' },
-        { id: 'bill', label: 'Total Bill', align: 'text-right' },
-        ...(showNetIncomeColumn ? [{ id: 'netIncome', label: 'Net Income', align: 'text-right' as const }] : []),
+        { id: 'invoice', label: subTab === 'invoice' ? 'Total Approve Invoice amount' : 'Total Invoice', align: 'text-right' },
+        { id: 'bill', label: subTab === 'invoice' ? 'Total Approve Bill amount' : 'Total Bill', align: 'text-right' },
+        ...(showNetIncomeColumn ? [{ id: 'netIncome', label: subTab === 'invoice' ? 'Approve Net Income' : 'Net Income', align: 'text-right' as const }] : []),
     ];
 
     return (
         <Card className="overflow-hidden border border-border shadow-sm">
             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-muted/30 border-b border-border">
+                <table className="w-full text-sm text-left table-fixed" style={getTableStyle()}>
+                    <thead className="bg-slate-50 border-b border-border">
                         <tr>
                             {summaryColumns.map((col) => (
                                 <th
                                     key={col.id}
-                                    className={`px-4 py-4 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors ${col.align || ''}`}
+                                    className={cn(
+                                        "relative group px-4 py-4 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors truncate",
+                                        col.align || ''
+                                    )}
+                                    style={{ width: `var(--col-${col.id})` }}
                                     onClick={() => onSort?.(col.id as SortField)}
                                 >
                                     <div className={`flex items-center gap-1 ${col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : ''}`}>
@@ -111,6 +119,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                             ? (sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />)
                                             : <ChevronsUpDownIcon className="h-4 w-4 opacity-50" />}
                                     </div>
+                                    <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.id, e)} />
                                 </th>
                             ))}
                             <th className="px-4 py-4 font-semibold text-slate-600 text-right pr-6">Upload</th>
@@ -148,7 +157,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     key={group.eventId}
                                     className="hover:bg-slate-50/50 transition-colors group"
                                 >
-                                    <td className="px-4 py-5 text-slate-900 whitespace-nowrap align-top">
+                                    <td className="px-4 py-5 text-slate-900 whitespace-nowrap align-top truncate" style={{ width: 'var(--col-date)' }}>
                                         <div className="flex flex-col leading-tight">
                                             <span className="font-bold">
                                                 {eventDate ? formatDate(eventDate) : 'TBD'}
@@ -162,7 +171,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-5 align-top">
+                                    <td className="px-4 py-5 align-top truncate" style={{ width: 'var(--col-task)' }}>
                                         <button
                                             onClick={() => onEventClick(group.eventId)}
                                             className="font-bold text-foreground hover:underline text-left text-sm"
@@ -171,12 +180,12 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                         </button>
                                         <div className="text-[10px] text-slate-400 mt-0.5">#{group.eventDisplayId}</div>
                                     </td>
-                                    <td className="px-4 py-5 text-slate-500 align-top font-medium">
+                                    <td className="px-4 py-5 text-slate-500 align-top font-medium truncate" style={{ width: 'var(--col-client)' }}>
                                         {subTab === 'bill'
                                             ? (firstRow?.staff ? `${firstRow.staff.firstName} ${firstRow.staff.lastName}` : 'Multiple Talent')
                                             : (group.clientName || 'No Client')}
                                     </td>
-                                    <td className="px-4 py-5 align-top">
+                                    <td className="px-4 py-5 align-top truncate" style={{ width: 'var(--col-location)' }}>
                                         <div className="flex flex-col">
                                             <span className="font-bold text-slate-800">
                                                 {group.venueName || '—'}
@@ -188,14 +197,14 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-5 text-center align-top">
+                                    <td className="px-4 py-5 text-center align-top truncate" style={{ width: 'var(--col-assignments)' }}>
                                         <div className="flex justify-center">
                                             <Badge variant="secondary" className="font-bold px-2.5 py-0.5 pointer-events-none text-xs border border-border">
                                                 {group.callTimes.length}
                                             </Badge>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-5 text-center align-top">
+                                    <td className="px-4 py-5 text-center align-top truncate" style={{ width: 'var(--col-status)' }}>
                                         <div className="flex justify-center">
                                             {event?.status === 'COMPLETED' ? (
                                                 <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">Completed</Badge>
@@ -206,14 +215,14 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-slate-900">
+                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-slate-900 truncate" style={{ width: 'var(--col-totalInvoice)' }}>
                                         {fmtCurrency(totalInvoice)}
                                     </td>
-                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground">
+                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground truncate" style={{ width: 'var(--col-totalBill)' }}>
                                         {fmtCurrency(totalBill)}
                                     </td>
                                     {showNetIncomeColumn && (
-                                        <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground">
+                                        <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground truncate" style={{ width: 'var(--col-netIncome)' }}>
                                             {fmtCurrency(profit)}
                                         </td>
                                     )}

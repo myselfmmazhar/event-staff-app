@@ -219,6 +219,7 @@ export function CategoryTable({
 
   return (
     <DataTable
+      tableId="catalog-categories"
       data={categories}
       columns={columns}
       isLoading={isLoading}

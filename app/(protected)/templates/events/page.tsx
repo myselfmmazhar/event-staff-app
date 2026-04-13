@@ -481,6 +481,7 @@ export default function EventTemplatesPage() {
       {/* Table */}
       <Card className="p-4 mb-6">
         <DataTable
+          tableId="templates-events"
           data={templates}
           columns={columns}
           isLoading={isLoading}
