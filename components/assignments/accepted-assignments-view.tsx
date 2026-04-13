@@ -310,6 +310,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
   return (
     <div className="space-y-4">
       <DataTable
+        tableId="assignments-accepted"
         data={acceptedStaffRows}
         columns={columns}
         isLoading={isLoading}
