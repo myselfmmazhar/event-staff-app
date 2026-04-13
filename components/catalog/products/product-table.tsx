@@ -242,6 +242,7 @@ export function ProductTable({
 
   return (
     <DataTable
+      tableId="catalog-products"
       data={products}
       columns={columns}
       isLoading={isLoading}

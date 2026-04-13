@@ -286,6 +286,7 @@ export function GroupedAssignmentTable({
 
   return (
     <DataTable
+      tableId="assignments-grouped"
       data={data}
       columns={columns}
       isLoading={isLoading}

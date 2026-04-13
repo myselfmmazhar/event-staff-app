@@ -436,6 +436,7 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
             )}
 
             <DataTable
+                tableId="assignments-pending"
                 data={pendingStaffRows}
                 columns={columns}
                 isLoading={isLoading}

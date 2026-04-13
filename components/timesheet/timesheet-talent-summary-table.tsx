@@ -5,6 +5,9 @@ import { Card } from '@/components/ui/card';
 import { format, parseISO } from 'date-fns';
 import type { TalentGroup, SortField, SortOrder } from './types';
 import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon } from '@/components/ui/icons';
+import { useTableResize } from '@/hooks/use-table-resize';
+import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
+import { cn } from '@/lib/utils';
 import { 
     calcTotalBill, 
     calcTotalInvoice, 
@@ -22,6 +25,7 @@ interface TimesheetTalentSummaryTableProps {
 }
 
 export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick, sortBy, sortOrder, onSort }: TimesheetTalentSummaryTableProps) {
+    const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-talent');
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
         const d = typeof date === 'string' ? parseISO(date) : date;
@@ -31,7 +35,7 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick, sortB
     return (
         <Card className="overflow-hidden border border-border shadow-sm">
             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-sm text-left table-fixed" style={getTableStyle()}>
                     <thead className="bg-muted/50 border-b border-border">
                         <tr>
                             {[
@@ -42,7 +46,11 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick, sortB
                             ].map((col) => (
                                 <th
                                     key={col.id}
-                                    className={`px-4 py-3 font-semibold text-foreground cursor-pointer hover:bg-muted transition-colors ${col.align || ''}`}
+                                    className={cn(
+                                        "relative group px-4 py-3 font-semibold text-foreground cursor-pointer hover:bg-muted transition-colors truncate",
+                                        col.align || ''
+                                    )}
+                                    style={{ width: `var(--col-${col.id})` }}
                                     onClick={() => onSort?.(col.id as SortField)}
                                 >
                                     <div className={`flex items-center gap-1 ${col.align === 'text-center' ? 'justify-center' : ''}`}>
@@ -51,6 +59,7 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick, sortB
                                             ? (sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />)
                                             : <ChevronsUpDownIcon className="h-4 w-4 opacity-50" />}
                                     </div>
+                                    <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.id, e)} />
                                 </th>
                             ))}
                         </tr>

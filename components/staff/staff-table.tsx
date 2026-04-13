@@ -394,6 +394,7 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
 
     return (
         <DataTable
+            tableId="staff"
             data={staff}
             columns={columns}
             sortBy={sortBy}

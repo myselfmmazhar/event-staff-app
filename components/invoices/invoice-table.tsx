@@ -274,6 +274,7 @@ export function InvoiceTable({
 
     return (
         <DataTable
+            tableId="invoices"
             data={invoices}
             columns={columns}
             isLoading={isLoading}

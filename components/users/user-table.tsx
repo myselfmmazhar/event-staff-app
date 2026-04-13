@@ -365,6 +365,7 @@ export function UserTable({
 
   return (
     <DataTable
+      tableId="users"
       data={users}
       columns={columns}
       isLoading={isLoading}
