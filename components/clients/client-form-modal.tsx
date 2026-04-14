@@ -188,6 +188,10 @@ export function ClientFormModal({
   const lastName = watch('lastName');
   const email = watch('email');
   const cellPhone = watch('cellPhone');
+  const businessName = watch('businessName');
+  const city = watch('city');
+  const state = watch('state');
+  const zipCode = watch('zipCode');
 
   useEffect(() => {
     if (sameAsContact) {
@@ -199,6 +203,41 @@ export function ClientFormModal({
   }, [sameAsContact, firstName, lastName, email, cellPhone, setValue]);
 
   const hasLoginAccess = watch('hasLoginAccess');
+
+  // Wizard step logic
+  const CLIENT_STEP_IDS = ['info', 'address', 'billing', 'access'] as const;
+  const stepIndex = CLIENT_STEP_IDS.indexOf(clientTab as typeof CLIENT_STEP_IDS[number]);
+  const isLastStep = clientTab === 'access';
+
+  const canContinueInfo =
+    Boolean(businessName?.trim()) &&
+    Boolean(firstName?.trim()) &&
+    Boolean(lastName?.trim()) &&
+    Boolean(email?.trim()) &&
+    Boolean(cellPhone?.trim());
+
+  const canContinueAddress =
+    Boolean(city?.trim()) &&
+    Boolean(state?.trim()) &&
+    Boolean(zipCode?.trim());
+
+  const canContinue =
+    clientTab === 'info' ? canContinueInfo :
+    clientTab === 'address' ? canContinueAddress :
+    true;
+
+  const goNext = () => {
+    if (!canContinue) return;
+    if (stepIndex < CLIENT_STEP_IDS.length - 1) {
+      setClientTab(CLIENT_STEP_IDS[stepIndex + 1]);
+    }
+  };
+
+  const goBack = () => {
+    if (stepIndex > 0) {
+      setClientTab(CLIENT_STEP_IDS[stepIndex - 1]);
+    }
+  };
 
   useEffect(() => {
     if (client) {
@@ -770,35 +809,50 @@ export function ClientFormModal({
 
           {/* Footer */}
           <div className="shrink-0 border-t border-slate-200 px-6 py-4 sm:px-8">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {isEdit && onViewDetails && (
-                <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto rounded-lg border-slate-200">
-                  <EyeIcon className="mr-2 h-4 w-4" />
-                  View Details
-                </Button>
-              )}
-              <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="rounded-lg border-slate-200">
-                Close
-              </Button>
-              {!isEdit && (
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={isSubmitting}
-                  onClick={handleSaveAndNew}
-                  className="rounded-lg border-slate-200"
-                >
-                  {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
-                </Button>
-              )}
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                onClick={handleSaveAndClose}
-                className="rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-40"
-              >
-                {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? 'Update Client' : 'Save & Close'}
-              </Button>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="hidden min-h-5 text-xs text-slate-400 sm:block sm:max-w-sm" />
+              <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {isEdit && onViewDetails && (
+                    <Button type="button" variant="outline" onClick={onViewDetails} className="rounded-lg border-slate-200">
+                      <EyeIcon className="mr-2 h-4 w-4" />
+                      View Details
+                    </Button>
+                  )}
+                  {stepIndex > 0 && (
+                    <Button type="button" variant="outline" onClick={goBack} disabled={isSubmitting} className="rounded-lg border-slate-200">
+                      Back
+                    </Button>
+                  )}
+                  <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="rounded-lg border-slate-200">
+                    Cancel
+                  </Button>
+                  {!isEdit && (
+                    <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
+                      {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                    </Button>
+                  )}
+                </div>
+                {!isLastStep ? (
+                  <Button
+                    type="button"
+                    onClick={goNext}
+                    disabled={isSubmitting || !canContinue}
+                    className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                  >
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    onClick={handleSaveAndClose}
+                    className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                  >
+                    {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? 'Update Client' : 'Save & Close'}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
