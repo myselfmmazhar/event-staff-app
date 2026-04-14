@@ -78,12 +78,16 @@ export interface AccountDetailsSectionProps extends StaffFormSectionProps {
     };
   };
   labels: {
-    staffCustomFields: {
-      customField1: string;
-      customField2: string;
-      customField3: string;
+    global: {
+      staffCustomFields: {
+        customField1: string;
+        customField2: string;
+        customField3: string;
+      };
     };
   };
+  /** Hide custom field 1 & 2 when they are collected elsewhere (e.g. wizard basic step). */
+  omitCustomBasicFields?: boolean;
 }
 
 /**
@@ -103,6 +107,8 @@ export interface TalentDetailsSectionProps {
   setValue: UseFormSetValue<StaffFormData>;
   disabled?: boolean;
   className?: string;
+  /** `contact` = name/email/phone only; `address` = address block only; default full section */
+  fields?: 'all' | 'contact' | 'address';
 }
 
 /**

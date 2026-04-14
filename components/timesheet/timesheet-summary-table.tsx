@@ -74,23 +74,32 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
         return format(d, 'MMM d, yyyy (EEE)');
     };
 
+    const effectiveSubTab = subTab ?? 'all';
+    const showNetIncomeColumn = effectiveSubTab !== 'all';
+
+    const summaryColumns: Array<{
+        id: string;
+        label: string;
+        align?: 'text-center' | 'text-right';
+    }> = [
+        { id: 'startDate', label: 'Date / Time' },
+        { id: 'event', label: 'Task' },
+        { id: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
+        { id: 'location', label: 'Location' },
+        { id: 'assignments', label: 'Assignments', align: 'text-center' },
+        { id: 'status', label: 'Status', align: 'text-center' },
+        { id: 'invoice', label: 'Total Invoice', align: 'text-right' },
+        { id: 'bill', label: 'Total Bill', align: 'text-right' },
+        ...(showNetIncomeColumn ? [{ id: 'netIncome', label: 'Net Income', align: 'text-right' as const }] : []),
+    ];
+
     return (
         <Card className="overflow-hidden border border-border shadow-sm">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-[#f8fafc] border-b border-border">
+                    <thead className="bg-muted/30 border-b border-border">
                         <tr>
-                            {[
-                                { id: 'startDate', label: 'Date / Time' },
-                                { id: 'event', label: 'Task' },
-                                { id: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
-                                { id: 'location', label: 'Location' },
-                                { id: 'assignments', label: 'Assignments', align: 'text-center' },
-                                { id: 'status', label: 'Status', align: 'text-center' },
-                                { id: 'invoice', label: 'Total Invoice', align: 'text-right' },
-                                { id: 'bill', label: 'Total Bill', align: 'text-right' },
-                                { id: 'netIncome', label: 'Net Income', align: 'text-right' },
-                            ].map((col) => (
+                            {summaryColumns.map((col) => (
                                 <th
                                     key={col.id}
                                     className={`px-4 py-4 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors ${col.align || ''}`}
@@ -155,7 +164,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     <td className="px-4 py-5 align-top">
                                         <button
                                             onClick={() => onEventClick(group.eventId)}
-                                            className="font-bold text-primary hover:underline text-left text-sm"
+                                            className="font-bold text-foreground hover:underline text-left text-sm"
                                         >
                                             {group.eventTitle}
                                         </button>
@@ -180,7 +189,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     </td>
                                     <td className="px-4 py-5 text-center align-top">
                                         <div className="flex justify-center">
-                                            <Badge className="bg-orange-50 text-orange-600 border-none shadow-none font-bold px-2.5 py-0.5 pointer-events-none text-xs">
+                                            <Badge variant="secondary" className="font-bold px-2.5 py-0.5 pointer-events-none text-xs border border-border">
                                                 {group.callTimes.length}
                                             </Badge>
                                         </div>
@@ -188,23 +197,25 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     <td className="px-4 py-5 text-center align-top">
                                         <div className="flex justify-center">
                                             {event?.status === 'COMPLETED' ? (
-                                                <Badge className="bg-emerald-50 text-emerald-600 border-none shadow-none font-bold px-3 py-1 pointer-events-none text-xs">Completed</Badge>
+                                                <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">Completed</Badge>
                                             ) : event?.status === 'IN_PROGRESS' || (completedCount > 0 && completedCount < group.callTimes.length) ? (
-                                                <Badge className="bg-amber-50 text-amber-600 border-none shadow-none font-bold px-3 py-1 pointer-events-none text-xs">In Progress</Badge>
+                                                <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">In Progress</Badge>
                                             ) : (
-                                                <Badge variant="outline" className="text-slate-400 bg-slate-50 border-slate-200 font-bold px-3 py-1 pointer-events-none text-xs">Pending</Badge>
+                                                <Badge variant="outline" className="text-muted-foreground font-bold px-3 py-1 pointer-events-none text-xs">Pending</Badge>
                                             )}
                                         </div>
                                     </td>
                                     <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-slate-900">
                                         {fmtCurrency(totalInvoice)}
                                     </td>
-                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-red-500">
+                                    <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground">
                                         {fmtCurrency(totalBill)}
                                     </td>
-                                    <td className={`px-4 py-5 text-right tabular-nums align-top font-bold ${profit >= 0 ? 'text-slate-900' : 'text-red-500'}`}>
-                                        {fmtCurrency(profit)}
-                                    </td>
+                                    {showNetIncomeColumn && (
+                                        <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-foreground">
+                                            {fmtCurrency(profit)}
+                                        </td>
+                                    )}
                                     <td className="px-4 py-5 text-right align-top pr-6">
                                         <button
                                             onClick={(e) => {

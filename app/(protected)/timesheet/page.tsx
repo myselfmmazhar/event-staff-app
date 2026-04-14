@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import type React from 'react';
 import { trpc } from '@/lib/client/trpc';
 import {
@@ -11,8 +11,11 @@ import {
     TimesheetTableRow,
     ConfirmDialog,
     TimesheetClientSummaryTable,
-    TimesheetTalentSummaryTable
+    TimesheetTalentSummaryTable,
+    TimesheetEventSummaryCards,
+    TimesheetDetailToolbar,
 } from '@/components/timesheet';
+import { CallTimeExportDropdown } from '@/components/events/call-time-export-dropdown';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -27,6 +30,27 @@ import { EventFormModal } from '@/components/events/event-form-modal';
 import { AmountType, EventStatus, SkillLevel, StaffRating, RateType } from '@prisma/client';
 import type { CreateCallTimeInput, UpdateCallTimeInput } from '@/lib/schemas/call-time.schema';
 import type { CreateEventInput, UpdateEventInput } from '@/lib/schemas/event.schema';
+import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+
+/**
+ * Sort key for task summary rows — must match Date/Time shown in TimesheetSummaryTable (event start),
+ * not only min(callTime.startDate), which can disagree (e.g. event 1992 vs assignments in 2026).
+ */
+function getEventGroupListSortTime(group: EventGroup): number {
+    const ev = group.callTimes[0]?.event;
+    const eventStart = ev?.startDate;
+    if (eventStart != null && !isDateNullOrUBD(eventStart)) {
+        const t = new Date(eventStart).getTime();
+        if (!Number.isNaN(t)) return t;
+    }
+    const callTimes = group.callTimes
+        .map((ct) => ct.startDate)
+        .filter((d): d is string | Date => d != null && !isDateNullOrUBD(d))
+        .map((d) => new Date(d).getTime())
+        .filter((t) => !Number.isNaN(t));
+    if (callTimes.length === 0) return Number.MAX_SAFE_INTEGER;
+    return Math.min(...callTimes);
+}
 
 export default function TimeManagerPage() {
     const { toast } = useToast();
@@ -48,6 +72,13 @@ export default function TimeManagerPage() {
     const [sortBy, setSortBy] = useState<SortField>('startDate');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
     const [subTab, setSubTab] = useState<'all' | 'bill' | 'invoice' | 'commission'>('all');
+
+    /** Event / client / talent detail table (screenshot-style toolbar + card rows) */
+    const [detailSearch, setDetailSearch] = useState('');
+    const [detailStatus, setDetailStatus] = useState('all');
+    const [detailAssignment, setDetailAssignment] = useState('all');
+    const [detailRateType, setDetailRateType] = useState('all');
+    const [detailVariance, setDetailVariance] = useState('all');
 
     // ── Row State ──
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -349,9 +380,19 @@ export default function TimeManagerPage() {
 
     // ── Data Transformation (Assignments -> Grouped rows for components) ──
 
-    const SortHeader = ({ id, label, align = 'text-left', className = '' }: { id: SortField, label: React.ReactNode, align?: 'text-left' | 'text-center' | 'text-right', className?: string }) => (
+    const SortHeader = ({
+        id,
+        label,
+        align = 'text-left',
+        className = '',
+    }: {
+        id: SortField;
+        label: React.ReactNode;
+        align?: 'text-left' | 'text-center' | 'text-right';
+        className?: string;
+    }) => (
         <th
-            className={`px-3 py-2 font-medium text-muted-foreground whitespace-normal cursor-pointer hover:bg-muted/30 transition-colors ${align} ${className}`}
+            className={`px-3 py-3 whitespace-normal cursor-pointer hover:bg-muted/30 transition-colors text-[10px] font-bold uppercase tracking-wide text-muted-foreground ${align} ${className}`}
             onClick={() => handleSort(id)}
         >
             <div className={`flex items-center gap-1 ${align === 'text-right' ? 'justify-end' : align === 'text-center' ? 'justify-center' : ''}`}>
@@ -386,6 +427,77 @@ export default function TimeManagerPage() {
             return rating === 'MET_EXPECTATIONS';
         }
         return true;
+    };
+
+    useEffect(() => {
+        if (!selectedEventId && !selectedClientId && !selectedStaffId) {
+            setDetailSearch('');
+            setDetailStatus('all');
+            setDetailAssignment('all');
+            setDetailRateType('all');
+            setDetailVariance('all');
+        }
+    }, [selectedEventId, selectedClientId, selectedStaffId]);
+
+    const applyDetailToolbarFilters = useCallback(
+        (rows: CallTimeRow[]) =>
+            rows.filter((ct) => {
+                if (detailSearch.trim()) {
+                    const q = detailSearch.toLowerCase();
+                    const hay = [
+                        ct.staff?.firstName,
+                        ct.staff?.lastName,
+                        ct.service?.title,
+                        ct.notes,
+                        ct.event?.title,
+                    ]
+                        .filter(Boolean)
+                        .join(' ')
+                        .toLowerCase();
+                    if (!hay.includes(q)) return false;
+                }
+                if (detailStatus !== 'all') {
+                    const r = ct.invitations?.[0]?.internalReviewRating ?? null;
+                    if (detailStatus === 'APPROVED' && r !== 'MET_EXPECTATIONS') return false;
+                    if (detailStatus === 'REJECTED' && r !== 'DID_NOT_MEET' && r !== 'NO_CALL_NO_SHOW') return false;
+                    if (detailStatus === 'REVIEW' && r !== 'NEEDS_IMPROVEMENT') return false;
+                    if (detailStatus === 'PENDING') {
+                        if (
+                            r === 'MET_EXPECTATIONS' ||
+                            r === 'NEEDS_IMPROVEMENT' ||
+                            r === 'DID_NOT_MEET' ||
+                            r === 'NO_CALL_NO_SHOW'
+                        ) {
+                            return false;
+                        }
+                    }
+                }
+                if (detailAssignment === 'assigned' && !ct.staff) return false;
+                if (detailAssignment === 'unassigned' && ct.staff) return false;
+                if (detailRateType !== 'all' && ct.payRateType !== detailRateType) return false;
+                if (detailVariance !== 'all') {
+                    const hs = calcScheduledHours(ct);
+                    const hc = calcClockedHours(ct.timeEntry);
+                    const d = hs - hc;
+                    if (detailVariance === 'zero' && Math.abs(d) >= 0.1) return false;
+                    if (detailVariance === 'positive' && d <= 0.1) return false;
+                    if (detailVariance === 'negative' && d >= -0.1) return false;
+                }
+                return true;
+            }),
+        [detailSearch, detailStatus, detailAssignment, detailRateType, detailVariance],
+    );
+
+    const getDetailExportProps = (group: { callTimes: CallTimeRow[] }) => {
+        const base = group.callTimes.filter(shouldIncludeRowForSubTab);
+        const rows = subTab === 'all' ? applyDetailToolbarFilters(base) : base;
+        const selected = rows.filter((ct) => selectedRows.has(ct.id));
+        return {
+            callTimes: rows as any,
+            selectedCallTimes: selected as any,
+            selectedCount: selected.length,
+            disabled: rows.length === 0,
+        };
     };
 
     // 1. Group by Task (Event)
@@ -522,9 +634,7 @@ export default function TimeManagerPage() {
                 }
                 case 'startDate':
                 default: {
-                    const aMin = Math.min(...a.callTimes.map(ct => ct.startDate ? new Date(ct.startDate).getTime() : 0));
-                    const bMin = Math.min(...b.callTimes.map(ct => ct.startDate ? new Date(ct.startDate).getTime() : 0));
-                    comparison = aMin - bMin;
+                    comparison = getEventGroupListSortTime(a) - getEventGroupListSortTime(b);
                 }
             }
             return sortOrder === 'asc' ? comparison : -comparison;
@@ -735,6 +845,32 @@ export default function TimeManagerPage() {
         });
     }, [assignments, sortBy, sortOrder]);
 
+    const isTimesheetDrillDown = Boolean(selectedEventId || selectedClientId || selectedStaffId);
+
+    const clearTimesheetDrillDown = () => {
+        setSelectedEventId(null);
+        setSelectedClientId(null);
+        setSelectedStaffId(null);
+    };
+
+    const detailSubTabPills = (
+        <div className="flex flex-wrap items-center gap-2 py-1">
+            {(['all', 'invoice', 'bill', 'commission'] as const).map((tab) => (
+                <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setSubTab(tab)}
+                    className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${subTab === tab
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        }`}
+                >
+                    {tab === 'all' ? 'All' : tab === 'invoice' ? 'Invoices' : tab === 'bill' ? 'Bills' : 'Commissions'}
+                </button>
+            ))}
+        </div>
+    );
+
     return (
         <div className="flex flex-col min-h-screen">
             <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -757,66 +893,8 @@ export default function TimeManagerPage() {
                         setSubTab('all'); // Reset subTab
                     }}
                     subTab={subTab}
+                    drillDown={isTimesheetDrillDown}
                 />
-
-                {(selectedEventId || selectedClientId || selectedStaffId) && (
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                                setSelectedEventId(null);
-                                setSelectedClientId(null);
-                                setSelectedStaffId(null);
-                            }}
-                            className="flex items-center gap-1"
-                        >
-                            <ChevronLeftIcon className="h-4 w-4" />
-                            Back to Summary
-                        </Button>
-                    </div>
-                )}
-
-                {(selectedEventId || selectedClientId || selectedStaffId) && (
-                    <div className="flex items-center gap-1 border-b border-border mb-4">
-                        <button
-                            onClick={() => setSubTab('all')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'all'
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                                }`}
-                        >
-                            All
-                        </button>
-                        <button
-                            onClick={() => setSubTab('invoice')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'invoice'
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                                }`}
-                        >
-                            Invoices
-                        </button>
-                        <button
-                            onClick={() => setSubTab('bill')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'bill'
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                                }`}
-                        >
-                            Bills
-                        </button>
-                        <button
-                            onClick={() => setSubTab('commission')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${subTab === 'commission'
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                                }`}
-                        >
-                            Commissions
-                        </button>
-                    </div>
-                )}
 
                 {!selectedEventId && !selectedClientId && !selectedStaffId && (
                     <TimesheetFilters
@@ -969,164 +1047,224 @@ export default function TimeManagerPage() {
                                 return firstRow?.event?.client?.id === selectedClientId;
                             })
                             .map((group) => (
-                                <div key={group.eventId} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-                                    <div className="px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/20 border-b border-border flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-semibold text-lg text-foreground">{group.eventTitle}</span>
-                                                <Badge variant="outline">{group.eventDisplayId}</Badge>
-                                            </div>
-                                            <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground font-medium">
-                                                <span className="text-slate-400">Location:</span>
-                                                {group.venueName || '—'}
-                                                {(group.city || group.state) && (
-                                                    <span className="opacity-75 font-normal">
-                                                        ({[group.city, group.state].filter(Boolean).join(', ')})
+                                <div key={group.eventId} className="space-y-4">
+                                    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="flex flex-col gap-2 min-w-0 flex-1">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={clearTimesheetDrillDown}
+                                                    className="h-8 w-fit -ml-2 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <ChevronLeftIcon className="h-4 w-4 mr-0.5" />
+                                                    Back to Summary
+                                                </Button>
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="text-xl font-bold tracking-tight text-foreground">{group.eventTitle}</span>
+                                                    <Badge variant="outline" className="shrink-0 text-xs font-medium">
+                                                        {group.eventDisplayId}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                                    <span className="inline-flex text-xs font-medium rounded-md border border-border bg-muted/40 px-2.5 py-1 text-foreground">
+                                                        {group.clientName || group.callTimes[0]?.event?.client?.businessName || 'No Client'}
                                                     </span>
-                                                )}
+                                                    <span className="flex flex-wrap items-center gap-1.5">
+                                                        <span className="text-muted-foreground">Location:</span>
+                                                        <span className="font-medium text-foreground">
+                                                            {group.venueName || '—'}
+                                                            {(group.city || group.state) && (
+                                                                <span className="font-normal text-muted-foreground">
+                                                                    {' '}
+                                                                    ({[group.city, group.state].filter(Boolean).join(', ')})
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="bg-primary/5 hover:bg-primary/10 text-primary border-primary/20 gap-1.5 h-8 text-[11px]"
-                                                onClick={() => handleEditEvent(group.eventId)}
-                                            >
-                                                <EditIcon className="h-3.5 w-3.5" />
-                                                Edit Assignments
-                                            </Button>
+                                            <div className="flex items-center gap-2 shrink-0 sm:pt-1">
+                                                <CallTimeExportDropdown {...getDetailExportProps(group)} />
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="gap-1.5 h-9 px-4 text-sm font-medium"
+                                                    onClick={() => handleEditEvent(group.eventId)}
+                                                >
+                                                    <EditIcon className="h-3.5 w-3.5" />
+                                                    Edit Tasks
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b border-border bg-muted/15">
-                                                    <th className="w-8 px-2 py-2">
+                                    {detailSubTabPills}
+                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
+                                    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                                        <div className="border-b border-border bg-muted/15 px-4 py-3">
+                                            <TimesheetDetailToolbar
+                                                search={detailSearch}
+                                                onSearchChange={setDetailSearch}
+                                                status={detailStatus}
+                                                onStatusChange={setDetailStatus}
+                                                assignment={detailAssignment}
+                                                onAssignmentChange={setDetailAssignment}
+                                                rateType={detailRateType}
+                                                onRateTypeChange={setDetailRateType}
+                                                variance={detailVariance}
+                                                onVarianceChange={setDetailVariance}
+                                                onCustomizeColumns={() =>
+                                                    toast({
+                                                        title: 'Customize columns',
+                                                        description: 'Column visibility will be available in a future update.',
+                                                    })
+                                                }
+                                                exportControl={<span className="hidden" aria-hidden />}
+                                            />
+                                        </div>
+                                        <div className="p-4">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
+                                                    <thead>
+                                                        <tr className="border-0 bg-transparent">
+                                                            <th className="w-8 px-2 py-3 align-bottom">
+                                                                {(() => {
+                                                                    const groupIds = group.callTimes.map((ct) => ct.id);
+                                                                    const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                                    return (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isGroupAllSelected}
+                                                                            onChange={() => toggleSelectAll(groupIds)}
+                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                        />
+                                                                    );
+                                                                })()}
+                                                            </th>
+                                                            <th className="w-8 px-2 py-3 align-bottom" />
+                                                            {subTab === 'commission' && (
+                                                                <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                    Action
+                                                                </th>
+                                                            )}
+                                                            {subTab === 'invoice' ? (
+                                                                <>
+                                                                    <SortHeader id="startDate" label="Service Date" />
+                                                                    <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                </>
+                                                            ) : subTab === 'commission' ? (
+                                                                <>
+                                                                    <SortHeader id="staffName" label="Team / User" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Bill Description</th>
+                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
+                                                                </>
+                                                            ) : subTab === 'bill' ? (
+                                                                <>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Action
+                                                                    </th>
+                                                                    <SortHeader id="staffName" label="Talent" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <SortHeader id="startDate" label="Date" />
+                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                                    <SortHeader id="actualShift" label="Actual Shift" />
+                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
+                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Net Income
+                                                                    </th>
+                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
+                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
                                                         {(() => {
-                                                            const groupIds = group.callTimes.map((ct) => ct.id);
-                                                            const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
-                                                            return (
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isGroupAllSelected}
-                                                                    onChange={() => toggleSelectAll(groupIds)}
-                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                                                                />
-                                                            );
-                                                        })()}
-                                                    </th>
-                                                    <th className="w-8 px-2 py-2" />
-                                                    {subTab !== 'invoice' && subTab !== 'bill' && (
-                                                        <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    )}
-                                                    {subTab === 'invoice' ? (
-                                                        <>
-                                                            <SortHeader id="startDate" label="Service Date" />
-                                                            <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                        </>
-                                                    ) : subTab === 'commission' ? (
-                                                        <>
-                                                            <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bill Description</th>
-                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                        </>
-                                                    ) : subTab === 'bill' ? (
-                                                        <>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <SortHeader id="startDate" label="Service Date" />
-                                                            <SortHeader id="staffName" label="Talent" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                            <SortHeader id="actualShift" label="Actual Shift" />
-                                                            <SortHeader id="variance" label="Variance" align="text-center" />
-                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                            <SortHeader id="commission" label="Commission" align="text-center" />
-                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {(() => {
-                                                    const filtered = group.callTimes.filter(shouldIncludeRowForSubTab);
+                                                            const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
+                                                            const filtered = applyDetailToolbarFilters(baseFiltered);
 
-                                                    if (subTab === 'invoice') {
-                                                        const serviceMap = new Map<string, CallTimeRow>();
-                                                        filtered.forEach(ct => {
-                                                            const sid = ct.service?.id || 'none';
-                                                            const sDate = formatDate(ct.startDate);
-                                                            const key = `${sDate}_${sid}_${ct.callTimeId}`;
-                                                            if (!serviceMap.has(key)) {
-                                                                serviceMap.set(key, { ...ct, mergedRows: [ct] });
-                                                            } else {
-                                                                const existing = serviceMap.get(key)!;
-                                                                if (ct.notes && !existing.notes?.includes(ct.notes)) {
-                                                                    existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
-                                                                }
-                                                                if (!existing.mergedRows) existing.mergedRows = [];
-                                                                existing.mergedRows.push(ct);
+                                                            if (subTab === 'invoice') {
+                                                                const serviceMap = new Map<string, CallTimeRow>();
+                                                                filtered.forEach(ct => {
+                                                                    const sid = ct.service?.id || 'none';
+                                                                    const sDate = formatDate(ct.startDate);
+                                                                    const key = `${sDate}_${sid}_${ct.callTimeId}`;
+                                                                    if (!serviceMap.has(key)) {
+                                                                        serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                                    } else {
+                                                                        const existing = serviceMap.get(key)!;
+                                                                        if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                            existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                        }
+                                                                        if (!existing.mergedRows) existing.mergedRows = [];
+                                                                        existing.mergedRows.push(ct);
+                                                                    }
+                                                                });
+                                                                return Array.from(serviceMap.values()).map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
                                                             }
-                                                        });
-                                                        return Array.from(serviceMap.values()).map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                            />
-                                                        ));
-                                                    }
 
-                                                    return filtered.map((ct) => (
-                                                        <TimesheetTableRow
-                                                            key={ct.id}
-                                                            ct={ct}
-                                                            isExpanded={expandedRows.has(ct.id)}
-                                                            isSelected={selectedRows.has(ct.id)}
-                                                            onToggleExpand={toggleExpand}
-                                                            onToggleSelect={toggleSelect}
-                                                            onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                            onSaveTimeEntry={handleSaveTimeEntry}
-                                                            onApprove={handleApprove}
-                                                            onReject={handleReject}
-                                                            onReview={handleReview}
-                                                            onPending={handlePending}
-                                                            onEditTask={handleEditTask}
-                                                            subTab={subTab}
-                                                        />
-                                                    ));
-                                                })()}
-                                            </tbody>
-                                        </table>
+                                                            return filtered.map((ct) => (
+                                                                <TimesheetTableRow
+                                                                    key={ct.id}
+                                                                    ct={ct}
+                                                                    isExpanded={expandedRows.has(ct.id)}
+                                                                    isSelected={selectedRows.has(ct.id)}
+                                                                    onToggleExpand={toggleExpand}
+                                                                    onToggleSelect={toggleSelect}
+                                                                    onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                    onSaveTimeEntry={handleSaveTimeEntry}
+                                                                    onApprove={handleApprove}
+                                                                    onReject={handleReject}
+                                                                    onReview={handleReview}
+                                                                    onPending={handlePending}
+                                                                    onEditTask={handleEditTask}
+                                                                    subTab={subTab}
+                                                                    rowVariant="card"
+                                                                />
+                                                            ));
+                                                        })()}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -1136,198 +1274,266 @@ export default function TimeManagerPage() {
                         {talentGroups
                             .filter(g => g.staffId === selectedStaffId)
                             .map((group) => (
-                                <div key={group.staffId} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-                                    <div className="px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/20 border-b border-border flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <TalentContactPopover
-                                                talent={group.callTimes[0]?.staff || { firstName: group.staffName.split(' ')[0], lastName: group.staffName.split(' ')[1] || '' } as any}
-                                                trigger={
-                                                    <span className="font-semibold text-lg text-foreground cursor-pointer hover:underline">{group.staffName}</span>
-                                                }
-                                            />
-                                            {subTab === 'invoice' ? (
-                                                <Badge variant="primary" className="bg-primary/5 text-primary border-primary/10">
-                                                    {group.callTimes[0]?.event?.client?.businessName || 'Multiple Clients'}
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline">Assignments</Badge>
-                                            )}
+                                <div key={group.staffId} className="space-y-4">
+                                    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="flex flex-col gap-2 min-w-0 flex-1">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={clearTimesheetDrillDown}
+                                                    className="h-8 w-fit -ml-2 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <ChevronLeftIcon className="h-4 w-4 mr-0.5" />
+                                                    Back to Summary
+                                                </Button>
+                                                <div className="flex flex-wrap items-center gap-3 min-w-0">
+                                                    <TalentContactPopover
+                                                        talent={group.callTimes[0]?.staff || { firstName: group.staffName.split(' ')[0], lastName: group.staffName.split(' ')[1] || '' } as any}
+                                                        trigger={
+                                                            <span className="text-xl font-bold tracking-tight text-foreground cursor-pointer hover:underline">{group.staffName}</span>
+                                                        }
+                                                    />
+                                                    {subTab === 'invoice' ? (
+                                                        <Badge variant="primary" className="bg-primary/5 text-primary border-primary/10">
+                                                            {group.callTimes[0]?.event?.client?.businessName || 'Multiple Clients'}
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline">Assignments</Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0 sm:pt-1">
+                                                <CallTimeExportDropdown {...getDetailExportProps(group)} />
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="gap-1.5 h-9 px-4 text-sm font-medium"
+                                                    disabled={!group.callTimes.some((ct) => ct.event?.id)}
+                                                    onClick={() => {
+                                                        const eid = group.callTimes.find((ct) => ct.event?.id)?.event?.id;
+                                                        if (eid) handleEditEvent(eid);
+                                                    }}
+                                                >
+                                                    <EditIcon className="h-3.5 w-3.5" />
+                                                    Edit Tasks
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b border-border bg-muted/15">
-                                                    <th className="w-8 px-2 py-2">
-                                                        {(() => {
-                                                            const groupIds = group.callTimes.map((ct) => ct.id);
-                                                            const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
-                                                            return (
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isGroupAllSelected}
-                                                                    onChange={() => toggleSelectAll(groupIds)}
-                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                                                                />
-                                                            );
-                                                        })()}
-                                                    </th>
-                                                    <th className="w-8 px-2 py-2" />
-                                                    {subTab !== 'invoice' && subTab !== 'bill' && (
-                                                        <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    )}
-                                                    {subTab === 'invoice' ? (
-                                                        <>
-                                                            <SortHeader id="startDate" label="Service Date" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                        </>
-                                                    ) : subTab === 'commission' ? (
-                                                        <>
-                                                            <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Invoice Description</th>
-                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                        </>
-                                                    ) : subTab === 'bill' ? (
-                                                        <>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <SortHeader id="startDate" label="Service Date" />
-                                                            <SortHeader id="staffName" label="Talent" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                            <SortHeader id="actualShift" label="Actual Shift" />
-                                                            <SortHeader id="variance" label="Variance" align="text-center" />
-                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                            <SortHeader id="commission" label="Commission" align="text-center" />
-                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                        </>
-                                                    )}
-                                                    {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
+                                    {detailSubTabPills}
+                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
+                                    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                                        <div className="border-b border-border bg-muted/15 px-4 py-3">
+                                            <TimesheetDetailToolbar
+                                                search={detailSearch}
+                                                onSearchChange={setDetailSearch}
+                                                status={detailStatus}
+                                                onStatusChange={setDetailStatus}
+                                                assignment={detailAssignment}
+                                                onAssignmentChange={setDetailAssignment}
+                                                rateType={detailRateType}
+                                                onRateTypeChange={setDetailRateType}
+                                                variance={detailVariance}
+                                                onVarianceChange={setDetailVariance}
+                                                onCustomizeColumns={() =>
+                                                    toast({
+                                                        title: 'Customize columns',
+                                                        description: 'Column visibility will be available in a future update.',
+                                                    })
+                                                }
+                                                exportControl={<span className="hidden" aria-hidden />}
+                                            />
+                                        </div>
+                                        <div className="p-4">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
+                                                    <thead>
+                                                        <tr className="border-0 bg-transparent">
+                                                            <th className="w-8 px-2 py-3 align-bottom">
+                                                                {(() => {
+                                                                    const groupIds = group.callTimes.map((ct) => ct.id);
+                                                                    const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                                    return (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isGroupAllSelected}
+                                                                            onChange={() => toggleSelectAll(groupIds)}
+                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                        />
+                                                                    );
+                                                                })()}
+                                                            </th>
+                                                            <th className="w-8 px-2 py-3 align-bottom" />
+                                                            {subTab === 'commission' && (
+                                                                <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                    Action
+                                                                </th>
+                                                            )}
+                                                            {subTab === 'invoice' ? (
+                                                                <>
+                                                                    <SortHeader id="startDate" label="Service Date" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                </>
+                                                            ) : subTab === 'commission' ? (
+                                                                <>
+                                                                    <SortHeader id="staffName" label="Team / User" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
+                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
+                                                                </>
+                                                            ) : subTab === 'bill' ? (
+                                                                <>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Action
+                                                                    </th>
+                                                                    <SortHeader id="staffName" label="Talent" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <SortHeader id="startDate" label="Date" />
+                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                                    <SortHeader id="actualShift" label="Actual Shift" />
+                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
+                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Net Income
+                                                                    </th>
+                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
+                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
+                                                                </>
+                                                            )}
+                                                            {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th> */}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {(() => {
-                                                    const filtered = group.callTimes.filter(shouldIncludeRowForSubTab);
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {(() => {
+                                                            const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
+                                                            const filtered = applyDetailToolbarFilters(baseFiltered);
 
-                                                    if (subTab === 'invoice') {
-                                                        const serviceMap = new Map<string, CallTimeRow>();
-                                                        filtered.forEach(ct => {
-                                                            const sid = ct.service?.id || 'none';
-                                                            const sDate = formatDate(ct.startDate);
-                                                            const key = `${sDate}_${sid}_${ct.callTimeId}`;
-                                                            if (!serviceMap.has(key)) {
-                                                                serviceMap.set(key, { ...ct, mergedRows: [ct] });
-                                                            } else {
-                                                                const existing = serviceMap.get(key)!;
-                                                                if (ct.notes && !existing.notes?.includes(ct.notes)) {
-                                                                    existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                            if (subTab === 'invoice') {
+                                                                const serviceMap = new Map<string, CallTimeRow>();
+                                                                filtered.forEach(ct => {
+                                                                    const sid = ct.service?.id || 'none';
+                                                                    const sDate = formatDate(ct.startDate);
+                                                                    const key = `${sDate}_${sid}_${ct.callTimeId}`;
+                                                                    if (!serviceMap.has(key)) {
+                                                                        serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                                    } else {
+                                                                        const existing = serviceMap.get(key)!;
+                                                                        if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                            existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                        }
+                                                                        if (!existing.mergedRows) existing.mergedRows = [];
+                                                                        existing.mergedRows.push(ct);
+                                                                    }
+                                                                });
+                                                                return Array.from(serviceMap.values()).map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
+                                                            }
+
+                                                            if (subTab !== 'bill') {
+                                                                return filtered.map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
+                                                            }
+
+                                                            // Group by event for the staff detail view (if they have multiple assignments on same event)
+                                                            const eventMap = new Map<string, CallTimeRow>();
+                                                            filtered.forEach(ct => {
+                                                                const eid = ct.event?.id;
+                                                                if (!eid) return;
+                                                                if (!eventMap.has(eid)) {
+                                                                    eventMap.set(eid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
+                                                                } else {
+                                                                    const existing = eventMap.get(eid)!;
+                                                                    if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
+                                                                        existing.service.title = `${existing.service.title} & ${ct.service.title}`;
+                                                                    }
+                                                                    if (ct.notes && ct.notes !== existing.notes) {
+                                                                        existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                    }
+                                                                    existing.invitations.push(...ct.invitations);
+                                                                    if (!existing.mergedRows) existing.mergedRows = [];
+                                                                    existing.mergedRows.push(ct);
                                                                 }
-                                                                if (!existing.mergedRows) existing.mergedRows = [];
-                                                                existing.mergedRows.push(ct);
-                                                            }
-                                                        });
-                                                        return Array.from(serviceMap.values()).map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                            />
-                                                        ));
-                                                    }
+                                                            });
 
-                                                    if (subTab !== 'bill') {
-                                                        return filtered.map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                            />
-                                                        ));
-                                                    }
-
-                                                    // Group by event for the staff detail view (if they have multiple assignments on same event)
-                                                    const eventMap = new Map<string, CallTimeRow>();
-                                                    filtered.forEach(ct => {
-                                                        const eid = ct.event?.id;
-                                                        if (!eid) return;
-                                                        if (!eventMap.has(eid)) {
-                                                            eventMap.set(eid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
-                                                        } else {
-                                                            const existing = eventMap.get(eid)!;
-                                                            if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
-                                                                existing.service.title = `${existing.service.title} & ${ct.service.title}`;
-                                                            }
-                                                            if (ct.notes && ct.notes !== existing.notes) {
-                                                                existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
-                                                            }
-                                                            existing.invitations.push(...ct.invitations);
-                                                            if (!existing.mergedRows) existing.mergedRows = [];
-                                                            existing.mergedRows.push(ct);
-                                                        }
-                                                    });
-
-                                                    return Array.from(eventMap.values()).map(ct => (
-                                                        <TimesheetTableRow
-                                                            key={ct.id}
-                                                            ct={ct}
-                                                            isExpanded={expandedRows.has(ct.id)}
-                                                            isSelected={selectedRows.has(ct.id)}
-                                                            onToggleExpand={toggleExpand}
-                                                            onToggleSelect={toggleSelect}
-                                                            onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                            onSaveTimeEntry={handleSaveTimeEntry}
-                                                            onApprove={handleApprove}
-                                                            onReject={handleReject}
-                                                            onReview={handleReview}
-                                                            onPending={handlePending}
-                                                            onEditTask={handleEditTask}
-                                                            subTab={subTab}
-                                                        />
-                                                    ));
-                                                })()}
-                                            </tbody>
-                                        </table>
+                                                            return Array.from(eventMap.values()).map(ct => (
+                                                                <TimesheetTableRow
+                                                                    key={ct.id}
+                                                                    ct={ct}
+                                                                    isExpanded={expandedRows.has(ct.id)}
+                                                                    isSelected={selectedRows.has(ct.id)}
+                                                                    onToggleExpand={toggleExpand}
+                                                                    onToggleSelect={toggleSelect}
+                                                                    onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                    onSaveTimeEntry={handleSaveTimeEntry}
+                                                                    onApprove={handleApprove}
+                                                                    onReject={handleReject}
+                                                                    onReview={handleReview}
+                                                                    onPending={handlePending}
+                                                                    onEditTask={handleEditTask}
+                                                                    subTab={subTab}
+                                                                    rowVariant="card"
+                                                                />
+                                                            ));
+                                                        })()}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -1337,218 +1543,272 @@ export default function TimeManagerPage() {
                         {(subTab === 'bill' ? billGroups : eventGroups)
                             .filter(g => g.eventId === selectedEventId)
                             .map((group) => (
-                                <div key={group.eventId + (group.staffId ? '_' + group.staffId : '')} className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-                                    <div className="px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/20 border-b border-border flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-semibold text-lg text-foreground">{group.eventTitle}</span>
-                                                <Badge variant="outline">{group.eventDisplayId}</Badge>
-                                            </div>
-                                            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                                                <span className="font-semibold text-primary/80 uppercase tracking-tighter text-[10px] bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
-                                                    {subTab === 'bill' ? (
-                                                        group.callTimes[0]?.staff
-                                                            ? `${group.callTimes[0].staff.firstName} ${group.callTimes[0].staff.lastName}`
-                                                            : 'No Talent'
-                                                    ) : (group.clientName || 'No Client')}
-                                                </span>
-                                                <span className="flex items-center gap-1.5 font-medium text-[11px]">
-                                                    <span className="text-slate-400">Location:</span>
-                                                    {group.venueName || '—'}
-                                                    {(group.city || group.state) && (
-                                                        <span className="opacity-75 font-normal">
-                                                            ({[group.city, group.state].filter(Boolean).join(', ')})
+                                <div key={group.eventId + (group.staffId ? '_' + group.staffId : '')} className="space-y-4">
+                                    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="flex flex-col gap-2 min-w-0 flex-1">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={clearTimesheetDrillDown}
+                                                    className="h-8 w-fit -ml-2 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <ChevronLeftIcon className="h-4 w-4 mr-0.5" />
+                                                    Back to Summary
+                                                </Button>
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="text-xl font-bold tracking-tight text-foreground">{group.eventTitle}</span>
+                                                    <Badge variant="outline" className="shrink-0 text-xs font-medium">{group.eventDisplayId}</Badge>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                                    <span className="inline-flex text-xs font-medium rounded-md border border-border bg-muted/40 px-2.5 py-1 text-foreground">
+                                                        {subTab === 'bill' ? (
+                                                            group.callTimes[0]?.staff
+                                                                ? `${group.callTimes[0].staff.firstName} ${group.callTimes[0].staff.lastName}`
+                                                                : 'No Talent'
+                                                        ) : (group.clientName || 'No Client')}
+                                                    </span>
+                                                    <span className="flex flex-wrap items-center gap-1.5">
+                                                        <span className="text-muted-foreground">Location:</span>
+                                                        <span className="font-medium text-foreground">
+                                                            {group.venueName || '—'}
+                                                            {(group.city || group.state) && (
+                                                                <span className="font-normal text-muted-foreground">
+                                                                    {' '}
+                                                                    ({[group.city, group.state].filter(Boolean).join(', ')})
+                                                                </span>
+                                                            )}
                                                         </span>
-                                                    )}
-                                                </span>
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="bg-primary/5 hover:bg-primary/10 text-primary border-primary/20 gap-1.5 h-8 text-[11px]"
-                                                onClick={() => handleEditEvent(group.eventId)}
-                                            >
-                                                <EditIcon className="h-3.5 w-3.5" />
-                                                Edit Tasks
-                                            </Button>
+                                            <div className="flex items-center gap-2 shrink-0 sm:pt-1">
+                                                <CallTimeExportDropdown {...getDetailExportProps(group)} />
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="gap-1.5 h-9 px-4 text-sm font-medium"
+                                                    onClick={() => handleEditEvent(group.eventId)}
+                                                >
+                                                    <EditIcon className="h-3.5 w-3.5" />
+                                                    Edit Tasks
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b border-border bg-muted/15">
-                                                    <th className="w-8 px-2 py-2">
-                                                        {(() => {
-                                                            const groupIds = group.callTimes.map((ct) => ct.id);
-                                                            const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
-                                                            return (
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isGroupAllSelected}
-                                                                    onChange={() => toggleSelectAll(groupIds)}
-                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                                                                />
-                                                            );
-                                                        })()}
-                                                    </th>
-                                                    <th className="w-8 px-2 py-2" />
-                                                    {subTab !== 'invoice' && subTab !== 'bill' && (
-                                                        <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                                    )}
-                                                    {subTab === 'invoice' ? (
-                                                        <>
-                                                            <SortHeader id="startDate" label="Service Date" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                            <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                        </>
-                                                    ) : subTab === 'commission' ? (
-                                                        <>
-                                                            <SortHeader id="staffName" label="Team / User" />
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Invoice Description</th>
-                                                            <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                        </>
-                                                    ) : subTab === 'bill' ? (
-                                                        <>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Category</th>
-                                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <SortHeader id="startDate" label="Service Date" />
-                                                            <SortHeader id="staffName" label="Talent" />
-                                                            <SortHeader id="service" label="Services / Products" />
-                                                            <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                            <SortHeader id="actualShift" label="Actual Shift" />
-                                                            <SortHeader id="variance" label="Variance" align="text-center" />
-                                                            <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                            <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                            <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                            <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                            <SortHeader id="commission" label="Commission" align="text-center" />
-                                                            <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                            <SortHeader id="status" label="Status" align="text-center" />
-                                                            <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                        </>
-                                                    )}
-                                                    {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
+                                    {detailSubTabPills}
+                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
+                                    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                                        <div className="border-b border-border bg-muted/15 px-4 py-3">
+                                            <TimesheetDetailToolbar
+                                                search={detailSearch}
+                                                onSearchChange={setDetailSearch}
+                                                status={detailStatus}
+                                                onStatusChange={setDetailStatus}
+                                                assignment={detailAssignment}
+                                                onAssignmentChange={setDetailAssignment}
+                                                rateType={detailRateType}
+                                                onRateTypeChange={setDetailRateType}
+                                                variance={detailVariance}
+                                                onVarianceChange={setDetailVariance}
+                                                onCustomizeColumns={() =>
+                                                    toast({
+                                                        title: 'Customize columns',
+                                                        description: 'Column visibility will be available in a future update.',
+                                                    })
+                                                }
+                                                exportControl={<span className="hidden" aria-hidden />}
+                                            />
+                                        </div>
+                                        <div className="p-4">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
+                                                    <thead>
+                                                        <tr className="border-0 bg-transparent">
+                                                            <th className="w-8 px-2 py-3 align-bottom">
+                                                                {(() => {
+                                                                    const groupIds = group.callTimes.map((ct) => ct.id);
+                                                                    const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                                    return (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isGroupAllSelected}
+                                                                            onChange={() => toggleSelectAll(groupIds)}
+                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                        />
+                                                                    );
+                                                                })()}
+                                                            </th>
+                                                            <th className="w-8 px-2 py-3 align-bottom" />
+                                                            {subTab === 'commission' && (
+                                                                <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                    Action
+                                                                </th>
+                                                            )}
+                                                            {subTab === 'invoice' ? (
+                                                                <>
+                                                                    <SortHeader id="startDate" label="Service Date" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                </>
+                                                            ) : subTab === 'commission' ? (
+                                                                <>
+                                                                    <SortHeader id="staffName" label="Team / User" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
+                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
+                                                                </>
+                                                            ) : subTab === 'bill' ? (
+                                                                <>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Action
+                                                                    </th>
+                                                                    <SortHeader id="staffName" label="Talent" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <SortHeader id="startDate" label="Date" />
+                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                                    <SortHeader id="actualShift" label="Actual Shift" />
+                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
+                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                        Net Income
+                                                                    </th>
+                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
+                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
+                                                                </>
+                                                            )}
+                                                            {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
                                                     <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th> */}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {(() => {
-                                                    const filtered = group.callTimes.filter(shouldIncludeRowForSubTab);
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {(() => {
+                                                            const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
+                                                            const filtered = applyDetailToolbarFilters(baseFiltered);
 
-                                                    if (subTab === 'invoice') {
-                                                        const serviceMap = new Map<string, CallTimeRow>();
-                                                        filtered.forEach(ct => {
-                                                            const sid = ct.service?.id || 'none';
-                                                            const sDate = formatDate(ct.startDate);
-                                                            const key = `${sDate}_${sid}_${ct.callTimeId}`;
-                                                            if (!serviceMap.has(key)) {
-                                                                serviceMap.set(key, { ...ct, mergedRows: [ct] });
-                                                            } else {
-                                                                const existing = serviceMap.get(key)!;
-                                                                if (ct.notes && !existing.notes?.includes(ct.notes)) {
-                                                                    existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                            if (subTab === 'invoice') {
+                                                                const serviceMap = new Map<string, CallTimeRow>();
+                                                                filtered.forEach(ct => {
+                                                                    const sid = ct.service?.id || 'none';
+                                                                    const sDate = formatDate(ct.startDate);
+                                                                    const key = `${sDate}_${sid}_${ct.callTimeId}`;
+                                                                    if (!serviceMap.has(key)) {
+                                                                        serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                                    } else {
+                                                                        const existing = serviceMap.get(key)!;
+                                                                        if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                            existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                        }
+                                                                        if (!existing.mergedRows) existing.mergedRows = [];
+                                                                        existing.mergedRows.push(ct);
+                                                                    }
+                                                                });
+                                                                return Array.from(serviceMap.values()).map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
+                                                            }
+
+                                                            if (subTab !== 'bill') {
+                                                                return filtered.map(ct => (
+                                                                    <TimesheetTableRow
+                                                                        key={ct.id}
+                                                                        ct={ct}
+                                                                        isExpanded={expandedRows.has(ct.id)}
+                                                                        isSelected={selectedRows.has(ct.id)}
+                                                                        onToggleExpand={toggleExpand}
+                                                                        onToggleSelect={toggleSelect}
+                                                                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                        onSaveTimeEntry={handleSaveTimeEntry}
+                                                                        onApprove={handleApprove}
+                                                                        onReject={handleReject}
+                                                                        onReview={handleReview}
+                                                                        onPending={handlePending}
+                                                                        onEditTask={handleEditTask}
+                                                                        subTab={subTab}
+                                                                        rowVariant="card"
+                                                                    />
+                                                                ));
+                                                            }
+
+                                                            // Group by staff for the event detail view
+                                                            const staffMap = new Map<string, CallTimeRow>();
+                                                            filtered.forEach(ct => {
+                                                                const sid = ct.staff?.id;
+                                                                if (!sid) return;
+                                                                if (!staffMap.has(sid)) {
+                                                                    staffMap.set(sid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
+                                                                } else {
+                                                                    const existing = staffMap.get(sid)!;
+                                                                    if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
+                                                                        existing.service.title = `${existing.service.title} & ${ct.service.title}`;
+                                                                    }
+                                                                    if (ct.notes && ct.notes !== existing.notes) {
+                                                                        existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                    }
+                                                                    existing.invitations.push(...ct.invitations);
+                                                                    if (!existing.mergedRows) existing.mergedRows = [];
+                                                                    existing.mergedRows.push(ct);
                                                                 }
-                                                                if (!existing.mergedRows) existing.mergedRows = [];
-                                                                existing.mergedRows.push(ct);
-                                                            }
-                                                        });
-                                                        return Array.from(serviceMap.values()).map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                            />
-                                                        ));
-                                                    }
+                                                            });
 
-                                                    if (subTab !== 'bill') {
-                                                        return filtered.map(ct => (
-                                                            <TimesheetTableRow
-                                                                key={ct.id}
-                                                                ct={ct}
-                                                                isExpanded={expandedRows.has(ct.id)}
-                                                                isSelected={selectedRows.has(ct.id)}
-                                                                onToggleExpand={toggleExpand}
-                                                                onToggleSelect={toggleSelect}
-                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                onSaveTimeEntry={handleSaveTimeEntry}
-                                                                onApprove={handleApprove}
-                                                                onReject={handleReject}
-                                                                onReview={handleReview}
-                                                                onPending={handlePending}
-                                                                onEditTask={handleEditTask}
-                                                                subTab={subTab}
-                                                            />
-                                                        ));
-                                                    }
-
-                                                    // Group by staff for the event detail view
-                                                    const staffMap = new Map<string, CallTimeRow>();
-                                                    filtered.forEach(ct => {
-                                                        const sid = ct.staff?.id;
-                                                        if (!sid) return;
-                                                        if (!staffMap.has(sid)) {
-                                                            staffMap.set(sid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
-                                                        } else {
-                                                            const existing = staffMap.get(sid)!;
-                                                            if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
-                                                                existing.service.title = `${existing.service.title} & ${ct.service.title}`;
-                                                            }
-                                                            if (ct.notes && ct.notes !== existing.notes) {
-                                                                existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
-                                                            }
-                                                            existing.invitations.push(...ct.invitations);
-                                                            if (!existing.mergedRows) existing.mergedRows = [];
-                                                            existing.mergedRows.push(ct);
-                                                        }
-                                                    });
-
-                                                    return Array.from(staffMap.values()).map(ct => (
-                                                        <TimesheetTableRow
-                                                            key={ct.id}
-                                                            ct={ct}
-                                                            isExpanded={expandedRows.has(ct.id)}
-                                                            isSelected={selectedRows.has(ct.id)}
-                                                            onToggleExpand={toggleExpand}
-                                                            onToggleSelect={toggleSelect}
-                                                            onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                            onSaveTimeEntry={handleSaveTimeEntry}
-                                                            onApprove={handleApprove}
-                                                            onReject={handleReject}
-                                                            onReview={handleReview}
-                                                            onPending={handlePending}
-                                                            onEditTask={handleEditTask}
-                                                            subTab={subTab}
-                                                        />
-                                                    ));
-                                                })()}
-                                            </tbody>
-                                        </table>
+                                                            return Array.from(staffMap.values()).map(ct => (
+                                                                <TimesheetTableRow
+                                                                    key={ct.id}
+                                                                    ct={ct}
+                                                                    isExpanded={expandedRows.has(ct.id)}
+                                                                    isSelected={selectedRows.has(ct.id)}
+                                                                    onToggleExpand={toggleExpand}
+                                                                    onToggleSelect={toggleSelect}
+                                                                    onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                    onSaveTimeEntry={handleSaveTimeEntry}
+                                                                    onApprove={handleApprove}
+                                                                    onReject={handleReject}
+                                                                    onReview={handleReview}
+                                                                    onPending={handlePending}
+                                                                    onEditTask={handleEditTask}
+                                                                    subTab={subTab}
+                                                                    rowVariant="card"
+                                                                />
+                                                            ));
+                                                        })()}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
