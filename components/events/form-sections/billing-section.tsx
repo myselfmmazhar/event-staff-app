@@ -22,7 +22,7 @@ export function BillingSection({
   const isEstimate = watch('estimate');
 
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
+    <div className={cn('', className)}>
       <div
         className="flex items-center justify-between cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
