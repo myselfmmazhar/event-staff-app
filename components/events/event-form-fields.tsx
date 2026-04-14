@@ -19,6 +19,8 @@ import {
   type Assignment,
 } from './form-sections';
 
+export type EventFormTab = 'basic' | 'venue' | 'staff' | 'instructions' | 'documents';
+
 export interface EventFormFieldsProps {
   register: UseFormRegister<EventFormData>;
   control: Control<EventFormData>;
@@ -40,6 +42,7 @@ export interface EventFormFieldsProps {
   onClientCreated?: (clientId: string) => void;
   disabled?: boolean;
   compact?: boolean;
+  activeTab?: EventFormTab;
 }
 
 export function EventFormFields({
@@ -63,26 +66,24 @@ export function EventFormFields({
   onClientCreated,
   disabled = false,
   compact = false,
+  activeTab,
 }: EventFormFieldsProps) {
-  // File links field array
   const fileLinksFieldArray = useFieldArray<EventFormData, 'fileLinks'>({
     control,
     name: 'fileLinks',
   });
 
-  // Custom fields field array
   const customFieldsFieldArray = useFieldArray<EventFormData, 'customFields'>({
     control,
     name: 'customFields',
   });
 
-  const spacing = compact ? 'mb-4' : 'mb-6';
-  const gridGap = compact ? 'gap-4' : 'gap-6';
+  const divider = 'border-t border-slate-200 pt-6 mt-6';
 
-  return (
-    <>
-      {/* === ROW 1: Basic Information + Date & Time === */}
-      <div className={`grid grid-cols-1 lg:grid-cols-5 ${gridGap} ${spacing}`}>
+  // ── Tab: Basic Info ──────────────────────────────────────────────────────
+  if (activeTab === 'basic') {
+    return (
+      <>
         <BasicInfoSection
           register={register}
           control={control}
@@ -93,7 +94,6 @@ export function EventFormFields({
           terminology={terminology}
           onClientCreated={onClientCreated}
           disabled={disabled}
-          className="lg:col-span-3"
         />
         <DateTimeSection
           register={register}
@@ -110,12 +110,172 @@ export function EventFormFields({
           endTimeTBD={endTimeTBD}
           setEndTimeTBD={setEndTimeTBD}
           disabled={disabled}
-          className="lg:col-span-2"
+          className={divider}
         />
-      </div>
+      </>
+    );
+  }
 
-      {/* === ROW 2: Pre-Task Instructions + Private Notes (after description/requirements) === */}
-      <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
+  // ── Tab: Venue ───────────────────────────────────────────────────────────
+  if (activeTab === 'venue') {
+    return (
+      <>
+        <VenueSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+        <OnsiteContactSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+          className={divider}
+        />
+      </>
+    );
+  }
+
+  // ── Tab: Staff & Rates ───────────────────────────────────────────────────
+  if (activeTab === 'staff') {
+    return (
+      <>
+        {onAssignmentsChange ? (
+          <AssignmentsSection
+            assignments={assignments}
+            onAssignmentsChange={onAssignmentsChange}
+            watch={watch}
+            setValue={setValue}
+            disabled={disabled}
+          />
+        ) : (
+          <div>
+            <h3 className="text-base font-bold text-slate-900 mb-2">Assignments</h3>
+            <p className="text-sm text-muted-foreground">
+              Assignments can be added after saving the {terminology.event.singular.toLowerCase()}.
+            </p>
+          </div>
+        )}
+        <BillingSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+          className={divider}
+        />
+      </>
+    );
+  }
+
+  // ── Tab: Instructions ────────────────────────────────────────────────────
+  if (activeTab === 'instructions') {
+    return (
+      <>
+        <PreEventSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+        />
+        <PrivateNotesSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+          className={divider}
+        />
+        <RequestInfoSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+          className={divider}
+        />
+      </>
+    );
+  }
+
+  // ── Tab: Documents ───────────────────────────────────────────────────────
+  if (activeTab === 'documents') {
+    return (
+      <>
+        <DocumentsSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          fileLinksFieldArray={fileLinksFieldArray}
+          disabled={disabled}
+        />
+        <CustomFieldsSection
+          register={register}
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          customFieldsFieldArray={customFieldsFieldArray}
+          disabled={disabled}
+          className={divider}
+        />
+      </>
+    );
+  }
+
+  // ── Fallback: all sections (no activeTab set) ────────────────────────────
+  return (
+    <div className="space-y-0">
+      <BasicInfoSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        clients={clients}
+        terminology={terminology}
+        onClientCreated={onClientCreated}
+        disabled={disabled}
+      />
+      <DateTimeSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        startDateUBD={startDateUBD}
+        setStartDateUBD={setStartDateUBD}
+        endDateUBD={endDateUBD}
+        setEndDateUBD={setEndDateUBD}
+        startTimeTBD={startTimeTBD}
+        setStartTimeTBD={setStartTimeTBD}
+        endTimeTBD={endTimeTBD}
+        setEndTimeTBD={setEndTimeTBD}
+        disabled={disabled}
+        className={divider}
+      />
+      <VenueSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        disabled={disabled}
+        className={divider}
+      />
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${divider}`}>
         <PreEventSection
           register={register}
           control={control}
@@ -133,20 +293,7 @@ export function EventFormFields({
           disabled={disabled}
         />
       </div>
-
-      {/* === ROW 3: Venue Information (full width) === */}
-      <VenueSection
-        register={register}
-        control={control}
-        errors={errors}
-        watch={watch}
-        setValue={setValue}
-        disabled={disabled}
-        className={spacing}
-      />
-
-      {/* === ROW 4: Request Information + Onsite Contact === */}
-      <div className={`grid grid-cols-1 lg:grid-cols-2 ${gridGap} ${spacing}`}>
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${divider}`}>
         <RequestInfoSection
           register={register}
           control={control}
@@ -164,20 +311,23 @@ export function EventFormFields({
           disabled={disabled}
         />
       </div>
-
-      {/* === ROW 5: Custom Fields === */}
-      <CustomFieldsSection
-        register={register}
-        control={control}
-        errors={errors}
-        watch={watch}
-        setValue={setValue}
-        customFieldsFieldArray={customFieldsFieldArray}
-        disabled={disabled}
-        className={spacing}
-      />
-
-      {/* === ROW 6: Documents + File Links === */}
+      {onAssignmentsChange ? (
+        <AssignmentsSection
+          assignments={assignments}
+          onAssignmentsChange={onAssignmentsChange}
+          watch={watch}
+          setValue={setValue}
+          disabled={disabled}
+          className={divider}
+        />
+      ) : (
+        <div className={divider}>
+          <h3 className="text-base font-bold text-slate-900 mb-2">Assignments</h3>
+          <p className="text-sm text-muted-foreground">
+            Assignments can be added after saving the {terminology.event.singular.toLowerCase()}.
+          </p>
+        </div>
+      )}
       <DocumentsSection
         register={register}
         control={control}
@@ -186,29 +336,18 @@ export function EventFormFields({
         setValue={setValue}
         fileLinksFieldArray={fileLinksFieldArray}
         disabled={disabled}
-        className={spacing}
+        className={divider}
       />
-
-      {/* === ROW 7: Assignments (full width) === */}
-      {onAssignmentsChange ? (
-        <AssignmentsSection
-          assignments={assignments}
-          onAssignmentsChange={onAssignmentsChange}
-          watch={watch}
-          setValue={setValue}
-          disabled={disabled}
-          className={spacing}
-        />
-      ) : (
-        <div className={`bg-accent/5 border border-border/30 p-5 rounded-lg ${spacing}`}>
-          <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Assignments</h3>
-          <p className="text-sm text-muted-foreground">
-            Assignments can be added after saving the event.
-          </p>
-        </div>
-      )}
-
-      {/* === ROW 8: Task Settings (Billing & Rates) === */}
+      <CustomFieldsSection
+        register={register}
+        control={control}
+        errors={errors}
+        watch={watch}
+        setValue={setValue}
+        customFieldsFieldArray={customFieldsFieldArray}
+        disabled={disabled}
+        className={divider}
+      />
       <BillingSection
         register={register}
         control={control}
@@ -216,8 +355,8 @@ export function EventFormFields({
         watch={watch}
         setValue={setValue}
         disabled={disabled}
-        className={spacing}
+        className={divider}
       />
-    </>
+    </div>
   );
 }

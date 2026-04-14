@@ -4,10 +4,8 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EventSchema } from '@/lib/schemas/event.schema';
@@ -34,7 +32,7 @@ import { toast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { EventFormFields } from './event-form-fields';
+import { EventFormFields, type EventFormTab } from './event-form-fields';
 import { BatchEntryList } from './batch-entry-list';
 import type { Assignment, ProductAssignment, ServiceAssignment, ProductAssignmentExtendedData } from '@/lib/types/assignment.types';
 import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
@@ -218,7 +216,36 @@ interface EventFormModalProps {
   resetKey?: number;
 }
 
-type EntryType = 'single' | 'batch';
+type EventModalTab = EventFormTab | 'batch';
+
+const EVENT_FORM_TABS: { id: EventFormTab; label: string }[] = [
+  { id: 'basic', label: 'Basic Info' },
+  { id: 'venue', label: 'Venue' },
+  { id: 'staff', label: 'Staff & Rates' },
+  { id: 'instructions', label: 'Instructions' },
+  { id: 'documents', label: 'Documents' },
+];
+
+const EVENT_FIELD_TO_TAB: Record<string, EventFormTab> = {
+  // Basic Info
+  title: 'basic', description: 'basic', requirements: 'basic',
+  clientId: 'basic', status: 'basic', eventId: 'basic',
+  startDate: 'basic', startTime: 'basic', endDate: 'basic', endTime: 'basic',
+  timezone: 'basic', dailyDigestMode: 'basic', requireStaff: 'basic',
+  // Venue
+  venueName: 'venue', address: 'venue', addressLine2: 'venue',
+  city: 'venue', state: 'venue', zipCode: 'venue',
+  latitude: 'venue', longitude: 'venue', meetingPoint: 'venue',
+  onsitePocName: 'venue', onsitePocPhone: 'venue', onsitePocEmail: 'venue',
+  // Staff & Rates
+  estimate: 'staff', taskRateType: 'staff',
+  // Instructions
+  preEventInstructions: 'instructions', privateComments: 'instructions',
+  requestMethod: 'instructions', requestorName: 'instructions',
+  requestorPhone: 'instructions', requestorEmail: 'instructions', poNumber: 'instructions',
+  // Documents
+  eventDocuments: 'documents', fileLinks: 'documents', customFields: 'documents',
+};
 
 export function EventFormModal({
   event,
@@ -234,8 +261,8 @@ export function EventFormModal({
   const utils = trpc.useUtils();
   const isEdit = !!event;
 
-  // Entry type and batch state
-  const [entryType, setEntryType] = useState<EntryType>('single');
+  // Tab and batch state
+  const [activeTab, setActiveTab] = useState<EventModalTab>('basic');
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [batchStep, setBatchStep] = useState<'upload' | 'preview'>('upload');
   const [batchValidationResults, setBatchValidationResults] = useState<RowValidationResult[]>([]);
@@ -533,7 +560,7 @@ export function EventFormModal({
     if (!open) {
       setSelectedTemplateId('');
       setAssignments([]);
-      setEntryType('single');
+      setActiveTab('basic');
       setBatchFile(null);
       setBatchStep('upload');
       setBatchValidationResults([]);
@@ -542,10 +569,16 @@ export function EventFormModal({
     }
   }, [open]);
 
+  // Reset tab to 'basic' when dialog opens
+  useEffect(() => {
+    if (open) setActiveTab('basic');
+  }, [open]);
+
   // Reset form when resetKey changes (triggered by Save & New)
   useEffect(() => {
     if (resetKey > 0 && !event) {
       reset(getDefaultValues());
+      setActiveTab('basic');
       setStartDateUBD(false);
       setEndDateUBD(false);
       setStartTimeTBD(false);
@@ -890,13 +923,12 @@ export function EventFormModal({
 
   // Handle form validation errors from react-hook-form
   const handleFormError = (formErrors: any) => {
-    console.error('[EventFormModal] Form validation errors:', formErrors);
-    // Find the first error and show it
     const firstErrorKey = Object.keys(formErrors)[0];
     if (firstErrorKey) {
+      const tab = EVENT_FIELD_TO_TAB[firstErrorKey];
+      if (tab) setActiveTab(tab);
       const firstError = formErrors[firstErrorKey];
       const message = firstError?.message || `Invalid ${firstErrorKey}`;
-      console.error('[EventFormModal] First error:', firstErrorKey, message);
       toast({ title: 'Validation error', description: message, type: 'error' });
     }
   };
@@ -911,304 +943,359 @@ export function EventFormModal({
   const clients = clientsData?.data || [];
 
   return (
-    <Dialog open={open} onClose={onClose} fullScreen>
-      <form onSubmit={onFormSubmit} className="h-full flex flex-col">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>
-              {isEdit ? `Edit ${terminology.event.singular}` : `Create New ${terminology.event.singular}`}
-            </DialogTitle>
-            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
-              <CloseIcon className="h-5 w-5" />
-            </button>
-          </div>
-        </DialogHeader>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      className="mx-4 flex h-[min(90vh,800px)] w-full max-h-[min(90vh,800px)] max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+    >
+      <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
+        <form onSubmit={onFormSubmit} className="flex h-full min-h-0 flex-col bg-white">
 
-        <DialogContent className="flex-1 overflow-y-auto">
-          {/* Entry Type Toggle (only in create mode) */}
-          {!isEdit && (
-            <div className="mb-6 p-4 bg-muted/30 border border-border rounded-lg">
-              <Label className="mb-3 block">Entry Type</Label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="entryType"
-                    value="single"
-                    checked={entryType === 'single'}
-                    onChange={() => setEntryType('single')}
-                    className="accent-primary"
+          {/* Header + tabs */}
+          <div className="shrink-0 border-b border-slate-200 px-6 pb-0 pt-5 sm:px-8">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1 pr-2">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                  {isEdit ? `Edit ${terminology.event.singular}` : `Create New ${terminology.event.singular}`}
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
+                  {isEdit
+                    ? `Update the details for this ${terminology.event.singular.toLowerCase()}.`
+                    : `Create a new ${terminology.event.singular.toLowerCase()} or import multiple ${terminology.event.plural.toLowerCase()} from a CSV or Excel file.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="shrink-0 rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Close"
+              >
+                <CloseIcon className="h-5 w-5" />
+              </button>
+            </div>
+            {/* Tabs */}
+            <div className="mt-6 flex gap-1 overflow-x-auto border-t border-slate-200/90 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {EVENT_FORM_TABS.map(({ id, label }) => {
+                const active = activeTab === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setActiveTab(id)}
+                    className={cn(
+                      'relative shrink-0 whitespace-nowrap px-3 py-3 text-sm transition-colors',
+                      active
+                        ? 'font-bold text-slate-900'
+                        : 'font-medium text-slate-500 hover:text-slate-700'
+                    )}
+                  >
+                    {label}
+                    {active && (
+                      <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-slate-900" />
+                    )}
+                  </button>
+                );
+              })}
+              {/* Batch Import tab — create mode only */}
+              {!isEdit && (() => {
+                const active = activeTab === 'batch';
+                return (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('batch')}
+                    className={cn(
+                      'relative shrink-0 whitespace-nowrap px-3 py-3 text-sm transition-colors',
+                      active
+                        ? 'font-bold text-slate-900'
+                        : 'font-medium text-slate-500 hover:text-slate-700'
+                    )}
+                  >
+                    Batch Import
+                    {active && (
+                      <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-slate-900" />
+                    )}
+                  </button>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+
+            {/* Batch Entry Section */}
+            {!isEdit && activeTab === 'batch' && (
+              <div className="space-y-4">
+                {batchStep === 'upload' && (
+                  <>
+                    <div
+                      className="cursor-pointer rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors hover:border-primary/50"
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onDrop={handleBatchFileDrop}
+                      onClick={() => document.getElementById('batch-file-input')?.click()}
+                    >
+                      <input
+                        id="batch-file-input"
+                        type="file"
+                        accept=".csv,.xlsx"
+                        onChange={handleBatchFileInputChange}
+                        className="hidden"
+                      />
+                      <UploadIcon className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                      <h3 className="mb-2 text-lg font-medium">Upload CSV or Excel File</h3>
+                      <p className="mb-4 text-muted-foreground">Drag and drop your file here, or click to browse</p>
+                      <p className="text-sm text-muted-foreground">Supported formats: .csv, .xlsx</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <FileTextIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Need a template?</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            downloadSampleEventTemplate('csv');
+                            toast({ title: 'Sample CSV template downloaded', type: 'success' });
+                          }}
+                          className="gap-2"
+                        >
+                          <FileTextIcon className="h-4 w-4" />
+                          Download CSV
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            downloadSampleEventTemplate('xlsx');
+                            toast({ title: 'Sample Excel template downloaded', type: 'success' });
+                          }}
+                          className="gap-2"
+                        >
+                          <FileSpreadsheetIcon className="h-4 w-4" />
+                          Download Excel
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {batchStep === 'preview' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileTextIcon className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">{batchFile?.name}</span>
+                        <Badge variant="secondary">{batchValidationResults.length} rows</Badge>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setBatchStep('upload');
+                          setBatchFile(null);
+                          setBatchValidationResults([]);
+                        }}
+                      >
+                        Change File
+                      </Button>
+                    </div>
+                    <BatchEntryList
+                      entries={batchValidationResults}
+                      onUpdateEntry={handleUpdateBatchEntry}
+                      onRemoveEntry={handleRemoveBatchEntry}
+                      clients={clients}
+                      terminology={terminology}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Single Entry Form */}
+            {activeTab !== 'batch' && (
+              <div>
+                {/* Event ID — shown on Basic Info tab in edit mode */}
+                {isEdit && activeTab === 'basic' && (
+                  <div className="mb-6">
+                    <Label htmlFor="eventId" className="text-sm font-bold text-slate-900">
+                      {terminology.event.singular} ID
+                    </Label>
+                    <Input
+                      id="eventId"
+                      {...register('eventId' as FormFieldName)}
+                      placeholder="EVT-YYYY-NNN"
+                      className="mt-2 rounded-lg border-slate-200 font-mono"
+                    />
+                    {(errors as any).eventId && (
+                      <p className="mt-1 text-sm text-destructive">{(errors as any).eventId.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Template Selector — shown on Basic Info tab in create mode */}
+                {!isEdit && activeTab === 'basic' && templatesData && templatesData.length > 0 && (
+                  <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                    <Label htmlFor="templateSelect" className="text-sm font-bold text-slate-900">
+                      Start from Template (Optional)
+                    </Label>
+                    <div className="mt-2 flex gap-2">
+                      <Select
+                        value={selectedTemplateId}
+                        onValueChange={setSelectedTemplateId}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger id="templateSelect" className="flex-1">
+                          <SelectValue placeholder="Select a template..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {templatesData.map((template) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedTemplateId && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTemplateId('');
+                            reset(getDefaultValues());
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Form Fields — pass active tab for per-tab rendering */}
+                <EventFormFields
+                  register={register as any}
+                  control={control as any}
+                  errors={errors as any}
+                  watch={watch as any}
+                  setValue={setValue as any}
+                  clients={clients}
+                  terminology={terminology}
+                  startDateUBD={startDateUBD}
+                  setStartDateUBD={setStartDateUBD}
+                  endDateUBD={endDateUBD}
+                  setEndDateUBD={setEndDateUBD}
+                  startTimeTBD={startTimeTBD}
+                  setStartTimeTBD={setStartTimeTBD}
+                  endTimeTBD={endTimeTBD}
+                  setEndTimeTBD={setEndTimeTBD}
+                  assignments={assignments}
+                  onAssignmentsChange={setAssignments}
+                  onClientCreated={(clientId) => setValue('clientId', clientId)}
+                  disabled={isSubmitting}
+                  activeTab={activeTab as EventFormTab}
+                />
+              </div>
+            )}
+
+          </div>
+
+          {/* Save as Template strip */}
+          {(isEdit || activeTab !== 'batch') && (
+            <div className="shrink-0 border-t border-slate-200 bg-slate-50/50 px-6 py-3 sm:px-8">
+              <div className="flex items-center gap-3">
+                <label
+                  htmlFor="save-as-template"
+                  className="flex cursor-pointer select-none items-center gap-2"
+                >
+                  <Checkbox
+                    id="save-as-template"
+                    checked={saveAsTemplate}
+                    onChange={(e) => setSaveAsTemplate(e.target.checked)}
+                    disabled={isSubmitting}
                   />
-                  <span className="text-sm font-medium">Single Entry</span>
-                  <span className="text-xs text-muted-foreground">- Create one {terminology.event.singular.toLowerCase()}</span>
+                  <span className="text-sm font-medium text-foreground">Save as Template</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="entryType"
-                    value="batch"
-                    checked={entryType === 'batch'}
-                    onChange={() => setEntryType('batch')}
-                    className="accent-primary"
+                {saveAsTemplate && (
+                  <Input
+                    placeholder="Enter template name..."
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    className="h-8 max-w-xs rounded-lg border-slate-200 text-sm"
+                    disabled={isSubmitting}
+                    autoFocus
                   />
-                  <span className="text-sm font-medium">Batch Entry</span>
-                  <span className="text-xs text-muted-foreground">- Import from CSV/Excel</span>
-                </label>
+                )}
               </div>
             </div>
           )}
 
-          {/* Batch Entry Section */}
-          {!isEdit && entryType === 'batch' && (
-            <div className="space-y-4">
-              {batchStep === 'upload' && (
-                <>
-                  <div
-                    className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                    onDrop={handleBatchFileDrop}
-                    onClick={() => document.getElementById('batch-file-input')?.click()}
-                  >
-                    <input
-                      id="batch-file-input"
-                      type="file"
-                      accept=".csv,.xlsx"
-                      onChange={handleBatchFileInputChange}
-                      className="hidden"
-                    />
-                    <UploadIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">Upload CSV or Excel File</h3>
-                    <p className="text-muted-foreground mb-4">Drag and drop your file here, or click to browse</p>
-                    <p className="text-sm text-muted-foreground">Supported formats: .csv, .xlsx</p>
-                  </div>
-
-                  <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                    <div className="flex items-center gap-2 mb-3">
-                      <FileTextIcon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Need a template?</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          downloadSampleEventTemplate('csv');
-                          toast({ title: 'Sample CSV template downloaded', type: 'success' });
-                        }}
-                        className="gap-2"
-                      >
-                        <FileTextIcon className="h-4 w-4" />
-                        Download CSV
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          downloadSampleEventTemplate('xlsx');
-                          toast({ title: 'Sample Excel template downloaded', type: 'success' });
-                        }}
-                        className="gap-2"
-                      >
-                        <FileSpreadsheetIcon className="h-4 w-4" />
-                        Download Excel
-                      </Button>
-                    </div>
-                  </div>
-                </>
+          {/* Footer */}
+          <div className="shrink-0 border-t border-slate-200 px-6 py-4 sm:px-8">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {isEdit && onViewDetails && (
+                <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto rounded-lg border-slate-200">
+                  <EyeIcon className="mr-2 h-4 w-4" />
+                  View Details
+                </Button>
               )}
-
-              {batchStep === 'preview' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileTextIcon className="h-5 w-5 text-muted-foreground" />
-                      <span className="font-medium">{batchFile?.name}</span>
-                      <Badge variant="secondary">{batchValidationResults.length} rows</Badge>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setBatchStep('upload');
-                        setBatchFile(null);
-                        setBatchValidationResults([]);
-                      }}
-                    >
-                      Change File
-                    </Button>
-                  </div>
-
-                  <BatchEntryList
-                    entries={batchValidationResults}
-                    onUpdateEntry={handleUpdateBatchEntry}
-                    onRemoveEntry={handleRemoveBatchEntry}
-                    clients={clients}
-                    terminology={terminology}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Single Entry Form */}
-          {(isEdit || entryType === 'single') && (
-            <>
-              {/* Event ID (edit mode only) */}
-              {isEdit && (
-                <div className="mb-6">
-                  <Label htmlFor="eventId">{terminology.event.singular} ID</Label>
-                  <Input
-                    id="eventId"
-                    {...register('eventId' as FormFieldName)}
-                    placeholder="EVT-YYYY-NNN"
-                    className="font-mono"
-                  />
-                  {(errors as any).eventId && (
-                    <p className="text-destructive text-sm mt-1">{(errors as any).eventId.message}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Template Selector (create mode only) */}
-              {!isEdit && templatesData && templatesData.length > 0 && (
-                <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                  <Label htmlFor="templateSelect">Start from Template (Optional)</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Select
-                      value={selectedTemplateId}
-                      onValueChange={setSelectedTemplateId}
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger id="templateSelect" className="flex-1">
-                        <SelectValue placeholder="Select a template..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {templatesData.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            {template.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {selectedTemplateId && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isSubmitting || batchImportMutation.isPending}
+                className="rounded-lg border-slate-200"
+              >
+                Cancel
+              </Button>
+              {!isEdit && activeTab === 'batch' && batchStep === 'preview' ? (
+                <Button
+                  type="button"
+                  onClick={handleBatchSubmit}
+                  disabled={batchImportMutation.isPending || batchValidCount === 0}
+                  className="rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800"
+                >
+                  {batchImportMutation.isPending ? 'Importing...' : `Import ${batchValidCount} ${terminology.event.plural}`}
+                </Button>
+              ) : (
+                (isEdit || activeTab !== 'batch') && (
+                  <>
+                    {!isEdit && (
                       <Button
-                        type="button"
+                        type="submit"
                         variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTemplateId('');
-                          reset(getDefaultValues());
-                        }}
+                        disabled={isSubmitting}
+                        onClick={handleSaveAndNew}
+                        className="rounded-lg border-slate-200"
                       >
-                        Clear
+                        {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
                       </Button>
                     )}
-                  </div>
-                </div>
-              )}
-
-              {/* Form Fields */}
-              <EventFormFields
-                register={register as any}
-                control={control as any}
-                errors={errors as any}
-                watch={watch as any}
-                setValue={setValue as any}
-                clients={clients}
-                terminology={terminology}
-                startDateUBD={startDateUBD}
-                setStartDateUBD={setStartDateUBD}
-                endDateUBD={endDateUBD}
-                setEndDateUBD={setEndDateUBD}
-                startTimeTBD={startTimeTBD}
-                setStartTimeTBD={setStartTimeTBD}
-                endTimeTBD={endTimeTBD}
-                setEndTimeTBD={setEndTimeTBD}
-                assignments={assignments}
-                onAssignmentsChange={setAssignments}
-                onClientCreated={(clientId) => setValue('clientId', clientId)}
-                disabled={isSubmitting}
-              />
-            </>
-          )}
-        </DialogContent>
-
-        {/* Save as Template section — above the footer buttons */}
-        {(isEdit || entryType === 'single') && (
-          <div className="px-6 py-3 border-t border-border bg-muted/30">
-            <div className="flex items-center gap-3">
-              <label
-                htmlFor="save-as-template"
-                className="flex items-center gap-2 cursor-pointer select-none"
-              >
-                <Checkbox
-                  id="save-as-template"
-                  checked={saveAsTemplate}
-                  onChange={(e) => setSaveAsTemplate(e.target.checked)}
-                  disabled={isSubmitting}
-                />
-                <span className="text-sm font-medium text-foreground">Save as Template</span>
-              </label>
-              {saveAsTemplate && (
-                <Input
-                  placeholder="Enter template name..."
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  className="max-w-xs h-8 text-sm"
-                  disabled={isSubmitting}
-                  autoFocus
-                />
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      onClick={handleSaveAndClose}
+                      className="rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-40"
+                    >
+                      {isSubmitting && pendingSaveAction === 'close'
+                        ? 'Saving...'
+                        : isEdit
+                          ? `Update ${terminology.event.singular}`
+                          : 'Save & Close'}
+                    </Button>
+                  </>
+                )
               )}
             </div>
           </div>
-        )}
 
-        <DialogFooter>
-          {isEdit && onViewDetails && (
-            <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto">
-              <EyeIcon className="h-4 w-4 mr-1" />
-              View Details
-            </Button>
-          )}
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting || batchImportMutation.isPending}>
-            Cancel
-          </Button>
-          {!isEdit && entryType === 'batch' && batchStep === 'preview' ? (
-            <Button
-              type="button"
-              onClick={handleBatchSubmit}
-              disabled={batchImportMutation.isPending || batchValidCount === 0}
-            >
-              {batchImportMutation.isPending ? 'Importing...' : `Import ${batchValidCount} ${terminology.event.plural}`}
-            </Button>
-          ) : (
-            (isEdit || entryType === 'single') && (
-              <>
-                {!isEdit && (
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={isSubmitting}
-                    onClick={handleSaveAndNew}
-                  >
-                    {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
-                  </Button>
-                )}
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  onClick={handleSaveAndClose}
-                >
-                  {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? `Update ${terminology.event.singular}` : 'Save & Close'}
-                </Button>
-              </>
-            )
-          )}
-        </DialogFooter>
-      </form>
+        </form>
+      </DialogContent>
     </Dialog>
   );
 }

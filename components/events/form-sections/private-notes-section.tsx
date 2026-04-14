@@ -12,7 +12,7 @@ export function PrivateNotesSection({
   className,
 }: FormSectionProps) {
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg h-fit', className)}>
+    <div className={cn('h-fit', className)}>
       <h3 className="text-lg font-semibold border-b border-border pb-2 mb-3">Private Notes</h3>
       <div>
         <Label htmlFor="privateComments" className="mb-1 block">Private Comments</Label>
