@@ -4,10 +4,8 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -97,6 +95,25 @@ type FormData = z.infer<typeof formSchema>;
 type FormFieldName = keyof FormData;
 type SaveAction = 'close' | 'new';
 
+const CLIENT_TABS = [
+  { id: 'info' as const, label: 'Client Info' },
+  { id: 'address' as const, label: 'Address' },
+  { id: 'billing' as const, label: 'Billing' },
+  { id: 'access' as const, label: 'Locations & Access' },
+];
+type ClientTab = 'info' | 'address' | 'billing' | 'access';
+
+const CLIENT_FIELD_TO_TAB: Record<string, ClientTab> = {
+  businessName: 'info', firstName: 'info', lastName: 'info',
+  email: 'info', ccEmail: 'info', cellPhone: 'info', businessPhone: 'info',
+  details: 'info', requirements: 'info',
+  businessAddress: 'address', businessAddressLine2: 'address',
+  city: 'address', state: 'address', zipCode: 'address',
+  billingFirstName: 'billing', billingLastName: 'billing',
+  billingEmail: 'billing', billingPhone: 'billing', sameAsContact: 'billing',
+  hasLoginAccess: 'access',
+};
+
 export interface CreateClientInputWithLocations extends CreateClientInput {
   pendingLocations?: TemporaryLocation[];
 }
@@ -126,6 +143,7 @@ export function ClientFormModal({
   resetKey = 0,
 }: ClientFormModalProps) {
   const isEdit = !!client;
+  const [clientTab, setClientTab] = useState<ClientTab>('info');
   const [tempLocations, setTempLocations] = useState<TemporaryLocation[]>([]);
 
   // Save action state (for Save & Close vs Save & New)
@@ -170,6 +188,10 @@ export function ClientFormModal({
   const lastName = watch('lastName');
   const email = watch('email');
   const cellPhone = watch('cellPhone');
+  const businessName = watch('businessName');
+  const city = watch('city');
+  const state = watch('state');
+  const zipCode = watch('zipCode');
 
   useEffect(() => {
     if (sameAsContact) {
@@ -181,6 +203,41 @@ export function ClientFormModal({
   }, [sameAsContact, firstName, lastName, email, cellPhone, setValue]);
 
   const hasLoginAccess = watch('hasLoginAccess');
+
+  // Wizard step logic
+  const CLIENT_STEP_IDS = ['info', 'address', 'billing', 'access'] as const;
+  const stepIndex = CLIENT_STEP_IDS.indexOf(clientTab as typeof CLIENT_STEP_IDS[number]);
+  const isLastStep = clientTab === 'access';
+
+  const canContinueInfo =
+    Boolean(businessName?.trim()) &&
+    Boolean(firstName?.trim()) &&
+    Boolean(lastName?.trim()) &&
+    Boolean(email?.trim()) &&
+    Boolean(cellPhone?.trim());
+
+  const canContinueAddress =
+    Boolean(city?.trim()) &&
+    Boolean(state?.trim()) &&
+    Boolean(zipCode?.trim());
+
+  const canContinue =
+    clientTab === 'info' ? canContinueInfo :
+    clientTab === 'address' ? canContinueAddress :
+    true;
+
+  const goNext = () => {
+    if (!canContinue) return;
+    if (stepIndex < CLIENT_STEP_IDS.length - 1) {
+      setClientTab(CLIENT_STEP_IDS[stepIndex + 1]);
+    }
+  };
+
+  const goBack = () => {
+    if (stepIndex > 0) {
+      setClientTab(CLIENT_STEP_IDS[stepIndex - 1]);
+    }
+  };
 
   useEffect(() => {
     if (client) {
@@ -262,7 +319,11 @@ export function ClientFormModal({
   const onFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    handleSubmit(handleFormSubmit)(e);
+    handleSubmit(handleFormSubmit, (errors) => {
+      const firstField = Object.keys(errors)[0];
+      const tab = firstField ? CLIENT_FIELD_TO_TAB[firstField] : undefined;
+      if (tab) setClientTab(tab);
+    })(e);
   };
 
   const handleSaveAndClose = () => {
@@ -297,6 +358,11 @@ export function ClientFormModal({
     hasLoginAccess: true,
   });
 
+  // Reset tab when dialog opens
+  useEffect(() => {
+    if (open) setClientTab('info');
+  }, [open]);
+
   // Reset form when resetKey changes (triggered by Save & New)
   useEffect(() => {
     if (resetKey > 0 && !client) {
@@ -307,432 +373,491 @@ export function ClientFormModal({
   }, [resetKey, client, reset]);
 
   return (
-    <Dialog open={open} onClose={onClose} fullScreen>
-      <form onSubmit={onFormSubmit} className="h-full flex flex-col">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>{isEdit ? 'Edit Client' : 'Add New Client'}</DialogTitle>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <CloseIcon className="h-5 w-5" />
-            </button>
-          </div>
-        </DialogHeader>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      className="mx-4 flex h-[min(90vh,800px)] w-full max-h-[min(90vh,800px)] max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+    >
+      <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
+        <form onSubmit={onFormSubmit} className="flex h-full min-h-0 flex-col bg-white">
 
-        <DialogContent className="flex-1 overflow-y-auto">
-          {/* Client ID (Read-only in edit mode) */}
-          {isEdit && client && (
-            <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border inline-block">
-              <p className="text-sm text-muted-foreground">Client ID</p>
-              <p className="text-base font-medium">{client.clientId}</p>
+          {/* Header + tabs */}
+          <div className="shrink-0 border-b border-slate-200 px-6 pb-0 pt-5 sm:px-8">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1 pr-2">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                  {isEdit ? 'Edit Client' : 'Add New Client'}
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
+                  Fill in the client&apos;s contact information, business address, billing details, and portal access settings.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="shrink-0 rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Close"
+              >
+                <CloseIcon className="h-5 w-5" />
+              </button>
             </div>
-          )}
-
-          {/* Client Information Section */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Client Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <Label htmlFor="businessName" required>Business Name</Label>
-                <Input
-                  id="businessName"
-                  {...register('businessName')}
-                  error={!!errors.businessName}
-                  disabled={isSubmitting}
-                  placeholder="Business name"
-                />
-                {errors.businessName && (
-                  <p className="text-sm text-destructive mt-1">{errors.businessName.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="firstName" required>First Name</Label>
-                <Input
-                  id="firstName"
-                  {...register('firstName')}
-                  error={!!errors.firstName}
-                  disabled={isSubmitting}
-                  placeholder="First name"
-                />
-                {errors.firstName && (
-                  <p className="text-sm text-destructive mt-1">{errors.firstName.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="lastName" required>Last Name</Label>
-                <Input
-                  id="lastName"
-                  {...register('lastName')}
-                  error={!!errors.lastName}
-                  disabled={isSubmitting}
-                  placeholder="Last name"
-                />
-                {errors.lastName && (
-                  <p className="text-sm text-destructive mt-1">{errors.lastName.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="email" required>Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  {...register('email')}
-                  error={!!errors.email}
-                  disabled={isSubmitting}
-                  placeholder="Email address"
-                />
-                {errors.email && (
-                  <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="ccEmail">CC Email</Label>
-                <Input
-                  id="ccEmail"
-                  type="email"
-                  {...register('ccEmail')}
-                  error={!!errors.ccEmail}
-                  disabled={isSubmitting}
-                  placeholder="CC email address"
-                />
-                {errors.ccEmail && (
-                  <p className="text-sm text-destructive mt-1">{errors.ccEmail.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="cellPhone" required>Cell Phone</Label>
-                <Input
-                  id="cellPhone"
-                  {...register('cellPhone')}
-                  error={!!errors.cellPhone}
-                  disabled={isSubmitting}
-                  placeholder="(123) 456-7890"
-                />
-                {errors.cellPhone && (
-                  <p className="text-sm text-destructive mt-1">{errors.cellPhone.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="businessPhone">Business Phone</Label>
-                <Input
-                  id="businessPhone"
-                  {...register('businessPhone')}
-                  error={!!errors.businessPhone}
-                  disabled={isSubmitting}
-                  placeholder="(123) 456-7890"
-                />
-                {errors.businessPhone && (
-                  <p className="text-sm text-destructive mt-1">{errors.businessPhone.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Details & Requirements - separate row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-              <div>
-                <Label htmlFor="details">Details</Label>
-                <Textarea
-                  id="details"
-                  {...register('details')}
-                  disabled={isSubmitting}
-                  rows={2}
-                  placeholder="Additional details"
-                />
-                {errors.details && (
-                  <p className="text-sm text-destructive mt-1">{errors.details.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="requirements">Requirements</Label>
-                <Textarea
-                  id="requirements"
-                  {...register('requirements')}
-                  disabled={isSubmitting}
-                  rows={2}
-                  placeholder="e.g., Business casual attire"
-                />
-                {errors.requirements && (
-                  <p className="text-sm text-destructive mt-1">{errors.requirements.message}</p>
-                )}
-              </div>
+            <div className="mt-6 flex gap-1 overflow-x-auto border-t border-slate-200/90 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {CLIENT_TABS.map(({ id, label }) => {
+                const active = clientTab === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setClientTab(id)}
+                    className={cn(
+                      'relative shrink-0 whitespace-nowrap px-3 py-3 text-sm transition-colors',
+                      active
+                        ? 'font-bold text-slate-900'
+                        : 'font-medium text-slate-500 hover:text-slate-700'
+                    )}
+                  >
+                    {label}
+                    {active && (
+                      <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-slate-900" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Business Address Section */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Business Address</h3>
+          {/* Body */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Address Search */}
-              <div>
-                <AddressAutocomplete
-                  label="Search Address"
-                  placeholder="Type to search..."
-                  defaultValue={client?.businessAddress || ''}
-                  onSelect={(addressData) => {
-                    setValue('businessAddress', addressData.address);
-                    setValue('city', addressData.city);
-                    setValue('state', addressData.state);
-                    setValue('zipCode', addressData.zipCode);
-                  }}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="businessAddress">Business Address</Label>
-                <Input
-                  id="businessAddress"
-                  {...register('businessAddress')}
-                  error={!!errors.businessAddress}
-                  disabled={isSubmitting}
-                  placeholder="Business address"
-                />
-                {errors.businessAddress && (
-                  <p className="text-sm text-destructive mt-1">{errors.businessAddress.message}</p>
+            {/* Client Info Tab */}
+            {clientTab === 'info' && (
+              <div className="mx-auto max-w-4xl">
+                {isEdit && client && (
+                  <div className="mb-6 inline-block rounded-md border border-border bg-muted/30 p-3">
+                    <p className="text-sm text-muted-foreground">Client ID</p>
+                    <p className="text-base font-medium">{client.clientId}</p>
+                  </div>
                 )}
-              </div>
-
-              <div>
-                <Label htmlFor="businessAddressLine2">Apt / Suite / Unit</Label>
-                <Input
-                  id="businessAddressLine2"
-                  {...register('businessAddressLine2')}
-                  disabled={isSubmitting}
-                  placeholder="Suite 200"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="city" required>City</Label>
-                <Input
-                  id="city"
-                  {...register('city')}
-                  error={!!errors.city}
-                  disabled={isSubmitting}
-                  placeholder="City"
-                />
-                {errors.city && (
-                  <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="state" required>State</Label>
-                <Input
-                  id="state"
-                  {...register('state')}
-                  error={!!errors.state}
-                  disabled={isSubmitting}
-                  placeholder="State"
-                />
-                {errors.state && (
-                  <p className="text-sm text-destructive mt-1">{errors.state.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="zipCode" required>ZIP Code</Label>
-                <Input
-                  id="zipCode"
-                  {...register('zipCode')}
-                  error={!!errors.zipCode}
-                  disabled={isSubmitting}
-                  placeholder="ZIP code"
-                />
-                {errors.zipCode && (
-                  <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Billing Contact Section */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
-              <h3 className="text-lg font-semibold">Billing Contact</h3>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="sameAsContact"
-                  {...register('sameAsContact')}
-                  disabled={isSubmitting}
-                />
-                <Label htmlFor="sameAsContact" className="text-[14px] font-medium cursor-pointer">
-                  Same as contact
-                </Label>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <Label htmlFor="billingFirstName">Billing First Name</Label>
-                <Input
-                  id="billingFirstName"
-                  {...register('billingFirstName')}
-                  error={!!errors.billingFirstName}
-                  disabled={isSubmitting || sameAsContact}
-                  placeholder="First name"
-                />
-                {errors.billingFirstName && (
-                  <p className="text-sm text-destructive mt-1">{errors.billingFirstName.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="billingLastName">Billing Last Name</Label>
-                <Input
-                  id="billingLastName"
-                  {...register('billingLastName')}
-                  error={!!errors.billingLastName}
-                  disabled={isSubmitting || sameAsContact}
-                  placeholder="Last name"
-                />
-                {errors.billingLastName && (
-                  <p className="text-sm text-destructive mt-1">{errors.billingLastName.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="billingEmail">Billing Email</Label>
-                <Input
-                  id="billingEmail"
-                  type="email"
-                  {...register('billingEmail')}
-                  error={!!errors.billingEmail}
-                  disabled={isSubmitting || sameAsContact}
-                  placeholder="billing@example.com"
-                />
-                {errors.billingEmail && (
-                  <p className="text-sm text-destructive mt-1">{errors.billingEmail.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="billingPhone">Billing Phone</Label>
-                <Input
-                  id="billingPhone"
-                  {...register('billingPhone')}
-                  error={!!errors.billingPhone}
-                  disabled={isSubmitting || sameAsContact}
-                  placeholder="(123) 456-7890"
-                />
-                {errors.billingPhone && (
-                  <p className="text-sm text-destructive mt-1">{errors.billingPhone.message}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Locations & Portal Access Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Saved Locations */}
-            {isEdit && client ? (
-              <ClientLocationsSection
-                clientId={client.id}
-                locations={client.locations || []}
-                onLocationsChange={onLocationsChange || (() => { })}
-              />
-            ) : (
-              <TemporaryLocationsSection
-                locations={tempLocations}
-                onLocationsChange={setTempLocations}
-              />
-            )}
-
-            {/* Client Portal Access */}
-            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Client Portal Access</h3>
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="hasLoginAccess"
-                    {...register('hasLoginAccess')}
-                    disabled={isSubmitting}
-                    className="mt-1"
-                  />
+                <h3 className="text-base font-bold text-slate-900">Client Information</h3>
+                <p className="mt-1 text-xs text-slate-500">Core contact and business details for this client.</p>
+                <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
                   <div>
-                    <label htmlFor="hasLoginAccess" className="text-sm font-medium cursor-pointer">
-                      Give this client the ability to log in
-                    </label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      The client will receive an email invitation to set up their account
-                    </p>
+                    <Label htmlFor="businessName" className="text-sm font-bold text-slate-900" required>Business Name</Label>
+                    <Input
+                      id="businessName"
+                      {...register('businessName')}
+                      error={!!errors.businessName}
+                      disabled={isSubmitting}
+                      placeholder="Business name"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.businessName && (
+                      <p className="mt-1 text-sm text-destructive">{errors.businessName.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="firstName" className="text-sm font-bold text-slate-900" required>First Name</Label>
+                    <Input
+                      id="firstName"
+                      {...register('firstName')}
+                      error={!!errors.firstName}
+                      disabled={isSubmitting}
+                      placeholder="First name"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.firstName && (
+                      <p className="mt-1 text-sm text-destructive">{errors.firstName.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName" className="text-sm font-bold text-slate-900" required>Last Name</Label>
+                    <Input
+                      id="lastName"
+                      {...register('lastName')}
+                      error={!!errors.lastName}
+                      disabled={isSubmitting}
+                      placeholder="Last name"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.lastName && (
+                      <p className="mt-1 text-sm text-destructive">{errors.lastName.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="email" className="text-sm font-bold text-slate-900" required>Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      {...register('email')}
+                      error={!!errors.email}
+                      disabled={isSubmitting}
+                      placeholder="Email address"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.email && (
+                      <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="ccEmail" className="text-sm font-bold text-slate-900">CC Email</Label>
+                    <Input
+                      id="ccEmail"
+                      type="email"
+                      {...register('ccEmail')}
+                      error={!!errors.ccEmail}
+                      disabled={isSubmitting}
+                      placeholder="CC email address"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.ccEmail && (
+                      <p className="mt-1 text-sm text-destructive">{errors.ccEmail.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="cellPhone" className="text-sm font-bold text-slate-900" required>Cell Phone</Label>
+                    <Input
+                      id="cellPhone"
+                      {...register('cellPhone')}
+                      error={!!errors.cellPhone}
+                      disabled={isSubmitting}
+                      placeholder="(123) 456-7890"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.cellPhone && (
+                      <p className="mt-1 text-sm text-destructive">{errors.cellPhone.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="businessPhone" className="text-sm font-bold text-slate-900">Business Phone</Label>
+                    <Input
+                      id="businessPhone"
+                      {...register('businessPhone')}
+                      error={!!errors.businessPhone}
+                      disabled={isSubmitting}
+                      placeholder="(123) 456-7890"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.businessPhone && (
+                      <p className="mt-1 text-sm text-destructive">{errors.businessPhone.message}</p>
+                    )}
                   </div>
                 </div>
-
-                {hasLoginAccess && !isEdit && (
-                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
-                    <p className="text-sm text-blue-900">
-                      An invitation email will be sent after creating the client
-                    </p>
+                <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                  <div>
+                    <Label htmlFor="details" className="text-sm font-bold text-slate-900">Details</Label>
+                    <Textarea
+                      id="details"
+                      {...register('details')}
+                      disabled={isSubmitting}
+                      rows={3}
+                      placeholder="Additional details"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.details && (
+                      <p className="mt-1 text-sm text-destructive">{errors.details.message}</p>
+                    )}
                   </div>
+                  <div>
+                    <Label htmlFor="requirements" className="text-sm font-bold text-slate-900">Requirements</Label>
+                    <Textarea
+                      id="requirements"
+                      {...register('requirements')}
+                      disabled={isSubmitting}
+                      rows={3}
+                      placeholder="e.g., Business casual attire"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.requirements && (
+                      <p className="mt-1 text-sm text-destructive">{errors.requirements.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Address Tab */}
+            {clientTab === 'address' && (
+              <div className="mx-auto max-w-4xl">
+                <h3 className="text-base font-bold text-slate-900">Business Address</h3>
+                <p className="mt-1 text-xs text-slate-500">Search or manually enter the primary business address.</p>
+                <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                  <div>
+                    <AddressAutocomplete
+                      label="Search Address"
+                      placeholder="Type to search..."
+                      defaultValue={client?.businessAddress || ''}
+                      onSelect={(addressData) => {
+                        setValue('businessAddress', addressData.address);
+                        setValue('city', addressData.city);
+                        setValue('state', addressData.state);
+                        setValue('zipCode', addressData.zipCode);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="businessAddress" className="text-sm font-bold text-slate-900">Business Address</Label>
+                    <Input
+                      id="businessAddress"
+                      {...register('businessAddress')}
+                      error={!!errors.businessAddress}
+                      disabled={isSubmitting}
+                      placeholder="Business address"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.businessAddress && (
+                      <p className="mt-1 text-sm text-destructive">{errors.businessAddress.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="businessAddressLine2" className="text-sm font-bold text-slate-900">Apt / Suite / Unit</Label>
+                    <Input
+                      id="businessAddressLine2"
+                      {...register('businessAddressLine2')}
+                      disabled={isSubmitting}
+                      placeholder="Suite 200"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="city" className="text-sm font-bold text-slate-900" required>City</Label>
+                    <Input
+                      id="city"
+                      {...register('city')}
+                      error={!!errors.city}
+                      disabled={isSubmitting}
+                      placeholder="City"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.city && (
+                      <p className="mt-1 text-sm text-destructive">{errors.city.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="state" className="text-sm font-bold text-slate-900" required>State</Label>
+                    <Input
+                      id="state"
+                      {...register('state')}
+                      error={!!errors.state}
+                      disabled={isSubmitting}
+                      placeholder="State"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.state && (
+                      <p className="mt-1 text-sm text-destructive">{errors.state.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="zipCode" className="text-sm font-bold text-slate-900" required>ZIP Code</Label>
+                    <Input
+                      id="zipCode"
+                      {...register('zipCode')}
+                      error={!!errors.zipCode}
+                      disabled={isSubmitting}
+                      placeholder="ZIP code"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.zipCode && (
+                      <p className="mt-1 text-sm text-destructive">{errors.zipCode.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Billing Tab */}
+            {clientTab === 'billing' && (
+              <div className="mx-auto max-w-4xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Billing Contact</h3>
+                    <p className="mt-1 text-xs text-slate-500">Who should receive billing communications?</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="sameAsContact"
+                      {...register('sameAsContact')}
+                      disabled={isSubmitting}
+                    />
+                    <Label htmlFor="sameAsContact" className="cursor-pointer text-sm font-medium">
+                      Same as contact
+                    </Label>
+                  </div>
+                </div>
+                <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                  <div>
+                    <Label htmlFor="billingFirstName" className="text-sm font-bold text-slate-900">Billing First Name</Label>
+                    <Input
+                      id="billingFirstName"
+                      {...register('billingFirstName')}
+                      error={!!errors.billingFirstName}
+                      disabled={isSubmitting || sameAsContact}
+                      placeholder="First name"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.billingFirstName && (
+                      <p className="mt-1 text-sm text-destructive">{errors.billingFirstName.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="billingLastName" className="text-sm font-bold text-slate-900">Billing Last Name</Label>
+                    <Input
+                      id="billingLastName"
+                      {...register('billingLastName')}
+                      error={!!errors.billingLastName}
+                      disabled={isSubmitting || sameAsContact}
+                      placeholder="Last name"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.billingLastName && (
+                      <p className="mt-1 text-sm text-destructive">{errors.billingLastName.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="billingEmail" className="text-sm font-bold text-slate-900">Billing Email</Label>
+                    <Input
+                      id="billingEmail"
+                      type="email"
+                      {...register('billingEmail')}
+                      error={!!errors.billingEmail}
+                      disabled={isSubmitting || sameAsContact}
+                      placeholder="billing@example.com"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.billingEmail && (
+                      <p className="mt-1 text-sm text-destructive">{errors.billingEmail.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="billingPhone" className="text-sm font-bold text-slate-900">Billing Phone</Label>
+                    <Input
+                      id="billingPhone"
+                      {...register('billingPhone')}
+                      error={!!errors.billingPhone}
+                      disabled={isSubmitting || sameAsContact}
+                      placeholder="(123) 456-7890"
+                      className="mt-2 rounded-lg border-slate-200"
+                    />
+                    {errors.billingPhone && (
+                      <p className="mt-1 text-sm text-destructive">{errors.billingPhone.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Locations & Access Tab */}
+            {clientTab === 'access' && (
+              <div className="mx-auto max-w-4xl space-y-6">
+                {isEdit && client ? (
+                  <ClientLocationsSection
+                    clientId={client.id}
+                    locations={client.locations || []}
+                    onLocationsChange={onLocationsChange || (() => { })}
+                  />
+                ) : (
+                  <TemporaryLocationsSection
+                    locations={tempLocations}
+                    onLocationsChange={setTempLocations}
+                  />
                 )}
-
-                {hasLoginAccess && isEdit && !client?.userId && !client?.invitationToken && (
-                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
-                    <p className="text-sm text-blue-900">
-                      An invitation email will be sent to the client
-                    </p>
+                <div className="rounded-lg border border-border/30 bg-accent/5 p-5">
+                  <h3 className="text-base font-bold text-slate-900">Client Portal Access</h3>
+                  <p className="mt-1 text-xs text-slate-500">Control whether this client can log in to the portal.</p>
+                  <div className="mt-4 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        id="hasLoginAccess"
+                        {...register('hasLoginAccess')}
+                        disabled={isSubmitting}
+                        className="mt-1"
+                      />
+                      <div>
+                        <label htmlFor="hasLoginAccess" className="cursor-pointer text-sm font-medium">
+                          Give this client the ability to log in
+                        </label>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          The client will receive an email invitation to set up their account
+                        </p>
+                      </div>
+                    </div>
+                    {hasLoginAccess && !isEdit && (
+                      <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+                        <p className="text-sm text-blue-900">An invitation email will be sent after creating the client</p>
+                      </div>
+                    )}
+                    {hasLoginAccess && isEdit && !client?.userId && !client?.invitationToken && (
+                      <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+                        <p className="text-sm text-blue-900">An invitation email will be sent to the client</p>
+                      </div>
+                    )}
+                    {hasLoginAccess && isEdit && client?.invitationToken && !client?.userId && (
+                      <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                        <p className="text-sm text-amber-900">Invitation pending - waiting for client to accept</p>
+                      </div>
+                    )}
+                    {hasLoginAccess && isEdit && client?.userId && (
+                      <div className="rounded-md border border-green-200 bg-green-50 p-3">
+                        <p className="text-sm text-green-900">Client Portal Access is currently enabled</p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+              </div>
+            )}
 
-                {hasLoginAccess && isEdit && client?.invitationToken && !client?.userId && (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-md">
-                    <p className="text-sm text-amber-900">
-                      Invitation pending - waiting for client to accept
-                    </p>
-                  </div>
-                )}
+          </div>
 
-                {hasLoginAccess && isEdit && client?.userId && (
-                  <div className="bg-green-50 border border-green-200 p-3 rounded-md">
-                    <p className="text-sm text-green-900">
-                      Client Portal Access is currently enabled
-                    </p>
-                  </div>
+          {/* Footer */}
+          <div className="shrink-0 border-t border-slate-200 px-6 py-4 sm:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="hidden min-h-5 text-xs text-slate-400 sm:block sm:max-w-sm" />
+              <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {isEdit && onViewDetails && (
+                    <Button type="button" variant="outline" onClick={onViewDetails} className="rounded-lg border-slate-200">
+                      <EyeIcon className="mr-2 h-4 w-4" />
+                      View Details
+                    </Button>
+                  )}
+                  {stepIndex > 0 && (
+                    <Button type="button" variant="outline" onClick={goBack} disabled={isSubmitting} className="rounded-lg border-slate-200">
+                      Back
+                    </Button>
+                  )}
+                  <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="rounded-lg border-slate-200">
+                    Cancel
+                  </Button>
+                  {!isEdit && (
+                    <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
+                      {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                    </Button>
+                  )}
+                </div>
+                {!isLastStep ? (
+                  <Button
+                    type="button"
+                    onClick={goNext}
+                    disabled={isSubmitting || !canContinue}
+                    className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                  >
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    onClick={handleSaveAndClose}
+                    className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                  >
+                    {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? 'Update Client' : 'Save & Close'}
+                  </Button>
                 )}
               </div>
             </div>
           </div>
-        </DialogContent>
 
-        <DialogFooter>
-          {isEdit && onViewDetails && (
-            <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto">
-              <EyeIcon className="h-4 w-4 mr-2" />
-              View Details
-            </Button>
-          )}
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Close
-          </Button>
-          {!isEdit && (
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={isSubmitting}
-              onClick={handleSaveAndNew}
-            >
-              {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
-            </Button>
-          )}
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            onClick={handleSaveAndClose}
-          >
-            {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? 'Update Client' : 'Save & Close'}
-          </Button>
-        </DialogFooter>
-      </form>
+        </form>
+      </DialogContent>
     </Dialog>
   );
 }

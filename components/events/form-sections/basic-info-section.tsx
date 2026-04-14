@@ -30,8 +30,8 @@ export function BasicInfoSection({
   onClientCreated,
 }: BasicInfoSectionProps) {
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
-      <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Basic Information</h3>
+    <div className={cn('', className)}>
+      <h3 className="text-base font-bold text-slate-900 mb-5">Basic Information</h3>
       <div className="space-y-4">
         {/* Row 1: Title, Client, Status */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
