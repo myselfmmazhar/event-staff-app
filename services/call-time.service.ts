@@ -14,6 +14,7 @@ import type {
   UpdateCallTimeInput,
   QueryCallTimesInput,
   SendInvitationsInput,
+  AssignInvitationsInput,
   RespondToInvitationInput,
   StaffSearchInput,
   EventFormAssignmentInput,
@@ -911,6 +912,260 @@ export class CallTimeService {
   }
 
   /**
+   * Accept a pending or waitlisted invitation with slot checking.
+   * Used by staff respond flow and organizer assign-on-behalf (no invitation email).
+   */
+  private async runAcceptWithSlotLogicFromInvitation(invitation: {
+    id: string;
+    callTimeId: string;
+    status: CallTimeInvitationStatus;
+    callTime: {
+      id: string;
+      eventId: string;
+      numberOfStaffRequired: number;
+      service: { title: string | null } | null;
+      event: { id: string; title: string; createdBy: string };
+    };
+    staff: {
+      firstName: string;
+      lastName: string;
+      userId: string | null;
+    };
+  }) {
+    if (invitation.status !== 'PENDING' && invitation.status !== 'WAITLISTED') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Cannot accept invitation in status ${invitation.status}`,
+      });
+    }
+
+    const triggerService = getNotificationTriggerService(this.prisma);
+    const staffName = `${invitation.staff.firstName} ${invitation.staff.lastName}`;
+
+    const confirmedCount = await this.prisma.callTimeInvitation.count({
+      where: {
+        callTimeId: invitation.callTimeId,
+        status: 'ACCEPTED',
+        isConfirmed: true,
+      },
+    });
+
+    const hasAvailableSlot =
+      confirmedCount < invitation.callTime.numberOfStaffRequired;
+
+    const updated = await this.prisma.callTimeInvitation.update({
+      where: { id: invitation.id },
+      data: {
+        status: hasAvailableSlot ? 'ACCEPTED' : 'WAITLISTED',
+        respondedAt: new Date(),
+        isConfirmed: hasAvailableSlot,
+        confirmedAt: hasAvailableSlot ? new Date() : null,
+      },
+      include: {
+        staff: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            userId: true,
+          },
+        },
+        callTime: {
+          include: {
+            service: true,
+            event: {
+              select: {
+                id: true,
+                title: true,
+                venueName: true,
+                city: true,
+                state: true,
+                description: true,
+                requirements: true,
+                preEventInstructions: true,
+                privateComments: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    await triggerService.onInvitationResponse(
+      invitation.callTime.event.createdBy,
+      {
+        staffName,
+        positionName: invitation.callTime.service?.title || 'Service',
+        eventTitle: invitation.callTime.event.title,
+        eventId: invitation.callTime.event.id,
+        status: 'ACCEPTED',
+      }
+    );
+
+    if (hasAvailableSlot && invitation.staff.userId) {
+      await triggerService.onInvitationConfirmed(
+        invitation.staff.userId,
+        {
+          positionName: invitation.callTime.service?.title || 'Service',
+          eventTitle: invitation.callTime.event.title,
+          eventId: invitation.callTime.event.id,
+          callTimeId: invitation.callTime.id,
+        }
+      );
+    }
+
+    if (hasAvailableSlot) {
+      await this.updateEventStatusBasedOnStaffing(invitation.callTime.eventId);
+    }
+
+    return { updated, hasAvailableSlot };
+  }
+
+  /**
+   * Organizer assigns staff immediately: invitation accepted on their behalf, confirmation (or waitlist) email only.
+   */
+  async assignInvitationsOnBehalf(
+    input: AssignInvitationsInput,
+    userId: string,
+    userRole?: string | null
+  ) {
+    const callTimes = await this.findManyByIds(input.callTimeIds, userId, userRole);
+
+    if (callTimes.length === 0) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'No assignments found',
+      });
+    }
+
+    const invitationInclude = {
+      callTime: {
+        include: {
+          service: true,
+          event: {
+            select: {
+              id: true,
+              title: true,
+              createdBy: true,
+              venueName: true,
+              city: true,
+              state: true,
+              description: true,
+              requirements: true,
+              preEventInstructions: true,
+              privateComments: true,
+            },
+          },
+        },
+      },
+      staff: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          userId: true,
+        },
+      },
+    } satisfies Prisma.CallTimeInvitationInclude;
+
+    const results: Array<{
+      outcome: 'confirmed' | 'waitlisted' | 'already_assigned';
+      invitation: {
+        staff: { email: string; firstName: string; lastName: string; userId: string | null };
+        callTime: {
+          startDate: Date | null;
+          startTime: string | null;
+          instructions: string | null;
+          service: { title: string | null } | null;
+          event: {
+            title: string;
+            venueName: string | null;
+            city: string | null;
+            state: string | null;
+            description: string | null;
+            requirements: string | null;
+            preEventInstructions: string | null;
+            privateComments: string | null;
+          };
+        };
+      };
+    }> = [];
+
+    for (const ct of callTimes) {
+      for (const staffId of input.staffIds) {
+        let inv = await this.prisma.callTimeInvitation.findUnique({
+          where: {
+            callTimeId_staffId: { callTimeId: ct.id, staffId },
+          },
+          include: invitationInclude,
+        });
+
+        if (!inv) {
+          inv = await this.prisma.callTimeInvitation.create({
+            data: {
+              callTimeId: ct.id,
+              staffId,
+              status: 'PENDING',
+            },
+            include: invitationInclude,
+          });
+        } else if (inv.status === 'ACCEPTED' && inv.isConfirmed) {
+          results.push({ outcome: 'already_assigned', invitation: inv });
+          continue;
+        } else if (inv.status === 'DECLINED' || inv.status === 'CANCELLED') {
+          inv = await this.prisma.callTimeInvitation.update({
+            where: { id: inv.id },
+            data: {
+              status: 'PENDING',
+              respondedAt: null,
+              declineReason: null,
+              isConfirmed: false,
+              confirmedAt: null,
+            },
+            include: invitationInclude,
+          });
+        } else if (inv.status !== 'PENDING' && inv.status !== 'WAITLISTED') {
+          inv = await this.prisma.callTimeInvitation.update({
+            where: { id: inv.id },
+            data: {
+              status: 'PENDING',
+              respondedAt: null,
+              declineReason: null,
+              isConfirmed: false,
+              confirmedAt: null,
+            },
+            include: invitationInclude,
+          });
+        }
+
+        const { updated, hasAvailableSlot } = await this.runAcceptWithSlotLogicFromInvitation({
+          id: inv.id,
+          callTimeId: inv.callTimeId,
+          status: inv.status,
+          callTime: {
+            id: inv.callTime.id,
+            eventId: inv.callTime.eventId,
+            numberOfStaffRequired: inv.callTime.numberOfStaffRequired,
+            service: inv.callTime.service,
+            event: inv.callTime.event,
+          },
+          staff: inv.staff,
+        });
+
+        results.push({
+          outcome: hasAvailableSlot ? 'confirmed' : 'waitlisted',
+          invitation: updated,
+        });
+      }
+    }
+
+    const processed = results.filter((r) => r.outcome !== 'already_assigned').length;
+    return { results, processed };
+  }
+
+  /**
    * Respond to call time invitation (staff action)
    */
   async respondToInvitation(input: RespondToInvitationInput, userId: string) {
@@ -954,67 +1209,24 @@ export class CallTimeService {
       });
     }
 
-    const triggerService = getNotificationTriggerService(this.prisma);
-    const staffName = `${invitation.staff.firstName} ${invitation.staff.lastName}`;
-
     if (input.accept) {
-      // Check if slots are still available
-      const confirmedCount = await this.prisma.callTimeInvitation.count({
-        where: {
-          callTimeId: invitation.callTimeId,
-          status: 'ACCEPTED',
-          isConfirmed: true,
+      const { updated } = await this.runAcceptWithSlotLogicFromInvitation({
+        id: invitation.id,
+        callTimeId: invitation.callTimeId,
+        status: invitation.status,
+        callTime: {
+          id: invitation.callTime.id,
+          eventId: invitation.callTime.eventId,
+          numberOfStaffRequired: invitation.callTime.numberOfStaffRequired,
+          service: invitation.callTime.service,
+          event: invitation.callTime.event,
         },
+        staff: invitation.staff,
       });
-
-      const hasAvailableSlot =
-        confirmedCount < invitation.callTime.numberOfStaffRequired;
-
-      const updated = await this.prisma.callTimeInvitation.update({
-        where: { id: invitation.id },
-        data: {
-          status: hasAvailableSlot ? 'ACCEPTED' : 'WAITLISTED',
-          respondedAt: new Date(),
-          isConfirmed: hasAvailableSlot,
-          confirmedAt: hasAvailableSlot ? new Date() : null,
-        },
-        include: {
-          callTime: { include: { service: true, event: true } },
-        },
-      });
-
-      // Notify the event creator that staff accepted
-      await triggerService.onInvitationResponse(
-        invitation.callTime.event.createdBy,
-        {
-          staffName,
-          positionName: invitation.callTime.service?.title || 'Service',
-          eventTitle: invitation.callTime.event.title,
-          eventId: invitation.callTime.event.id,
-          status: 'ACCEPTED',
-        }
-      );
-
-      // Notify the staff member if confirmed
-      if (hasAvailableSlot && invitation.staff.userId) {
-        await triggerService.onInvitationConfirmed(
-          invitation.staff.userId,
-          {
-            positionName: invitation.callTime.service?.title || 'Service',
-            eventTitle: invitation.callTime.event.title,
-            eventId: invitation.callTime.event.id,
-            callTimeId: invitation.callTime.id,
-          }
-        );
-      }
-
-      // Update event status if all positions are now filled
-      if (hasAvailableSlot) {
-        await this.updateEventStatusBasedOnStaffing(invitation.callTime.eventId);
-      }
-
       return updated;
     } else {
+      const triggerService = getNotificationTriggerService(this.prisma);
+      const staffName = `${invitation.staff.firstName} ${invitation.staff.lastName}`;
       // Decline
       const updated = await this.prisma.callTimeInvitation.update({
         where: { id: invitation.id },
