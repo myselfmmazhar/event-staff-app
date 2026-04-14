@@ -481,6 +481,45 @@ export function EventFormModal({
     }
   }, [backendErrors, setError]);
 
+  // Wizard step logic
+  const EVENT_STEP_IDS = ['basic', 'venue', 'staff', 'instructions', 'documents'] as const;
+  const eventTitle = watch('title');
+  const eventVenueName = watch('venueName');
+  const eventAddress = watch('address');
+  const eventCity = watch('city');
+  const eventState = watch('state');
+  const eventZipCode = watch('zipCode');
+
+  const formStepIndex = EVENT_STEP_IDS.indexOf(activeTab as typeof EVENT_STEP_IDS[number]);
+  const isFormTab = formStepIndex >= 0;
+  const isLastFormStep = activeTab === 'documents';
+
+  const canContinueBasic = Boolean(eventTitle?.trim());
+  const canContinueVenue =
+    Boolean(eventVenueName?.trim()) &&
+    Boolean(eventAddress?.trim()) &&
+    Boolean(eventCity?.trim()) &&
+    Boolean(eventState?.trim()) &&
+    Boolean(eventZipCode?.trim());
+
+  const canContinueForm =
+    activeTab === 'basic' ? canContinueBasic :
+    activeTab === 'venue' ? canContinueVenue :
+    true;
+
+  const goNextForm = () => {
+    if (!canContinueForm) return;
+    if (formStepIndex < EVENT_STEP_IDS.length - 1) {
+      setActiveTab(EVENT_STEP_IDS[formStepIndex + 1]);
+    }
+  };
+
+  const goBackForm = () => {
+    if (formStepIndex > 0) {
+      setActiveTab(EVENT_STEP_IDS[formStepIndex - 1]);
+    }
+  };
+
   // Auto-fill requirements when client is selected
   const selectedClientId = watch('clientId');
   useEffect(() => {
@@ -1237,50 +1276,73 @@ export function EventFormModal({
 
           {/* Footer */}
           <div className="shrink-0 border-t border-slate-200 px-6 py-4 sm:px-8">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {isEdit && onViewDetails && (
-                <Button type="button" variant="outline" onClick={onViewDetails} className="mr-auto rounded-lg border-slate-200">
-                  <EyeIcon className="mr-2 h-4 w-4" />
-                  View Details
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={isSubmitting || batchImportMutation.isPending}
-                className="rounded-lg border-slate-200"
-              >
-                Cancel
-              </Button>
-              {!isEdit && activeTab === 'batch' && batchStep === 'preview' ? (
-                <Button
-                  type="button"
-                  onClick={handleBatchSubmit}
-                  disabled={batchImportMutation.isPending || batchValidCount === 0}
-                  className="rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800"
-                >
-                  {batchImportMutation.isPending ? 'Importing...' : `Import ${batchValidCount} ${terminology.event.plural}`}
-                </Button>
-              ) : (
-                (isEdit || activeTab !== 'batch') && (
-                  <>
+            {!isEdit && activeTab === 'batch' ? (
+              /* Batch tab footer */
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="hidden min-h-5 text-xs text-slate-400 sm:block sm:max-w-sm" />
+                <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={onClose} disabled={batchImportMutation.isPending} className="rounded-lg border-slate-200">
+                      Cancel
+                    </Button>
+                  </div>
+                  {batchStep === 'preview' ? (
+                    <Button
+                      type="button"
+                      onClick={handleBatchSubmit}
+                      disabled={batchImportMutation.isPending || batchValidCount === 0}
+                      className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                    >
+                      {batchImportMutation.isPending ? 'Importing...' : `Import ${batchValidCount} ${terminology.event.plural}`}
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="outline" onClick={() => setActiveTab('basic')} className="w-full rounded-lg border-slate-200 sm:min-w-[200px]">
+                      Back to Form
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Form tabs wizard footer */
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="hidden min-h-5 text-xs text-slate-400 sm:block sm:max-w-sm" />
+                <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {isEdit && onViewDetails && (
+                      <Button type="button" variant="outline" onClick={onViewDetails} className="rounded-lg border-slate-200">
+                        <EyeIcon className="mr-2 h-4 w-4" />
+                        View Details
+                      </Button>
+                    )}
+                    {isFormTab && formStepIndex > 0 && (
+                      <Button type="button" variant="outline" onClick={goBackForm} disabled={isSubmitting} className="rounded-lg border-slate-200">
+                        Back
+                      </Button>
+                    )}
+                    <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="rounded-lg border-slate-200">
+                      Cancel
+                    </Button>
                     {!isEdit && (
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        disabled={isSubmitting}
-                        onClick={handleSaveAndNew}
-                        className="rounded-lg border-slate-200"
-                      >
+                      <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
                         {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
                       </Button>
                     )}
+                  </div>
+                  {isFormTab && !isLastFormStep ? (
+                    <Button
+                      type="button"
+                      onClick={goNextForm}
+                      disabled={isSubmitting || !canContinueForm}
+                      className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                    >
+                      Continue
+                    </Button>
+                  ) : (
                     <Button
                       type="submit"
                       disabled={isSubmitting}
                       onClick={handleSaveAndClose}
-                      className="rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-40"
+                      className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
                     >
                       {isSubmitting && pendingSaveAction === 'close'
                         ? 'Saving...'
@@ -1288,10 +1350,10 @@ export function EventFormModal({
                           ? `Update ${terminology.event.singular}`
                           : 'Save & Close'}
                     </Button>
-                  </>
-                )
-              )}
-            </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
         </form>
