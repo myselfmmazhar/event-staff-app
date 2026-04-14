@@ -172,6 +172,7 @@ export default function ShiftPage() {
             {/* Table */}
             <Card className="p-4">
                 <DataTable
+                    tableId="tasks-shift"
                     data={shifts}
                     columns={columns}
                     isLoading={isLoading}

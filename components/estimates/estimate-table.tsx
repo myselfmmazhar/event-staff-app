@@ -275,6 +275,7 @@ export function EstimateTable({
 
     return (
         <DataTable
+            tableId="estimates"
             data={estimates}
             columns={columns}
             isLoading={isLoading}

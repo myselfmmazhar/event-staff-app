@@ -6,12 +6,14 @@ import { calcTotalBill, calcTotalInvoice, fmtCurrency } from './helpers';
 
 type TimesheetEventSummaryCardsProps = {
     rows: CallTimeRow[];
+    subTab?: string;
 };
 
-export function TimesheetEventSummaryCards({ rows }: TimesheetEventSummaryCardsProps) {
-    const { totalInvoice, totalBill, openShifts } = useMemo(() => {
+export function TimesheetEventSummaryCards({ rows, subTab }: TimesheetEventSummaryCardsProps) {
+    const { totalInvoice, totalBill, approvedShifts, openShifts } = useMemo(() => {
         let inv = 0;
         let bill = 0;
+        let approved = 0;
         let open = 0;
         for (const ct of rows) {
             const te = ct.timeEntry;
@@ -19,18 +21,23 @@ export function TimesheetEventSummaryCards({ rows }: TimesheetEventSummaryCardsP
             const min = !!ct.applyMinimum;
             inv += calcTotalInvoice(te, ct, commission, 'ACTUAL', min);
             bill += calcTotalBill(te, ct, commission, 'ACTUAL', min);
+
+            const rating = ct.invitations?.[0]?.internalReviewRating ?? null;
+            if (rating === 'MET_EXPECTATIONS') approved += 1;
             if (!ct.staff || ct.needsStaff) open += 1;
         }
-        return { totalInvoice: inv, totalBill: bill, openShifts: open };
+        return { totalInvoice: inv, totalBill: bill, approvedShifts: approved, openShifts: open };
     }, [rows]);
 
     const net = totalInvoice - totalBill;
 
+    const isInvoice = subTab === 'invoice';
+
     const items = [
-        { label: 'Total Invoice', value: fmtCurrency(totalInvoice) },
-        { label: 'Total Bill', value: fmtCurrency(totalBill) },
-        { label: 'Net Income', value: fmtCurrency(net) },
-        { label: 'Open Shifts', value: String(openShifts) },
+        { label: isInvoice ? 'Total Approve Invoice amount' : 'Total Invoice', value: fmtCurrency(totalInvoice) },
+        { label: isInvoice ? 'Total Approve Bill amount' : 'Total Bill', value: fmtCurrency(totalBill) },
+        { label: isInvoice ? 'Approve Net Income' : 'Net Income', value: fmtCurrency(net) },
+        { label: isInvoice ? 'Total Approve Shifts' : 'Total Shifts', value: String(isInvoice ? approvedShifts : openShifts) },
     ];
 
     return (

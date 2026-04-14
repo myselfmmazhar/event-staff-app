@@ -3,17 +3,18 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
-import { SignaturePad } from '@/components/ui/signature-pad';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
-import { BusinessStructure, TaxFilledBy } from '@prisma/client';
+import { BusinessStructure, TaxFilledBy, StaffType } from '@prisma/client';
 import { StaffTaxDetailsSchema, type UpsertStaffTaxDetailsInput } from '@/lib/schemas/staff-tax-details.schema';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2Icon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Form schema - derived from the upsert schema but without staffId (passed as prop)
 const formSchema = StaffTaxDetailsSchema.upsert.omit({ staffId: true });
@@ -33,6 +34,7 @@ interface TaxDetailsFormProps {
      */
     staffW9Presentation?: 'full' | 'hidden';
     staffId?: string;
+    staffType?: StaffType;
     initialData?: {
         taxFilledBy?: TaxFilledBy | string;
         taxName?: string | null;
@@ -50,6 +52,12 @@ interface TaxDetailsFormProps {
         ein?: string | null;
         signatureUrl?: string | null;
         certificationDate?: Date | string | null;
+        w4FirstName?: string | null;
+        w4LastName?: string | null;
+        w4Status?: string | null;
+        w4EmployerName?: string | null;
+        w4EmployerAddress?: string | null;
+        w4EmploymentDate?: Date | string | null;
     } | null;
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -69,6 +77,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
     taxFilledByControl = 'select',
     staffW9Presentation = 'full',
     staffId,
+    staffType,
     initialData,
     onSuccess,
     onCancel,
@@ -108,6 +117,12 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
             ein: initialData?.ein ?? '',
             signatureUrl: initialData?.signatureUrl ?? null,
             certificationDate: initialData?.certificationDate ? new Date(initialData.certificationDate) : null,
+            w4FirstName: initialData?.w4FirstName ?? '',
+            w4LastName: initialData?.w4LastName ?? '',
+            w4Status: initialData?.w4Status ?? 'Single or Married filing separately',
+            w4EmployerName: initialData?.w4EmployerName ?? '',
+            w4EmployerAddress: initialData?.w4EmployerAddress ?? '',
+            w4EmploymentDate: initialData?.w4EmploymentDate ? new Date(initialData.w4EmploymentDate) : null,
         },
     });
 
@@ -131,6 +146,12 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                 ein: fetchedTaxDetails.ein ?? '',
                 signatureUrl: fetchedTaxDetails.signatureUrl ?? null,
                 certificationDate: fetchedTaxDetails.certificationDate ? new Date(fetchedTaxDetails.certificationDate) : null,
+                w4FirstName: fetchedTaxDetails.w4FirstName ?? '',
+                w4LastName: fetchedTaxDetails.w4LastName ?? '',
+                w4Status: fetchedTaxDetails.w4Status ?? 'Single or Married filing separately',
+                w4EmployerName: fetchedTaxDetails.w4EmployerName ?? '',
+                w4EmployerAddress: fetchedTaxDetails.w4EmployerAddress ?? '',
+                w4EmploymentDate: fetchedTaxDetails.w4EmploymentDate ? new Date(fetchedTaxDetails.w4EmploymentDate) : null,
             });
         }
     }, [fetchedTaxDetails, reset, isDirty]);
@@ -212,10 +233,10 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value={TaxFilledBy.TALENT}>
-                                                Talent (will fill out their own W-9)
+                                                Talent (will fill out their own tax form)
                                             </SelectItem>
                                             <SelectItem value={TaxFilledBy.STAFF}>
-                                                Staff / Admin (enter W-9 details now)
+                                                Staff / Admin (enter tax details now)
                                             </SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -231,51 +252,54 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                 </div>
             )}
 
-            {/* W-9 Form — Only show when Staff/Admin fills it out */}
-            {taxFilledBy === TaxFilledBy.STAFF && staffW9Presentation !== 'hidden' && (
+            {/* W-9 Form — Only show when Staff/Admin fills it out AND talent is Contractor */}
+            {taxFilledBy === TaxFilledBy.STAFF && staffW9Presentation !== 'hidden' && staffType === StaffType.CONTRACTOR && (
                 <>
                     {/* W-9 Header */}
                     <div>
-                        <div className="flex items-center gap-3 border-b border-border pb-2 mb-4">
+                        <div className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
                             <h3 className="text-lg font-semibold">Form W-9</h3>
-                            <span className="text-xs text-muted-foreground">Request for Taxpayer Identification Number and Certification</span>
+                            <span className="text-xs text-muted-foreground sm:max-w-[55%] sm:text-right">
+                                Request for Taxpayer Identification Number and Certification
+                            </span>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div>
-                                <Label htmlFor="taxName">
-                                    Name <span className="text-xs text-muted-foreground">(as shown on your income tax return)</span>
+                        {/* Two-column grid: aligned rows, no orphan cells */}
+                        <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                            <div className="min-w-0">
+                                <Label htmlFor="taxName" className="text-sm leading-snug">
+                                    Name <span className="font-normal text-muted-foreground">(as on income tax return)</span>
                                 </Label>
                                 <Input
                                     id="taxName"
+                                    className="mt-2 h-10"
                                     {...register('taxName')}
                                     disabled={isDisabled}
-                                    placeholder="Name of entity/individual"
+                                    placeholder="Name of entity or individual"
                                 />
                                 {errors.taxName && (
-                                    <p className="text-sm text-destructive mt-1">{errors.taxName.message}</p>
+                                    <p className="mt-1 text-sm text-destructive">{errors.taxName.message}</p>
                                 )}
                             </div>
 
-                            <div>
-                                <Label htmlFor="businessName">
+                            <div className="min-w-0">
+                                <Label htmlFor="businessName" className="text-sm leading-snug">
                                     Business name / disregarded entity name
                                 </Label>
                                 <Input
                                     id="businessName"
+                                    className="mt-2 h-10"
                                     {...register('businessName')}
                                     disabled={isDisabled}
                                     placeholder="Business name (if applicable)"
                                 />
                                 {errors.businessName && (
-                                    <p className="text-sm text-destructive mt-1">{errors.businessName.message}</p>
+                                    <p className="mt-1 text-sm text-destructive">{errors.businessName.message}</p>
                                 )}
                             </div>
 
-                            <div>
-                                <Label>
-                                    Federal tax classification
-                                </Label>
+                            <div className="min-w-0">
+                                <Label className="text-sm leading-snug">Federal tax classification</Label>
                                 <Controller
                                     name="businessStructure"
                                     control={control}
@@ -285,7 +309,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                             onValueChange={field.onChange}
                                             disabled={isDisabled}
                                         >
-                                            <SelectTrigger className="mt-1.5">
+                                            <SelectTrigger className="mt-2 h-10 w-full">
                                                 <SelectValue placeholder="Select classification" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -299,9 +323,9 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                             </div>
 
                             {businessStructure === BusinessStructure.LLC && (
-                                <div>
-                                    <Label htmlFor="llcClassification">
-                                        LLC Tax Classification
+                                <div className="min-w-0 md:col-span-2">
+                                    <Label htmlFor="llcClassification" className="text-sm leading-snug">
+                                        LLC tax classification
                                     </Label>
                                     <Controller
                                         name="llcClassification"
@@ -312,7 +336,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                                 onValueChange={field.onChange}
                                                 disabled={isDisabled}
                                             >
-                                                <SelectTrigger className="mt-1.5">
+                                                <SelectTrigger className="mt-2 h-10 w-full max-w-md">
                                                     <SelectValue placeholder="Select LLC classification" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -323,30 +347,32 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                             </Select>
                                         )}
                                     />
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Enter the tax classification (C=C corporation, S=S corporation, P=Partnership)
+                                    <p className="mt-1.5 text-xs text-muted-foreground">
+                                        C = C corporation, S = S corporation, P = Partnership
                                     </p>
                                 </div>
                             )}
 
-                            <div>
-                                <Label htmlFor="exemptPayeeCode">
-                                    Exempt payee code <span className="text-xs text-muted-foreground">(if any)</span>
+                            <div className="min-w-0">
+                                <Label htmlFor="exemptPayeeCode" className="text-sm leading-snug">
+                                    Exempt payee code <span className="font-normal text-muted-foreground">(if any)</span>
                                 </Label>
                                 <Input
                                     id="exemptPayeeCode"
+                                    className="mt-2 h-10"
                                     {...register('exemptPayeeCode')}
                                     disabled={isDisabled}
                                     placeholder="Code (if applicable)"
                                 />
                             </div>
 
-                            <div>
-                                <Label htmlFor="fatcaExemptionCode">
-                                    FATCA exemption code <span className="text-xs text-muted-foreground">(if any)</span>
+                            <div className="min-w-0">
+                                <Label htmlFor="fatcaExemptionCode" className="text-sm leading-snug">
+                                    FATCA exemption code <span className="font-normal text-muted-foreground">(if any)</span>
                                 </Label>
                                 <Input
                                     id="fatcaExemptionCode"
+                                    className="mt-2 h-10"
                                     {...register('fatcaExemptionCode')}
                                     disabled={isDisabled}
                                     placeholder="Code (if applicable)"
@@ -357,174 +383,260 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
 
                     {/* Address */}
                     <div>
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Address</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div>
-                                <Label htmlFor="taxAddress">
-                                    Address <span className="text-xs text-muted-foreground">(number, street, and apt. or suite no.)</span>
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-5">Address</h3>
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-12">
+                            <div className="min-w-0 md:col-span-12">
+                                <Label htmlFor="taxAddress" className="text-sm leading-snug">
+                                    Address <span className="font-normal text-muted-foreground">(street, apt. or suite)</span>
                                 </Label>
                                 <Input
                                     id="taxAddress"
+                                    className="mt-2 h-10"
                                     {...register('taxAddress')}
                                     disabled={isDisabled}
                                     placeholder="Street address"
                                 />
                             </div>
-                            <div>
+                            <div className="min-w-0 md:col-span-5">
                                 <Label htmlFor="taxCity">City</Label>
                                 <Input
                                     id="taxCity"
+                                    className="mt-2 h-10"
                                     {...register('taxCity')}
                                     disabled={isDisabled}
                                     placeholder="City"
                                 />
                             </div>
-                            <div>
+                            <div className="min-w-0 md:col-span-3">
                                 <Label htmlFor="taxState">State</Label>
                                 <Input
                                     id="taxState"
+                                    className="mt-2 h-10"
                                     {...register('taxState')}
                                     disabled={isDisabled}
                                     placeholder="State"
                                 />
                             </div>
-                            <div>
-                                <Label htmlFor="taxZip">ZIP Code</Label>
+                            <div className="min-w-0 md:col-span-4">
+                                <Label htmlFor="taxZip">ZIP code</Label>
                                 <Input
                                     id="taxZip"
+                                    className="mt-2 h-10"
                                     {...register('taxZip')}
                                     disabled={isDisabled}
                                     placeholder="ZIP"
                                 />
                             </div>
-                            <div>
-                                <Label htmlFor="accountNumbers">
-                                    Account number(s) <span className="text-xs text-muted-foreground">(optional)</span>
+                            <div className="min-w-0 md:col-span-12">
+                                <Label htmlFor="accountNumbers" className="text-sm leading-snug">
+                                    Account number(s) <span className="font-normal text-muted-foreground">(optional)</span>
                                 </Label>
                                 <Input
                                     id="accountNumbers"
+                                    className="mt-2 h-10"
                                     {...register('accountNumbers')}
                                     disabled={isDisabled}
-                                    placeholder="List account number(s) here (optional)"
+                                    placeholder="Optional account numbers"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* Part I: Taxpayer Identification Number */}
+                    {/* Part I: Taxpayer Identification Number — toggles on their own row; input below (no grid overlap) */}
                     <div>
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-2">
                             Taxpayer Identification Number (TIN)
                         </h3>
-                        <p className="text-sm text-muted-foreground mb-4">
+                        <p className="text-sm text-muted-foreground mb-5">
                             Enter your TIN in the appropriate box. This is securely stored and used for tax reporting purposes only.
                         </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                            {/* TIN Type toggle */}
-                            <div className="flex items-center gap-4">
-                                <button
-                                    type="button"
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tinType === 'SSN'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-muted text-muted-foreground hover:bg-accent'
-                                        }`}
-                                    onClick={() => setTinType('SSN')}
+                        <div className="space-y-5">
+                            <div>
+                                <span className="mb-3 block text-sm font-medium text-foreground">Identification type</span>
+                                <div
+                                    role="group"
+                                    aria-label="TIN type"
+                                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
                                 >
-                                    Social Security Number
-                                </button>
-                                <span className="text-sm text-muted-foreground">or</span>
-                                <button
-                                    type="button"
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tinType === 'EIN'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-muted text-muted-foreground hover:bg-accent'
-                                        }`}
-                                    onClick={() => setTinType('EIN')}
-                                >
-                                    Employer Identification Number
-                                </button>
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            'rounded-lg border px-4 py-2.5 text-left text-sm font-medium transition-colors sm:min-w-[10rem]',
+                                            tinType === 'SSN'
+                                                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                                                : 'border-border bg-background text-foreground hover:bg-muted/60'
+                                        )}
+                                        onClick={() => setTinType('SSN')}
+                                    >
+                                        Social Security Number
+                                    </button>
+                                    <span className="hidden px-1 text-center text-xs text-muted-foreground sm:block sm:self-center">
+                                        or
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            'rounded-lg border px-4 py-2.5 text-left text-sm font-medium transition-colors sm:min-w-[10rem]',
+                                            tinType === 'EIN'
+                                                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                                                : 'border-border bg-background text-foreground hover:bg-muted/60'
+                                        )}
+                                        onClick={() => setTinType('EIN')}
+                                    >
+                                        Employer Identification Number
+                                    </button>
+                                </div>
                             </div>
 
-                            {tinType === 'SSN' ? (
-                                <div>
-                                    <Label htmlFor="ssn">Social Security Number</Label>
-                                    <Input
-                                        id="ssn"
-                                        type="password"
-                                        {...register('ssn')}
-                                        disabled={isDisabled}
-                                        placeholder="XXX-XX-XXXX"
-                                        autoComplete="off"
-                                    />
-                                    {errors.ssn && (
-                                        <p className="text-sm text-destructive mt-1">{errors.ssn.message}</p>
-                                    )}
-                                </div>
-                            ) : (
-                                <div>
-                                    <Label htmlFor="ein">Employer Identification Number</Label>
-                                    <Input
-                                        id="ein"
-                                        {...register('ein')}
-                                        disabled={isDisabled}
-                                        placeholder="XX-XXXXXXX"
-                                    />
-                                    {errors.ein && (
-                                        <p className="text-sm text-destructive mt-1">{errors.ein.message}</p>
-                                    )}
-                                </div>
-                            )}
+                            <div className="max-w-md rounded-lg border border-border/60 bg-muted/20 p-4">
+                                {tinType === 'SSN' ? (
+                                    <>
+                                        <Label htmlFor="ssn" className="text-sm font-medium">
+                                            Social Security Number
+                                        </Label>
+                                        <Input
+                                            id="ssn"
+                                            type="password"
+                                            className="mt-2 h-10 bg-background"
+                                            {...register('ssn')}
+                                            disabled={isDisabled}
+                                            placeholder="XXX-XX-XXXX"
+                                            autoComplete="off"
+                                        />
+                                        {errors.ssn && (
+                                            <p className="mt-1.5 text-sm text-destructive">{errors.ssn.message}</p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Label htmlFor="ein" className="text-sm font-medium">
+                                            Employer Identification Number
+                                        </Label>
+                                        <Input
+                                            id="ein"
+                                            className="mt-2 h-10 bg-background"
+                                            {...register('ein')}
+                                            disabled={isDisabled}
+                                            placeholder="XX-XXXXXXX"
+                                        />
+                                        {errors.ein && (
+                                            <p className="mt-1.5 text-sm text-destructive">{errors.ein.message}</p>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
+                </>
+            )}
 
-                    {/* Part II: Certification */}
+            {/* W-4 Form — Only show when Staff/Admin fills it out AND talent is Employee */}
+            {taxFilledBy === TaxFilledBy.STAFF && staffW9Presentation !== 'hidden' && (staffType === StaffType.EMPLOYEE || !staffType) && (
+                <>
+                    {/* W-4 Header */}
                     <div>
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">
-                            Certification
-                        </h3>
-                        <div className="text-sm text-muted-foreground space-y-2 mb-4">
-                            <p>Under penalties of perjury, I certify that:</p>
-                            <ol className="list-decimal list-outside ml-5 space-y-1">
-                                <li>The number shown on this form is my correct taxpayer identification number, and</li>
-                                <li>I am not subject to backup withholding, and</li>
-                                <li>I am a U.S. citizen or other U.S. person, and</li>
-                                <li>The FATCA code(s) entered on this form (if any) are correct.</li>
-                            </ol>
+                        <div className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+                            <h3 className="text-lg font-semibold">Form W-4</h3>
+                            <span className="text-xs text-muted-foreground sm:max-w-[55%] sm:text-right">
+                                Employee&apos;s Withholding Certificate
+                            </span>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {/* Signature */}
-                            <div className="lg:col-span-2">
-                                <Label>Signature</Label>
-                                <div className="mt-1.5">
-                                    <Controller
-                                        name="signatureUrl"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <SignaturePad
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                disabled={isDisabled}
-                                            />
-                                        )}
-                                    />
-                                </div>
-                                {errors.signatureUrl && (
-                                    <p className="text-sm text-destructive mt-1">{errors.signatureUrl.message}</p>
+                        {/* Design similar to W-9 */}
+                        <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                            <div className="min-w-0">
+                                <Label htmlFor="w4FirstName" className="text-sm font-bold">
+                                    1. First name
+                                </Label>
+                                <Input
+                                    id="w4FirstName"
+                                    className="mt-2 h-10"
+                                    {...register('w4FirstName')}
+                                    disabled={isDisabled}
+                                    placeholder="Enter first name"
+                                />
+                                {errors.w4FirstName && (
+                                    <p className="mt-1 text-sm text-destructive">{errors.w4FirstName.message}</p>
                                 )}
                             </div>
 
-                            {/* Certification Date */}
-                            <div>
-                                <Label htmlFor="certificationDate">Date</Label>
+                            <div className="min-w-0">
+                                <Label htmlFor="w4LastName" className="text-sm font-bold">
+                                    2. Last name
+                                </Label>
+                                <Input
+                                    id="w4LastName"
+                                    className="mt-2 h-10"
+                                    {...register('w4LastName')}
+                                    disabled={isDisabled}
+                                    placeholder="Enter last name"
+                                />
+                                {errors.w4LastName && (
+                                    <p className="mt-1 text-sm text-destructive">{errors.w4LastName.message}</p>
+                                )}
+                            </div>
+
+                            <div className="min-w-0 md:col-span-2">
+                                <Label htmlFor="w4Status" className="text-sm font-bold">
+                                    3. Filing Status
+                                </Label>
                                 <Controller
-                                    name="certificationDate"
+                                    name="w4Status"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select
+                                            value={field.value ?? ''}
+                                            onValueChange={field.onChange}
+                                            disabled={isDisabled}
+                                        >
+                                            <SelectTrigger className="mt-2 h-10 w-full">
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Single or Married filing separately">Single or Married filing separately</SelectItem>
+                                                <SelectItem value="Married filing jointly or Qualifying surviving spouse">Married filing jointly or Qualifying surviving spouse</SelectItem>
+                                                <SelectItem value="Head of household">Head of household (Check only if you’re unmarried and pay more than half the costs of keeping up a home for yourself and a qualifying individual.)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="min-w-0 md:col-span-2">
+                                <Label htmlFor="w4EmployerName" className="text-sm font-bold">
+                                    7. Employer’s name and address
+                                </Label>
+                                <Input
+                                    id="w4EmployerName"
+                                    className="mt-2 h-10"
+                                    {...register('w4EmployerName')}
+                                    disabled={isDisabled}
+                                    placeholder="Employer Name"
+                                />
+                            </div>
+                            <div className="min-w-0 md:col-span-2">
+                                <Textarea
+                                    id="w4EmployerAddress"
+                                    className="mt-2 min-h-[80px]"
+                                    {...register('w4EmployerAddress')}
+                                    disabled={isDisabled}
+                                    placeholder="Employer Address"
+                                />
+                            </div>
+
+                            <div className="min-w-0">
+                                <Label htmlFor="w4EmploymentDate" className="text-sm font-bold">
+                                    8. First date of employment
+                                </Label>
+                                <Controller
+                                    name="w4EmploymentDate"
                                     control={control}
                                     render={({ field }) => (
                                         <Input
-                                            id="certificationDate"
+                                            id="w4EmploymentDate"
                                             type="date"
+                                            className="mt-2 h-10"
                                             value={field.value instanceof Date && !isNaN(field.value.getTime())
                                                 ? field.value.toISOString().split('T')[0]
                                                 : ''
@@ -537,6 +649,98 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                         />
                                     )}
                                 />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Reuse Address Section for Step 4-5 */}
+                    <div>
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-5">
+                            4-5. Address
+                        </h3>
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-12">
+                            <div className="min-w-0 md:col-span-12">
+                                <Label htmlFor="w4Address" className="text-sm font-bold">
+                                    Address
+                                </Label>
+                                <Input
+                                    id="w4Address"
+                                    className="mt-2 h-10"
+                                    {...register('taxAddress')}
+                                    disabled={isDisabled}
+                                    placeholder="Street address"
+                                />
+                            </div>
+                            <div className="min-w-0 md:col-span-5">
+                                <Label htmlFor="w4City">City</Label>
+                                <Input
+                                    id="w4City"
+                                    className="mt-2 h-10"
+                                    {...register('taxCity')}
+                                    disabled={isDisabled}
+                                    placeholder="City"
+                                />
+                            </div>
+                            <div className="min-w-0 md:col-span-3">
+                                <Label htmlFor="w4State">State</Label>
+                                <Input
+                                    id="w4State"
+                                    className="mt-2 h-10"
+                                    {...register('taxState')}
+                                    disabled={isDisabled}
+                                    placeholder="State"
+                                />
+                            </div>
+                            <div className="min-w-0 md:col-span-4">
+                                <Label htmlFor="w4Zip">ZIP code</Label>
+                                <Input
+                                    id="w4Zip"
+                                    className="mt-2 h-10"
+                                    {...register('taxZip')}
+                                    disabled={isDisabled}
+                                    placeholder="ZIP"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* TIN Section for Step 3 & 9 */}
+                    <div>
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-2">
+                            Identifiers
+                        </h3>
+                        <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                            <div className="min-w-0">
+                                <Label htmlFor="w4ssn" className="text-sm font-bold">
+                                    3. Social Security Number
+                                </Label>
+                                <Input
+                                    id="w4ssn"
+                                    type="password"
+                                    className="mt-2 h-10"
+                                    {...register('ssn')}
+                                    disabled={isDisabled}
+                                    placeholder="XXX-XX-XXXX"
+                                    autoComplete="off"
+                                />
+                                {errors.ssn && (
+                                    <p className="mt-1.5 text-sm text-destructive">{errors.ssn.message}</p>
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <Label htmlFor="w4ein" className="text-sm font-bold">
+                                    9. Employer Identification Number (EIN)
+                                </Label>
+                                <Input
+                                    id="w4ein"
+                                    className="mt-2 h-10"
+                                    {...register('ein')}
+                                    disabled={isDisabled}
+                                    placeholder="XX-XXXXXXX"
+                                />
+                                {errors.ein && (
+                                    <p className="mt-1.5 text-sm text-destructive">{errors.ein.message}</p>
+                                )}
                             </div>
                         </div>
                     </div>

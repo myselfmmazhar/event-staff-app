@@ -358,6 +358,13 @@ export function CallTimeDetailModal({
             commission: callTime.commission ?? false,
             commissionAmount: callTime.commissionAmount ?? null,
             commissionAmountType: callTime.commissionAmountType ?? null,
+            applyMinimum: callTime.applyMinimum ?? false,
+            minimum: callTime.minimum ?? null,
+            travelInMinimum: callTime.travelInMinimum ?? false,
+            expenditure: callTime.expenditure ?? false,
+            expenditureCost: callTime.expenditureCost ?? null,
+            expenditurePrice: callTime.expenditurePrice ?? null,
+            expenditureAmountType: callTime.expenditureAmountType ?? null,
             notes: callTime.notes,
           }}
           eventId={callTime.event.id}

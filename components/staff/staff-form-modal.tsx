@@ -8,9 +8,17 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon, EyeIcon, ChevronDownIcon } from '@/components/ui/icons';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
 import { AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus, TaxFilledBy } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
@@ -32,8 +40,10 @@ import {
     type CompanyOption,
     type TeamMemberInput,
 } from './form-sections';
+import { STAFF_RATING_OPTIONS } from './form-sections/constants';
 import { TaxDetailsForm, type TaxDetailsFormRef } from './tax-details-form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { phoneValidation } from '@/lib/utils/validation';
@@ -44,6 +54,11 @@ import {
     Smartphone,
     Search,
     Camera,
+    ClipboardCheck,
+    User,
+    MapPin,
+    Star,
+    Calculator,
 } from 'lucide-react';
 
 const STAFF_FORM_DRAFT_KEY = 'staff-add-form-draft-v1';
@@ -58,14 +73,14 @@ const SHOW_REQUIREMENTS_DOCUMENT_UPLOAD = false;
  * Toggle to show the nested Form W-9 when “Company completes the tax form” (TaxFilledBy.STAFF) is selected.
  * When false, the mode switch still works; tax data is submitted without the inline W-9 UI.
  */
-const SHOW_TAX_STAFF_W9_FORM = false;
+const SHOW_TAX_STAFF_W9_FORM = true;
 
 const WIZARD_STEPS = ['basic', 'talentType', 'requirements', 'tax', 'review'] as const;
 type WizardStep = (typeof WIZARD_STEPS)[number];
 
 const STEP_LABELS: Record<WizardStep, string> = {
     basic: 'Basic Info',
-    talentType: 'Talent Type',
+    talentType: 'Experience',
     requirements: 'Requirements',
     tax: 'Tax Flow',
     review: 'Review',
@@ -74,10 +89,6 @@ const STEP_LABELS: Record<WizardStep, string> = {
 const STAFF_TYPE_CHIPS: { id: string; label: string; value: StaffType }[] = [
     { id: 'contractor', label: 'Contractor', value: StaffType.CONTRACTOR },
     { id: 'employee', label: 'Employee', value: StaffType.EMPLOYEE },
-    { id: 'freelancer', label: 'Freelancer', value: StaffType.FREELANCE },
-    { id: 'vendor', label: 'Vendor', value: StaffType.COMPANY },
-    { id: 'volunteer', label: 'Volunteer', value: StaffType.EMPLOYEE },
-    { id: 'custom', label: 'Custom', value: StaffType.CONTRACTOR },
 ];
 
 function defaultTalentChipIdForStaffType(t: StaffType): string {
@@ -104,55 +115,55 @@ const REQ_TEMPLATE_CARDS: {
     footer: string;
     Icon: typeof FileText;
 }[] = [
-    {
-        id: 'w9',
-        title: 'Tax form - W-9',
-        badge: 'Standard',
-        description: 'Contractor tax requirement with acknowledgement and signature.',
-        footer: 'Included for contractor',
-        Icon: FileText,
-    },
-    {
-        id: 'upload',
-        title: 'File upload',
-        badge: 'Standard',
-        description: 'Upload certifications, insurance, IDs, or supporting documents.',
-        footer: 'Add supporting docs',
-        Icon: Cloud,
-    },
-    {
-        id: 'esign',
-        title: 'E-signature',
-        badge: 'Standard',
-        description: 'Signature-only requirement for policies, agreements, or acknowledgements.',
-        footer: 'Signature required',
-        Icon: PenLine,
-    },
-    {
-        id: 'idv',
-        title: 'ID verification',
-        badge: 'Smart',
-        description: 'Identity or document verification based on role and compliance need.',
-        footer: 'Optional requirement',
-        Icon: Smartphone,
-    },
-    {
-        id: 'bg',
-        title: 'Background check',
-        badge: 'Smart',
-        description: 'Use when the role, client, venue, or market requires it.',
-        footer: 'Optional requirement',
-        Icon: Search,
-    },
-    {
-        id: 'headshot',
-        title: 'Headshot / profile photo',
-        badge: 'Smart',
-        description: 'Useful for promotional talent, models, and client-facing roles.',
-        footer: 'Optional requirement',
-        Icon: Camera,
-    },
-];
+        {
+            id: 'w9',
+            title: 'Tax form - W-9',
+            badge: 'Standard',
+            description: 'Contractor tax requirement with acknowledgement and signature.',
+            footer: 'Included for contractor',
+            Icon: FileText,
+        },
+        {
+            id: 'upload',
+            title: 'File upload',
+            badge: 'Standard',
+            description: 'Upload certifications, insurance, IDs, or supporting documents.',
+            footer: 'Add supporting docs',
+            Icon: Cloud,
+        },
+        {
+            id: 'esign',
+            title: 'E-signature',
+            badge: 'Standard',
+            description: 'Signature-only requirement for policies, agreements, or acknowledgements.',
+            footer: 'Signature required',
+            Icon: PenLine,
+        },
+        {
+            id: 'idv',
+            title: 'ID verification',
+            badge: 'Smart',
+            description: 'Identity or document verification based on role and compliance need.',
+            footer: 'Optional requirement',
+            Icon: Smartphone,
+        },
+        {
+            id: 'bg',
+            title: 'Background check',
+            badge: 'Smart',
+            description: 'Use when the role, client, venue, or market requires it.',
+            footer: 'Optional requirement',
+            Icon: Search,
+        },
+        {
+            id: 'headshot',
+            title: 'Headshot / profile photo',
+            badge: 'Smart',
+            description: 'Useful for promotional talent, models, and client-facing roles.',
+            footer: 'Optional requirement',
+            Icon: Camera,
+        },
+    ];
 
 // Helper to get default form values
 const getDefaultFormValues = () => ({
@@ -324,6 +335,7 @@ function StaffFormContent({
     const lastName = watch('lastName');
     const email = watch('email');
     const phone = watch('phone');
+    const serviceIds = watch('serviceIds') ?? [];
 
     useEffect(() => {
         if (staff) return;
@@ -380,10 +392,7 @@ function StaffFormContent({
 
     const emailValid = Boolean(email?.trim() && z.string().email().safeParse(email.trim()).success);
     const phoneValid = Boolean(phone?.trim() && phoneValidation.isValid(phone));
-    const canProceedBasic =
-        Boolean(firstName?.trim()) &&
-        Boolean(lastName?.trim()) &&
-        (emailValid || phoneValid);
+    const canProceedBasic = emailValid;
 
     const handleFormSubmit: SubmitHandler<StaffFormInput> = async (data) => {
         if (!isEdit && !data.email?.trim()) {
@@ -481,11 +490,11 @@ function StaffFormContent({
                 <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 pr-2">
                         <h2 className="text-2xl font-bold tracking-tight text-slate-900">{titleText}</h2>
-                        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
+                        {/* <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
                             After adding a {terminology.staff.lower}, they will be invited by email or phone to join your
                             network, complete onboarding requirements, review any company-entered information, and sign
                             where required.
-                        </p>
+                        </p> */}
                     </div>
                     <button
                         type="button"
@@ -534,7 +543,7 @@ function StaffFormContent({
 
                         <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
                             <div>
-                                <Label htmlFor="sf-firstName" className="text-sm font-bold text-slate-900" required>
+                                <Label htmlFor="sf-firstName" className="text-sm font-bold text-slate-900">
                                     First name
                                 </Label>
                                 <Input
@@ -550,7 +559,7 @@ function StaffFormContent({
                                 )}
                             </div>
                             <div>
-                                <Label htmlFor="sf-lastName" className="text-sm font-bold text-slate-900" required>
+                                <Label htmlFor="sf-lastName" className="text-sm font-bold text-slate-900">
                                     Last name
                                 </Label>
                                 <Input
@@ -566,7 +575,7 @@ function StaffFormContent({
                                 )}
                             </div>
                             <div>
-                                <Label htmlFor="sf-email" className="text-sm font-bold text-slate-900">
+                                <Label htmlFor="sf-email" className="text-sm font-bold text-slate-900" required>
                                     Email
                                 </Label>
                                 <p className="mt-1 text-xs text-slate-500">Used for invite and account setup</p>
@@ -627,59 +636,94 @@ function StaffFormContent({
                             </div>
                         </div>
 
-                        <div className="mt-6">
-                            <Label htmlFor="sf-invite-rule" className="text-sm font-bold text-slate-900">
-                                Invite rule
-                            </Label>
-                            <Input
-                                id="sf-invite-rule"
-                                readOnly
-                                disabled
-                                value="At least one of Email or Phone is required before Continue is enabled."
-                                className="mt-2 cursor-default rounded-lg border-slate-200 bg-slate-50 text-slate-600"
-                            />
+                        <div className="mt-8 pt-8 border-t border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Classification & Services</h3>
+                            
+                            <div className="mt-6">
+                                <Label className="text-sm font-bold text-slate-900">Talent type</Label>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {STAFF_TYPE_CHIPS.map(({ id, label, value }) => {
+                                        const selected = talentTypeChipId === id;
+                                        return (
+                                            <button
+                                                key={id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setTalentTypeChipId(id);
+                                                    setValue('staffType', value, { shouldDirty: true });
+                                                }}
+                                                disabled={isSubmitting}
+                                                className={cn(
+                                                    'rounded-full border px-5 py-2 text-sm font-medium transition-all',
+                                                    selected
+                                                        ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                                                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                                )}
+                                            >
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {wizardStep === 'talentType' && (
                     <div className="mx-auto max-w-4xl">
-                        <h3 className="text-base font-bold text-slate-900">2. Talent type</h3>
+                        <h3 className="text-base font-bold text-slate-900">2. Experience Profile</h3>
                         <p className="mt-1 text-xs text-slate-500">
-                            Talent type helps determine onboarding and tax expectations for this {terminology.staff.lower}.
+                            Provide background information, skills, or internal notes for this talent.
                         </p>
-                        <div className="mt-5 flex flex-wrap gap-2">
-                            {STAFF_TYPE_CHIPS.map(({ id, label, value }) => {
-                                const selected = talentTypeChipId === id;
-                                return (
-                                    <button
-                                        key={id}
-                                        type="button"
-                                        onClick={() => {
-                                            setTalentTypeChipId(id);
-                                            setValue('staffType', value, { shouldDirty: true });
-                                        }}
-                                        disabled={isSubmitting}
-                                        className={cn(
-                                            'rounded-full border px-4 py-2 text-sm font-medium transition-colors',
-                                            selected
-                                                ? 'border-slate-900 bg-slate-900 text-white'
-                                                : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
-                                        )}
-                                    >
-                                        {label}
-                                    </button>
-                                );
-                            })}
+                        <div className="mt-6 space-y-8">
+                            <div>
+                                <Label htmlFor="sf-rating" className="text-sm font-bold text-slate-900">Initial Rating</Label>
+                                <p className="mt-1 text-xs text-slate-500 mb-3">Set an initial quality rating if known.</p>
+                                <Controller
+                                    name="staffRating"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                            disabled={isSubmitting}
+                                        >
+                                            <SelectTrigger id="sf-rating" className="h-10 w-full max-w-xs rounded-lg border-slate-200">
+                                                <SelectValue placeholder="Select rating..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {STAFF_RATING_OPTIONS.map((opt) => (
+                                                    <SelectItem key={opt.value} value={opt.value}>
+                                                        {opt.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="sf-services" className="text-sm font-bold text-slate-900">Services</Label>
+                                <p className="mt-1 text-xs text-slate-500 mb-3">Select the primary service types for this talent.</p>
+                                <Controller
+                                    name="serviceIds"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <MultiSelect
+                                            id="sf-services"
+                                            options={services.map(s => ({ value: s.id, label: s.title }))}
+                                            value={field.value || []}
+                                            onChange={field.onChange}
+                                            placeholder="Select services..."
+                                            disabled={isSubmitting}
+                                            error={!!errors.serviceIds}
+                                            searchable
+                                        />
+                                    )}
+                                />
+                            </div>
                         </div>
-                        {/* <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-                            <p className="text-sm font-bold text-slate-900">Example logic</p>
-                            <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                Contractor flows typically include W-9, payment method, and optional business details.
-                                Employee flows swap in W-4 and employment-specific requirements. You can refine account
-                                settings in the review step.
-                            </p>
-                        </div> */}
                     </div>
                 )}
 
@@ -710,7 +754,11 @@ function StaffFormContent({
                                         )}
                                     >
                                         <div className="flex items-start justify-between gap-2">
-                                            <span className="text-sm font-bold text-slate-900">{card.title}</span>
+                                            <span className="text-sm font-bold text-slate-900">
+                                                {card.id === 'w9' 
+                                                    ? (watch('staffType') === StaffType.EMPLOYEE ? 'Tax form - W-4' : 'Tax form - W-9') 
+                                                    : card.title}
+                                            </span>
                                             <span
                                                 className={cn(
                                                     'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
@@ -801,7 +849,7 @@ function StaffFormContent({
                                         <div>
                                             <p className="text-sm font-bold text-slate-900">Company completes the tax form</p>
                                             <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                                                Admin pre-fills W-9 details now; the {terminology.staff.lower} reviews later.
+                                                Admin pre-fills tax details now; the {terminology.staff.lower} reviews later.
                                             </p>
                                         </div>
                                         <span
@@ -829,6 +877,7 @@ function StaffFormContent({
                                 taxFilledByControl={isEdit ? 'select' : 'hidden'}
                                 staffW9Presentation={SHOW_TAX_STAFF_W9_FORM ? 'full' : 'hidden'}
                                 staffId={staff?.id}
+                                staffType={watch('staffType')}
                                 initialData={staff?.taxDetails ?? null}
                             />
                         </div>
@@ -837,62 +886,267 @@ function StaffFormContent({
 
                 {wizardStep === 'review' && (
                     <div className="mx-auto max-w-4xl space-y-8">
-                        <div>
-                            <h3 className="text-base font-bold text-slate-900">5. Review</h3>
-                            <p className="mt-1 text-xs text-slate-500">
-                                Confirm the flow matches how this {terminology.staff.lower} will onboard.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                            <div className="rounded-xl border border-slate-200 bg-slate-100/70 p-4">
-                                <p className="text-sm font-bold text-slate-900">
-                                    Scenario A · {terminology.staff.singular} entered their own information
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 shadow-indigo-200 shadow-lg text-white">
+                                        <ClipboardCheck className="h-5 w-5" />
+                                    </div>
+                                    Review & Confirm
+                                </h3>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Verify all details before sending the onboarding invitation.
                                 </p>
-                                <ul className="mt-3 space-y-2">
-                                    {[
-                                        'Review all entered fields',
-                                        'Acknowledge accuracy of tax information',
-                                        'Sign digitally',
-                                        'Submit onboarding packet',
-                                    ].map((line) => (
-                                        <li
-                                            key={line}
-                                            className="rounded-lg border border-slate-200/80 bg-white px-3 py-2 text-sm text-slate-700"
-                                        >
-                                            {line}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="rounded-xl border border-slate-200 bg-slate-100/70 p-4">
-                                <p className="text-sm font-bold text-slate-900">
-                                    Scenario B · Company pre-filled tax information
-                                </p>
-                                <ul className="mt-3 space-y-2">
-                                    {[
-                                        'Review company-entered fields',
-                                        'Confirm the information is correct',
-                                        'Sign digitally',
-                                        'Accept and complete onboarding',
-                                    ].map((line) => (
-                                        <li
-                                            key={line}
-                                            className="rounded-lg border border-slate-200/80 bg-white px-3 py-2 text-sm text-slate-700"
-                                        >
-                                            {line}
-                                        </li>
-                                    ))}
-                                </ul>
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-slate-200 bg-slate-100/70 px-4 py-3">
+                        {/* Full Data Summary Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Section 1: Core Profile */}
+                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-50/50">
+                                <div className="mb-5 flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                                            <User className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Core Profile</h4>
+                                    </div>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-8 rounded-full px-3 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                                        onClick={() => setWizardStep('basic')}
+                                    >
+                                        Edit
+                                    </Button>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Identity</span>
+                                        <p className="text-base font-bold text-slate-900">{watch('firstName')} {watch('lastName')}</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email Address</span>
+                                            <p className="text-sm font-semibold text-slate-700 truncate">{watch('email')}</p>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone Number</span>
+                                            <p className="text-sm font-semibold text-slate-700">{watch('phone') || '—'}</p>
+                                        </div>
+                                    </div>
+                                    {(watch('customField1') || watch('customField2')) && (
+                                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-3">
+                                            {watch('customField1') && (
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Company Name</span>
+                                                    <p className="text-sm font-semibold text-slate-700 truncate">{watch('customField1')}</p>
+                                                </div>
+                                            )}
+                                            {watch('customField2') && (
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">External ID</span>
+                                                    <p className="text-sm font-semibold text-slate-700">{watch('customField2')}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className="pt-2 flex items-center gap-3">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Talent Type</span>
+                                            <span className={cn(
+                                                "inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight",
+                                                watch('staffType') === StaffType.CONTRACTOR ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"
+                                            )}>
+                                                {watch('staffType')}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Role</span>
+                                            <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight text-slate-700">
+                                                {watch('staffRole')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section 2: Experience & Skills */}
+                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-50/50">
+                                <div className="mb-5 flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                                            <Star className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Professional Profile</h4>
+                                    </div>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-8 rounded-full px-3 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                        onClick={() => setWizardStep('talentType')}
+                                    >
+                                        Edit
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-5">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Initial Quality Rating</span>
+                                        <div className="flex items-center gap-1.5">
+                                            {watch('staffRating') !== StaffRating.NA ? (
+                                                <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100 font-bold text-sm">
+                                                    <Star className="h-3 w-3 fill-current" />
+                                                    {watch('staffRating')}
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm font-bold text-slate-400 italic">No initial rating set</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Selected Services</span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {serviceIds.length > 0 ? (
+                                                serviceIds.map(id => {
+                                                    const service = services.find(s => s.id === id);
+                                                    return (
+                                                        <span key={id} className="inline-flex items-center rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
+                                                            {service?.title || id}
+                                                        </span>
+                                                    );
+                                                })
+                                            ) : (
+                                                <span className="text-xs font-bold text-slate-400 italic bg-slate-50 border border-dashed border-slate-200 rounded-lg px-3 py-2 w-full text-center">
+                                                    No service specialities selected
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section 3: Onboarding Requirements */}
+                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-sky-300 hover:shadow-xl hover:shadow-sky-50/50 md:col-span-2">
+                                <div className="mb-5 flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                                            <FileText className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Onboarding Packet</h4>
+                                    </div>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-8 rounded-full px-3 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                                        onClick={() => setWizardStep('requirements')}
+                                    >
+                                        Edit
+                                    </Button>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                    {Array.from(selectedReqTemplates).map(id => {
+                                        const card = REQ_TEMPLATE_CARDS.find(c => c.id === id);
+                                        return (
+                                            <div key={id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
+                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm border border-slate-100 text-sky-600">
+                                                    {card ? <card.Icon className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-slate-900 truncate">
+                                                        {id === 'w9' 
+                                                            ? (watch('staffType') === StaffType.EMPLOYEE ? 'Form W-4' : 'Form W-9') 
+                                                            : card?.title || id}
+                                                    </p>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Active Requirement</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {selectedReqTemplates.size === 0 && (
+                                        <p className="col-span-full text-center py-4 bg-slate-50 border border-dashed border-slate-200 rounded-3xl text-sm font-bold text-slate-400 italic">
+                                            No requirements selected for this onboarding packet
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Section 4: Collection Strategy (Tax Flow) */}
+                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-amber-300 hover:shadow-xl hover:shadow-amber-50/50 md:col-span-2">
+                                <div className="mb-5 flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                                            <Calculator className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Collection Strategy</h4>
+                                    </div>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-8 rounded-full px-3 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                                        onClick={() => setWizardStep('tax')}
+                                    >
+                                        Edit
+                                    </Button>
+                                </div>
+
+                                <div className="flex flex-col md:flex-row items-stretch gap-6">
+                                    <div className="flex-1 rounded-2xl border-2 border-slate-900 bg-slate-900 p-5 text-white shadow-xl shadow-slate-200">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-900 font-black text-xs">
+                                                {createTaxFilledBy === TaxFilledBy.TALENT ? 'A' : 'B'}
+                                            </div>
+                                            <p className="text-sm font-black uppercase tracking-tight">Active Workflow</p>
+                                        </div>
+                                        <p className="text-lg font-bold leading-tight mb-2">
+                                            {createTaxFilledBy === TaxFilledBy.TALENT 
+                                                ? `${terminology.staff.singular} will complete their own tax form` 
+                                                : "Company will pre-fill tax details"
+                                            }
+                                        </p>
+                                        <p className="text-xs text-slate-400 font-medium">
+                                            {createTaxFilledBy === TaxFilledBy.TALENT 
+                                                ? "Best for remote onboarding and privacy. The talent will be prompted to provide these details during their setup."
+                                                : "Best for internal records or when you already have the paperwork in hand. You have pre-filled the necessary fields."
+                                            }
+                                        </p>
+                                    </div>
+
+                                    <div className="flex-1 space-y-3 py-1">
+                                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Workflow Steps</h5>
+                                        {(createTaxFilledBy === TaxFilledBy.TALENT 
+                                            ? [
+                                                'Talent reviews invite & signs up',
+                                                'Talent verifies basic info accuracy',
+                                                'Talent completes digital tax form',
+                                                'Submit final onboarding packet'
+                                            ] : [
+                                                'Talent reviews company-entered fields',
+                                                'Talent confirms information is correct',
+                                                'Talent accepts onboarding conditions',
+                                                'Final profile activation'
+                                            ]
+                                        ).map((step, i) => (
+                                            <div key={i} className="flex items-center gap-3 text-sm font-bold text-slate-700">
+                                                <div className="h-5 w-5 shrink-0 flex items-center justify-center rounded-full bg-slate-100 text-[10px] text-slate-500">{i+1}</div>
+                                                {step}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        </div>
+                        {/* Final closing for the grid container */}
+                        </div>
+
+                {/* <div className="rounded-xl border border-slate-200 bg-slate-100/70 px-4 py-3">
                             <p className="text-sm font-bold text-slate-900">Suggested statuses after send</p>
                             <p className="mt-1 text-sm text-slate-600">
                                 Draft · Invited · In Progress · Awaiting Signature · Completed
                             </p>
-                        </div>
+                        </div> */}
 
                         {isEdit && staff && (
                             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -969,58 +1223,15 @@ function StaffFormContent({
             </div>
 
             {/* Footer */}
-            <div className="shrink-0 border-t border-slate-200 px-6 py-4 sm:px-8">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="hidden min-h-[1.25rem] text-xs text-slate-400 sm:block sm:max-w-sm" />
-                    <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
-                        <div className="flex flex-wrap items-center justify-end gap-2">
-                            {isEdit && onViewDetails && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={onViewDetails}
-                                    className="rounded-lg border-slate-200"
-                                >
-                                    <EyeIcon className="mr-2 h-4 w-4" />
-                                    View Details
-                                </Button>
-                            )}
-                            {stepIndex > 0 && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={goBack}
-                                    disabled={isSubmitting}
-                                    className="rounded-lg border-slate-200"
-                                >
-                                    Back
-                                </Button>
-                            )}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onClose}
-                                disabled={isSubmitting}
-                                className="rounded-lg border-slate-200"
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleSaveDraft}
-                                disabled={isSubmitting}
-                                className="rounded-lg border-slate-200"
-                            >
-                                Save Draft
-                            </Button>
-                        </div>
+            <div className="shrink-0 border-t border-slate-200 px-6 py-5 sm:px-8 bg-slate-50/50">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-1">
                         {!isLastStep ? (
                             <Button
                                 type="button"
                                 onClick={goNext}
                                 disabled={isSubmitting || (wizardStep === 'basic' && !canProceedBasic)}
-                                className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                                className="h-12 w-full rounded-xl bg-slate-900 px-10 text-base font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[220px]"
                             >
                                 Continue
                             </Button>
@@ -1028,15 +1239,58 @@ function StaffFormContent({
                             <Button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                                className="h-12 w-full rounded-xl bg-indigo-600 px-10 text-base font-bold text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 hover:shadow-none sm:w-auto sm:min-w-[220px]"
                             >
                                 {isSubmitting
                                     ? 'Saving...'
                                     : isEdit
-                                      ? `Update ${terminology.staff.singular}`
-                                      : 'Send invite'}
+                                        ? `Update ${terminology.staff.singular}`
+                                        : 'Send invite'}
                             </Button>
                         )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                        {isEdit && onViewDetails && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={onViewDetails}
+                                className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                            >
+                                <EyeIcon className="mr-2 h-4 w-4" />
+                                View Details
+                            </Button>
+                        )}
+                        {stepIndex > 0 && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={goBack}
+                                disabled={isSubmitting}
+                                className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                            >
+                                Back
+                            </Button>
+                        )}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onClose}
+                            disabled={isSubmitting}
+                            className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleSaveDraft}
+                            disabled={isSubmitting}
+                            className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                        >
+                            Save Draft
+                        </Button>
                     </div>
                 </div>
             </div>

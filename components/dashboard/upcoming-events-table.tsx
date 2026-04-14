@@ -439,6 +439,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
       {/* Table */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <DataTable
+          tableId="dashboard-upcoming-events"
           data={events || []}
           columns={columns}
           isLoading={isLoading}

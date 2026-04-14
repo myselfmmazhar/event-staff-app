@@ -448,6 +448,8 @@ export class StaffService {
                 data: {
                     staffId,
                     ...inviteData,
+                    firstName: inviteData.firstName ?? '',
+                    lastName: inviteData.lastName ?? '',
                     accountStatus: AccountStatus.PENDING,
                     // Placeholder values for required fields (will be filled on invitation acceptance)
                     phone: '',

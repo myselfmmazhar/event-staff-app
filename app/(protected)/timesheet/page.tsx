@@ -15,6 +15,9 @@ import {
     TimesheetEventSummaryCards,
     TimesheetDetailToolbar,
 } from '@/components/timesheet';
+import { useTableResize } from '@/hooks/use-table-resize';
+import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
+import { cn } from '@/lib/utils';
 import { CallTimeExportDropdown } from '@/components/events/call-time-export-dropdown';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
@@ -53,6 +56,7 @@ function getEventGroupListSortTime(group: EventGroup): number {
 }
 
 export default function TimeManagerPage() {
+    const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-drilldown');
     const { toast } = useToast();
     const router = useRouter();
     const utils = trpc.useUtils();
@@ -75,9 +79,9 @@ export default function TimeManagerPage() {
 
     /** Event / client / talent detail table (screenshot-style toolbar + card rows) */
     const [detailSearch, setDetailSearch] = useState('');
-    const [detailStatus, setDetailStatus] = useState('all');
-    const [detailAssignment, setDetailAssignment] = useState('all');
-    const [detailRateType, setDetailRateType] = useState('all');
+    const [detailStatus, setDetailStatus] = useState<string>('all');
+    const [detailCommission, setDetailCommission] = useState<string>('all');
+    const [detailRateType, setDetailRateType] = useState<string>('all');
     const [detailVariance, setDetailVariance] = useState('all');
 
     // ── Row State ──
@@ -433,7 +437,7 @@ export default function TimeManagerPage() {
         if (!selectedEventId && !selectedClientId && !selectedStaffId) {
             setDetailSearch('');
             setDetailStatus('all');
-            setDetailAssignment('all');
+            setDetailCommission('all');
             setDetailRateType('all');
             setDetailVariance('all');
         }
@@ -472,8 +476,10 @@ export default function TimeManagerPage() {
                         }
                     }
                 }
-                if (detailAssignment === 'assigned' && !ct.staff) return false;
-                if (detailAssignment === 'unassigned' && ct.staff) return false;
+                if (detailCommission !== 'all') {
+                    const isComm = detailCommission === 'yes';
+                    if (!!ct.commission !== isComm) return false;
+                }
                 if (detailRateType !== 'all' && ct.payRateType !== detailRateType) return false;
                 if (detailVariance !== 'all') {
                     const hs = calcScheduledHours(ct);
@@ -485,7 +491,7 @@ export default function TimeManagerPage() {
                 }
                 return true;
             }),
-        [detailSearch, detailStatus, detailAssignment, detailRateType, detailVariance],
+        [detailSearch, detailStatus, detailCommission, detailRateType, detailVariance],
     );
 
     const getDetailExportProps = (group: { callTimes: CallTimeRow[] }) => {
@@ -1100,7 +1106,7 @@ export default function TimeManagerPage() {
                                         </div>
                                     </div>
                                     {detailSubTabPills}
-                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
+                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} subTab={subTab} />
                                     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                                         <div className="border-b border-border bg-muted/15 px-4 py-3">
                                             <TimesheetDetailToolbar
@@ -1108,8 +1114,8 @@ export default function TimeManagerPage() {
                                                 onSearchChange={setDetailSearch}
                                                 status={detailStatus}
                                                 onStatusChange={setDetailStatus}
-                                                assignment={detailAssignment}
-                                                onAssignmentChange={setDetailAssignment}
+                                                commission={detailCommission}
+                                                onCommissionChange={setDetailCommission}
                                                 rateType={detailRateType}
                                                 onRateTypeChange={setDetailRateType}
                                                 variance={detailVariance}
@@ -1121,6 +1127,7 @@ export default function TimeManagerPage() {
                                                     })
                                                 }
                                                 exportControl={<span className="hidden" aria-hidden />}
+                                                subTab={subTab}
                                             />
                                         </div>
                                         <div className="p-4">
@@ -1323,7 +1330,7 @@ export default function TimeManagerPage() {
                                         </div>
                                     </div>
                                     {detailSubTabPills}
-                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
+                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} subTab={subTab} />
                                     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                                         <div className="border-b border-border bg-muted/15 px-4 py-3">
                                             <TimesheetDetailToolbar
@@ -1331,8 +1338,8 @@ export default function TimeManagerPage() {
                                                 onSearchChange={setDetailSearch}
                                                 status={detailStatus}
                                                 onStatusChange={setDetailStatus}
-                                                assignment={detailAssignment}
-                                                onAssignmentChange={setDetailAssignment}
+                                                commission={detailCommission}
+                                                onCommissionChange={setDetailCommission}
                                                 rateType={detailRateType}
                                                 onRateTypeChange={setDetailRateType}
                                                 variance={detailVariance}
@@ -1344,6 +1351,7 @@ export default function TimeManagerPage() {
                                                     })
                                                 }
                                                 exportControl={<span className="hidden" aria-hidden />}
+                                                subTab={subTab}
                                             />
                                         </div>
                                         <div className="p-4">
@@ -1598,7 +1606,7 @@ export default function TimeManagerPage() {
                                         </div>
                                     </div>
                                     {detailSubTabPills}
-                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} />
+                                    <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} subTab={subTab} />
                                     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                                         <div className="border-b border-border bg-muted/15 px-4 py-3">
                                             <TimesheetDetailToolbar
@@ -1606,8 +1614,8 @@ export default function TimeManagerPage() {
                                                 onSearchChange={setDetailSearch}
                                                 status={detailStatus}
                                                 onStatusChange={setDetailStatus}
-                                                assignment={detailAssignment}
-                                                onAssignmentChange={setDetailAssignment}
+                                                commission={detailCommission}
+                                                onCommissionChange={setDetailCommission}
                                                 rateType={detailRateType}
                                                 onRateTypeChange={setDetailRateType}
                                                 variance={detailVariance}
@@ -1619,6 +1627,7 @@ export default function TimeManagerPage() {
                                                     })
                                                 }
                                                 exportControl={<span className="hidden" aria-hidden />}
+                                                subTab={subTab}
                                             />
                                         </div>
                                         <div className="p-4">
@@ -1877,11 +1886,18 @@ export default function TimeManagerPage() {
                             commission: editingTask.commission ?? false,
                             commissionAmount: editingTask.commissionAmount as any,
                             commissionAmountType: editingTask.commissionAmountType as any,
+                            applyMinimum: editingTask.applyMinimum ?? false,
+                            minimum: editingTask.minimum as any,
+                            travelInMinimum: editingTask.travelInMinimum ?? false,
+                            expenditure: editingTask.expenditure ?? false,
+                            expenditureCost: editingTask.expenditureCost as any,
+                            expenditurePrice: editingTask.expenditurePrice as any,
+                            expenditureAmountType: editingTask.expenditureAmountType as any,
                             notes: editingTask.notes,
                         }}
                         onSubmit={(data) => {
                             updateCallTimeMutation.mutate({
-                                id: editingTask.callTimeId,
+                                id: editingTask.id,
                                 ...data as any,
                             });
                         }}

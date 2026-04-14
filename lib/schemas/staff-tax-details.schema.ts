@@ -129,6 +129,12 @@ export class StaffTaxDetailsSchema {
         // W-9 Part II: Certification
         signatureUrl: optionalStringField(),
         certificationDate: z.date().optional().nullable(),
+        w4FirstName: z.string().max(100).transform(emptyToNull).optional().nullable(),
+        w4LastName: z.string().max(100).transform(emptyToNull).optional().nullable(),
+        w4Status: z.string().max(100).transform(emptyToNull).optional().nullable(),
+        w4EmployerName: z.string().max(200).transform(emptyToNull).optional().nullable(),
+        w4EmployerAddress: z.string().max(300).transform(emptyToNull).optional().nullable(),
+        w4EmploymentDate: z.date().optional().nullable(),
     });
 
     /**
@@ -204,6 +210,12 @@ export class StaffTaxDetailsSchema {
         // W-9 Part II: Certification
         signatureUrl: optionalStringField(),
         certificationDate: z.date().optional().nullable(),
+        w4FirstName: z.string().max(100).transform(emptyToNull).optional().nullable(),
+        w4LastName: z.string().max(100).transform(emptyToNull).optional().nullable(),
+        w4Status: z.string().max(100).transform(emptyToNull).optional().nullable(),
+        w4EmployerName: z.string().max(200).transform(emptyToNull).optional().nullable(),
+        w4EmployerAddress: z.string().max(300).transform(emptyToNull).optional().nullable(),
+        w4EmploymentDate: z.date().optional().nullable(),
     });
 }
 

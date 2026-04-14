@@ -78,12 +78,21 @@ export class CallTimeService {
 
     const callTimeId = await generateCallTimeId(this.prisma);
 
+    const ratingRequired =
+      !data.ratingRequired || data.ratingRequired === 'ANY'
+        ? null
+        : (data.ratingRequired as StaffRating);
+
+    const applyMinimum = data.applyMinimum ?? false;
+    const minimumAmount = applyMinimum ? data.minimum ?? null : null;
+
     const result = await this.prisma.callTime.create({
       data: {
         callTimeId,
         serviceId: data.serviceId,
         numberOfStaffRequired: data.numberOfStaffRequired,
         skillLevel: data.skillLevel,
+        ratingRequired,
         startDate: data.startDate,
         startTime: data.startTime,
         endDate: data.endDate,
@@ -98,7 +107,9 @@ export class CallTimeService {
         commission: data.commission ?? false,
         commissionAmount: data.commissionAmount ?? null,
         commissionAmountType: data.commissionAmountType ?? null,
-        minimum: data.minimum ?? (data as any).minimumAmount ?? null,
+        applyMinimum,
+        minimum: minimumAmount,
+        travelInMinimum: data.travelInMinimum ?? false,
         expenditure: data.expenditure ?? false,
         expenditurePrice: data.expenditurePrice ?? null,
         expenditureCost: data.expenditureCost ?? null,
@@ -376,8 +387,16 @@ export class CallTimeService {
     const { serviceId, ...restData } = data;
     const prismaData: any = { ...restData };
 
+    if (prismaData.ratingRequired === 'ANY') {
+      prismaData.ratingRequired = null;
+    }
+
     if (restData.minimum === undefined && (restData as any).minimumAmount !== undefined) {
       prismaData.minimum = (restData as any).minimumAmount;
+    }
+
+    if (prismaData.applyMinimum === false) {
+      prismaData.minimum = null;
     }
 
     // Handle service relation
