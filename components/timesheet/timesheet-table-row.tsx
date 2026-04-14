@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, ClockIcon } from '@/components/ui/icons';
@@ -49,20 +50,24 @@ function formatShiftInstant(d: Date | null): string {
 }
 
 /** Invoice description: "03/02/2026 4:00 PM - 03/03/2026 12:44 AM" */
-function formatInvoiceDateTimeRange(start: Date | null, end: Date | null): string {
+function formatInvoiceDateTimeRange(start: Date | null, end: Date | null) {
     if (!start) return '—';
     const left = format(start, 'MM/dd/yyyy h:mm a');
     if (!end) return `${left} - —`;
-    return `${left} - ${format(end, 'MM/dd/yyyy h:mm a')}`;
+    return (
+        <span className="whitespace-nowrap">
+            {left} - {format(end, 'MM/dd/yyyy h:mm a')}
+        </span>
+    );
 }
 
-function invoiceScheduledRange(row: CallTimeRow): string {
+function invoiceScheduledRange(row: CallTimeRow) {
     const schedStart = combineDateTime(row.startDate, row.startTime);
     const schedEnd = combineDateTime(row.endDate ?? row.startDate, row.endTime);
     return formatInvoiceDateTimeRange(schedStart, schedEnd);
 }
 
-function invoiceActualRange(tev: CallTimeRow['timeEntry']): string {
+function invoiceActualRange(tev: CallTimeRow['timeEntry']) {
     if (!tev?.clockIn) return 'No clock';
     return formatInvoiceDateTimeRange(new Date(tev.clockIn), tev.clockOut ? new Date(tev.clockOut) : null);
 }
@@ -74,6 +79,14 @@ function invoiceStaffHeadline(row: CallTimeRow, event: CallTimeRow['event'] | un
         return loc ? `${name} (${loc})` : name;
     }
     return loc ? `Open shift (${loc})` : 'Open shift';
+}
+
+function ServiceBadge({ service }: { service: { title: string } | null | undefined }) {
+    return (
+        <Badge variant="primary" className="text-[10px] whitespace-nowrap bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight py-1 font-bold">
+            {service?.title || '—'}
+        </Badge>
+    );
 }
 
 export function TimesheetTableRow({
@@ -140,14 +153,6 @@ export function TimesheetTableRow({
     useEffect(() => {
         setIsMinApp(!!ct.applyMinimum);
     }, [ct.applyMinimum]);
-
-    useEffect(() => {
-        ct.commission = isCommApp;
-    }, [isCommApp, ct]);
-
-    useEffect(() => {
-        ct.applyMinimum = isMinApp;
-    }, [isMinApp, ct]);
 
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
@@ -242,6 +247,17 @@ export function TimesheetTableRow({
     };
 
     const handleToggleMinimum = (val: boolean) => {
+        if (val) {
+            const minVal = toNumber(ct.minimum);
+            if (minVal <= 0) {
+                toast({
+                    title: 'Minimum price required',
+                    description: 'You did not assign a minimum price for this task. Please set a minimum price first.',
+                    variant: 'destructive',
+                });
+                return;
+            }
+        }
         setIsMinApp(val);
         if (onSaveTimeEntry) {
             const parsedOtCost = otCostManual !== '' ? parseFloat(otCostManual) : null;
@@ -348,9 +364,7 @@ export function TimesheetTableRow({
 
                         {/* Services / Product (Position) */}
                         <td className="px-3 py-2.5">
-                            <Badge variant="primary" className="text-[10px] whitespace-nowrap bg-blue-100 text-blue-700 hover:bg-blue-200 border-none leading-tight py-1 font-bold">
-                                {ct.service?.title || '—'}
-                            </Badge>
+                            <ServiceBadge service={ct.service} />
                         </td>
 
 
@@ -369,25 +383,27 @@ export function TimesheetTableRow({
                                         const rowClockHrs = calcClockedHours(rowTe);
 
                                         const actualLine = (
-                                            <span className="text-slate-800">
-                                                {invoiceActualRange(rowTe)}
-                                                <span className="text-muted-foreground font-normal">
-                                                    {' '}
+                                            <div className="flex flex-col gap-0.5 leading-tight">
+                                                <div className="text-slate-800 font-semibold">
+                                                    {invoiceActualRange(rowTe)}
+                                                </div>
+                                                <div className="text-muted-foreground font-medium text-[10px]">
                                                     ({rowClockHrs.toFixed(2)} hrs)
-                                                </span>
+                                                </div>
                                                 {isSoloInvoiceRow && isEdited && (
-                                                    <Badge variant="secondary" className="ml-1.5 text-[9px] h-4 px-1 py-0 leading-none font-medium align-middle">
+                                                    <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1 py-0 leading-none font-medium w-fit">
                                                         Edited
                                                     </Badge>
                                                 )}
-                                            </span>
+                                            </div>
                                         );
 
                                         return (
                                             <div
                                                 key={row.id ?? idx}
-                                                className={`flex flex-col gap-1 ${idx > 0 ? 'pt-3 border-t border-border/60' : ''}`}
+                                                className={`flex flex-col gap-2.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}
                                             >
+<<<<<<< HEAD
                                                 <div className="font-semibold text-slate-900 text-[12px] leading-snug">
                                                     {invoiceStaffHeadline(row, row.event ?? ct.event)}
                                                 </div>
@@ -454,10 +470,23 @@ export function TimesheetTableRow({
                                                                     </PopoverContent>
                                                                 )}
                                                             </Popover>
+=======
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-baseline gap-1.5">
+                                                        <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider w-24 shrink-0">Schedule Shift</span>
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <div className="text-slate-800 font-semibold">{invoiceScheduledRange(row)}</div>
+                                                            <div className="text-muted-foreground font-medium text-[10px]">({rowSchedHrs.toFixed(2)} hrs)</div>
+>>>>>>> 5d8989634c12ff79994a7d916b65f019a92f83eb
                                                         </div>
-                                                    ) : (
-                                                        <div className="text-slate-800">{actualLine}</div>
-                                                    )}
+                                                    </div>
+                                                    
+                                                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                                                        <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider w-24 shrink-0">Actual Shift</span>
+                                                        <div className="min-w-0 flex-1">
+                                                            {actualLine}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
@@ -567,68 +596,56 @@ export function TimesheetTableRow({
                             </select>
                         </td>
 
-                        {/* Bill Description - Matches Screenshot 2 + Notes */}
-                        <td className="px-3 py-4 text-[10px] leading-relaxed min-w-[500px]">
-                            <div className="flex flex-col gap-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="font-bold text-primary text-[12px] uppercase tracking-tight">
-                                            {ct.event?.title || '—'}
-                                        </span>
-                                        <span className="text-[10px] text-slate-500 font-medium">
-                                            {ct.event?.venueName || '—'}
-                                            {(ct.event?.city || ct.event?.state) ? ` (${[ct.event?.city, ct.event?.state].filter(Boolean).join(', ')})` : ''}
-                                        </span>
-                                        <span className="text-[10px] text-slate-500 font-medium">
-                                            Qty: {ct.mergedRows?.length || (!ct.staff ? ct.numberOfStaffRequired : 1)}
-                                        </span>
-                                        {ct.mergedRows && ct.mergedRows.length > 0 ? (
-                                            <div className="flex flex-col gap-1 mt-1">
-                                                {ct.mergedRows.map((row, idx) => (
-                                                    <div key={row.id || idx} className="flex items-center gap-2">
-                                                        <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] px-1.5 py-0 font-bold uppercase">
-                                                            {row.service?.title || '—'}
-                                                        </Badge>
-                                                        <span className="text-slate-400 italic font-medium text-[9px]">
-                                                            {billBasis === 'ACTUAL' ? (
-                                                                row.timeEntry?.clockIn
-                                                                    ? `${formatDate(row.timeEntry.clockIn)} ${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? `${formatDate(row.timeEntry.clockOut)} ${formatTime(getTimeOnly(row.timeEntry.clockOut))}` : '??'}`
-                                                                    : 'Not clocked'
-                                                            ) : (
-                                                                `${formatTime(row.startTime)} - ${formatTime(row.endTime)}`
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                ))}
+                        {/* Bill Description - Updated format per request */}
+                        <td className="px-3 py-4 text-[11px] leading-relaxed min-w-[500px] text-slate-800">
+                            <div className="flex flex-col gap-4">
+                                {(() => {
+                                    const billRows = ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
+                                    
+                                    return billRows.map((row, idx) => {
+                                        const rowTe = row.timeEntry;
+                                        const event = row.event ?? ct.event;
+                                        const loc = [event?.city, event?.state].filter(Boolean).join(', ');
+                                        const staffName = row.staff ? `${row.staff.firstName} ${row.staff.lastName}`.trim() : 'UNASSIGNED';
+                                        const headline = `${event?.title || '—'} | ${staffName}${loc ? ` (${loc})` : ''}`;
+                                        
+                                        const schedStart = combineDateTime(row.startDate, row.startTime);
+                                        const schedEnd = combineDateTime(row.endDate ?? row.startDate, row.endTime);
+                                        
+                                        const actualLine = rowTe?.clockIn 
+                                            ? invoiceActualRange(rowTe)
+                                            : <span className="text-muted-foreground font-normal">Not clocked</span>;
+
+                                        return (
+                                            <div key={row.id || idx} className={`flex flex-col gap-0.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}>
+                                                <div className="font-bold text-slate-900 text-[12px]">
+                                                    {headline}
+                                                </div>
+                                                <div className="font-semibold text-primary/80">
+                                                    {row.service?.title || '—'}
+                                                </div>
+                                                <div className="flex gap-1.5 items-baseline">
+                                                    <span className="font-medium text-slate-500">Schedule:</span>
+                                                    <span>{invoiceScheduledRange(row)}</span>
+                                                </div>
+                                                <div className="flex gap-1.5 items-baseline">
+                                                    <span className="font-medium text-slate-500">Actual:</span>
+                                                    <span>{actualLine}</span>
+                                                </div>
                                             </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100 text-[9px] px-1.5 py-0 font-bold uppercase">
-                                                    {ct.service?.title || '—'}
-                                                </Badge>
-                                                <span className="text-slate-400 italic font-medium">
-                                                    {billBasis === 'ACTUAL' ? (
-                                                        te?.clockIn
-                                                            ? `${formatDate(te.clockIn)} ${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? `${formatDate(te.clockOut)} ${formatTime(getTimeOnly(te.clockOut))}` : '??'}`
-                                                            : 'Actual shift not clocked'
-                                                    ) : (
-                                                        `${formatTime(ct.startTime)} - ${formatTime(ct.endTime)}`
-                                                    )}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                        );
+                                    });
+                                })()}
 
                                 {/* Notes Section */}
-                                <div className="flex flex-col pt-1 border-t border-slate-50">
-                                    <span className="font-bold text-[7px] text-slate-300 uppercase tracking-widest mb-0.5">Notes</span>
+                                <div className="flex flex-col pt-2 border-t border-slate-100">
+                                    <span className="font-bold text-[9px] text-slate-400 uppercase tracking-widest mb-1">Notes</span>
                                     {isEditingNotes ? (
                                         <div onClick={e => e.stopPropagation()}>
                                             <textarea
                                                 value={localNotes}
                                                 onChange={e => setLocalNotes(e.target.value)}
-                                                className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-red-500 outline-none min-h-[40px] bg-white text-slate-700 font-medium"
+                                                className="w-full text-[11px] border border-border rounded p-1.5 focus:ring-1 focus:ring-primary outline-none min-h-[50px] bg-white text-slate-700 font-medium"
                                                 autoFocus
                                                 onBlur={handleSave}
                                             />
@@ -648,10 +665,10 @@ export function TimesheetTableRow({
                                         </div>
                                     ) : (
                                         <div
-                                            className="group relative cursor-pointer hover:bg-slate-50 p-1 rounded transition-all font-medium text-slate-500 italic text-[10px]"
+                                            className="group relative cursor-pointer hover:bg-slate-50 p-1.5 rounded transition-all font-medium text-slate-600 italic text-[11px]"
                                             onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
                                         >
-                                            <p className="line-clamp-2">{localNotes || 'Click to add notes...'}</p>
+                                            <p className="line-clamp-3 not-italic">{localNotes || 'Click to add notes...'}</p>
                                         </div>
                                     )}
                                 </div>
@@ -823,73 +840,49 @@ export function TimesheetTableRow({
                                 )}
                             </div>
                         </td>
+
+                        {/* Status */}
+                        <td className="px-3 py-2.5 text-center">
+                            <Badge
+                                variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
+                                className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
+                            >
+                                {reviewRating === 'MET_EXPECTATIONS' ? 'APPROVED' :
+                                    (reviewRating === 'DID_NOT_MEET' || reviewRating === 'NO_CALL_NO_SHOW') ? 'REJECTED' :
+                                        reviewRating === 'NEEDS_IMPROVEMENT' ? 'REVIEW' : 'PENDING'}
+                            </Badge>
+                        </td>
                     </>
                 ) : (
                     <>
-                        {/* Actions — first data column (after checkbox + expand) */}
-                        <td
-                            className={
-                                rowVariant === 'card' ? 'w-10 px-2 py-3.5 text-center relative' : 'w-10 px-2 py-2.5 text-center relative'
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                        >
+                        {/* Actions */}
+                        <td className="w-10 px-2 py-2.5 text-center relative" onClick={(e) => e.stopPropagation()}>
                             <ActionDropdown actions={actions} align="start" />
                         </td>
 
+
                         {/* Talent */}
-                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 font-bold text-foreground whitespace-nowrap' : 'px-3 py-2.5 font-bold text-foreground whitespace-nowrap'}>
-                            {!showEventName ? (
-                                ct.staff ? (
-                                    <TalentContactPopover
-                                        talent={ct.staff}
-                                        trigger={
-                                            <div className="flex flex-col leading-tight cursor-pointer hover:underline text-left">
-                                                <span>
-                                                    {ct.staff.firstName} {ct.staff.lastName}
-                                                </span>
-                                                <span className="text-[10px] font-normal text-muted-foreground mt-0.5">
-                                                    {(() => {
-                                                        const inv0 = ct.invitations?.[0];
-                                                        if (inv0?.status === 'ACCEPTED') return 'Accepted · Assigned';
-                                                        if (inv0?.status === 'PENDING') return 'Pending invitation';
-                                                        if (inv0?.status) return inv0.status.replace(/_/g, ' ');
-                                                        return '—';
-                                                    })()}
-                                                </span>
-                                            </div>
-                                        }
-                                    />
-                                ) : (
-                                    <div className="flex flex-col">
-                                        <span className="font-bold leading-tight">UNASSIGNED</span>
-                                        <span className="font-bold leading-tight">STAFF</span>
-                                        <span className="text-[10px] font-normal text-muted-foreground mt-0.5">Needs assignment</span>
-                                    </div>
-                                )
-                            ) : (
-                                <div className="whitespace-normal max-w-[200px] leading-tight">
-                                    {ct.event?.title || '—'}
-                                </div>
-                            )}
-                        </td>
-
-                        {/* Service */}
-                        <td className={rowVariant === 'card' ? 'px-3 py-3.5' : 'px-3 py-2.5'}>
-                            <span className="inline-flex text-[10px] font-medium whitespace-nowrap rounded-md border border-border bg-muted/40 px-2 py-1 text-foreground">
-                                {ct.service?.title || '—'}
-                            </span>
-                        </td>
-
-                        {/* Date (shift date) */}
-                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 whitespace-nowrap' : 'px-3 py-2.5 whitespace-nowrap'}>
-                            <div className="flex flex-col">
-                                <span className="text-[11px] font-bold text-foreground">{formatDate(ct.startDate)}</span>
-                                <span className="text-[10px] text-muted-foreground">Shift date</span>
+                        <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-talent)` }}>
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-sm font-bold text-foreground">
+                                    {ct.staff?.firstName} {ct.staff?.lastName}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-tight">
+                                    {ct.staff?.email || 'No email provided'}
+                                </span>
                             </div>
                         </td>
-
-                        {/* Scheduled shift — time range + hrs (design matches Time Manager spec) */}
-                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[160px]' : 'px-3 py-2.5 min-w-[170px]'}>
+                        <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-service)` }}>
+                            <ServiceBadge service={ct.service} />
+                        </td>
+                        <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-date)` }}>
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                <span className="text-sm font-bold text-foreground tabular-nums leading-tight">
+                                    {formatDate(ct.startDate)}
+                                </span>
+                            </div>
+                        </td>
+                        <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-scheduled)` }}>
                             {(() => {
                                 const s = formatTime(ct.startTime);
                                 const e = formatTime(ct.endTime);
@@ -903,9 +896,11 @@ export function TimesheetTableRow({
                                                 : '\u2014';
                                 return (
                                     <div className="flex flex-col gap-1 text-left">
-                                        <p className="text-sm font-bold text-foreground tabular-nums">{range}</p>
+                                        <div className="text-sm font-bold text-foreground tabular-nums leading-tight whitespace-nowrap">
+                                            {s}{e ? ` - ${e}` : ''}
+                                        </div>
                                         <p className="text-xs font-normal text-slate-500">
-                                            {hoursScheduled.toFixed(2)} hrs scheduled
+                                            {hoursScheduled.toFixed(2)} hrs
                                         </p>
                                     </div>
                                 );
@@ -913,7 +908,7 @@ export function TimesheetTableRow({
                         </td>
 
                         {/* Actual shift — time range + hrs; popover unchanged */}
-                        <td className={rowVariant === 'card' ? 'px-3 py-3.5 min-w-[160px]' : 'px-3 py-2.5 min-w-[170px]'} onClick={e => e.stopPropagation()}>
+                        <td className={cn("truncate", rowVariant === 'card' ? 'px-3 py-3.5' : 'px-3 py-2.5')} style={{ width: `var(--col-actual)` }} onClick={e => e.stopPropagation()}>
                             <Popover open={isEditing} onOpenChange={setIsEditing}>
                                 <PopoverTrigger asChild>
                                     <div
@@ -922,17 +917,17 @@ export function TimesheetTableRow({
                                     >
                                         {te?.clockIn ? (
                                             <div className="flex flex-col gap-1 text-left">
-                                                <p className="text-sm font-bold text-foreground tabular-nums">
+                                                <div className="text-sm font-bold text-foreground tabular-nums leading-tight">
                                                     {(() => {
                                                         const inT = formatTime(getTimeOnly(te.clockIn));
                                                         const outT = te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '';
-                                                        if (inT && outT) return `${inT} \u2013 ${outT}`;
-                                                        if (inT) return `${inT} \u2013 \u2014`;
+                                                        if (inT && outT) return `${inT} - ${outT}`;
+                                                        if (inT) return `${inT} - \u2014`;
                                                         return '\u2014';
                                                     })()}
-                                                </p>
+                                                </div>
                                                 <p className="text-xs font-normal text-slate-500 flex flex-wrap items-center gap-1">
-                                                    <span>{hoursClocked.toFixed(2)} hrs worked</span>
+                                                    <span>{hoursClocked.toFixed(2)} hrs </span>
                                                     {isEdited && (
                                                         <Badge variant="secondary" className="text-[9px] h-4 px-1 py-0 leading-none font-medium">
                                                             Edited
@@ -943,7 +938,7 @@ export function TimesheetTableRow({
                                         ) : (
                                             <div className="flex flex-col gap-1 text-left">
                                                 <span className="text-sm font-bold text-foreground">No clock</span>
-                                                <span className="text-xs font-normal text-slate-500">0.00 hrs worked</span>
+                                                <span className="text-xs font-normal text-slate-500">0.00 hrs</span>
                                             </div>
                                         )}
                                     </div>
@@ -1005,7 +1000,7 @@ export function TimesheetTableRow({
                                         </span>
                                     );
                                 })()}
-                                <span className="text-[10px] text-muted-foreground">Difference</span>
+                                {/* <span className="text-[10px] text-muted-foreground">Difference</span> */}
                             </div>
                         </td>
 
@@ -1014,7 +1009,7 @@ export function TimesheetTableRow({
                                 <span className="text-[11px] font-bold text-foreground whitespace-nowrap">
                                     {(ct.payRateType || '').replace('PER_', '')}
                                 </span>
-                                <span className="text-[10px] text-muted-foreground">Billing model</span>
+                                {/* <span className="text-[10px] text-muted-foreground">Billing model</span> */}
                             </div>
                         </td>
 
@@ -1027,7 +1022,7 @@ export function TimesheetTableRow({
                                         onClick={e => e.stopPropagation()}
                                     >
                                         <div className="text-[11px] font-bold text-foreground">{fmtCurrency(totalInvoice)}</div>
-                                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                                        {/* <div className="text-[10px] text-muted-foreground mt-0.5">
                                             {[
                                                 toNumber(clockedPriceVal) > 0 && 'Shift',
                                                 toNumber(otPrice) > 0 && 'OT',
@@ -1036,7 +1031,7 @@ export function TimesheetTableRow({
                                             ]
                                                 .filter(Boolean)
                                                 .join(' + ') || '—'}
-                                        </div>
+                                        </div> */}
                                     </div>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>
@@ -1106,7 +1101,7 @@ export function TimesheetTableRow({
                                         onClick={e => e.stopPropagation()}
                                     >
                                         <div className="text-[11px] font-bold text-foreground">{fmtCurrency(totalBill)}</div>
-                                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                                        {/* <div className="text-[10px] text-muted-foreground mt-0.5">
                                             {[
                                                 toNumber(clockedCostVal) > 0 && 'Shift',
                                                 toNumber(otCost) > 0 && 'OT',
@@ -1115,7 +1110,7 @@ export function TimesheetTableRow({
                                             ]
                                                 .filter(Boolean)
                                                 .join(' + ') || '—'}
-                                        </div>
+                                        </div> */}
                                     </div>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>
@@ -1177,7 +1172,7 @@ export function TimesheetTableRow({
                         </td>
 
                         {/* Net Income */}
-                        <td className="px-3 py-2.5 text-right text-[11px] font-bold text-foreground tabular-nums">
+                        <td className="px-3 py-2.5 text-right text-[11px] font-bold text-foreground tabular-nums truncate" style={{ width: `var(--col-netIncome)` }}>
                             {fmtCurrency(totalInvoice - totalBill)}
                         </td>
 
@@ -1204,7 +1199,7 @@ export function TimesheetTableRow({
                         </td>
 
                         {/* Minimum (toggle + floor amount; matches Total Invoice / Total Bill when on) */}
-                        <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                        <td className="px-3 py-2.5 text-center truncate" style={{ width: `var(--col-minimum)` }} onClick={e => e.stopPropagation()}>
                             <div className="flex flex-col items-center gap-1">
                                 <div className="flex items-center justify-center gap-2">
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[24px]">
@@ -1247,7 +1242,7 @@ export function TimesheetTableRow({
                         </td>
 
                         {/* Notes (Internal Notes) - Moved after Status */}
-                        <td className="px-3 py-2.5 whitespace-normal max-w-[400px] min-w-[250px] text-[10px] text-muted-foreground leading-snug" onClick={e => e.stopPropagation()}>
+                        <td className="px-3 py-2.5 whitespace-normal truncate text-[10px] text-muted-foreground leading-snug" style={{ width: `var(--col-notes)` }} onClick={e => e.stopPropagation()}>
                             {isEditingNotes ? (
                                 <div className="flex flex-col gap-1">
                                     <textarea

@@ -707,6 +707,12 @@ model StaffTaxDetails {
   taxName            String?
   taxState           String?
   taxZip             String?
+  w4FirstName        String?
+  w4LastName         String?
+  w4Status           String?
+  w4EmployerName     String?
+  w4EmployerAddress  String?
+  w4EmploymentDate   DateTime?         @db.Timestamp(6)
   staff              Staff             @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId])

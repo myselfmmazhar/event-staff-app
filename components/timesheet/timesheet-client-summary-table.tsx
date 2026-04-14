@@ -4,6 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon } from '@/components/ui/icons';
+import { useTableResize } from '@/hooks/use-table-resize';
+import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
+import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import type { ClientGroup, SortField, SortOrder } from './types';
 import { 
@@ -26,6 +29,7 @@ interface TimesheetClientSummaryTableProps {
 }
 
 export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortBy, sortOrder, onSort }: TimesheetClientSummaryTableProps) {
+    const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-clients');
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
         const d = typeof date === 'string' ? parseISO(date) : date;
@@ -35,7 +39,7 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortB
     return (
         <Card className="overflow-hidden border border-border shadow-sm">
             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-sm text-left table-fixed" style={getTableStyle()}>
                     <thead className="bg-muted/50 border-b border-border">
                         <tr>
                             {[
@@ -49,7 +53,11 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortB
                             ].map((col) => (
                                 <th
                                     key={col.id}
-                                    className={`px-4 py-3 font-semibold text-foreground cursor-pointer hover:bg-muted transition-colors ${col.align || ''}`}
+                                    className={cn(
+                                        "relative group px-4 py-3 font-semibold text-foreground cursor-pointer hover:bg-muted transition-colors truncate",
+                                        col.align || ''
+                                    )}
+                                    style={{ width: `var(--col-${col.id})` }}
                                     onClick={() => onSort?.(col.id as SortField)}
                                 >
                                     <div className={`flex items-center gap-1 ${col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : ''}`}>
@@ -58,6 +66,7 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortB
                                             ? (sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />)
                                             : <ChevronsUpDownIcon className="h-4 w-4 opacity-50" />}
                                     </div>
+                                    <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.id, e)} />
                                 </th>
                             ))}
                         </tr>
@@ -85,11 +94,18 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortB
 
                             return (
                                 <tr key={group.clientId} className="hover:bg-muted/30 transition-colors">
-                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap text-xs font-medium">
-                                        <span className="text-foreground">
-                                            {minDate ? formatDate(minDate) : 'TBD'} 
-                                            {maxDate && minDate?.getTime() !== maxDate.getTime() ? ` - ${formatDate(maxDate)}` : ''}
-                                        </span>
+                                    <td className="px-4 py-4 text-muted-foreground whitespace-nowrap text-sm font-bold">
+                                        <div className="flex flex-col leading-tight">
+                                            <span className="text-foreground">
+                                                {minDate ? formatDate(minDate) : 'TBD'} 
+                                                {maxDate && minDate?.getTime() !== maxDate.getTime() ? ' -' : ''}
+                                            </span>
+                                            {maxDate && minDate?.getTime() !== maxDate.getTime() && (
+                                                <span className="text-foreground">
+                                                    {formatDate(maxDate)}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-4 py-4">
                                         <button

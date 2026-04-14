@@ -27,6 +27,12 @@ export type StaffTaxDetailsSelect = {
     ein: string | null;
     signatureUrl: string | null;
     certificationDate: Date | null;
+    w4FirstName: string | null;
+    w4LastName: string | null;
+    w4Status: string | null;
+    w4EmployerName: string | null;
+    w4EmployerAddress: string | null;
+    w4EmploymentDate: Date | null;
     createdAt: Date;
     updatedAt: Date;
 };
@@ -58,6 +64,12 @@ export class StaffTaxDetailsService {
         ein: true,
         signatureUrl: true,
         certificationDate: true,
+        w4FirstName: true,
+        w4LastName: true,
+        w4Status: true,
+        w4EmployerName: true,
+        w4EmployerAddress: true,
+        w4EmploymentDate: true,
         createdAt: true,
         updatedAt: true,
     } as const;

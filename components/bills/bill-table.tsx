@@ -275,6 +275,7 @@ export function BillTable({
 
     return (
         <DataTable
+            tableId="bills"
             data={bills}
             columns={columns}
             isLoading={isLoading}

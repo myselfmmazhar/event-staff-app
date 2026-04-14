@@ -298,6 +298,7 @@ export function AssignmentTable({
 
   return (
     <DataTable
+      tableId="assignments"
       data={data}
       columns={columns}
       isLoading={isLoading}

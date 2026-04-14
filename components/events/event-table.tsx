@@ -680,6 +680,7 @@ export function EventTable({
   return (
     <>
       <DataTable
+        tableId="events"
         data={events}
         columns={columns}
         isLoading={isLoading}

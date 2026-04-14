@@ -4,6 +4,9 @@ import { SortIndicator } from './sort-indicator';
 import { TimesheetTableRow } from './timesheet-table-row';
 import { MobileRowCard } from './mobile-row-card';
 import type { CallTimeRow, EventGroup, SortField, SortOrder } from './types';
+import { useTableResize } from '@/hooks/use-table-resize';
+import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
+import { cn } from '@/lib/utils';
 
 interface EventGroupTableProps {
     group: EventGroup;
@@ -36,6 +39,7 @@ export function EventGroupTable({
     onSort,
     onSaveTimeEntry,
 }: EventGroupTableProps) {
+    const { onMouseDown, getTableStyle } = useTableResize('timesheet-assignments');
     const totalStaff = group.callTimes.length;
     const totalAssigned = group.callTimes.filter(ct => !!ct.staff).length;
     const groupNeedsStaff = totalAssigned < totalStaff;
@@ -71,7 +75,7 @@ export function EventGroupTable({
                 <>
                     {/* Desktop */}
                     <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-sm table-fixed" style={getTableStyle()}>
                             <thead>
                                 <tr className="border-b border-border bg-muted/30">
                                     <th className="w-8 px-2 py-2">
@@ -90,21 +94,66 @@ export function EventGroupTable({
                                         })()}
                                     </th>
                                     <th className="w-8 px-2 py-2" />
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Action</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Talent</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service / Product</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Date</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Actual Shift</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Variance</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Rate Type</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Total Invoice</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Total Bill</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Net Income</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
-                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Minimum</th>
-                                    <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground pr-6">Notes</th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-action)` }}>
+                                        Action
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('action', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-left truncate")} style={{ width: `var(--col-talent)` }}>
+                                        Talent
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('talent', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-left truncate")} style={{ width: `var(--col-service)` }}>
+                                        Service / Product
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('service', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-left truncate")} style={{ width: `var(--col-date)` }}>
+                                        Date
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('date', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-left truncate")} style={{ width: `var(--col-scheduled)` }}>
+                                        Scheduled Shift
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('scheduled', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-left truncate")} style={{ width: `var(--col-actual)` }}>
+                                        Actual Shift
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('actual', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-variance)` }}>
+                                        Variance
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('variance', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-rateType)` }}>
+                                        Rate Type
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('rateType', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-right truncate")} style={{ width: `var(--col-invoice)` }}>
+                                        Total Invoice
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('invoice', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-right truncate")} style={{ width: `var(--col-bill)` }}>
+                                        Total Bill
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('bill', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-right truncate")} style={{ width: `var(--col-netIncome)` }}>
+                                        Net Income
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('netIncome', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-commission)` }}>
+                                        Commission
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('commission', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-right truncate")} style={{ width: `var(--col-minimum)` }}>
+                                        Minimum
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('minimum', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-status)` }}>
+                                        Status
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('status', e)} />
+                                    </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground pr-6 text-left truncate")} style={{ width: `var(--col-notes)` }}>
+                                        Notes
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('notes', e)} />
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>

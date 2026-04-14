@@ -317,6 +317,7 @@ export function ArchivedEventTable({
 
   return (
     <DataTable
+      tableId="events-archived"
       data={events}
       columns={columns}
       isLoading={isLoading}
