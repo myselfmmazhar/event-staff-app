@@ -324,14 +324,14 @@ export class StaffSchema {
             ),
         firstName: z
             .string()
-            .min(1, "First name is required")
             .max(50, "First name must be 50 characters or less")
-            .transform((val) => val.trim()),
+            .transform((val) => val.trim())
+            .optional(),
         lastName: z
             .string()
-            .min(1, "Last name is required")
             .max(50, "Last name must be 50 characters or less")
-            .transform((val) => val.trim()),
+            .transform((val) => val.trim())
+            .optional(),
         staffType: z.nativeEnum(StaffType).default(StaffType.EMPLOYEE),
         serviceIds: z
             .array(z.string().uuid("Invalid service ID"))

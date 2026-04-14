@@ -1127,6 +1127,7 @@ export default function TimeManagerPage() {
                                                     })
                                                 }
                                                 exportControl={<span className="hidden" aria-hidden />}
+                                                subTab={subTab}
                                             />
                                         </div>
                                         <div className="p-4">
@@ -1192,12 +1193,16 @@ export default function TimeManagerPage() {
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('staffName', e)} />
                                                                     </th>
                                                                     <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate" style={{ width: `var(--col-description)` }}>
-                                                                        Bill Description
+                                                                        Invoice Description
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
                                                                     </th>
                                                                     <th className="relative group p-0 truncate" style={{ width: `var(--col-price)` }}>
                                                                         <SortHeader id="price" label="Commission Price" align="text-right" />
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('price', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-status)` }}>
+                                                                        <SortHeader id="status" label="Status" align="text-center" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('status', e)} />
                                                                     </th>
                                                                 </>
                                                             ) : subTab === 'bill' ? (
@@ -1423,6 +1428,7 @@ export default function TimeManagerPage() {
                                                     })
                                                 }
                                                 exportControl={<span className="hidden" aria-hidden />}
+                                                subTab={subTab}
                                             />
                                         </div>
                                         <div className="p-4">
@@ -1495,6 +1501,10 @@ export default function TimeManagerPage() {
                                                                         <SortHeader id="price" label="Commission Price" align="text-right" />
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('price', e)} />
                                                                     </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-status)` }}>
+                                                                        <SortHeader id="status" label="Status" align="text-center" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('status', e)} />
+                                                                    </th>
                                                                 </>
                                                             ) : subTab === 'bill' ? (
                                                                 <>
@@ -1538,7 +1548,7 @@ export default function TimeManagerPage() {
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('service', e)} />
                                                                     </th>
                                                                     <th className="relative group p-0 truncate" style={{ width: `var(--col-date)` }}>
-                                                                        <SortHeader id="startDate" label="Date" />
+                                                                        <SortHeader id="startDate" label="Schedule Date" />
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('date', e)} />
                                                                     </th>
                                                                     <th className="relative group p-0 truncate" style={{ width: `var(--col-scheduled)` }}>
@@ -1771,6 +1781,7 @@ export default function TimeManagerPage() {
                                                     })
                                                 }
                                                 exportControl={<span className="hidden" aria-hidden />}
+                                                subTab={subTab}
                                             />
                                         </div>
                                         <div className="p-4">
@@ -1813,6 +1824,7 @@ export default function TimeManagerPage() {
                                                                     <SortHeader id="staffName" label="Team / User" />
                                                                     <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
                                                                     <SortHeader id="price" label="Commission Price" align="text-right" />
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
                                                                 </>
                                                             ) : subTab === 'bill' ? (
                                                                 <>
@@ -1830,7 +1842,7 @@ export default function TimeManagerPage() {
                                                                     </th>
                                                                     <SortHeader id="staffName" label="Talent" />
                                                                     <SortHeader id="service" label="Services / Products" />
-                                                                    <SortHeader id="startDate" label="Date" />
+                                                                    <SortHeader id="startDate" label="Schedule Date" />
                                                                     <SortHeader id="scheduledShift" label="Scheduled Shift" />
                                                                     <SortHeader id="actualShift" label="Actual Shift" />
                                                                     <SortHeader id="variance" label="Variance" align="text-center" />

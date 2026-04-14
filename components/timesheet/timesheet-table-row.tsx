@@ -771,6 +771,18 @@ export function TimesheetTableRow({
                                 )}
                             </div>
                         </td>
+
+                        {/* Status */}
+                        <td className="px-3 py-2.5 text-center">
+                            <Badge
+                                variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
+                                className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
+                            >
+                                {reviewRating === 'MET_EXPECTATIONS' ? 'APPROVED' :
+                                    (reviewRating === 'DID_NOT_MEET' || reviewRating === 'NO_CALL_NO_SHOW') ? 'REJECTED' :
+                                        reviewRating === 'NEEDS_IMPROVEMENT' ? 'REVIEW' : 'PENDING'}
+                            </Badge>
+                        </td>
                     </>
                 ) : (
                     <>

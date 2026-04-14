@@ -44,12 +44,12 @@ export function TimesheetDetailToolbar({
     const isCommission = subTab === 'commission';
 
     return (
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between px-1 pb-3">
+        <div className={`flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center ${isCommission ? 'justify-start gap-4' : 'justify-between'} px-1 pb-3`}>
             <Input
-                placeholder={isCommission ? "Search Team / User" : "Search talent, service, shift, or task"}
+                placeholder={isCommission ? "Team" : "Search talent, service, shift, or task"}
                 value={search}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="h-9 max-w-md rounded-lg border-border bg-background text-sm"
+                className={`h-9 ${isCommission ? 'w-64' : 'max-w-md'} rounded-lg border-border bg-background text-sm`}
             />
             <div className="flex flex-wrap items-center gap-2">
                 <Select value={status} onValueChange={onStatusChange}>
