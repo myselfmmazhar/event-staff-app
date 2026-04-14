@@ -509,15 +509,13 @@ export function EventFormModal({
 
   const goNextForm = () => {
     if (!canContinueForm) return;
-    if (formStepIndex < EVENT_STEP_IDS.length - 1) {
-      setActiveTab(EVENT_STEP_IDS[formStepIndex + 1]);
-    }
+    const nextTab = EVENT_STEP_IDS[formStepIndex + 1];
+    if (nextTab) setActiveTab(nextTab);
   };
 
   const goBackForm = () => {
-    if (formStepIndex > 0) {
-      setActiveTab(EVENT_STEP_IDS[formStepIndex - 1]);
-    }
+    const prevTab = EVENT_STEP_IDS[formStepIndex - 1];
+    if (prevTab) setActiveTab(prevTab);
   };
 
   // Auto-fill requirements when client is selected

@@ -377,7 +377,9 @@ export function TimesheetTableRow({
                                         ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
                                     const isSoloInvoiceRow = invoiceRows.length === 1;
 
-                                    return invoiceRows.map((row, idx) => {
+                                    return (
+                                        <>
+                                            {invoiceRows.map((row, idx) => {
                                         const rowTe = row.timeEntry;
                                         const rowSchedHrs = calcScheduledHours(row);
                                         const rowClockHrs = calcClockedHours(rowTe);
@@ -403,7 +405,6 @@ export function TimesheetTableRow({
                                                 key={row.id ?? idx}
                                                 className={`flex flex-col gap-2.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}
                                             >
-<<<<<<< HEAD
                                                 <div className="font-semibold text-slate-900 text-[12px] leading-snug">
                                                     {invoiceStaffHeadline(row, row.event ?? ct.event)}
                                                 </div>
@@ -470,27 +471,16 @@ export function TimesheetTableRow({
                                                                     </PopoverContent>
                                                                 )}
                                                             </Popover>
-=======
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex items-baseline gap-1.5">
-                                                        <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider w-24 shrink-0">Schedule Shift</span>
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <div className="text-slate-800 font-semibold">{invoiceScheduledRange(row)}</div>
-                                                            <div className="text-muted-foreground font-medium text-[10px]">({rowSchedHrs.toFixed(2)} hrs)</div>
->>>>>>> 5d8989634c12ff79994a7d916b65f019a92f83eb
                                                         </div>
-                                                    </div>
-                                                    
-                                                    <div className="flex items-baseline gap-1.5 mt-0.5">
-                                                        <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider w-24 shrink-0">Actual Shift</span>
-                                                        <div className="min-w-0 flex-1">
-                                                            {actualLine}
-                                                        </div>
-                                                    </div>
+                                                    ) : (
+                                                        <div className="min-w-0 flex-1">{actualLine}</div>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
-                                    });
+                                            })}
+                                        </>
+                                    );
                                 })()}
 
                                 <div className="flex flex-col gap-1 pt-2 border-t border-border/60">
