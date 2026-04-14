@@ -16,7 +16,7 @@ export function CustomFieldsSection({
   const { fields, append, remove } = customFieldsFieldArray;
 
   return (
-    <div className={cn('bg-accent/5 border border-border/30 p-5 rounded-lg', className)}>
+    <div className={cn('', className)}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold border-b border-border pb-2 flex-1">Custom Fields</h3>
         <Button
