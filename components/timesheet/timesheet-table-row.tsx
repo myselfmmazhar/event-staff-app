@@ -499,14 +499,9 @@ export function TimesheetTableRow({
                                                                 )}
                                                             </Popover>
                                                         </div>
-                                                    </div>
-                                                    
-                                                    <div className="flex items-baseline gap-1.5 mt-0.5">
-                                                        <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider w-24 shrink-0">Actual Shift</span>
-                                                        <div className="min-w-0 flex-1">
-                                                            {actualLine}
-                                                        </div>
-                                                    </div>
+                                                    ) : (
+                                                        actualLine
+                                                    )}
                                                 </div>
                                             </div>
                                         );
