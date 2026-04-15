@@ -229,13 +229,19 @@ export function ClientFormModal({
   const goNext = () => {
     if (!canContinue) return;
     if (stepIndex < CLIENT_STEP_IDS.length - 1) {
-      setClientTab(CLIENT_STEP_IDS[stepIndex + 1]);
+      const nextTab = CLIENT_STEP_IDS[stepIndex + 1];
+      if (nextTab) {
+        setClientTab(nextTab);
+      }
     }
   };
 
   const goBack = () => {
     if (stepIndex > 0) {
-      setClientTab(CLIENT_STEP_IDS[stepIndex - 1]);
+      const prevTab = CLIENT_STEP_IDS[stepIndex - 1];
+      if (prevTab) {
+        setClientTab(prevTab);
+      }
     }
   };
 

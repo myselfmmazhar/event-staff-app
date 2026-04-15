@@ -87,6 +87,7 @@ export default function TimeManagerPage() {
     // ── Row State ──
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+    const [shiftModeByInvitation, setShiftModeByInvitation] = useState<Record<string, { includeSchedule: boolean; includeActual: boolean }>>({});
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
     const [confirmState, setConfirmState] = useState<{
         open: boolean;
@@ -213,6 +214,13 @@ export default function TimeManagerPage() {
         });
     };
 
+    const getShiftMode = (invitationId: string) =>
+        shiftModeByInvitation[invitationId] ?? { includeSchedule: true, includeActual: true };
+
+    const handleShiftModeChange = (invitationId: string, next: { includeSchedule: boolean; includeActual: boolean }) => {
+        setShiftModeByInvitation((prev) => ({ ...prev, [invitationId]: next }));
+    };
+
     const toggleGroup = (eventId: string) => {
         setCollapsedGroups((prev) => {
             const next = new Set(prev);
@@ -270,11 +278,38 @@ export default function TimeManagerPage() {
 
     const handleGenerateInvoices = () => {
         if (selectedRows.size === 0) return;
-        generateInvoicesMutation.mutate({ invitationIds: Array.from(selectedRows) });
+        const invitationIds = Array.from(selectedRows);
+        const shiftSelections = invitationIds.map((invitationId) => ({
+            invitationId,
+            includeSchedule: getShiftMode(invitationId).includeSchedule,
+            includeActual: getShiftMode(invitationId).includeActual,
+        }));
+        const hasAtLeastOneShiftSelected = shiftSelections.some((s) => s.includeSchedule || s.includeActual);
+        if (!hasAtLeastOneShiftSelected) {
+            toast({
+                title: 'Select schedule or actual',
+                description: 'Please select at least Schedule Shift or Actual Shift before generating invoices.',
+                variant: 'destructive',
+            });
+            return;
+        }
+        generateInvoicesMutation.mutate({ invitationIds, shiftSelections } as any);
     };
 
     const handleGenerateBills = () => {
         if (selectedRows.size === 0) return;
+        const hasAtLeastOneShiftSelected = Array.from(selectedRows).some((id) => {
+            const mode = getShiftMode(id);
+            return mode.includeSchedule || mode.includeActual;
+        });
+        if (!hasAtLeastOneShiftSelected) {
+            toast({
+                title: 'Select schedule or actual',
+                description: 'Please select at least Schedule Shift or Actual Shift before generating bills.',
+                variant: 'destructive',
+            });
+            return;
+        }
         toast({
             title: 'Success',
             description: `Generated ${selectedRows.size} draft bill(s). Check the Finance Manager.`
@@ -1157,13 +1192,30 @@ export default function TimeManagerPage() {
                                                             )}
                                                             {subTab === 'invoice' ? (
                                                                 <>
-                                                                    <SortHeader id="startDate" label="Service Date" />
-                                                                    <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-startDate)` }}>
+                                                                        <SortHeader id="startDate" label="Service Date" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('startDate', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-service)` }}>
+                                                                        <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('service', e)} />
+                                                                    </th>
+                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px] truncate" style={{ width: `var(--col-description)` }}>
+                                                                        Invoice Description
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
+                                                                    </th>
+                                                                    <th className="relative group text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-qty)` }}>
+                                                                        Qty
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('qty', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-invoice)` }}>
+                                                                        <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
+                                                                    </th>
+                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
+                                                                        Net Income
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
+                                                                    </th>
                                                                 </>
                                                             ) : subTab === 'commission' ? (
                                                                 <>
@@ -1173,28 +1225,65 @@ export default function TimeManagerPage() {
                                                                 </>
                                                             ) : subTab === 'bill' ? (
                                                                 <>
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-category)` }}>
+                                                                        Category
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('category', e)} />
+                                                                    </th>
+                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px] truncate" style={{ width: `var(--col-description)` }}>
+                                                                        Bill Description
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
+                                                                        <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('bill', e)} />
+                                                                    </th>
+                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
+                                                                        Net Income
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-status)` }}>
+                                                                        <SortHeader id="status" label="Status" align="text-center" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('status', e)} />
+                                                                    </th>
                                                                 </>
                                                             ) : (
                                                                 <>
                                                                     <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                         Action
                                                                     </th>
-                                                                    <SortHeader id="staffName" label="Talent" />
-                                                                    <SortHeader id="service" label="Services / Products" />
-                                                                    <SortHeader id="startDate" label="Date" />
-                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                                    <SortHeader id="actualShift" label="Actual Shift" />
-                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
-                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-talent)` }}>
+                                                                        <SortHeader id="staffName" label="Talent" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('talent', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-service)` }}>
+                                                                        <SortHeader id="service" label="Services / Products" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('service', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-date)` }}>
+                                                                        <SortHeader id="startDate" label="Schedule Date" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('date', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-scheduled)` }}>
+                                                                        <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('scheduled', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-actual)` }}>
+                                                                        <SortHeader id="actualShift" label="Actual Shift" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('actual', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-variance)` }}>
+                                                                        <SortHeader id="variance" label="Variance" align="text-center" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('variance', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-rateType)` }}>
+                                                                        <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('rateType', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-invoice)` }}>
+                                                                        <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
+                                                                    </th>
+                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
                                                                         Net Income
                                                                     </th>
                                                                     <SortHeader id="commission" label="Commission" align="text-center" />
@@ -1243,6 +1332,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1264,6 +1356,9 @@ export default function TimeManagerPage() {
                                                                     onPending={handlePending}
                                                                     onEditTask={handleEditTask}
                                                                     subTab={subTab}
+                                                                    includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                    includeActual={getShiftMode(ct.id).includeActual}
+                                                                    onShiftModeChange={handleShiftModeChange}
                                                                     rowVariant="card"
                                                                 />
                                                             ));
@@ -1381,13 +1476,30 @@ export default function TimeManagerPage() {
                                                             )}
                                                             {subTab === 'invoice' ? (
                                                                 <>
-                                                                    <SortHeader id="startDate" label="Service Date" />
-                                                                    <SortHeader id="service" label="Services / Products" />
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-startDate)` }}>
+                                                                        <SortHeader id="startDate" label="Service Date" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('startDate', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-service)` }}>
+                                                                        <SortHeader id="service" label="Services / Products" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('service', e)} />
+                                                                    </th>
+                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px] truncate" style={{ width: `var(--col-description)` }}>
+                                                                        Invoice Description
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
+                                                                    </th>
+                                                                    <th className="relative group text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-qty)` }}>
+                                                                        Qty
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('qty', e)} />
+                                                                    </th>
+                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
+                                                                        <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('bill', e)} />
+                                                                    </th>
+                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
+                                                                        Net Income
+                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
+                                                                    </th>
                                                                 </>
                                                             ) : subTab === 'commission' ? (
                                                                 <>
@@ -1470,6 +1582,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1492,6 +1607,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1534,6 +1652,9 @@ export default function TimeManagerPage() {
                                                                     onPending={handlePending}
                                                                     onEditTask={handleEditTask}
                                                                     subTab={subTab}
+                                                                    includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                    includeActual={getShiftMode(ct.id).includeActual}
+                                                                    onShiftModeChange={handleShiftModeChange}
                                                                     rowVariant="card"
                                                                 />
                                                             ));
@@ -1662,7 +1783,6 @@ export default function TimeManagerPage() {
                                                                     <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
                                                                     <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                                     <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                                     <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                                 </>
                                                             ) : subTab === 'commission' ? (
@@ -1675,7 +1795,6 @@ export default function TimeManagerPage() {
                                                                 <>
                                                                     <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
                                                                     <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                                     <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                                     <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                                     <SortHeader id="status" label="Status" align="text-center" />
@@ -1746,6 +1865,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1768,6 +1890,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1810,6 +1935,9 @@ export default function TimeManagerPage() {
                                                                     onPending={handlePending}
                                                                     onEditTask={handleEditTask}
                                                                     subTab={subTab}
+                                                                    includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                    includeActual={getShiftMode(ct.id).includeActual}
+                                                                    onShiftModeChange={handleShiftModeChange}
                                                                     rowVariant="card"
                                                                 />
                                                             ));

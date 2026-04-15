@@ -11,6 +11,7 @@ import {
     CheckIcon,
     CloseIcon,
     CheckCircleIcon,
+    EyeIcon,
 } from '@/components/ui/icons';
 import {
     fmtDateTime,
@@ -105,6 +106,9 @@ export function TimesheetTableRow({
     onEditTask,
     subTab = 'all',
     rowVariant = 'default',
+    includeSchedule = true,
+    includeActual = true,
+    onShiftModeChange,
 }: {
     ct: CallTimeRow;
     isExpanded: boolean;
@@ -122,6 +126,9 @@ export function TimesheetTableRow({
     subTab?: 'all' | 'bill' | 'invoice' | 'commission';
     /** Card-style row (separate borders, rounded) for event detail table */
     rowVariant?: 'default' | 'card';
+    includeSchedule?: boolean;
+    includeActual?: boolean;
+    onShiftModeChange?: (invitationId: string, next: { includeSchedule: boolean; includeActual: boolean }) => void;
 }) {
     const { toast } = useToast();
     const [isEditing, setIsEditing] = useState(false);
@@ -372,6 +379,28 @@ export function TimesheetTableRow({
                         {/* Description — name (city, state), service, Schedule / Actual / Notes (invoice line item style) */}
                         <td className="px-3 py-4 text-[11px] leading-relaxed text-slate-600 min-w-[500px]">
                             <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-4 rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-[10px] font-semibold text-slate-600">
+                                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={includeSchedule}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => onShiftModeChange?.(ct.id, { includeSchedule: e.target.checked, includeActual })}
+                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                        />
+                                        Schedule shift
+                                    </label>
+                                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={includeActual}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => onShiftModeChange?.(ct.id, { includeSchedule, includeActual: e.target.checked })}
+                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                        />
+                                        Actual shift
+                                    </label>
+                                </div>
                                 {(() => {
                                     const invoiceRows =
                                         ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
@@ -403,7 +432,6 @@ export function TimesheetTableRow({
                                                 key={row.id ?? idx}
                                                 className={`flex flex-col gap-2.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}
                                             >
-<<<<<<< HEAD
                                                 <div className="font-semibold text-slate-900 text-[12px] leading-snug">
                                                     {invoiceStaffHeadline(row, row.event ?? ct.event)}
                                                 </div>
@@ -470,23 +498,10 @@ export function TimesheetTableRow({
                                                                     </PopoverContent>
                                                                 )}
                                                             </Popover>
-=======
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex items-baseline gap-1.5">
-                                                        <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider w-24 shrink-0">Schedule Shift</span>
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <div className="text-slate-800 font-semibold">{invoiceScheduledRange(row)}</div>
-                                                            <div className="text-muted-foreground font-medium text-[10px]">({rowSchedHrs.toFixed(2)} hrs)</div>
->>>>>>> 5d8989634c12ff79994a7d916b65f019a92f83eb
                                                         </div>
-                                                    </div>
-                                                    
-                                                    <div className="flex items-baseline gap-1.5 mt-0.5">
-                                                        <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider w-24 shrink-0">Actual Shift</span>
-                                                        <div className="min-w-0 flex-1">
-                                                            {actualLine}
-                                                        </div>
-                                                    </div>
+                                                    ) : (
+                                                        actualLine
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -542,7 +557,7 @@ export function TimesheetTableRow({
                         </td>
 
                         {/* Total Invoice (w/ Popover for editing) */}
-                        <td className="px-3 py-2.5 text-right font-extrabold text-primary tabular-nums text-[13px]">
+                        <td className="px-3 py-2.5 text-right font-extrabold text-foreground tabular-nums text-[13px]">
                             <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
                                 <PopoverTrigger asChild>
                                     <div className="cursor-pointer hover:bg-primary/5 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
@@ -574,11 +589,6 @@ export function TimesheetTableRow({
                             </Popover>
                         </td>
 
-                        {/* Total Bill */}
-                        <td className="px-3 py-2.5 text-right font-semibold text-slate-500 tabular-nums text-[12px]">
-                            {fmtCurrency(totalBill)}
-                        </td>
-
                         {/* Net Income */}
                         <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums text-[13px] pr-6">
                             {fmtCurrency(totalInvoice - totalBill)}
@@ -599,6 +609,28 @@ export function TimesheetTableRow({
                         {/* Bill Description - Updated format per request */}
                         <td className="px-3 py-4 text-[11px] leading-relaxed min-w-[500px] text-slate-800">
                             <div className="flex flex-col gap-4">
+                                <div className="flex items-center gap-4 rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-[10px] font-semibold text-slate-600">
+                                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={includeSchedule}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => onShiftModeChange?.(ct.id, { includeSchedule: e.target.checked, includeActual })}
+                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                        />
+                                        Schedule shift
+                                    </label>
+                                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={includeActual}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => onShiftModeChange?.(ct.id, { includeSchedule, includeActual: e.target.checked })}
+                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                        />
+                                        Actual shift
+                                    </label>
+                                </div>
                                 {(() => {
                                     const billRows = ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
                                     
@@ -607,7 +639,8 @@ export function TimesheetTableRow({
                                         const event = row.event ?? ct.event;
                                         const loc = [event?.city, event?.state].filter(Boolean).join(', ');
                                         const staffName = row.staff ? `${row.staff.firstName} ${row.staff.lastName}`.trim() : 'UNASSIGNED';
-                                        const headline = `${event?.title || '—'} | ${staffName}${loc ? ` (${loc})` : ''}`;
+                                        const eventTitle = event?.title || '—';
+                                        const staffMeta = `${staffName}${loc ? ` (${loc})` : ''}`;
                                         
                                         const schedStart = combineDateTime(row.startDate, row.startTime);
                                         const schedEnd = combineDateTime(row.endDate ?? row.startDate, row.endTime);
@@ -618,8 +651,30 @@ export function TimesheetTableRow({
 
                                         return (
                                             <div key={row.id || idx} className={`flex flex-col gap-0.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}>
-                                                <div className="font-bold text-slate-900 text-[12px]">
-                                                    {headline}
+                                                <div className="flex items-center gap-2 font-bold text-[12px]">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (event?.id) onViewEvent(event.id);
+                                                        }}
+                                                        className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-left"
+                                                    >
+                                                        {eventTitle}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (event?.id) onViewEvent(event.id);
+                                                        }}
+                                                        className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors"
+                                                        aria-label="Open task summary"
+                                                        title="Open summary"
+                                                    >
+                                                        <EyeIcon className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <span className="text-slate-700">| {staffMeta}</span>
                                                 </div>
                                                 <div className="font-semibold text-primary/80">
                                                     {row.service?.title || '—'}
@@ -674,11 +729,6 @@ export function TimesheetTableRow({
                                 </div>
                             </div>
                         </td>
-                        {/* Total Invoice */}
-                        <td className="px-3 py-2.5 text-right font-semibold text-slate-500 tabular-nums text-[12px]">
-                            {fmtCurrency(totalInvoice)}
-                        </td>
-
                         {/* Total Bill (w/ Popover for editing) */}
                         <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px]">
                             <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
@@ -864,9 +914,31 @@ export function TimesheetTableRow({
                         {/* Talent */}
                         <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-talent)` }}>
                             <div className="flex flex-col gap-0.5">
-                                <span className="text-sm font-bold text-foreground">
-                                    {ct.staff?.firstName} {ct.staff?.lastName}
-                                </span>
+                                {ct.staff ? (
+                                    <TalentContactPopover
+                                        talent={{
+                                            firstName: ct.staff.firstName,
+                                            lastName: ct.staff.lastName,
+                                            email: ct.staff.email,
+                                            phone: ct.staff.phone,
+                                            city: ct.staff.city,
+                                            state: ct.staff.state,
+                                            accountStatus: ct.staff.accountStatus,
+                                            staffRating: ct.staff.staffRating,
+                                        }}
+                                        trigger={(
+                                            <button
+                                                type="button"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-left text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer transition-colors"
+                                            >
+                                                {ct.staff.firstName} {ct.staff.lastName}
+                                            </button>
+                                        )}
+                                    />
+                                ) : (
+                                    <span className="text-sm font-bold text-foreground">Open shift</span>
+                                )}
                                 <span className="text-[10px] text-muted-foreground uppercase tracking-tight">
                                     {ct.staff?.email || 'No email provided'}
                                 </span>
@@ -1021,17 +1093,24 @@ export function TimesheetTableRow({
                                         className="text-right tabular-nums cursor-pointer hover:bg-muted/40 transition-colors p-1 rounded-md"
                                         onClick={e => e.stopPropagation()}
                                     >
-                                        <div className="text-[11px] font-bold text-foreground">{fmtCurrency(totalInvoice)}</div>
-                                        {/* <div className="text-[10px] text-muted-foreground mt-0.5">
-                                            {[
-                                                toNumber(clockedPriceVal) > 0 && 'Shift',
-                                                toNumber(otPrice) > 0 && 'OT',
-                                                toNumber(expPrice) > 0 && 'Travel',
-                                                isCommApp && 'C',
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' + ') || '—'}
-                                        </div> */}
+                                        <div className="space-y-0.5 text-[10px] leading-tight">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <span className="font-bold text-slate-500 uppercase">Shift:</span>
+                                                <span className="font-bold text-foreground">{fmtCurrency(clockedPriceVal)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <span className="font-bold text-slate-500 uppercase">OT:</span>
+                                                <span className="font-bold text-amber-600">{fmtCurrency(otPrice)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <span className="font-bold text-slate-500 uppercase">Travel:</span>
+                                                <span className="font-bold text-indigo-600">{fmtCurrency(expPrice)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="mt-1 border-t border-border pt-1 flex items-center justify-end gap-1.5">
+                                            <span className="text-[11px] font-extrabold text-foreground uppercase">Price:</span>
+                                            <span className="text-[11px] font-extrabold text-foreground">{fmtCurrency(totalInvoice)}</span>
+                                        </div>
                                     </div>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>
@@ -1100,17 +1179,24 @@ export function TimesheetTableRow({
                                         className="text-right tabular-nums cursor-pointer hover:bg-muted/40 transition-colors p-1 rounded-md"
                                         onClick={e => e.stopPropagation()}
                                     >
-                                        <div className="text-[11px] font-bold text-foreground">{fmtCurrency(totalBill)}</div>
-                                        {/* <div className="text-[10px] text-muted-foreground mt-0.5">
-                                            {[
-                                                toNumber(clockedCostVal) > 0 && 'Shift',
-                                                toNumber(otCost) > 0 && 'OT',
-                                                toNumber(expCost) > 0 && 'Travel',
-                                                isCommApp && 'C',
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' + ') || '—'}
-                                        </div> */}
+                                        <div className="space-y-0.5 text-[10px] leading-tight">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <span className="font-bold text-slate-500 uppercase">Shift:</span>
+                                                <span className="font-bold text-foreground">{fmtCurrency(clockedCostVal)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <span className="font-bold text-slate-500 uppercase">OT:</span>
+                                                <span className="font-bold text-amber-600">{fmtCurrency(otCost)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <span className="font-bold text-slate-500 uppercase">Travel:</span>
+                                                <span className="font-bold text-indigo-600">{fmtCurrency(expCost)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="mt-1 border-t border-border pt-1 flex items-center justify-end gap-1.5">
+                                            <span className="text-[11px] font-extrabold text-foreground uppercase">Cost:</span>
+                                            <span className="text-[11px] font-extrabold text-foreground">{fmtCurrency(totalBill)}</span>
+                                        </div>
                                     </div>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-72" onClick={e => e.stopPropagation()}>

@@ -82,10 +82,19 @@ export const timeEntryRouter = router({
      * Generate invoices for selected assignments
      */
     generateInvoices: managerProcedure
-        .input(z.object({ invitationIds: z.array(z.string().uuid()) }))
+        .input(z.object({
+            invitationIds: z.array(z.string().uuid()),
+            shiftSelections: z
+                .array(z.object({
+                    invitationId: z.string().uuid(),
+                    includeSchedule: z.boolean(),
+                    includeActual: z.boolean(),
+                }))
+                .optional(),
+        }))
         .mutation(async ({ ctx, input }) => {
             const service = new TimeEntryService(ctx.prisma);
-            return await service.generateInvoices(input.invitationIds, ctx.userId as string);
+            return await service.generateInvoices(input.invitationIds, ctx.userId as string, input.shiftSelections);
         }),
 
     /**

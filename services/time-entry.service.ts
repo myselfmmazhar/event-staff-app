@@ -382,7 +382,14 @@ export class TimeEntryService {
      * Generate Invoices from selected invitations.
      * Groups by Event and creates one Draft Invoice per Event.
      */
-    async generateInvoices(invitationIds: string[], userId: string) {
+    async generateInvoices(
+        invitationIds: string[],
+        userId: string,
+        shiftSelections?: Array<{ invitationId: string; includeSchedule: boolean; includeActual: boolean }>
+    ) {
+        const selectionMap = new Map(
+            (shiftSelections ?? []).map((s) => [s.invitationId, { includeSchedule: s.includeSchedule, includeActual: s.includeActual }])
+        );
         const invitations = await (this.prisma as any).callTimeInvitation.findMany({
             where: {
                 id: { in: invitationIds },
@@ -428,6 +435,13 @@ export class TimeEntryService {
             const invoiceNo = `INV-${Math.floor(Date.now() / 1000)}-${Math.floor(Math.random() * 1000)}`;
 
             const items = group.map((inv: any) => {
+                const mode = selectionMap.get(inv.id) ?? { includeSchedule: true, includeActual: true };
+                const includeSchedule = mode.includeSchedule;
+                const includeActual = mode.includeActual;
+                if (!includeSchedule && !includeActual) {
+                    return [];
+                }
+
                 // Calculate hours scheduled (replicate logic from helpers for service-side use)
                 let hours = 1;
                 if (inv.callTime.startDate && inv.callTime.startTime && inv.callTime.endTime) {
@@ -486,7 +500,12 @@ export class TimeEntryService {
                     actualShiftDetails = `Actual: ${clockInStr} - ${clockOutStr} (${actualHours} hrs)`;
                 }
 
-                const baseQuantity = isPerHour ? hours : 1;
+                const selectedHours = includeSchedule
+                    ? hours
+                    : includeActual
+                        ? actualHours
+                        : 0;
+                const baseQuantity = isPerHour ? selectedHours : 1;
                 const otHours = Math.max(0, actualHours - hours);
 
                 const itemsList = [];
@@ -505,8 +524,8 @@ export class TimeEntryService {
                     actualStart: inv.timeEntry?.clockIn,
                     actualEnd: inv.timeEntry?.clockOut,
                     actualHours,
-                    scheduleShiftDetail,
-                    actualShiftDetails,
+                    scheduleShiftDetail: includeSchedule ? scheduleShiftDetail : '',
+                    actualShiftDetails: includeActual ? actualShiftDetails : '',
                     internalNotes: inv.timeEntry?.notes || ""
                 });
 

@@ -278,6 +278,7 @@ function StaffFormContent({
     terminology,
     labels,
 }: StaffFormContentProps) {
+    type ExperienceMode = 'talent' | 'company';
     const isEdit = !!staff;
     const taxFormRef = useRef<TaxDetailsFormRef>(null);
     const [wizardStep, setWizardStep] = useState<WizardStep>('basic');
@@ -287,6 +288,9 @@ function StaffFormContent({
     const [createTaxFilledBy, setCreateTaxFilledBy] = useState<TaxFilledBy>(TaxFilledBy.TALENT);
     const [talentTypeChipId, setTalentTypeChipId] = useState<string>(() =>
         staff ? defaultTalentChipIdForStaffType(staff.staffType) : 'contractor'
+    );
+    const [experienceMode, setExperienceMode] = useState<ExperienceMode>(() =>
+        staff?.services?.length ? 'company' : 'talent'
     );
 
     const [teamMembers, setTeamMembers] = useState<TeamMemberInput[]>(() => {
@@ -634,12 +638,7 @@ function StaffFormContent({
                                     className="mt-2 rounded-lg border-slate-200"
                                 />
                             </div>
-                        </div>
-
-                        <div className="mt-8 pt-8 border-t border-slate-100">
-                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Classification & Services</h3>
-                            
-                            <div className="mt-6">
+                            <div>
                                 <Label className="text-sm font-bold text-slate-900">Talent type</Label>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {STAFF_TYPE_CHIPS.map(({ id, label, value }) => {
@@ -667,6 +666,11 @@ function StaffFormContent({
                                 </div>
                             </div>
                         </div>
+
+                        {/* <div className="mt-2 pt-8 border-t border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Classification & Services</h3>
+                            
+                        </div> */}
                     </div>
                 )}
 
@@ -677,6 +681,98 @@ function StaffFormContent({
                             Provide background information, skills, or internal notes for this talent.
                         </p>
                         <div className="mt-6 space-y-8">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setExperienceMode('talent')}
+                                    disabled={isSubmitting}
+                                    className={cn(
+                                        'relative rounded-xl border p-5 text-left transition-all',
+                                        experienceMode === 'talent'
+                                            ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
+                                            : 'border-slate-200 hover:border-slate-300'
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900">Talent</p>
+                                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                                Use talent profile defaults and skip service selection in this step.
+                                            </p>
+                                        </div>
+                                        <span
+                                            className={cn(
+                                                'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+                                                experienceMode === 'talent' ? 'bg-slate-900' : 'bg-slate-200'
+                                            )}
+                                            aria-hidden
+                                        >
+                                            <span
+                                                className={cn(
+                                                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
+                                                    experienceMode === 'talent' ? 'left-5' : 'left-0.5'
+                                                )}
+                                            />
+                                        </span>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setExperienceMode('company')}
+                                    disabled={isSubmitting}
+                                    className={cn(
+                                        'relative rounded-xl border p-5 text-left transition-all',
+                                        experienceMode === 'company'
+                                            ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
+                                            : 'border-slate-200 hover:border-slate-300'
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900">Company</p>
+                                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                                Enable company-led setup and choose services for this talent.
+                                            </p>
+                                        </div>
+                                        <span
+                                            className={cn(
+                                                'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+                                                experienceMode === 'company' ? 'bg-slate-900' : 'bg-slate-200'
+                                            )}
+                                            aria-hidden
+                                        >
+                                            <span
+                                                className={cn(
+                                                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
+                                                    experienceMode === 'company' ? 'left-5' : 'left-0.5'
+                                                )}
+                                            />
+                                        </span>
+                                    </div>
+                                </button>
+                            </div>
+                            {experienceMode === 'company' && (
+                                <div>
+                                    <Label htmlFor="sf-services" className="text-sm font-bold text-slate-900">Services</Label>
+                                    <p className="mt-1 text-xs text-slate-500 mb-3">Select the primary service types for this talent.</p>
+                                    <Controller
+                                        name="serviceIds"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <MultiSelect
+                                                id="sf-services"
+                                                options={services.map(s => ({ value: s.id, label: s.title }))}
+                                                value={field.value || []}
+                                                onChange={field.onChange}
+                                                placeholder="Select services..."
+                                                disabled={isSubmitting}
+                                                error={!!errors.serviceIds}
+                                                searchable
+                                            />
+                                        )}
+                                    />
+                                </div>
+                            )}
                             <div>
                                 <Label htmlFor="sf-rating" className="text-sm font-bold text-slate-900">Initial Rating</Label>
                                 <p className="mt-1 text-xs text-slate-500 mb-3">Set an initial quality rating if known.</p>
@@ -685,7 +781,7 @@ function StaffFormContent({
                                     control={control}
                                     render={({ field }) => (
                                         <Select
-                                            value={field.value}
+                                            value={typeof field.value === 'string' ? field.value : undefined}
                                             onValueChange={field.onChange}
                                             disabled={isSubmitting}
                                         >
@@ -703,26 +799,7 @@ function StaffFormContent({
                                     )}
                                 />
                             </div>
-                            <div>
-                                <Label htmlFor="sf-services" className="text-sm font-bold text-slate-900">Services</Label>
-                                <p className="mt-1 text-xs text-slate-500 mb-3">Select the primary service types for this talent.</p>
-                                <Controller
-                                    name="serviceIds"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <MultiSelect
-                                            id="sf-services"
-                                            options={services.map(s => ({ value: s.id, label: s.title }))}
-                                            value={field.value || []}
-                                            onChange={field.onChange}
-                                            placeholder="Select services..."
-                                            disabled={isSubmitting}
-                                            error={!!errors.serviceIds}
-                                            searchable
-                                        />
-                                    )}
-                                />
-                            </div>
+                            
                         </div>
                     </div>
                 )}

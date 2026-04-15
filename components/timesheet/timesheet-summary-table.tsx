@@ -19,7 +19,7 @@ import {
 import { useTableResize } from '@/hooks/use-table-resize';
 import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
 import { cn } from '@/lib/utils';
-import { MapPinIcon, UploadIcon, ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon, EditIcon } from '@/components/ui/icons';
+import { MapPinIcon, UploadIcon, ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon, EditIcon, EyeIcon } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/use-toast';
 
 interface TimesheetSummaryTableProps {
@@ -172,12 +172,26 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                         </div>
                                     </td>
                                     <td className="px-4 py-5 align-top truncate" style={{ width: 'var(--col-task)' }}>
-                                        <button
-                                            onClick={() => onEventClick(group.eventId)}
-                                            className="font-bold text-foreground hover:underline text-left text-sm"
-                                        >
-                                            {group.eventTitle}
-                                        </button>
+                                        <div className="flex items-start gap-1.5">
+                                            <button
+                                                onClick={() => onEventClick(group.eventId)}
+                                                className="font-bold text-blue-600 hover:text-blue-700 hover:underline text-left text-sm"
+                                            >
+                                                {group.eventTitle}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onEventClick(group.eventId);
+                                                }}
+                                                className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors"
+                                                title="Open summary"
+                                                aria-label="Open summary"
+                                            >
+                                                <EyeIcon className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
                                         <div className="text-[10px] text-slate-400 mt-0.5">#{group.eventDisplayId}</div>
                                     </td>
                                     <td className="px-4 py-5 text-slate-500 align-top font-medium truncate" style={{ width: 'var(--col-client)' }}>
