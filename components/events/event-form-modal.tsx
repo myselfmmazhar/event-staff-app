@@ -519,14 +519,10 @@ export function EventFormModal({
 
   const goBackForm = () => {
     if (formStepIndex > 0) {
-<<<<<<< HEAD
       const prevTab = EVENT_STEP_IDS[formStepIndex - 1];
       if (prevTab) {
         setActiveTab(prevTab);
       }
-=======
-      setActiveTab(EVENT_STEP_IDS[formStepIndex - 1]);
->>>>>>> 939b592032f986381df7d24c520f55602ee76976
     }
   };
 
