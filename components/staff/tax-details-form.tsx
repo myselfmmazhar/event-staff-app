@@ -547,7 +547,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                         <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
                             <div className="min-w-0">
                                 <Label htmlFor="w4FirstName" className="text-sm font-bold">
-                                    1. First name
+                                    First name
                                 </Label>
                                 <Input
                                     id="w4FirstName"
@@ -563,7 +563,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
 
                             <div className="min-w-0">
                                 <Label htmlFor="w4LastName" className="text-sm font-bold">
-                                    2. Last name
+                                    Last name
                                 </Label>
                                 <Input
                                     id="w4LastName"
@@ -579,7 +579,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
 
                             <div className="min-w-0 md:col-span-2">
                                 <Label htmlFor="w4Status" className="text-sm font-bold">
-                                    3. Filing Status
+                                    Filing Status
                                 </Label>
                                 <Controller
                                     name="w4Status"
@@ -605,7 +605,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
 
                             <div className="min-w-0 md:col-span-2">
                                 <Label htmlFor="w4EmployerName" className="text-sm font-bold">
-                                    7. Employer’s name and address
+                                    Employer’s name and address
                                 </Label>
                                 <Input
                                     id="w4EmployerName"
@@ -627,7 +627,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
 
                             <div className="min-w-0">
                                 <Label htmlFor="w4EmploymentDate" className="text-sm font-bold">
-                                    8. First date of employment
+                                    First date of employment
                                 </Label>
                                 <Controller
                                     name="w4EmploymentDate"
@@ -656,7 +656,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                     {/* Reuse Address Section for Step 4-5 */}
                     <div>
                         <h3 className="text-lg font-semibold border-b border-border pb-3 mb-5">
-                            4-5. Address
+                            Address
                         </h3>
                         <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-12">
                             <div className="min-w-0 md:col-span-12">
@@ -712,7 +712,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                         <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
                             <div className="min-w-0">
                                 <Label htmlFor="w4ssn" className="text-sm font-bold">
-                                    3. Social Security Number
+                                    Social Security Number
                                 </Label>
                                 <Input
                                     id="w4ssn"
@@ -729,7 +729,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                             </div>
                             <div className="min-w-0">
                                 <Label htmlFor="w4ein" className="text-sm font-bold">
-                                    9. Employer Identification Number (EIN)
+                                    Employer Identification Number (EIN)
                                 </Label>
                                 <Input
                                     id="w4ein"
