@@ -111,6 +111,11 @@ export const auth = betterAuth({
     useSecureCookies: process.env.NODE_ENV === "production",
     cookiePrefix: "event-auth",
   },
+  trustedOrigins: [
+    "http://localhost:3000",
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.BETTER_AUTH_URL,
+  ].filter(Boolean) as string[],
 });
 
 export type Session = typeof auth.$Infer.Session;
