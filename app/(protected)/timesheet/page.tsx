@@ -1167,7 +1167,7 @@ export default function TimeManagerPage() {
                                         </div>
                                         <div className="p-4">
                                             <div className="overflow-x-auto">
-                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased table-fixed" style={getTableStyle()}>
+                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
                                                     <thead>
                                                         <tr className="border-0 bg-transparent">
                                                             <th className="w-8 px-2 py-3 align-bottom">
@@ -1219,22 +1219,9 @@ export default function TimeManagerPage() {
                                                                 </>
                                                             ) : subTab === 'commission' ? (
                                                                 <>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-staffName)` }}>
-                                                                        <SortHeader id="staffName" label="Team / User" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('staffName', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate" style={{ width: `var(--col-description)` }}>
-                                                                        Invoice Description
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-price)` }}>
-                                                                        <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('price', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-status)` }}>
-                                                                        <SortHeader id="status" label="Status" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('status', e)} />
-                                                                    </th>
+                                                                    <SortHeader id="staffName" label="Team / User" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Bill Description</th>
+                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
                                                                 </>
                                                             ) : subTab === 'bill' ? (
                                                                 <>
@@ -1261,9 +1248,8 @@ export default function TimeManagerPage() {
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    <th className="relative group text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-action)` }}>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                         Action
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('action', e)} />
                                                                     </th>
                                                                     <th className="relative group p-0 truncate" style={{ width: `var(--col-talent)` }}>
                                                                         <SortHeader id="staffName" label="Talent" />
@@ -1299,24 +1285,11 @@ export default function TimeManagerPage() {
                                                                     </th>
                                                                     <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
                                                                         Net Income
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
                                                                     </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-commission)` }}>
-                                                                        <SortHeader id="commission" label="Commission" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('commission', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-minimum)` }}>
-                                                                        <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('minimum', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-status)` }}>
-                                                                        <SortHeader id="status" label="Status" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('status', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-notes)` }}>
-                                                                        <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('notes', e)} />
-                                                                    </th>
+                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
+                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
                                                                 </>
                                                             )}
                                                         </tr>
@@ -1327,7 +1300,23 @@ export default function TimeManagerPage() {
                                                             const filtered = applyDetailToolbarFilters(baseFiltered);
 
                                                             if (subTab === 'invoice') {
-                                                                return filtered.map(ct => (
+                                                                const serviceMap = new Map<string, CallTimeRow>();
+                                                                filtered.forEach(ct => {
+                                                                    const sid = ct.service?.id || 'none';
+                                                                    const sDate = formatDate(ct.startDate);
+                                                                    const key = `${sDate}_${sid}_${ct.callTimeId}`;
+                                                                    if (!serviceMap.has(key)) {
+                                                                        serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                                    } else {
+                                                                        const existing = serviceMap.get(key)!;
+                                                                        if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                            existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                        }
+                                                                        if (!existing.mergedRows) existing.mergedRows = [];
+                                                                        existing.mergedRows.push(ct);
+                                                                    }
+                                                                });
+                                                                return Array.from(serviceMap.values()).map(ct => (
                                                                     <TimesheetTableRow
                                                                         key={ct.id}
                                                                         ct={ct}
@@ -1462,7 +1451,7 @@ export default function TimeManagerPage() {
                                         </div>
                                         <div className="p-4">
                                             <div className="overflow-x-auto">
-                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased table-fixed" style={getTableStyle()}>
+                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
                                                     <thead>
                                                         <tr className="border-0 bg-transparent">
                                                             <th className="w-8 px-2 py-3 align-bottom">
@@ -1514,112 +1503,40 @@ export default function TimeManagerPage() {
                                                                 </>
                                                             ) : subTab === 'commission' ? (
                                                                 <>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-staffName)` }}>
-                                                                        <SortHeader id="staffName" label="Team / User" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('staffName', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate" style={{ width: `var(--col-description)` }}>
-                                                                        Invoice Description
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-price)` }}>
-                                                                        <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('price', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-status)` }}>
-                                                                        <SortHeader id="status" label="Status" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('status', e)} />
-                                                                    </th>
+                                                                    <SortHeader id="staffName" label="Team / User" />
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
+                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
                                                                 </>
                                                             ) : subTab === 'bill' ? (
                                                                 <>
-                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-category)` }}>
-                                                                        Category
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('category', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px] truncate" style={{ width: `var(--col-description)` }}>
-                                                                        Bill Description
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-invoice)` }}>
-                                                                        <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
-                                                                        <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('bill', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
-                                                                        Net Income
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-status)` }}>
-                                                                        <SortHeader id="status" label="Status" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('status', e)} />
-                                                                    </th>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
+                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    <th className="relative group text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-action)` }}>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                         Action
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('action', e)} />
                                                                     </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-talent)` }}>
-                                                                        <SortHeader id="staffName" label="Talent" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('talent', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-service)` }}>
-                                                                        <SortHeader id="service" label="Services / Products" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('service', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-date)` }}>
-                                                                        <SortHeader id="startDate" label="Schedule Date" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('date', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-scheduled)` }}>
-                                                                        <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('scheduled', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-actual)` }}>
-                                                                        <SortHeader id="actualShift" label="Actual Shift" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('actual', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-variance)` }}>
-                                                                        <SortHeader id="variance" label="Variance" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('variance', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-rateType)` }}>
-                                                                        <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('rateType', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-invoice)` }}>
-                                                                        <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
-                                                                        <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('bill', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
+                                                                    <SortHeader id="staffName" label="Talent" />
+                                                                    <SortHeader id="service" label="Services / Products" />
+                                                                    <SortHeader id="startDate" label="Date" />
+                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
+                                                                    <SortHeader id="actualShift" label="Actual Shift" />
+                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
+                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
+                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
+                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
+                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                                                         Net Income
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
                                                                     </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-commission)` }}>
-                                                                        <SortHeader id="commission" label="Commission" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('commission', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-minimum)` }}>
-                                                                        <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('minimum', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-status)` }}>
-                                                                        <SortHeader id="status" label="Status" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('status', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-notes)` }}>
-                                                                        <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('notes', e)} />
-                                                                    </th>
+                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
+                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
+                                                                    <SortHeader id="status" label="Status" align="text-center" />
+                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
                                                                 </>
                                                             )}
                                                             {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
@@ -1633,7 +1550,23 @@ export default function TimeManagerPage() {
                                                             const filtered = applyDetailToolbarFilters(baseFiltered);
 
                                                             if (subTab === 'invoice') {
-                                                                return filtered.map(ct => (
+                                                                const serviceMap = new Map<string, CallTimeRow>();
+                                                                filtered.forEach(ct => {
+                                                                    const sid = ct.service?.id || 'none';
+                                                                    const sDate = formatDate(ct.startDate);
+                                                                    const key = `${sDate}_${sid}_${ct.callTimeId}`;
+                                                                    if (!serviceMap.has(key)) {
+                                                                        serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                                    } else {
+                                                                        const existing = serviceMap.get(key)!;
+                                                                        if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                            existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                        }
+                                                                        if (!existing.mergedRows) existing.mergedRows = [];
+                                                                        existing.mergedRows.push(ct);
+                                                                    }
+                                                                });
+                                                                return Array.from(serviceMap.values()).map(ct => (
                                                                     <TimesheetTableRow
                                                                         key={ct.id}
                                                                         ct={ct}
@@ -1848,7 +1781,7 @@ export default function TimeManagerPage() {
                                                                     <SortHeader id="startDate" label="Service Date" />
                                                                     <SortHeader id="service" label="Services / Products" />
                                                                     <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty</th>
+                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
                                                                     <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                                     <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                                 </>
@@ -1857,7 +1790,6 @@ export default function TimeManagerPage() {
                                                                     <SortHeader id="staffName" label="Team / User" />
                                                                     <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
                                                                     <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                                    <SortHeader id="status" label="Status" align="text-center" />
                                                                 </>
                                                             ) : subTab === 'bill' ? (
                                                                 <>
@@ -1874,7 +1806,7 @@ export default function TimeManagerPage() {
                                                                     </th>
                                                                     <SortHeader id="staffName" label="Talent" />
                                                                     <SortHeader id="service" label="Services / Products" />
-                                                                    <SortHeader id="startDate" label="Schedule Date" />
+                                                                    <SortHeader id="startDate" label="Date" />
                                                                     <SortHeader id="scheduledShift" label="Scheduled Shift" />
                                                                     <SortHeader id="actualShift" label="Actual Shift" />
                                                                     <SortHeader id="variance" label="Variance" align="text-center" />

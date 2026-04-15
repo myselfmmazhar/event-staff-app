@@ -432,12 +432,81 @@ export function TimesheetTableRow({
                                                 key={row.id ?? idx}
                                                 className={`flex flex-col gap-2.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}
                                             >
+<<<<<<< HEAD
+                                                <div className="font-semibold text-slate-900 text-[12px] leading-snug">
+                                                    {invoiceStaffHeadline(row, row.event ?? ct.event)}
+                                                </div>
+                                                <div className="text-slate-800">{row.service?.title || ct.service?.title || '—'}</div>
+                                                <div>
+                                                    <span className="font-medium text-slate-600">Schedule: </span>
+                                                    <span className="text-slate-800">
+                                                        {invoiceScheduledRange(row)}
+                                                        <span className="text-muted-foreground font-normal">
+                                                            {' '}
+                                                            ({rowSchedHrs.toFixed(2)} hrs)
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                                                    <span className="font-medium text-slate-600 shrink-0">Actual: </span>
+                                                    {isSoloInvoiceRow ? (
+                                                        <div onClick={(e) => e.stopPropagation()} className="min-w-0">
+                                                            <Popover open={isEditing} onOpenChange={setIsEditing}>
+                                                                <PopoverTrigger asChild>
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={!ct.staff}
+                                                                        className={`text-left rounded px-0.5 -mx-0.5 ${ct.staff ? 'cursor-pointer hover:bg-slate-50' : 'opacity-60 cursor-not-allowed'}`}
+                                                                        onClick={(e) => !ct.staff && e.stopPropagation()}
+                                                                    >
+                                                                        {actualLine}
+                                                                    </button>
+                                                                </PopoverTrigger>
+                                                                {ct.staff && (
+                                                                    <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                                                        <div className="space-y-3">
+                                                                            <Label className="text-xs font-bold uppercase tracking-tight text-foreground">Edit actual shift</Label>
+                                                                            <div className="space-y-2">
+                                                                                <div className="space-y-1">
+                                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Clock In</span>
+                                                                                    <Input
+                                                                                        type="datetime-local"
+                                                                                        value={clockIn}
+                                                                                        onChange={(e) => setClockIn(e.target.value)}
+                                                                                        className="h-8 text-xs"
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="space-y-1">
+                                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Clock Out</span>
+                                                                                    <Input
+                                                                                        type="datetime-local"
+                                                                                        value={clockOut}
+                                                                                        onChange={(e) => setClockOut(e.target.value)}
+                                                                                        className="h-8 text-xs"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center pt-2 border-t">
+                                                                                <div className="text-[10px] font-bold text-slate-500">
+                                                                                    Net: {hoursClocked.toFixed(2)} hrs
+                                                                                </div>
+                                                                                <div className="flex gap-2">
+                                                                                    <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="h-7 text-[10px]">Cancel</Button>
+                                                                                    <Button size="sm" onClick={handleSave} className="h-7 text-[10px]">Save</Button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </PopoverContent>
+                                                                )}
+                                                            </Popover>
+=======
                                                 <div className="flex flex-col gap-1">
                                                     <div className="flex items-baseline gap-1.5">
                                                         <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider w-24 shrink-0">Schedule Shift</span>
                                                         <div className="flex flex-col gap-0.5">
                                                             <div className="text-slate-800 font-semibold">{invoiceScheduledRange(row)}</div>
                                                             <div className="text-muted-foreground font-medium text-[10px]">({rowSchedHrs.toFixed(2)} hrs)</div>
+>>>>>>> 5d8989634c12ff79994a7d916b65f019a92f83eb
                                                         </div>
                                                     </div>
                                                     
