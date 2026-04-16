@@ -1308,7 +1308,7 @@ function StaffFormContent({
                                 type="button"
                                 onClick={goNext}
                                 disabled={isSubmitting || (wizardStep === 'basic' && !canProceedBasic)}
-                                className="h-12 w-full rounded-xl bg-slate-900 px-10 text-base font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[220px]"
+                                className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[280px]"
                             >
                                 Continue
                             </Button>
@@ -1316,7 +1316,7 @@ function StaffFormContent({
                             <Button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="h-12 w-full rounded-xl bg-indigo-600 px-10 text-base font-bold text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 hover:shadow-none sm:w-auto sm:min-w-[220px]"
+                                className="h-14 w-full rounded-xl bg-indigo-600 px-10 text-lg font-bold text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 hover:shadow-none sm:w-auto sm:min-w-[280px]"
                             >
                                 {isSubmitting
                                     ? 'Saving...'
