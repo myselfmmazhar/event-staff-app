@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EditIcon, ArchiveBoxIcon, UsersIcon, ChevronDownIcon, ChevronUpIcon, ChatBubbleLeftRightIcon } from '@/components/ui/icons';
+import { EditIcon, ArchiveBoxIcon, UsersIcon, ChevronDownIcon, ChevronRightIcon, ChatBubbleLeftRightIcon } from '@/components/ui/icons';
 import { CallTimeInvitationStatus, EventStatus } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
@@ -203,6 +203,31 @@ export function EventTable({
   };
 
   const columns: ColumnDef<Event>[] = [
+    // Expand column — arrow at the start of each row
+    {
+      key: 'expand',
+      label: '',
+      headerClassName: 'w-10 py-3 px-2',
+      className: 'w-10 py-4 px-2',
+      render: (event: Event) => {
+        const { totalRequired } = getAssignmentSummary(event);
+        if (totalRequired === 0) return <div className="w-6" />;
+        const isExpanded = expandedRows.has(event.id);
+        return (
+          <button
+            type="button"
+            className="p-1 hover:bg-muted rounded transition-colors"
+            onClick={(e) => toggleRowExpanded(event.id, e)}
+          >
+            {isExpanded ? (
+              <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+        );
+      },
+    },
     // Selection column (only if selection is enabled)
     ...(selectedIds && onSelectionChange ? [{
       key: 'select' as const,
@@ -364,47 +389,33 @@ export function EventTable({
         // Get all invitations grouped by status for expanded view
         const allInvitations = allGroups.flatMap(g => g.invitations);
         const acceptedInvitations = allInvitations.filter(inv => inv.status === 'ACCEPTED');
-        const pendingInvitations = allInvitations.filter(inv => inv.status === 'PENDING');
         const confirmedAcceptedCount = acceptedInvitations.filter((inv) => inv.isConfirmed).length;
 
         return (
           <div className="space-y-2">
-            {/* Compressed view - always visible */}
-            <div
-              className="cursor-pointer hover:bg-accent/50 rounded-md p-2 -m-2 transition-colors"
-              onClick={(e) => toggleRowExpanded(event.id, e)}
-              title="Click for details"
-            >
-              {!isExpanded && (
-                <div className="flex flex-col gap-1 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-xs">Open:</span>
-                    <Badge variant="danger" size="sm" className="w-[72px] justify-center tabular-nums">
-                      {totalOpen} of {totalRequired}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-xs">Pending:</span>
-                    <Badge variant="warning" size="sm" className="w-[72px] justify-center tabular-nums">
-                      {totalPending} of {totalRequired}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-xs">Accepted:</span>
-                    <Badge variant="success" size="sm" className="w-[72px] justify-center tabular-nums">
-                      {totalAccepted} of {totalRequired}
-                    </Badge>
-                  </div>
+            {/* Collapsed summary */}
+            {!isExpanded && (
+              <div className="flex flex-col gap-1 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-xs">Open:</span>
+                  <Badge variant="danger" size="sm" className="w-[72px] justify-center tabular-nums">
+                    {totalOpen} of {totalRequired}
+                  </Badge>
                 </div>
-              )}
-              <div className="flex items-center justify-center mt-1">
-                {isExpanded ? (
-                  <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
-                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-xs">Pending:</span>
+                  <Badge variant="warning" size="sm" className="w-[72px] justify-center tabular-nums">
+                    {totalPending} of {totalRequired}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-xs">Accepted:</span>
+                  <Badge variant="success" size="sm" className="w-[72px] justify-center tabular-nums">
+                    {totalAccepted} of {totalRequired}
+                  </Badge>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Expanded panel - full summary inline */}
             {isExpanded && (

@@ -163,7 +163,7 @@ interface Event {
   taskRateType?: AmountType | null;
 }
 
-type SaveAction = 'close' | 'new';
+type SaveAction = 'close' | 'new' | 'update-continue';
 
 // Type for CallTime assignments from Event Form
 type CallTimeAssignment = {
@@ -901,6 +901,10 @@ export function EventFormModal({
         console.log('[EventFormModal] Calling onSubmit...');
         onSubmit(finalData, attachments, pendingSaveAction);
         console.log('[EventFormModal] onSubmit called successfully');
+        // Navigate to next step after triggering update-and-continue
+        if (pendingSaveAction === 'update-continue') {
+          goNextForm();
+        }
       } else {
         console.log('[EventFormModal] Parsing with createFormSchema...');
         const finalData = createFormSchema.parse(normalizedData);
@@ -964,6 +968,10 @@ export function EventFormModal({
   const handleSaveAndNew = () => {
     console.log('[EventFormModal] handleSaveAndNew clicked');
     setPendingSaveAction('new');
+  };
+
+  const handleUpdateAndContinue = () => {
+    setPendingSaveAction('update-continue');
   };
 
   // Handle form validation errors from react-hook-form
@@ -1341,6 +1349,17 @@ export function EventFormModal({
                   )}
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                  {isEdit && isFormTab && !isLastFormStep && (
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      onClick={handleUpdateAndContinue}
+                      disabled={isSubmitting || !canContinueForm}
+                      className="rounded-lg border-slate-200"
+                    >
+                      {isSubmitting && pendingSaveAction === 'update-continue' ? 'Saving...' : 'Save & Update'}
+                    </Button>
+                  )}
                   {isEdit && onViewDetails && (
                     <Button type="button" variant="outline" onClick={onViewDetails} className="rounded-lg border-slate-200">
                       <EyeIcon className="mr-2 h-4 w-4" />
