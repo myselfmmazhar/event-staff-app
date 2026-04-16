@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,6 +9,7 @@ import type { ClientTableRow } from '@/lib/types/client';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
+import { ClientExpandedRow } from './client-expanded-row';
 
 interface ClientTableProps {
   clients: ClientTableRow[];
@@ -33,6 +35,20 @@ export function ClientTable({
   selectedIds,
   onSelectionChange,
 }: ClientTableProps) {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleRowExpanded = (clientId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(clientId)) {
+        newSet.delete(clientId);
+      } else {
+        newSet.add(clientId);
+      }
+      return newSet;
+    });
+  };
+
   // Get column labels from saved configuration
   const columnLabels = useColumnLabels('clients', {
     clientId: 'Client ID',
@@ -231,6 +247,10 @@ export function ClientTable({
     </div>
   );
 
+  const renderExpandedContent = (client: ClientTableRow) => (
+    <ClientExpandedRow clientId={client.id} />
+  );
+
   return (
     <DataTable
       tableId="clients"
@@ -244,6 +264,9 @@ export function ClientTable({
       emptyDescription="Try adjusting your search or filters"
       mobileCard={renderMobileCard}
       getRowKey={(client) => client.id}
+      expandableContent={renderExpandedContent}
+      expandedKeys={expandedRows}
+      onToggleExpand={toggleRowExpanded}
     />
   );
 }
