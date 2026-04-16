@@ -10,7 +10,7 @@ export class BillService {
     constructor(private prisma: PrismaClient) { }
 
     async findAll(query: z.infer<typeof BillSchema.query>) {
-        const { page, limit, search, status, staffId, showArchived } = query;
+        const { page, limit, search, status, staffId, showArchived, sortBy = "createdAt", sortOrder = "desc" } = query;
         const skip = (page - 1) * limit;
 
         const where: Prisma.BillWhereInput = {
@@ -25,6 +25,11 @@ export class BillService {
                 ],
             }),
         };
+
+        const orderBy: Prisma.BillOrderByWithRelationInput =
+            sortBy === "staff"
+                ? { staff: { firstName: sortOrder } }
+                : { [sortBy]: sortOrder };
 
         const [data, total] = await Promise.all([
             this.prisma.bill.findMany({
@@ -41,7 +46,7 @@ export class BillService {
                         },
                     },
                 },
-                orderBy: { createdAt: "desc" },
+                orderBy,
             }),
             this.prisma.bill.count({ where }),
         ]);

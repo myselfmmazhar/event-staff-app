@@ -220,19 +220,15 @@ export function DataTable<T>({
                   <Fragment key={rowKey}>
                     <tr
                       className={`border-b border-border hover:bg-muted/50 transition-colors ${
-                        expandableContent ? 'cursor-pointer' : ''
-                      } ${isExpanded ? 'bg-muted/30' : ''}`}
-                      onClick={expandableContent && onToggleExpand ? () => onToggleExpand(rowKey) : undefined}
+                        isExpanded ? 'bg-muted/30' : ''
+                      }`}
                     >
                       {expandableContent && (
                         <td className="w-10 py-4 px-2">
                           <button
                             type="button"
                             className="p-1 hover:bg-muted rounded transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleExpand?.(rowKey);
-                            }}
+                            onClick={() => onToggleExpand?.(rowKey)}
                           >
                             {isExpanded ? (
                               <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />

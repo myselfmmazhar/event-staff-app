@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EditIcon, ArchiveBoxIcon, UsersIcon, ChevronDownIcon, ChevronUpIcon, ChatBubbleLeftRightIcon } from '@/components/ui/icons';
+import { EditIcon, ArchiveBoxIcon, UsersIcon, ChevronDownIcon, ChatBubbleLeftRightIcon } from '@/components/ui/icons';
 import { CallTimeInvitationStatus, EventStatus } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
@@ -88,8 +88,7 @@ export function EventTable({
   // Track which event's invitation summary modal is open
   const [summaryEvent, setSummaryEvent] = useState<Event | null>(null);
 
-  const toggleRowExpanded = (eventId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleRowExpanded = (eventId: string) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
       if (newSet.has(eventId)) {
@@ -351,135 +350,102 @@ export function EventTable({
     {
       key: 'assignmentProgress',
       label: columnLabels.assignmentProgress,
-      className: 'py-4 px-4 align-top min-w-[240px]',
+      className: 'py-4 px-4 align-top min-w-[200px]',
       render: (event) => {
-        const { totalRequired, totalAccepted, totalPending, totalOpen, allGroups } = getAssignmentSummary(event);
+        const { totalRequired, totalAccepted, totalPending, totalOpen } = getAssignmentSummary(event);
 
         if (totalRequired === 0) {
           return <span className="text-muted-foreground/50 italic">—</span>;
         }
 
-        const isExpanded = expandedRows.has(event.id);
-
-        // Get all invitations grouped by status for expanded view
-        const allInvitations = allGroups.flatMap(g => g.invitations);
-        const acceptedInvitations = allInvitations.filter(inv => inv.status === 'ACCEPTED');
-        const pendingInvitations = allInvitations.filter(inv => inv.status === 'PENDING');
-        const confirmedAcceptedCount = acceptedInvitations.filter((inv) => inv.isConfirmed).length;
-
         return (
-          <div className="space-y-2">
-            {/* Compressed view - always visible */}
-            <div
-              className="cursor-pointer hover:bg-accent/50 rounded-md p-2 -m-2 transition-colors"
-              onClick={(e) => toggleRowExpanded(event.id, e)}
-              title="Click for details"
-            >
-              {!isExpanded && (
-                <div className="flex flex-col gap-1 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-xs">Open:</span>
-                    <Badge variant="danger" size="sm" className="w-[72px] justify-center tabular-nums">
-                      {totalOpen} of {totalRequired}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-xs">Pending:</span>
-                    <Badge variant="warning" size="sm" className="w-[72px] justify-center tabular-nums">
-                      {totalPending} of {totalRequired}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-xs">Accepted:</span>
-                    <Badge variant="success" size="sm" className="w-[72px] justify-center tabular-nums">
-                      {totalAccepted} of {totalRequired}
-                    </Badge>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-center justify-center mt-1">
-                {isExpanded ? (
-                  <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
+          <div className="flex flex-col gap-1 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground text-xs">Open:</span>
+              <Badge variant="danger" size="sm" className="w-[72px] justify-center tabular-nums">
+                {totalOpen} of {totalRequired}
+              </Badge>
             </div>
-
-            {/* Expanded panel - full summary inline */}
-            {isExpanded && (
-              <div className="mt-2 border-t border-border/70 pt-3">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary" size="sm">{totalRequired} Required</Badge>
-                  <Badge variant="info" size="sm">{allInvitations.length} Sent</Badge>
-                </div>
-
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    className="group flex w-full items-center gap-3 rounded-lg border border-destructive/35 bg-destructive/5 px-3 py-3 text-left transition-colors hover:bg-destructive/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/assignments?eventId=${event.id}&status=open`);
-                    }}
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-destructive/30 bg-destructive/15">
-                      <span className="text-sm font-bold text-destructive">{totalOpen}</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-destructive">Open Positions</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Needs Staffing</p>
-                    </div>
-                    <ChevronDownIcon className="h-4 w-4 -rotate-90 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="group flex w-full items-center gap-3 rounded-lg border border-warning/40 bg-warning/5 px-3 py-3 text-left transition-colors hover:bg-warning/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/assignments?eventId=${event.id}&status=pending`);
-                    }}
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-warning/35 bg-warning/15">
-                      <span className="text-sm font-bold text-warning">{totalPending}</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-warning">Pending Response</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Awaiting Confirmation</p>
-                    </div>
-                    <ChevronDownIcon className="h-4 w-4 -rotate-90 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="group flex w-full items-center gap-3 rounded-lg border border-success/40 bg-success/5 px-3 py-3 text-left transition-colors hover:bg-success/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/assignments?eventId=${event.id}&status=accepted`);
-                    }}
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-success/35 bg-success/15">
-                      <span className="text-sm font-bold text-success">{totalAccepted}</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-success">Accepted</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {confirmedAcceptedCount} Confirmed
-                      </p>
-                    </div>
-                    <ChevronDownIcon className="h-4 w-4 -rotate-90 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground text-xs">Pending:</span>
+              <Badge variant="warning" size="sm" className="w-[72px] justify-center tabular-nums">
+                {totalPending} of {totalRequired}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground text-xs">Accepted:</span>
+              <Badge variant="success" size="sm" className="w-[72px] justify-center tabular-nums">
+                {totalAccepted} of {totalRequired}
+              </Badge>
+            </div>
           </div>
         );
       },
     },
   ];
+
+  const renderExpandedContent = (event: Event) => {
+    const { totalRequired, totalAccepted, totalPending, totalOpen, allGroups } = getAssignmentSummary(event);
+    if (totalRequired === 0) return null;
+    const allInvitations = allGroups.flatMap(g => g.invitations);
+    const confirmedAcceptedCount = allInvitations.filter(inv => inv.status === 'ACCEPTED' && inv.isConfirmed).length;
+
+    return (
+      <div className="px-6 py-4 bg-muted/20 border-t border-border/50">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Assignment Summary</span>
+          <Badge variant="secondary" size="sm">{totalRequired} Required</Badge>
+          <Badge variant="info" size="sm">{allInvitations.length} Sent</Badge>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            type="button"
+            className="group flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-left transition-colors hover:bg-destructive/10"
+            onClick={(e) => { e.stopPropagation(); router.push(`/assignments?eventId=${event.id}&status=open`); }}
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-destructive/25 bg-destructive/10">
+              <span className="text-base font-bold text-destructive">{totalOpen}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-destructive">Open Positions</p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Needs Staffing</p>
+            </div>
+            <ChevronDownIcon className="ml-auto h-4 w-4 -rotate-90 text-muted-foreground transition-transform group-hover:translate-x-0.5 shrink-0" />
+          </button>
+
+          <button
+            type="button"
+            className="group flex items-center gap-3 rounded-lg border border-warning/35 bg-warning/5 px-4 py-3 text-left transition-colors hover:bg-warning/10"
+            onClick={(e) => { e.stopPropagation(); router.push(`/assignments?eventId=${event.id}&status=pending`); }}
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-warning/30 bg-warning/10">
+              <span className="text-base font-bold text-warning">{totalPending}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-warning">Pending</p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Awaiting Confirmation</p>
+            </div>
+            <ChevronDownIcon className="ml-auto h-4 w-4 -rotate-90 text-muted-foreground transition-transform group-hover:translate-x-0.5 shrink-0" />
+          </button>
+
+          <button
+            type="button"
+            className="group flex items-center gap-3 rounded-lg border border-success/35 bg-success/5 px-4 py-3 text-left transition-colors hover:bg-success/10"
+            onClick={(e) => { e.stopPropagation(); router.push(`/assignments?eventId=${event.id}&status=accepted`); }}
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-success/30 bg-success/10">
+              <span className="text-base font-bold text-success">{totalAccepted}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-success">Accepted</p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{confirmedAcceptedCount} Confirmed</p>
+            </div>
+            <ChevronDownIcon className="ml-auto h-4 w-4 -rotate-90 text-muted-foreground transition-transform group-hover:translate-x-0.5 shrink-0" />
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const renderMobileCard = (event: Event) => (
     <div
@@ -623,6 +589,9 @@ export function EventTable({
         emptyDescription="Try adjusting your search or filters"
         mobileCard={renderMobileCard}
         getRowKey={(event) => event.id}
+        expandableContent={renderExpandedContent}
+        expandedKeys={expandedRows}
+        onToggleExpand={toggleRowExpanded}
       />
 
       {/* Invitation Summary Modal */}

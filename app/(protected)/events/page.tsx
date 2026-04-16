@@ -137,6 +137,9 @@ export default function EventsPage() {
   // Track if we're doing Save & New (to prevent closing the form)
   const [isSaveAndNew, setIsSaveAndNew] = useState(false);
 
+  // Track if we're doing Update & Continue (to prevent closing the form)
+  const [isUpdateAndContinue, setIsUpdateAndContinue] = useState(false);
+
   // View toggle state (table / calendar / map)
   type EventsViewMode = 'table' | 'calendar' | 'map';
   const [viewMode, setViewMode] = useState<EventsViewMode>(() => {
@@ -258,8 +261,11 @@ export default function EventsPage() {
   const updateMutation = trpc.event.update.useMutation(
     updateMutationOptions(`${terminology.event.singular} updated successfully`, {
       onSuccess: () => {
-        setIsFormOpen(false);
-        setSelectedEvent(null);
+        if (!isUpdateAndContinue) {
+          setIsFormOpen(false);
+          setSelectedEvent(null);
+        }
+        setIsUpdateAndContinue(false);
         refetch();
       },
     })
@@ -408,7 +414,7 @@ export default function EventsPage() {
   const bulkSyncCallTimesMutation = trpc.callTime.bulkSyncForEvent.useMutation();
   const bulkUpdateProductsMutation = trpc.eventAttachment.bulkUpdateProducts.useMutation();
 
-  type SaveAction = 'close' | 'new';
+  type SaveAction = 'close' | 'new' | 'update-continue';
 
   // Type for CallTime assignments from Event Form
   type CallTimeAssignment = {
@@ -458,6 +464,7 @@ export default function EventsPage() {
 
     // Set flag before mutation so onSuccess knows whether to close the form
     setIsSaveAndNew(saveAction === 'new');
+    setIsUpdateAndContinue(saveAction === 'update-continue');
 
     try {
       if (selectedEvent) {

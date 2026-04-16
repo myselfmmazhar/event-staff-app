@@ -293,4 +293,43 @@ export const staffRouter = router({
             const staffService = new StaffService(ctx.prisma);
             return await staffService.bulkUpdate(input, ctx.userId!);
         }),
+
+    /**
+     * Get the most recent accepted activity for a staff member
+     * Returns the latest CallTimeInvitation where status = ACCEPTED with event + position info
+     */
+    getRecentActivity: protectedProcedure
+        .input(z.object({ staffId: z.string().uuid() }))
+        .query(async ({ ctx, input }) => {
+            const invitation = await ctx.prisma.callTimeInvitation.findFirst({
+                where: {
+                    staffId: input.staffId,
+                    status: 'ACCEPTED',
+                },
+                select: {
+                    status: true,
+                    isConfirmed: true,
+                    callTime: {
+                        select: {
+                            startDate: true,
+                            startTime: true,
+                            service: {
+                                select: { title: true },
+                            },
+                            event: {
+                                select: {
+                                    id: true,
+                                    title: true,
+                                    status: true,
+                                    startDate: true,
+                                    startTime: true,
+                                },
+                            },
+                        },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+            });
+            return invitation ?? null;
+        }),
 });

@@ -243,11 +243,13 @@ const getFormValuesFromStaff = (staff: StaffWithRelations) => ({
 const formSchema = StaffSchema.create;
 export type StaffFormInput = z.input<typeof formSchema>;
 
+type SaveAction = 'close' | 'update-continue';
+
 interface StaffFormModalProps {
     staff: StaffWithRelations | null;
     open: boolean;
     onClose: () => void;
-    onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => void;
+    onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>, saveAction?: SaveAction) => void;
     isSubmitting: boolean;
     onViewDetails?: () => void;
 }
@@ -256,7 +258,7 @@ interface StaffFormModalProps {
 interface StaffFormContentProps {
     staff: StaffWithRelations | null;
     onClose: () => void;
-    onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => void;
+    onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>, saveAction?: SaveAction) => void;
     isSubmitting: boolean;
     onViewDetails?: () => void;
     onCreateService?: () => void;
@@ -398,6 +400,12 @@ function StaffFormContent({
     const phoneValid = Boolean(phone?.trim() && phoneValidation.isValid(phone));
     const canProceedBasic = emailValid;
 
+    const [pendingSaveAction, setPendingSaveAction] = useState<SaveAction>('close');
+
+    const handleUpdateAndContinue = () => {
+        setPendingSaveAction('update-continue');
+    };
+
     const handleFormSubmit: SubmitHandler<StaffFormInput> = async (data) => {
         if (!isEdit && !data.email?.trim()) {
             toast({
@@ -414,10 +422,14 @@ function StaffFormContent({
         };
         if (!isEdit && taxFormRef.current) {
             const taxData = await taxFormRef.current.getFormData();
-            onSubmit(submitData, taxData ? (taxData as unknown as Record<string, unknown>) : undefined);
+            onSubmit(submitData, taxData ? (taxData as unknown as Record<string, unknown>) : undefined, pendingSaveAction);
         } else {
-            onSubmit(submitData);
+            onSubmit(submitData, undefined, pendingSaveAction);
         }
+        if (pendingSaveAction === 'update-continue') {
+            goNext();
+        }
+        setPendingSaveAction('close');
     };
 
     const sectionProps = {
@@ -1328,6 +1340,17 @@ function StaffFormContent({
                     </div>
 
                     <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                        {isEdit && !isLastStep && (
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                onClick={handleUpdateAndContinue}
+                                disabled={isSubmitting || (wizardStep === 'basic' && !canProceedBasic)}
+                                className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                            >
+                                {isSubmitting && pendingSaveAction === 'update-continue' ? 'Saving...' : 'Save & Update'}
+                            </Button>
+                        )}
                         {isEdit && onViewDetails && (
                             <Button
                                 type="button"

@@ -93,7 +93,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 type FormFieldName = keyof FormData;
-type SaveAction = 'close' | 'new';
+type SaveAction = 'close' | 'new' | 'update-continue';
 
 const CLIENT_TABS = [
   { id: 'info' as const, label: 'Client Info' },
@@ -319,6 +319,10 @@ export function ClientFormModal({
     } else {
       onSubmit(data, pendingSaveAction);
     }
+    // Navigate to next step after triggering update-and-continue
+    if (pendingSaveAction === 'update-continue') {
+      goNext();
+    }
   };
 
   // Wrapper to ensure form submission doesn't bubble to parent forms
@@ -338,6 +342,10 @@ export function ClientFormModal({
 
   const handleSaveAndNew = () => {
     setPendingSaveAction('new');
+  };
+
+  const handleUpdateAndContinue = () => {
+    setPendingSaveAction('update-continue');
   };
 
   // Default form values
@@ -833,11 +841,28 @@ export function ClientFormModal({
                     onClick={handleSaveAndClose}
                     className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
                   >
-                    {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? 'Update Client' : 'Save & Close'}
+                    {isSubmitting && pendingSaveAction === 'close'
+                      ? 'Saving...'
+                      : isEdit
+                        ? 'Update Client'
+                        : !isEdit && isLastStep && hasLoginAccess
+                          ? 'Send & Close'
+                          : 'Save & Close'}
                   </Button>
                 )}
               </div>
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                {isEdit && !isLastStep && (
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    onClick={handleUpdateAndContinue}
+                    disabled={isSubmitting || !canContinue}
+                    className="rounded-lg border-slate-200"
+                  >
+                    {isSubmitting && pendingSaveAction === 'update-continue' ? 'Saving...' : 'Save & Update'}
+                  </Button>
+                )}
                 {isEdit && onViewDetails && (
                   <Button type="button" variant="outline" onClick={onViewDetails} className="rounded-lg border-slate-200">
                     <EyeIcon className="mr-2 h-4 w-4" />
@@ -854,7 +879,7 @@ export function ClientFormModal({
                 </Button>
                 {!isEdit && (
                   <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
-                    {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                    {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : isLastStep && hasLoginAccess ? 'Send & New' : 'Save & New'}
                   </Button>
                 )}
               </div>

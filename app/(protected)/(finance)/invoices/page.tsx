@@ -19,17 +19,32 @@ export default function InvoicesPage() {
     const [search, setSearch] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showArchived, setShowArchived] = useState(false);
+    const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "invoiceNo" | "invoiceDate" | "status" | "client">("createdAt");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
     // Action modal state
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [selectedInvoiceForAction, setSelectedInvoiceForAction] = useState<{ id: string, invoiceNo: string, clientName: string } | null>(null);
     const [actionType, setActionType] = useState<'archive' | 'restore' | 'delete'>('archive');
 
+    const handleSort = (field: string) => {
+        const f = field as typeof sortBy;
+        if (sortBy === f) {
+            setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        } else {
+            setSortBy(f);
+            setSortOrder("desc");
+        }
+        setPage(1);
+    };
+
     const { data, isLoading } = trpc.invoices.getAll.useQuery({
         page,
         limit,
         showArchived,
-        // search // TODO: Add search to backend query
+        search: search || undefined,
+        sortBy,
+        sortOrder,
     });
 
     const invoices = data?.data || [];
@@ -95,6 +110,9 @@ export default function InvoicesPage() {
                 <InvoiceTable
                     invoices={invoices}
                     isLoading={isLoading}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     showArchived={showArchived}

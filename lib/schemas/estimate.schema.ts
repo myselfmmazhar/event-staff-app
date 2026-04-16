@@ -63,6 +63,8 @@ export const EstimateSchema = {
         status: EstimateStatusSchema.optional(),
         clientId: z.string().optional(),
         showArchived: z.boolean().default(false),
+        sortBy: z.enum(["createdAt", "updatedAt", "estimateNo", "estimateDate", "status", "client"]).default("createdAt"),
+        sortOrder: z.enum(["asc", "desc"]).default("desc"),
     }),
     deleteMany: z.object({
         ids: z.array(z.string()),

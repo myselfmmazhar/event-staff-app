@@ -18,17 +18,32 @@ export default function EstimatesPage() {
     const [search, setSearch] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showArchived, setShowArchived] = useState(false);
+    const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "estimateNo" | "estimateDate" | "status" | "client">("createdAt");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
     // Action modal state
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [selectedEstimateForAction, setSelectedEstimateForAction] = useState<{ id: string, estimateNo: string, clientName: string } | null>(null);
     const [actionType, setActionType] = useState<'archive' | 'restore' | 'delete'>('archive');
 
+    const handleSort = (field: string) => {
+        const f = field as typeof sortBy;
+        if (sortBy === f) {
+            setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        } else {
+            setSortBy(f);
+            setSortOrder("desc");
+        }
+        setPage(1);
+    };
+
     const { data, isLoading } = trpc.estimates.getAll.useQuery({
         page,
         limit,
         showArchived,
         search: search || undefined,
+        sortBy,
+        sortOrder,
     });
 
     const estimates = data?.data || [];
@@ -94,6 +109,9 @@ export default function EstimatesPage() {
                 <EstimateTable
                     estimates={estimates as any}
                     isLoading={isLoading}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     showArchived={showArchived}
