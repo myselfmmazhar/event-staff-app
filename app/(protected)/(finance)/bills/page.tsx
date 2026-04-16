@@ -66,26 +66,25 @@ export default function BillsPage() {
     const { toast } = (require("@/components/ui/use-toast") as any).useToast();
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground">Bills</h1>
-                    <p className="text-muted-foreground mt-1">Manage your bills and talent payments</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant={showArchived ? "default" : "outline"}
-                        onClick={() => setShowArchived(!showArchived)}
-                        className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
-                    >
-                        <ArchiveIcon className="h-4 w-4 mr-2" />
-                        {showArchived ? "Showing Archived" : "View Archive"}
-                    </Button>
-                    <Button onClick={() => router.push("/bills/new")}>
-                        <PlusIcon className="h-5 w-5 mr-2" />
-                        Create Bill
-                    </Button>
-                </div>
+        <div className="space-y-6">
+            <div className="flex items-center justify-end gap-2">
+                <Button
+                    variant={showArchived ? "default" : "outline"}
+                    onClick={() => setShowArchived(!showArchived)}
+                    className={showArchived ? "bg-blue-600 hover:bg-blue-700 font-bold uppercase tracking-widest text-[10px]" : "font-bold uppercase tracking-widest text-[10px]"}
+                    size="sm"
+                >
+                    <ArchiveIcon className="h-4 w-4 mr-2" />
+                    {showArchived ? "Showing Archived" : "View Archive"}
+                </Button>
+                <Button 
+                    onClick={() => router.push("/bills/new")}
+                    size="lg"
+                    className="rounded-xl shadow-lg shadow-primary/10"
+                >
+                    <PlusIcon className="h-5 w-5 mr-2" />
+                    Create Bill
+                </Button>
             </div>
 
             <Card className="p-6 overflow-visible relative z-20">

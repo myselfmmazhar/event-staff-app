@@ -278,17 +278,11 @@ export default function CategoriesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Categories</h1>
-          <p className="text-muted-foreground mt-1">Manage your service categories.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={handleCreate}>
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add Category
-          </Button>
-        </div>
+      <div className="flex items-center justify-end">
+        <Button onClick={handleCreate} size="lg" className="rounded-xl shadow-lg shadow-primary/10">
+          <PlusIcon className="h-5 w-5 mr-2" />
+          Add Category
+        </Button>
       </div>
 
       <Card className="p-6 overflow-visible relative z-20">

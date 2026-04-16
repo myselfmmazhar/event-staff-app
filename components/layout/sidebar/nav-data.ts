@@ -114,30 +114,8 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
         },
         {
           label: 'Catalog Manager',
+          href: '/catalog/categories',
           icon: SquaresIcon,
-          subItems: [
-            {
-              label: 'Categories',
-              href: '/catalog/categories',
-              icon: SquaresIcon,
-            },
-            {
-              label: 'Services',
-              href: '/catalog/services',
-              icon: WrenchScrewdriverIcon,
-            },
-            {
-              label: 'Products',
-              href: '/catalog/products',
-              icon: CubeIcon,
-            },
-            {
-              label: 'Locations',
-              href: '/catalog/locations',
-              icon: MapPinIcon,
-              comingSoon: true,
-            },
-          ],
         },
       ],
     },
@@ -154,31 +132,8 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
         },
         {
           label: 'Finance Manager',
+          href: '/bills',
           icon: CurrencyDollarIcon,
-          subItems: [
-            // {
-            //   label: 'Proposals',
-            //   href: '/finance/proposals',
-            //   icon: DocumentTextIcon,
-            //   comingSoon: true,
-            // },
-            {
-              label: 'Bills',
-              href: '/bills',
-              // href: '/finance/bills',
-              icon: BanknotesIcon,
-            },
-            {
-              label: 'Estimates',
-              href: '/estimates',
-              icon: DocumentTextIcon,
-            },
-            {
-              label: 'Invoices',
-              href: '/invoices',
-              icon: DocumentTextIcon,
-            },
-          ],
         },
       ],
     },
