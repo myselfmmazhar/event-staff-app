@@ -71,6 +71,8 @@ export const InvoiceSchema = {
         status: InvoiceStatusSchema.optional(),
         clientId: z.string().optional(),
         showArchived: z.boolean().default(false),
+        sortBy: z.enum(["createdAt", "updatedAt", "invoiceNo", "invoiceDate", "status", "client"]).default("createdAt"),
+        sortOrder: z.enum(["asc", "desc"]).default("desc"),
     }),
     deleteMany: z.object({
         ids: z.array(z.string()),
