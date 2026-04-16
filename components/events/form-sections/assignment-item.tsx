@@ -1,11 +1,8 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { AccordionItem, AccordionArrow, AccordionContent } from '@/components/ui/accordion';
-import { EditIcon, TrashIcon, CubeIcon, WrenchScrewdriverIcon } from '@/components/ui/icons';
-import { cn } from '@/lib/utils';
+import { EditIcon, TrashIcon } from '@/components/ui/icons';
 import {
   EXPERIENCE_REQUIREMENT_LABELS,
   STAFF_RATING_LABELS,
@@ -59,7 +56,7 @@ export function AssignmentItem({
     : serviceAssignment?.billRate ?? serviceAssignment?.service?.price;
 
   // Calculate hours and totals using shared utility
-  const { hours, isHourly, totalCost, totalPrice } = getAssignmentTotals(assignment);
+  const { totalCost, totalPrice } = getAssignmentTotals(assignment);
 
   // Direct update handlers (no click-to-edit, fields are always editable)
   const handleQtyChange = (value: number) => {
@@ -111,154 +108,146 @@ export function AssignmentItem({
   };
 
 
-  return (
-    <AccordionItem value={assignment.id} className="border rounded-xl bg-white mb-2 overflow-hidden shadow-sm hover:border-primary/20 transition-all group">
-      <div className="flex items-center gap-3 px-4 py-3">
-        {/* Actions Dropdown and Expand Arrow at the Left */}
-        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <ActionDropdown
-            actions={[
-              { 
-                label: 'Edit', 
-                icon: <EditIcon className="h-3.5 w-3.5" />, 
-                onClick: onEdit,
-                disabled: disabled
-              },
-              { 
-                label: 'Delete', 
-                icon: <TrashIcon className="h-3.5 w-3.5" />, 
-                onClick: onDelete, 
-                variant: 'destructive',
-                disabled: disabled
-              },
-            ]}
-          />
-          <AccordionArrow className="h-6 w-6" />
-        </div>
+  const editable = Boolean(onQuickUpdate && !disabled);
+  const rateLabel = isProduct
+    ? 'Per item'
+    : serviceAssignment?.rateType
+      ? RATE_TYPE_LABELS[serviceAssignment.rateType]
+      : 'Per shift';
 
-        {/* Type Icon & Name/Type Info */}
-        <div className="flex items-center gap-3 w-[180px] shrink-0">
-          <div className={cn(
-            'p-2.5 rounded-xl shrink-0 flex items-center justify-center transition-colors',
-            isProduct ? 'bg-blue-50 text-blue-500 group-hover:bg-blue-100' : 'bg-green-50 text-green-500 group-hover:bg-green-100'
-          )}>
-            {isProduct ? (
-              <CubeIcon className="h-5 w-5" />
-            ) : (
-              <WrenchScrewdriverIcon className="h-5 w-5" />
-            )}
+  return (
+    <AccordionItem
+      value={assignment.id}
+      className="mb-2 overflow-visible rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:border-primary/25 group"
+    >
+      {/* Single horizontal row: scrollable body + fixed totals (matches reference) */}
+      <div className="flex min-w-0 items-stretch">
+        <div
+          className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto px-3 py-2.5 sm:gap-2.5 sm:px-4"
+          onClick={editable ? (e) => e.stopPropagation() : undefined}
+        >
+          <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <ActionDropdown
+              actions={[
+                {
+                  label: 'Edit',
+                  icon: <EditIcon className="h-3.5 w-3.5" />,
+                  onClick: onEdit,
+                  disabled: disabled,
+                },
+                {
+                  label: 'Delete',
+                  icon: <TrashIcon className="h-3.5 w-3.5" />,
+                  onClick: onDelete,
+                  variant: 'destructive',
+                  disabled: disabled,
+                },
+              ]}
+            />
+            <AccordionArrow className="h-6 w-6" />
           </div>
-          <div className="min-w-0">
-            <div className="font-bold text-[13px] leading-tight truncate text-slate-900">{title}</div>
-            <div className="text-[11px] text-slate-400 leading-tight font-medium mt-0.5">
+
+          <div className="w-[100px] shrink-0 sm:w-[128px]">
+            <div className="truncate text-[13px] font-bold leading-tight text-slate-900">{title}</div>
+            <div className="mt-0.5 truncate text-[11px] font-medium leading-tight text-slate-400">
               {isProduct ? 'Product' : 'Service'}
             </div>
           </div>
+
+          {!isProduct && serviceAssignment && onQuickUpdate && (
+            <>
+              <div className="h-9 w-px shrink-0 bg-slate-200" aria-hidden />
+              <div className="flex shrink-0 items-center gap-1.5">
+                <Input
+                  type="date"
+                  value={serviceAssignment.startDate || ''}
+                  min={minDate || undefined}
+                  max={maxDate || undefined}
+                  onChange={(e) => handleDateChange('startDate', e.target.value)}
+                  disabled={disabled || !editable}
+                  className="h-8 w-[118px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[128px]"
+                />
+                <Input
+                  type="time"
+                  value={serviceAssignment.startTime || ''}
+                  onChange={(e) => handleDateChange('startTime', e.target.value)}
+                  disabled={disabled || !editable}
+                  className="h-8 w-[100px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[108px]"
+                />
+                <span className="shrink-0 px-0.5 text-xs font-light text-slate-300">—</span>
+                <Input
+                  type="date"
+                  value={serviceAssignment.endDate || ''}
+                  min={minDate || undefined}
+                  max={maxDate || undefined}
+                  onChange={(e) => handleDateChange('endDate', e.target.value)}
+                  disabled={disabled || !editable}
+                  className="h-8 w-[118px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[128px]"
+                />
+                <Input
+                  type="time"
+                  value={serviceAssignment.endTime || ''}
+                  onChange={(e) => handleDateChange('endTime', e.target.value)}
+                  disabled={disabled || !editable}
+                  className="h-8 w-[100px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[108px]"
+                />
+              </div>
+            </>
+          )}
+
+          {editable && (
+            <>
+              <div className="h-9 w-px shrink-0 bg-slate-200" aria-hidden />
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1">
+                  <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Quantity:</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={assignment.quantity}
+                    onChange={(e) => handleQtyChange(parseInt(e.target.value, 10) || 1)}
+                    disabled={disabled}
+                    className="h-8 w-12 rounded-lg border-slate-200 bg-slate-50 px-1 text-center text-[12px] focus:bg-white sm:w-14"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Cost: $</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={cost ?? 0}
+                    onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
+                    disabled={disabled}
+                    className="h-8 w-[4.5rem] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] text-slate-700 focus:bg-white sm:w-20"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Price: $</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={price ?? 0}
+                    onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
+                    disabled={disabled}
+                    className="h-8 w-[4.5rem] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] font-semibold text-slate-900 focus:bg-white sm:w-20"
+                  />
+                </div>
+                <div className="flex h-8 shrink-0 items-center rounded-lg border border-slate-200/80 bg-slate-50 px-2 sm:px-2.5">
+                  <span className="whitespace-nowrap text-[10px] font-medium text-slate-500 sm:text-[11px]">{rateLabel}</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Date & Time Group - for service assignments */}
-        {!isProduct && serviceAssignment && onQuickUpdate && !disabled && (
-          <div className="shrink-0 flex items-center gap-2 px-3 border-l min-w-[430px]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-1.5">
-              <Input
-                type="date"
-                value={serviceAssignment.startDate || ''}
-                min={minDate || undefined}
-                max={maxDate || undefined}
-                onChange={(e) => handleDateChange('startDate', e.target.value)}
-                disabled={disabled}
-                className="w-[125px] h-9 text-[11px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
-              />
-              <Input
-                type="time"
-                value={serviceAssignment.startTime || ''}
-                onChange={(e) => handleDateChange('startTime', e.target.value)}
-                disabled={disabled}
-                className="w-[95px] h-9 text-[11px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
-              />
-            </div>
-            <span className="text-slate-300 text-xs font-light">→</span>
-            <div className="flex items-center gap-1.5">
-              <Input
-                type="date"
-                value={serviceAssignment.endDate || ''}
-                min={minDate || undefined}
-                max={maxDate || undefined}
-                onChange={(e) => handleDateChange('endDate', e.target.value)}
-                disabled={disabled}
-                className="w-[125px] h-9 text-[11px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
-              />
-              <Input
-                type="time"
-                value={serviceAssignment.endTime || ''}
-                onChange={(e) => handleDateChange('endTime', e.target.value)}
-                disabled={disabled}
-                className="w-[95px] h-9 text-[11px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Quick Edit Controls (Always visible when not disabled) */}
-        {onQuickUpdate && !disabled && (
-          <div className="flex-1 flex items-center justify-end gap-5" onClick={(e) => e.stopPropagation()}>
-            {/* Qty */}
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Quantity:</span>
-              <Input
-                type="number"
-                min={1}
-                value={assignment.quantity}
-                onChange={(e) => handleQtyChange(parseInt(e.target.value) || 1)}
-                disabled={disabled}
-                className="w-14 h-9 text-[12px] text-center px-1 rounded-lg bg-slate-50 border-slate-200 focus:bg-white"
-              />
-            </div>
-
-            {/* Cost */}
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Cost: <span className="text-slate-400 font-normal">$</span></span>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                value={cost ?? 0}
-                onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
-                disabled={disabled}
-                className="w-20 h-9 text-[12px] px-2 rounded-lg bg-slate-50 border-slate-200 focus:bg-white text-slate-600"
-              />
-            </div>
-
-            {/* Price */}
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Price: <span className="text-slate-400 font-normal">$</span></span>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                value={price ?? 0}
-                onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
-                disabled={disabled}
-                className="w-20 h-9 text-[12px] px-2 font-bold rounded-lg border-slate-200 focus:ring-1 focus:ring-primary/20"
-              />
-            </div>
-
-            {/* Rate Scale Label */}
-            <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap w-[90px]">
-              {isProduct ? 'Per Item' : (serviceAssignment?.rateType ? RATE_TYPE_LABELS[serviceAssignment.rateType] : 'Per Shift')}
-            </span>
-          </div>
-        )}
-
-        <div className="w-[120px] text-right shrink-0 pr-1 pl-4 border-l">
-          <div className="text-[14px] font-extrabold text-blue-600 tracking-tight">
+        <div className="flex shrink-0 flex-col justify-center border-l border-slate-200 bg-white px-3 py-2 text-right sm:px-4">
+          <div className="text-[14px] font-extrabold leading-tight tracking-tight text-blue-600 sm:text-[15px]">
             {formatCurrency(totalPrice)}
           </div>
-          <div className="text-[10px] text-slate-400 font-medium mt-0.5">
-            Cost: {formatCurrency(totalCost)}
-          </div>
+          <div className="mt-0.5 text-[10px] font-medium text-slate-400">Cost: {formatCurrency(totalCost)}</div>
         </div>
-
       </div>
 
       <AccordionContent>
