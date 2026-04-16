@@ -110,11 +110,25 @@ export function getAssignmentTotals(assignment: Assignment): {
     rateType: serviceAssignment.rateType,
   });
 
+  let totalCost = calculateTotal(cost, assignment.quantity, hours, isHourly);
+  let totalPrice = calculateTotal(price, assignment.quantity, hours, isHourly);
+
+  // If hourly but we can't derive hours yet, fall back to per-unit totals so
+  // cost/price still show (matches legacy UX where shift/day totals stay visible).
+  if (isHourly && hours === null) {
+    if (totalCost === null) {
+      totalCost = calculateTotal(cost, assignment.quantity, null, false);
+    }
+    if (totalPrice === null) {
+      totalPrice = calculateTotal(price, assignment.quantity, null, false);
+    }
+  }
+
   return {
     hours,
     isHourly,
-    totalCost: calculateTotal(cost, assignment.quantity, hours, isHourly),
-    totalPrice: calculateTotal(price, assignment.quantity, hours, isHourly),
+    totalCost,
+    totalPrice,
   };
 }
 

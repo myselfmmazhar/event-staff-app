@@ -382,7 +382,7 @@ export function ClientFormModal({
     <Dialog
       open={open}
       onClose={onClose}
-      className="mx-4 flex h-[min(90vh,800px)] w-full max-h-[min(90vh,800px)] max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+      className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
     >
       <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
         <form onSubmit={onFormSubmit} className="flex h-full min-h-0 flex-col bg-white">
@@ -813,38 +813,16 @@ export function ClientFormModal({
 
           </div>
 
-          {/* Footer */}
+          {/* Footer — primary (Continue / save) left; Back, Cancel, Save & New on one row */}
           <div className="shrink-0 border-t border-slate-200 px-6 py-4 sm:px-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="hidden min-h-5 text-xs text-slate-400 sm:block sm:max-w-sm" />
-              <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {isEdit && onViewDetails && (
-                    <Button type="button" variant="outline" onClick={onViewDetails} className="rounded-lg border-slate-200">
-                      <EyeIcon className="mr-2 h-4 w-4" />
-                      View Details
-                    </Button>
-                  )}
-                  {stepIndex > 0 && (
-                    <Button type="button" variant="outline" onClick={goBack} disabled={isSubmitting} className="rounded-lg border-slate-200">
-                      Back
-                    </Button>
-                  )}
-                  <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="rounded-lg border-slate-200">
-                    Cancel
-                  </Button>
-                  {!isEdit && (
-                    <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
-                      {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
-                    </Button>
-                  )}
-                </div>
+            <div className="flex w-full min-w-0 flex-row flex-wrap items-center justify-between gap-x-2 gap-y-2">
+              <div className="min-w-0 shrink-0">
                 {!isLastStep ? (
                   <Button
                     type="button"
                     onClick={goNext}
                     disabled={isSubmitting || !canContinue}
-                    className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                    className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
                   >
                     Continue
                   </Button>
@@ -853,9 +831,30 @@ export function ClientFormModal({
                     type="submit"
                     disabled={isSubmitting}
                     onClick={handleSaveAndClose}
-                    className="w-full rounded-lg bg-slate-900 font-semibold text-white hover:bg-slate-800 sm:min-w-[200px]"
+                    className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
                   >
                     {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? 'Update Client' : 'Save & Close'}
+                  </Button>
+                )}
+              </div>
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                {isEdit && onViewDetails && (
+                  <Button type="button" variant="outline" onClick={onViewDetails} className="rounded-lg border-slate-200">
+                    <EyeIcon className="mr-2 h-4 w-4" />
+                    View Details
+                  </Button>
+                )}
+                {stepIndex > 0 && (
+                  <Button type="button" variant="outline" onClick={goBack} disabled={isSubmitting} className="rounded-lg border-slate-200">
+                    Back
+                  </Button>
+                )}
+                <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="rounded-lg border-slate-200">
+                  Cancel
+                </Button>
+                {!isEdit && (
+                  <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
+                    {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
                   </Button>
                 )}
               </div>

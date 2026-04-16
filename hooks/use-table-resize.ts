@@ -1,21 +1,60 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 
-export function useTableResize(tableId?: string, initialWidths: Record<string, number> = {}) {
+type UseTableResizeOptions = {
+  lockedColumns?: string[];
+};
+
+function areWidthsEqual(a: Record<string, number>, b: Record<string, number>) {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+
+  if (aKeys.length !== bKeys.length) return false;
+
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+
+  return true;
+}
+
+export function useTableResize(
+  tableId?: string,
+  initialWidths: Record<string, number> = {},
+  options: UseTableResizeOptions = {}
+) {
+  const lockedColumns = useMemo(() => new Set(options.lockedColumns ?? []), [options.lockedColumns]);
+  const applyLockedWidths = useCallback(
+    (widths: Record<string, number>) => {
+      if (lockedColumns.size === 0) return widths;
+
+      const next = { ...widths };
+      lockedColumns.forEach((columnKey) => {
+        if (initialWidths[columnKey] !== undefined) {
+          next[columnKey] = initialWidths[columnKey];
+        } else {
+          delete next[columnKey];
+        }
+      });
+      return next;
+    },
+    [initialWidths, lockedColumns]
+  );
+
   // Load initial widths from localStorage if tableId is provided
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     if (typeof window !== 'undefined' && tableId) {
       const saved = localStorage.getItem(`table-widths-${tableId}`);
       if (saved) {
         try {
-          return { ...initialWidths, ...JSON.parse(saved) };
+          return applyLockedWidths({ ...initialWidths, ...JSON.parse(saved) });
         } catch (e) {
           console.error('Error loading table widths', e);
         }
       }
     }
-    return initialWidths;
+    return applyLockedWidths(initialWidths);
   });
 
   const resizingColumn = useRef<string | null>(null);
@@ -30,6 +69,8 @@ export function useTableResize(tableId?: string, initialWidths: Record<string, n
   }, [tableId, columnWidths]);
 
   const onMouseDown = useCallback((columnKey: string, e: React.MouseEvent) => {
+    if (lockedColumns.has(columnKey)) return;
+
     resizingColumn.current = columnKey;
     startX.current = e.pageX;
     
@@ -43,7 +84,7 @@ export function useTableResize(tableId?: string, initialWidths: Record<string, n
 
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
-  }, [columnWidths]);
+  }, [columnWidths, lockedColumns]);
 
   const onMouseMove = useCallback((e: MouseEvent) => {
     if (!resizingColumn.current) return;
@@ -51,11 +92,18 @@ export function useTableResize(tableId?: string, initialWidths: Record<string, n
     const deltaX = e.pageX - startX.current;
     const newWidth = Math.max(50, startWidth.current + deltaX);
 
-    setColumnWidths((prev) => ({
+    setColumnWidths((prev) => applyLockedWidths({
       ...prev,
       [resizingColumn.current!]: newWidth,
     }));
-  }, []);
+  }, [applyLockedWidths]);
+
+  useEffect(() => {
+    setColumnWidths((prev) => {
+      const next = applyLockedWidths({ ...initialWidths, ...prev });
+      return areWidthsEqual(prev, next) ? prev : next;
+    });
+  }, [initialWidths, applyLockedWidths]);
 
   const onMouseUp = useCallback(() => {
     resizingColumn.current = null;

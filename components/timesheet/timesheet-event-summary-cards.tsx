@@ -10,38 +10,51 @@ type TimesheetEventSummaryCardsProps = {
 };
 
 export function TimesheetEventSummaryCards({ rows, subTab }: TimesheetEventSummaryCardsProps) {
-    const { totalInvoice, totalBill, approvedShifts, openShifts } = useMemo(() => {
+    const { totalInvoice, totalBill, approvedShifts, totalShifts } = useMemo(() => {
         let inv = 0;
         let bill = 0;
         let approved = 0;
-        let open = 0;
+        let shifts = 0;
         for (const ct of rows) {
             const te = ct.timeEntry;
             const commission = !!ct.commission;
             const min = !!ct.applyMinimum;
             inv += calcTotalInvoice(te, ct, commission, 'ACTUAL', min);
             bill += calcTotalBill(te, ct, commission, 'ACTUAL', min);
+            shifts += 1;
 
             const rating = ct.invitations?.[0]?.internalReviewRating ?? null;
             if (rating === 'MET_EXPECTATIONS') approved += 1;
-            if (!ct.staff || ct.needsStaff) open += 1;
         }
-        return { totalInvoice: inv, totalBill: bill, approvedShifts: approved, openShifts: open };
+        return { totalInvoice: inv, totalBill: bill, approvedShifts: approved, totalShifts: shifts };
     }, [rows]);
 
     const net = totalInvoice - totalBill;
 
     const isInvoice = subTab === 'invoice';
+    const isBill = subTab === 'bill';
 
-    const items = [
-        { label: isInvoice ? 'Total Approve Invoice amount' : 'Total Invoice', value: fmtCurrency(totalInvoice) },
-        { label: isInvoice ? 'Total Approve Bill amount' : 'Total Bill', value: fmtCurrency(totalBill) },
-        { label: isInvoice ? 'Approve Net Income' : 'Net Income', value: fmtCurrency(net) },
-        { label: isInvoice ? 'Total Approve Shifts' : 'Total Shifts', value: String(isInvoice ? approvedShifts : openShifts) },
-    ];
+    const items = isInvoice
+        ? [
+            { label: 'Total Approve Invoice amount', value: fmtCurrency(totalInvoice) },
+            { label: 'Approve Net Income', value: fmtCurrency(net) },
+            { label: 'Total Approve Shifts', value: String(approvedShifts) },
+        ]
+        : isBill
+            ? [
+                { label: 'Total Approve Bill amount', value: fmtCurrency(totalBill) },
+                { label: 'Net Income', value: fmtCurrency(net) },
+                { label: 'Total Shifts', value: String(totalShifts) },
+            ]
+            : [
+                { label: 'Total Invoice', value: fmtCurrency(totalInvoice) },
+                { label: 'Total Bill', value: fmtCurrency(totalBill) },
+                { label: 'Net Income', value: fmtCurrency(net) },
+                { label: 'Total Shifts', value: String(totalShifts) },
+            ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className={`grid grid-cols-2 gap-3 md:gap-4 ${items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
             {items.map((item) => (
                 <div
                     key={item.label}
