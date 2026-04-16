@@ -1214,3 +1214,31 @@ enum DiscountType {
   AMOUNT
   PERCENT
 }
+
+model QuickBooksConnection {
+  id           String   @id @default(uuid()) @db.Uuid
+  realmId      String   @unique
+  accessToken  String
+  refreshToken String
+  tokenExpiry  DateTime @db.Timestamp(6)
+  environment  String   @default("sandbox")
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("quickbooks_connections")
+}
+
+model QuickBooksSyncMap {
+  id           String   @id @default(uuid()) @db.Uuid
+  entityType   String
+  localId      String
+  qbId         String
+  qbSyncToken  String?
+  lastSyncedAt DateTime @db.Timestamp(6)
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([entityType, localId])
+  @@unique([entityType, qbId])
+  @@index([entityType, localId])
+  @@map("quickbooks_sync_maps")
+}

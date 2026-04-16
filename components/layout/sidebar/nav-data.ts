@@ -20,6 +20,7 @@ import {
   BanknotesIcon,
   ChatBubbleLeftRightIcon,
   EnvelopeIcon,
+  CreditCardIcon,
 } from '@/components/ui/icons';
 import {
   getStaffRoute,
@@ -168,6 +169,11 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           label: 'Communication',
           href: '/settings/communication',
           icon: EnvelopeIcon,
+        },
+        {
+          label: 'QuickBooks',
+          href: '/settings/quickbooks',
+          icon: CreditCardIcon,
         },
       ],
     },

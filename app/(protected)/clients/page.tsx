@@ -22,7 +22,7 @@ import type { Client } from '@/lib/types/client';
 import type { CreateClientInput, UpdateClientInput } from '@/lib/schemas/client.schema';
 import { handleClientMutationError } from '@/lib/utils/client-error-handler';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, useMemo, type ComponentProps } from 'react';
+import { useState, useEffect, useMemo, useCallback, type ComponentProps } from 'react';
 import { useClientsFilters, type ClientLoginAccess, type ClientSortBy, type SortOrder } from '@/store/clients-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
@@ -213,6 +213,24 @@ export default function ClientsPage() {
 
   // Mutation for creating locations after client creation
   const createLocationMutation = trpc.clientLocation.create.useMutation();
+
+  // QuickBooks sync state
+  const [syncingQBId, setSyncingQBId] = useState<string | null>(null);
+  const syncQBMutation = trpc.quickbooks.syncClient.useMutation({
+    onSuccess: () => {
+      handleSuccess('Client synced to QuickBooks successfully');
+      setSyncingQBId(null);
+    },
+    onError: (error) => {
+      handleError(error);
+      setSyncingQBId(null);
+    },
+  });
+
+  const handleSyncQB = useCallback((clientId: string) => {
+    setSyncingQBId(clientId);
+    syncQBMutation.mutate({ id: clientId });
+  }, [syncQBMutation]);
 
   // Handlers
   const handleCreate = () => {
@@ -483,6 +501,8 @@ export default function ClientsPage() {
             onSort={handleSort}
             selectedIds={selectedIds}
             onSelectionChange={setSelectedIds}
+            onSyncQB={handleSyncQB}
+            syncingQBId={syncingQBId}
           />
 
           {/* Pagination */}
@@ -530,6 +550,8 @@ export default function ClientsPage() {
           setModals((prev) => ({ ...prev, view: false, form: true }));
           setBackendErrors([]);
         }}
+        onSyncQB={selectedClient ? () => handleSyncQB(selectedClient.id) : undefined}
+        isSyncingQB={selectedClient ? syncingQBId === selectedClient.id : false}
       />
 
       <DeleteClientModal

@@ -22,6 +22,7 @@ import { contactRouter } from "./contact.router";
 import { timeEntryRouter } from "./time-entry.router";
 import { billRouter } from "./bill.router";
 import { categoryRouter } from "./category.router";
+import { quickbooksRouter } from "./quickbooks.router";
 
 /**
  * Main application router
@@ -51,6 +52,7 @@ export const appRouter = router({
   timeEntry: timeEntryRouter,
   bills: billRouter,
   category: categoryRouter,
+  quickbooks: quickbooksRouter,
 });
 
 export type AppRouter = typeof appRouter;

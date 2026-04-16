@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { EditIcon, MapPinIcon } from '@/components/ui/icons';
+import { EditIcon, MapPinIcon, RefreshCwIcon } from '@/components/ui/icons';
 import type { Client } from '@/lib/types/client';
 
 interface ViewClientModalProps {
@@ -18,6 +18,8 @@ interface ViewClientModalProps {
   open: boolean;
   onClose: () => void;
   onEdit: () => void;
+  onSyncQB?: () => void;
+  isSyncingQB?: boolean;
 }
 
 export function ViewClientModal({
@@ -25,6 +27,8 @@ export function ViewClientModal({
   open,
   onClose,
   onEdit,
+  onSyncQB,
+  isSyncingQB,
 }: ViewClientModalProps) {
   if (!client) return null;
 
@@ -221,6 +225,17 @@ export function ViewClientModal({
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>
+          {onSyncQB && (
+            <Button
+              variant="outline"
+              onClick={onSyncQB}
+              disabled={isSyncingQB}
+              className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
+            >
+              <RefreshCwIcon className={`h-4 w-4 mr-2 ${isSyncingQB ? 'animate-spin' : ''}`} />
+              {isSyncingQB ? 'Syncing...' : 'Sync to QuickBooks'}
+            </Button>
+          )}
           <Button onClick={onEdit}>
             <EditIcon className="h-4 w-4 mr-2" />
             Edit Client

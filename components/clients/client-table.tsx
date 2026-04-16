@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EditIcon, TrashIcon } from '@/components/ui/icons';
+import { EditIcon, TrashIcon, RefreshCwIcon } from '@/components/ui/icons';
 import type { ClientTableRow } from '@/lib/types/client';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
@@ -20,6 +20,9 @@ interface ClientTableProps {
   // Optional selection props (used for export selected)
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  // QuickBooks sync
+  onSyncQB?: (id: string) => void;
+  syncingQBId?: string | null;
 }
 
 export function ClientTable({
@@ -32,6 +35,8 @@ export function ClientTable({
   sortOrder,
   selectedIds,
   onSelectionChange,
+  onSyncQB,
+  syncingQBId,
 }: ClientTableProps) {
   // Get column labels from saved configuration
   const columnLabels = useColumnLabels('clients', {
@@ -106,17 +111,28 @@ export function ClientTable({
       headerClassName: 'text-left py-3 px-4 w-10',
       className: 'w-10 py-4 px-4',
       render: (client) => {
+        const isSyncing = syncingQBId === client.id;
         const actions: ActionItem[] = [
           {
             label: 'Edit client',
             icon: <EditIcon className="h-3.5 w-3.5" />,
             onClick: () => onEdit(client.id),
           },
+          ...(onSyncQB
+            ? [
+                {
+                  label: isSyncing ? 'Syncing...' : 'Sync to QuickBooks',
+                  icon: <RefreshCwIcon className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />,
+                  onClick: () => !isSyncing && onSyncQB(client.id),
+                  disabled: isSyncing,
+                },
+              ]
+            : []),
           {
             label: 'Delete client',
             icon: <TrashIcon className="h-3.5 w-3.5" />,
             onClick: () => onDelete(client.id),
-            variant: 'destructive',
+            variant: 'destructive' as const,
           },
         ];
 
@@ -219,6 +235,17 @@ export function ClientTable({
           <EditIcon className="h-4 w-4 mr-1" />
           Edit
         </Button>
+        {onSyncQB && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onSyncQB(client.id)}
+            disabled={syncingQBId === client.id}
+            className="text-green-600 hover:text-green-700 border-green-200 hover:bg-green-50"
+          >
+            <RefreshCwIcon className={`h-4 w-4 ${syncingQBId === client.id ? 'animate-spin' : ''}`} />
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
