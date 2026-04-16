@@ -2,7 +2,6 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import type { EventGroup, SortField, SortOrder } from './types';
 import {
@@ -19,8 +18,10 @@ import {
 import { useTableResize } from '@/hooks/use-table-resize';
 import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
 import { cn } from '@/lib/utils';
-import { MapPinIcon, UploadIcon, ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon, EditIcon, EyeIcon } from '@/components/ui/icons';
+import { UploadIcon, ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon, EditIcon, EyeIcon } from '@/components/ui/icons';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 import { useToast } from '@/components/ui/use-toast';
+import { TIMESHEET_SUMMARY_TABLE_RESIZE_DEFAULTS } from '@/lib/timesheet/drilldown-column-order';
 
 interface TimesheetSummaryTableProps {
     eventGroups: EventGroup[];
@@ -33,7 +34,7 @@ interface TimesheetSummaryTableProps {
 }
 
 export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortOrder, onSort, subTab, onEditEvent }: TimesheetSummaryTableProps) {
-    const { onMouseDown, getTableStyle } = useTableResize('timesheet-summary');
+    const { onMouseDown, getTableStyle } = useTableResize('timesheet-summary', TIMESHEET_SUMMARY_TABLE_RESIZE_DEFAULTS);
     const { toast } = useToast();
 
     const handleUpload = async (file: File, eventTitle: string) => {
@@ -83,18 +84,19 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
 
     const summaryColumns: Array<{
         id: string;
+        widthKey: string;
         label: string;
         align?: 'text-center' | 'text-right';
     }> = [
-        { id: 'startDate', label: 'Date / Time' },
-        { id: 'event', label: 'Task' },
-        { id: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
-        { id: 'location', label: 'Location' },
-        { id: 'assignments', label: subTab === 'invoice' ? 'Total Approve Shifts' : 'Assignments', align: 'text-center' },
-        { id: 'status', label: 'Status', align: 'text-center' },
-        { id: 'invoice', label: subTab === 'invoice' ? 'Total Approve Invoice amount' : 'Total Invoice', align: 'text-right' },
-        { id: 'bill', label: subTab === 'invoice' ? 'Total Approve Bill amount' : 'Total Bill', align: 'text-right' },
-        ...(showNetIncomeColumn ? [{ id: 'netIncome', label: subTab === 'invoice' ? 'Approve Net Income' : 'Net Income', align: 'text-right' as const }] : []),
+        { id: 'startDate', widthKey: 'date', label: 'Date / Time' },
+        { id: 'event', widthKey: 'task', label: 'Task' },
+        { id: 'client', widthKey: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
+        { id: 'location', widthKey: 'location', label: 'Location' },
+        { id: 'assignments', widthKey: 'assignments', label: subTab === 'invoice' ? 'Total Approve Shifts' : 'Assignments', align: 'text-center' },
+        { id: 'status', widthKey: 'status', label: 'Status', align: 'text-center' },
+        { id: 'invoice', widthKey: 'totalInvoice', label: subTab === 'invoice' ? 'Total Approve Invoice amount' : 'Total Invoice', align: 'text-right' },
+        { id: 'bill', widthKey: 'totalBill', label: subTab === 'invoice' ? 'Total Approve Bill amount' : 'Total Bill', align: 'text-right' },
+        ...(showNetIncomeColumn ? [{ id: 'netIncome', widthKey: 'netIncome', label: subTab === 'invoice' ? 'Approve Net Income' : 'Net Income', align: 'text-right' as const }] : []),
     ];
 
     return (
@@ -103,6 +105,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                 <table className="w-full text-sm text-left table-fixed" style={getTableStyle()}>
                     <thead className="bg-slate-50 border-b border-border">
                         <tr>
+                            <th className="w-16 min-w-16 max-w-16 px-4 py-4 font-semibold text-slate-600 text-center">Action</th>
                             {summaryColumns.map((col) => (
                                 <th
                                     key={col.id}
@@ -110,7 +113,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                         "relative group px-4 py-4 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors truncate",
                                         col.align || ''
                                     )}
-                                    style={{ width: `var(--col-${col.id})` }}
+                                    style={{ width: `var(--col-${col.widthKey})` }}
                                     onClick={() => onSort?.(col.id as SortField)}
                                 >
                                     <div className={`flex items-center gap-1 ${col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : ''}`}>
@@ -129,6 +132,19 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                         {eventGroups.map((group) => {
                             const firstRow = group.callTimes[0];
                             const event = firstRow?.event;
+                            const actions: ActionItem[] = [
+                                {
+                                    label: 'View',
+                                    icon: <EyeIcon className="h-3.5 w-3.5" />,
+                                    onClick: () => onEventClick(group.eventId),
+                                },
+                                {
+                                    label: 'Edit',
+                                    icon: <EditIcon className="h-3.5 w-3.5" />,
+                                    onClick: () => onEditEvent?.(group.eventId),
+                                    disabled: !onEditEvent,
+                                },
+                            ];
 
                             const groupDates = group.callTimes.flatMap((ct) => {
                                 if (!ct.startDate) return [];
@@ -157,6 +173,9 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     key={group.eventId}
                                     className="hover:bg-slate-50/50 transition-colors group"
                                 >
+                                    <td className="w-16 min-w-16 max-w-16 px-4 py-5 text-center align-top">
+                                        <ActionDropdown actions={actions} align="start" />
+                                    </td>
                                     <td className="px-4 py-5 text-slate-900 whitespace-nowrap align-top truncate" style={{ width: 'var(--col-date)' }}>
                                         <div className="flex flex-col leading-tight">
                                             <span className="font-bold">
@@ -172,26 +191,12 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                         </div>
                                     </td>
                                     <td className="px-4 py-5 align-top truncate" style={{ width: 'var(--col-task)' }}>
-                                        <div className="flex items-start gap-1.5">
-                                            <button
-                                                onClick={() => onEventClick(group.eventId)}
-                                                className="font-bold text-blue-600 hover:text-blue-700 hover:underline text-left text-sm"
-                                            >
-                                                {group.eventTitle}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onEventClick(group.eventId);
-                                                }}
-                                                className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors"
-                                                title="Open summary"
-                                                aria-label="Open summary"
-                                            >
-                                                <EyeIcon className="h-3.5 w-3.5" />
-                                            </button>
-                                        </div>
+                                        <button
+                                            onClick={() => onEventClick(group.eventId)}
+                                            className="font-bold text-blue-600 hover:text-blue-700 hover:underline text-left text-sm"
+                                        >
+                                            {group.eventTitle}
+                                        </button>
                                         <div className="text-[10px] text-slate-400 mt-0.5">#{group.eventDisplayId}</div>
                                     </td>
                                     <td className="px-4 py-5 text-slate-500 align-top font-medium truncate" style={{ width: 'var(--col-client)' }}>

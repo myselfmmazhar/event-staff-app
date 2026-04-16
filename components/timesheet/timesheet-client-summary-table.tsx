@@ -9,6 +9,7 @@ import { TableColumnResizeHandle } from '@/components/common/table-column-resize
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import type { ClientGroup, SortField, SortOrder } from './types';
+import { TIMESHEET_CLIENT_TABLE_RESIZE_DEFAULTS } from '@/lib/timesheet/drilldown-column-order';
 import { 
     calcOvertimeCost, 
     calcOvertimePrice, 
@@ -29,7 +30,7 @@ interface TimesheetClientSummaryTableProps {
 }
 
 export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortBy, sortOrder, onSort }: TimesheetClientSummaryTableProps) {
-    const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-clients');
+    const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-clients', TIMESHEET_CLIENT_TABLE_RESIZE_DEFAULTS);
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
         const d = typeof date === 'string' ? parseISO(date) : date;

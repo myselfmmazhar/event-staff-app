@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, Fragment } from 'react';
+import { ReactNode, Fragment, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SortableHeader } from './sortable-header';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,48 @@ export interface ColumnDef<T> {
   className?: string;
   headerClassName?: string;
   render: (item: T) => ReactNode;
+}
+
+const TAILWIND_WIDTH_REM_MAP: Record<string, number> = {
+  'w-10': 2.5,
+  'w-12': 3,
+  'w-16': 4,
+  'w-20': 5,
+  'w-24': 6,
+  'w-28': 7,
+  'w-32': 8,
+  'w-36': 9,
+  'w-40': 10,
+  'w-44': 11,
+  'w-48': 12,
+  'w-52': 13,
+  'w-56': 14,
+  'w-60': 15,
+  'w-64': 16,
+};
+
+function parseFixedWidthPx(className?: string) {
+  if (!className) return null;
+
+  for (const [token, rem] of Object.entries(TAILWIND_WIDTH_REM_MAP)) {
+    if (className.includes(token)) {
+      return rem * 16;
+    }
+  }
+
+  return null;
+}
+
+function parseMinWidthPx(minWidth: string) {
+  const match = minWidth.match(/^(\d+(?:\.\d+)?)px$/);
+  if (!match) return null;
+  return Number(match[1]);
+}
+
+function getLockedColumnWidth(columnKey: string) {
+  if (columnKey === 'select') return 48;
+  if (columnKey === 'actions') return 96;
+  return null;
 }
 
 interface DataTableProps<T> {
@@ -62,7 +104,40 @@ export function DataTable<T>({
   expandedKeys,
   onToggleExpand,
 }: DataTableProps<T>) {
-  const { columnWidths, onMouseDown, getTableStyle } = useTableResize(tableId);
+  const derivedResizeConfig = useMemo(() => {
+    const lockedColumns: string[] = [];
+    const initialWidths: Record<string, number> = {};
+    const tableMinWidth = parseMinWidthPx(minWidth) ?? 0;
+    const estimatedFlexibleWidth =
+      columns.length > 0 ? Math.max(140, Math.floor(tableMinWidth / Math.max(columns.length, 1))) : 160;
+
+    for (const col of columns) {
+      const lockedWidth = getLockedColumnWidth(col.key);
+      const fixedWidth =
+        parseFixedWidthPx(col.headerClassName) ??
+        parseFixedWidthPx(col.className);
+
+      if (lockedWidth) {
+        initialWidths[col.key] = lockedWidth;
+      } else if (fixedWidth) {
+        initialWidths[col.key] = fixedWidth;
+      } else {
+        initialWidths[col.key] = estimatedFlexibleWidth;
+      }
+
+      if (col.key === 'select' || col.key === 'actions') {
+        lockedColumns.push(col.key);
+      }
+    }
+
+    return { initialWidths, lockedColumns };
+  }, [columns, minWidth]);
+
+  const { columnWidths, onMouseDown, getTableStyle } = useTableResize(
+    tableId,
+    derivedResizeConfig.initialWidths,
+    { lockedColumns: derivedResizeConfig.lockedColumns }
+  );
   const tableLabels = useTableLabels();
   // Use provided emptyMessage or fallback to global label
   const noDataMessage = emptyMessage ?? tableLabels.noData;
@@ -129,7 +204,9 @@ export function DataTable<T>({
                         {col.label}
                       </span>
                     )}
-                    <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.key, e)} />
+                    {!derivedResizeConfig.lockedColumns.includes(col.key) && (
+                      <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.key, e)} />
+                    )}
                   </th>
                 ))}
               </tr>

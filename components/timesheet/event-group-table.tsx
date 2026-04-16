@@ -7,6 +7,7 @@ import type { CallTimeRow, EventGroup, SortField, SortOrder } from './types';
 import { useTableResize } from '@/hooks/use-table-resize';
 import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
 import { cn } from '@/lib/utils';
+import { DRILLDOWN_TABLE_RESIZE_DEFAULTS } from '@/lib/timesheet/drilldown-column-order';
 
 interface EventGroupTableProps {
     group: EventGroup;
@@ -39,7 +40,11 @@ export function EventGroupTable({
     onSort,
     onSaveTimeEntry,
 }: EventGroupTableProps) {
-    const { onMouseDown, getTableStyle } = useTableResize('timesheet-assignments');
+    const { onMouseDown, getTableStyle } = useTableResize(
+        'timesheet-assignments',
+        DRILLDOWN_TABLE_RESIZE_DEFAULTS,
+        { lockedColumns: ['action'] }
+    );
     const totalStaff = group.callTimes.length;
     const totalAssigned = group.callTimes.filter(ct => !!ct.staff).length;
     const groupNeedsStaff = totalAssigned < totalStaff;
@@ -78,7 +83,7 @@ export function EventGroupTable({
                         <table className="w-full text-sm table-fixed" style={getTableStyle()}>
                             <thead>
                                 <tr className="border-b border-border bg-muted/30">
-                                    <th className="w-8 px-2 py-2">
+                                    <th className="w-8 min-w-8 max-w-8 px-2 py-2">
                                         {(() => {
                                             const groupIds = group.callTimes.map((ct) => ct.id);
                                             const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
@@ -93,10 +98,9 @@ export function EventGroupTable({
                                             );
                                         })()}
                                     </th>
-                                    <th className="w-8 px-2 py-2" />
-                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-action)` }}>
+                                    <th className="w-8 min-w-8 max-w-8 px-2 py-2" />
+                                    <th className={cn("px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-action)` }}>
                                         Action
-                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('action', e)} />
                                     </th>
                                     <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-left truncate")} style={{ width: `var(--col-talent)` }}>
                                         Talent

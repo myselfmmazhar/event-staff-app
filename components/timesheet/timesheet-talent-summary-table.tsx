@@ -8,6 +8,7 @@ import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon } from '@/components
 import { useTableResize } from '@/hooks/use-table-resize';
 import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
 import { cn } from '@/lib/utils';
+import { TIMESHEET_TALENT_TABLE_RESIZE_DEFAULTS } from '@/lib/timesheet/drilldown-column-order';
 import { 
     calcTotalBill, 
     calcTotalInvoice, 
@@ -25,7 +26,7 @@ interface TimesheetTalentSummaryTableProps {
 }
 
 export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick, sortBy, sortOrder, onSort }: TimesheetTalentSummaryTableProps) {
-    const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-talent');
+    const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-talent', TIMESHEET_TALENT_TABLE_RESIZE_DEFAULTS);
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
         const d = typeof date === 'string' ? parseISO(date) : date;

@@ -365,7 +365,7 @@ export function EventTable({
         const allInvitations = allGroups.flatMap(g => g.invitations);
         const acceptedInvitations = allInvitations.filter(inv => inv.status === 'ACCEPTED');
         const pendingInvitations = allInvitations.filter(inv => inv.status === 'PENDING');
-        const declinedInvitations = allInvitations.filter(inv => inv.status === 'DECLINED');
+        const confirmedAcceptedCount = acceptedInvitations.filter((inv) => inv.isConfirmed).length;
 
         return (
           <div className="space-y-2">
@@ -408,137 +408,69 @@ export function EventTable({
 
             {/* Expanded panel - full summary inline */}
             {isExpanded && (
-              <div className="mt-3 pt-3 border-t border-border">
-                {/* Stats header */}
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
-                  <Badge variant="default" size="sm">{totalRequired} Required</Badge>
+              <div className="mt-2 border-t border-border/70 pt-3">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" size="sm">{totalRequired} Required</Badge>
                   <Badge variant="info" size="sm">{allInvitations.length} Sent</Badge>
-                  {/* Declined - more subtle */}
-                  {declinedInvitations.length > 0 && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30">
-                      <span className="text-xs text-muted-foreground">{declinedInvitations.length} declined</span>
-                      <div className="flex -space-x-1">
-                        {declinedInvitations.slice(0, 3).map((inv) => (
-                          <div key={inv.id} className="h-5 w-5 rounded-full bg-muted border border-background flex items-center justify-center text-[8px] font-medium text-muted-foreground" title={`${inv.staff.firstName} ${inv.staff.lastName}`}>
-                            {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
-                          </div>
-                        ))}
-                        {declinedInvitations.length > 3 && (
-                          <div className="h-5 w-5 rounded-full bg-muted border border-background flex items-center justify-center text-[8px] font-medium text-muted-foreground">
-                            +{declinedInvitations.length - 3}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* Status sections */}                  <div className="space-y-2 h-fit">
-                  {/* Open Positions */}
+                <div className="space-y-2">
                   <button
                     type="button"
-                    className="w-full text-left group transition-all h-fit"
+                    className="group flex w-full items-center gap-3 rounded-lg border border-destructive/35 bg-destructive/5 px-3 py-3 text-left transition-colors hover:bg-destructive/10"
                     onClick={(e) => {
                       e.stopPropagation();
                       router.push(`/assignments?eventId=${event.id}&status=open`);
                     }}
                   >
-                    <div className="flex items-center gap-3 p-2.5 rounded-lg border border-destructive/40 bg-gradient-to-r from-destructive/10 to-transparent hover:from-destructive/20 transition-all shadow-sm group-hover:shadow transition-all">
-                      <div className="h-9 w-9 rounded-full bg-destructive/20 flex items-center justify-center shrink-0 border border-destructive/30">
-                        <span className="text-destructive font-bold text-base">{totalOpen}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-destructive group-hover:text-destructive/80 transition-colors">Open Positions</p>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Needs staffing</p>
-                      </div>
-                      <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-destructive/30 bg-destructive/15">
+                      <span className="text-sm font-bold text-destructive">{totalOpen}</span>
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-destructive">Open Positions</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Needs Staffing</p>
+                    </div>
+                    <ChevronDownIcon className="h-4 w-4 -rotate-90 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                   </button>
 
-                  {/* Pending */}
                   <button
                     type="button"
-                    className="w-full text-left group transition-all h-fit"
+                    className="group flex w-full items-center gap-3 rounded-lg border border-warning/40 bg-warning/5 px-3 py-3 text-left transition-colors hover:bg-warning/10"
                     onClick={(e) => {
                       e.stopPropagation();
                       router.push(`/assignments?eventId=${event.id}&status=pending`);
                     }}
                   >
-                    <div className="p-2.5 rounded-lg border border-warning/40 bg-gradient-to-r from-warning/10 to-transparent hover:from-warning/20 transition-all shadow-sm group-hover:shadow transition-all">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-warning/20 flex items-center justify-center shrink-0 border border-warning/30">
-                          <span className="text-warning font-bold text-base">{totalPending}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-warning group-hover:text-warning/80 transition-colors">Pending Response</p>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Awaiting confirmation</p>
-                        </div>
-                        <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                      {pendingInvitations.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2 pl-[48px]">
-                          {pendingInvitations.slice(0, 5).map((inv) => (
-                            <div key={inv.id} className="h-5 w-5 rounded-full bg-warning/20 border border-warning/30 flex items-center justify-center text-[8px] font-medium" title={`${inv.staff.firstName} ${inv.staff.lastName}`}>
-                              {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
-                            </div>
-                          ))}
-                          {pendingInvitations.length > 5 && (
-                            <div className="h-5 px-1.5 rounded-full bg-warning/10 flex items-center justify-center text-[9px] text-warning font-medium">
-                              +{pendingInvitations.length - 5}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-warning/35 bg-warning/15">
+                      <span className="text-sm font-bold text-warning">{totalPending}</span>
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-warning">Pending Response</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Awaiting Confirmation</p>
+                    </div>
+                    <ChevronDownIcon className="h-4 w-4 -rotate-90 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                   </button>
 
-                  {/* Accepted */}
                   <button
                     type="button"
-                    className="w-full text-left group transition-all h-fit"
+                    className="group flex w-full items-center gap-3 rounded-lg border border-success/40 bg-success/5 px-3 py-3 text-left transition-colors hover:bg-success/10"
                     onClick={(e) => {
                       e.stopPropagation();
                       router.push(`/assignments?eventId=${event.id}&status=accepted`);
                     }}
                   >
-                    <div className="p-2.5 rounded-lg border border-success/40 bg-gradient-to-r from-success/10 to-transparent hover:from-success/20 transition-all shadow-sm group-hover:shadow transition-all">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-success/20 flex items-center justify-center shrink-0 border border-success/30">
-                          <span className="text-success font-bold text-base">{totalAccepted}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-success group-hover:text-success/80 transition-colors">Accepted</p>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                            {acceptedInvitations.filter(i => i.isConfirmed).length} confirmed
-                          </p>
-                        </div>
-                        <ChevronDownIcon className="h-4 w-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                      {acceptedInvitations.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2 pl-[48px]">
-                          {acceptedInvitations.slice(0, 5).map((inv) => (
-                            <div
-                              key={inv.id}
-                              className={`h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-medium ${inv.isConfirmed
-                                ? 'bg-success/30 border-2 border-success'
-                                : 'bg-success/20 border border-success/30'
-                                }`}
-                              title={`${inv.staff.firstName} ${inv.staff.lastName}${inv.isConfirmed ? ' (Confirmed)' : ''}`}
-                            >
-                              {inv.staff.firstName?.[0]}{inv.staff.lastName?.[0]}
-                            </div>
-                          ))}
-                          {acceptedInvitations.length > 5 && (
-                            <div className="h-5 px-1.5 rounded-full bg-success/10 flex items-center justify-center text-[9px] text-success font-medium">
-                              +{acceptedInvitations.length - 5}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-success/35 bg-success/15">
+                      <span className="text-sm font-bold text-success">{totalAccepted}</span>
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-success">Accepted</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {confirmedAcceptedCount} Confirmed
+                      </p>
+                    </div>
+                    <ChevronDownIcon className="h-4 w-4 -rotate-90 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                   </button>
                 </div>
-
               </div>
             )}
 

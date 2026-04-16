@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,7 @@ import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
 import { TalentContactPopover } from './talent-contact-popover';
 import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
+import { DRILLDOWN_COLUMN_IDS, type TimesheetDrilldownSubTab } from '@/lib/timesheet/drilldown-column-order';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -324,8 +325,8 @@ export function TimesheetTableRow({
         }
     ];
 
-
-
+    const tabKey = (subTab ?? 'all') as TimesheetDrilldownSubTab;
+    const colOrder = [...DRILLDOWN_COLUMN_IDS[tabKey]];
 
     return (
         <>
@@ -363,20 +364,19 @@ export function TimesheetTableRow({
 
                 {subTab === 'invoice' ? (
                     <>
-
-                        {/* Service Date */}
+                        {colOrder.map((colId) => (
+                            <Fragment key={colId}>
+                                {colId === 'startDate' && (
                         <td className="px-3 py-2.5 whitespace-nowrap text-[11px] font-medium text-slate-600">
                             {formatDate(ct.startDate)}
                         </td>
-
-                        {/* Services / Product (Position) */}
+                                )}
+                                {colId === 'service' && (
                         <td className="px-3 py-2.5">
                             <ServiceBadge service={ct.service} />
                         </td>
-
-
-
-                        {/* Description — name (city, state), service, Schedule / Actual / Notes (invoice line item style) */}
+                                )}
+                                {colId === 'description' && (
                         <td className="px-3 py-4 text-[11px] leading-relaxed text-slate-600 min-w-[500px]">
                             <div className="flex flex-col gap-3">
                                 <div className="flex items-center gap-4 rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-[10px] font-semibold text-slate-600">
@@ -550,13 +550,13 @@ export function TimesheetTableRow({
                                 </div>
                             </div>
                         </td>
-
-                        {/* QTY (Staff Count) */}
+                                )}
+                                {colId === 'qty' && (
                         <td className="px-3 py-2.5 text-center font-bold text-slate-700 tabular-nums">
                             {ct.mergedRows?.length || (!ct.staff ? ct.numberOfStaffRequired : 1)}
                         </td>
-
-                        {/* Total Invoice (w/ Popover for editing) */}
+                                )}
+                                {colId === 'invoice' && (
                         <td className="px-3 py-2.5 text-right font-extrabold text-foreground tabular-nums text-[13px]">
                             <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
                                 <PopoverTrigger asChild>
@@ -588,16 +588,20 @@ export function TimesheetTableRow({
                                 </PopoverContent>
                             </Popover>
                         </td>
-
-                        {/* Net Income */}
+                                )}
+                                {colId === 'netIncome' && (
                         <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums text-[13px] pr-6">
                             {fmtCurrency(totalInvoice - totalBill)}
                         </td>
+                                )}
+                            </Fragment>
+                        ))}
                     </>
                 ) : subTab === 'bill' ? (
                     <>
-
-                        {/* Category */}
+                        {colOrder.map((colId) => (
+                            <Fragment key={colId}>
+                                {colId === 'category' && (
                         <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
                             <select className="text-[10px] p-1 bg-muted/40 border-none rounded focus:ring-1 focus:ring-primary/20 font-medium text-slate-600 cursor-pointer">
                                 <option>Labor</option>
@@ -605,8 +609,8 @@ export function TimesheetTableRow({
                                 <option>Bonus</option>
                             </select>
                         </td>
-
-                        {/* Bill Description - Updated format per request */}
+                                )}
+                                {colId === 'description' && (
                         <td className="px-3 py-4 text-[11px] leading-relaxed min-w-[500px] text-slate-800">
                             <div className="flex flex-col gap-4">
                                 <div className="flex items-center gap-4 rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-[10px] font-semibold text-slate-600">
@@ -729,7 +733,8 @@ export function TimesheetTableRow({
                                 </div>
                             </div>
                         </td>
-                        {/* Total Bill (w/ Popover for editing) */}
+                                )}
+                                {colId === 'bill' && (
                         <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px]">
                             <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
                                 <PopoverTrigger asChild>
@@ -761,13 +766,13 @@ export function TimesheetTableRow({
                                 </PopoverContent>
                             </Popover>
                         </td>
-
-                        {/* Net Income */}
+                                )}
+                                {colId === 'netIncome' && (
                         <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums text-[13px]">
                             {fmtCurrency(totalInvoice - totalBill)}
                         </td>
-
-                        {/* Status */}
+                                )}
+                                {colId === 'status' && (
                         <td className="px-3 py-2.5 text-center">
                             <Badge
                                 variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
@@ -778,140 +783,153 @@ export function TimesheetTableRow({
                                         reviewRating === 'NEEDS_IMPROVEMENT' ? 'REVIEW' : 'PENDING'}
                             </Badge>
                         </td>
-
-
+                                )}
+                            </Fragment>
+                        ))}
                     </>
                 ) : subTab === 'commission' ? (
                     <>
-                        {/* Action */}
-                        <td className="w-10 px-2 py-2.5 text-center relative" onClick={e => e.stopPropagation()}>
-                            <ActionDropdown actions={actions} align="start" />
-                        </td>
-
-                        {/* Team / User (Replacing Category) */}
-                        <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
-                            <select className="text-[10px] p-1 bg-muted/40 border-none rounded focus:ring-1 focus:ring-primary/20 font-medium text-slate-600 cursor-pointer">
-                                <option>Team A</option>
-                                <option>Team B</option>
-                                <option>Admin</option>
-                                <option>User 1</option>
-                            </select>
-                        </td>
-
-                        {/* Commission Description */}
-                        <td className="px-3 py-4 text-[10px] leading-relaxed min-w-[350px]">
-                            <div className="flex flex-col gap-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="font-bold text-primary text-[12px] uppercase tracking-tight text-emerald-600">
-                                            {ct.staff ? `${ct.staff.firstName} ${ct.staff.lastName}` : (ct.event?.title || '—')}
-                                        </span>
-                                        {ct.mergedRows && ct.mergedRows.length > 0 ? (
-                                            <div className="flex flex-col gap-1 mt-1">
-                                                {ct.mergedRows.map((row, idx) => (
-                                                    <div key={row.id || idx} className="flex items-center gap-2">
-                                                        <Badge variant="primary" className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] px-1.5 py-0 font-bold uppercase">
-                                                            {row.service?.title || '—'}
-                                                        </Badge>
-                                                        <span className="text-slate-400 italic font-medium text-[9px]">
-                                                            {billBasis === 'ACTUAL' ? (
-                                                                row.timeEntry?.clockIn ? `${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? formatTime(getTimeOnly(row.timeEntry.clockOut)) : '??'}` : 'Not clocked'
-                                                            ) : (
-                                                                `${formatTime(row.startTime)} - ${formatTime(row.endTime)}`
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="primary" className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] px-1.5 py-0 font-bold uppercase">
-                                                    {ct.service?.title || '—'}
-                                                </Badge>
-                                                <span className="text-slate-400 italic font-medium">
-                                                    {billBasis === 'ACTUAL' ? (
-                                                        te?.clockIn ? `${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '??'}` : 'Actual shift not clocked'
-                                                    ) : (
-                                                        `${formatTime(ct.startTime)} - ${formatTime(ct.endTime)}`
-                                                    )}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Notes Section */}
-                                <div className="flex flex-col pt-1 border-t border-slate-50">
-                                    <span className="font-bold text-[7px] text-slate-300 uppercase tracking-widest mb-0.5">Notes</span>
-                                    {isEditingNotes ? (
-                                        <div onClick={e => e.stopPropagation()}>
-                                            <textarea
-                                                value={localNotes}
-                                                onChange={e => setLocalNotes(e.target.value)}
-                                                className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-red-500 outline-none min-h-[40px] bg-white text-slate-700 font-medium"
-                                                autoFocus
-                                                onBlur={handleSave}
-                                            />
-                                            <div className="flex justify-end mt-1">
-                                                <button
-                                                    type="button"
-                                                    onMouseDown={(e) => e.preventDefault()}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleSave();
-                                                    }}
-                                                    className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600"
-                                                >
-                                                    <CheckIcon className="h-3 w-3" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div
-                                            className="group relative cursor-pointer hover:bg-slate-50 p-1 rounded transition-all font-medium text-slate-500 italic text-[10px]"
-                                            onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
-                                        >
-                                            <p className="line-clamp-2">{localNotes || 'Click to add notes...'}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </td>
-
-
-                        {/* Commission Price */}
-                        <td className="px-3 py-2.5 text-right tabular-nums">
-                            <div className="flex flex-col items-end">
-                                <span className="text-[13px] font-extrabold text-foreground">{fmtCurrency(commissionPrice)}</span>
-                                {ct.commissionAmountType === 'MULTIPLIER' && (
-                                    <span className="text-[9px] text-muted-foreground font-medium">
-                                        {(toNumber(ct.commissionAmount) * 100).toFixed(2)}% of {fmtCurrency(totalInvoice - commissionPrice)}
-                                    </span>
+                        {colOrder.map((colId) => (
+                            <Fragment key={colId}>
+                                {colId === 'action' && (
+                                    <td
+                                        className="px-2 py-2.5 text-center relative"
+                                        style={{ width: `var(--col-cmAction)` }}
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <ActionDropdown actions={actions} align="start" />
+                                    </td>
                                 )}
-                            </div>
-                        </td>
+                                {colId === 'staffName' && (
+                                    <td className="truncate px-3 py-2.5" style={{ width: `var(--col-cmStaff)` }} onClick={e => e.stopPropagation()}>
+                                        <select className="text-[10px] p-1 bg-muted/40 border-none rounded focus:ring-1 focus:ring-primary/20 font-medium text-slate-600 cursor-pointer">
+                                            <option>Team A</option>
+                                            <option>Team B</option>
+                                            <option>Admin</option>
+                                            <option>User 1</option>
+                                        </select>
+                                    </td>
+                                )}
+                                {colId === 'description' && (
+                                    <td className="truncate px-3 py-4 text-[10px] leading-relaxed" style={{ width: `var(--col-cmDesc)` }}>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="font-bold text-primary text-[12px] uppercase tracking-tight text-emerald-600">
+                                                        {ct.staff ? `${ct.staff.firstName} ${ct.staff.lastName}` : (ct.event?.title || '—')}
+                                                    </span>
+                                                    {ct.mergedRows && ct.mergedRows.length > 0 ? (
+                                                        <div className="flex flex-col gap-1 mt-1">
+                                                            {ct.mergedRows.map((row, idx) => (
+                                                                <div key={row.id || idx} className="flex items-center gap-2">
+                                                                    <Badge variant="primary" className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] px-1.5 py-0 font-bold uppercase">
+                                                                        {row.service?.title || '—'}
+                                                                    </Badge>
+                                                                    <span className="text-slate-400 italic font-medium text-[9px]">
+                                                                        {billBasis === 'ACTUAL' ? (
+                                                                            row.timeEntry?.clockIn ? `${formatTime(getTimeOnly(row.timeEntry.clockIn))} - ${row.timeEntry.clockOut ? formatTime(getTimeOnly(row.timeEntry.clockOut)) : '??'}` : 'Not clocked'
+                                                                        ) : (
+                                                                            `${formatTime(row.startTime)} - ${formatTime(row.endTime)}`
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge variant="primary" className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] px-1.5 py-0 font-bold uppercase">
+                                                                {ct.service?.title || '—'}
+                                                            </Badge>
+                                                            <span className="text-slate-400 italic font-medium">
+                                                                {billBasis === 'ACTUAL' ? (
+                                                                    te?.clockIn ? `${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '??'}` : 'Actual shift not clocked'
+                                                                ) : (
+                                                                    `${formatTime(ct.startTime)} - ${formatTime(ct.endTime)}`
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
 
-                        {/* Status */}
-                        <td className="px-3 py-2.5 text-center">
-                            <Badge
-                                variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
-                                className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
-                            >
-                                {reviewRating === 'MET_EXPECTATIONS' ? 'APPROVED' :
-                                    (reviewRating === 'DID_NOT_MEET' || reviewRating === 'NO_CALL_NO_SHOW') ? 'REJECTED' :
-                                        reviewRating === 'NEEDS_IMPROVEMENT' ? 'REVIEW' : 'PENDING'}
-                            </Badge>
-                        </td>
+                                            <div className="flex flex-col pt-1 border-t border-slate-50">
+                                                <span className="font-bold text-[7px] text-slate-300 uppercase tracking-widest mb-0.5">Notes</span>
+                                                {isEditingNotes ? (
+                                                    <div onClick={e => e.stopPropagation()}>
+                                                        <textarea
+                                                            value={localNotes}
+                                                            onChange={e => setLocalNotes(e.target.value)}
+                                                            className="w-full text-[10px] border border-border rounded p-1 focus:ring-1 focus:ring-red-500 outline-none min-h-[40px] bg-white text-slate-700 font-medium"
+                                                            autoFocus
+                                                            onBlur={handleSave}
+                                                        />
+                                                        <div className="flex justify-end mt-1">
+                                                            <button
+                                                                type="button"
+                                                                onMouseDown={(e) => e.preventDefault()}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleSave();
+                                                                }}
+                                                                className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                                            >
+                                                                <CheckIcon className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div
+                                                        className="group relative cursor-pointer hover:bg-slate-50 p-1 rounded transition-all font-medium text-slate-500 italic text-[10px]"
+                                                        onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
+                                                    >
+                                                        <p className="line-clamp-2">{localNotes || 'Click to add notes...'}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </td>
+                                )}
+                                {colId === 'price' && (
+                                    <td className="truncate px-3 py-2.5 text-right tabular-nums" style={{ width: `var(--col-cmPrice)` }}>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[13px] font-extrabold text-foreground">{fmtCurrency(commissionPrice)}</span>
+                                            {ct.commissionAmountType === 'MULTIPLIER' && (
+                                                <span className="text-[9px] text-muted-foreground font-medium">
+                                                    {(toNumber(ct.commissionAmount) * 100).toFixed(2)}% of {fmtCurrency(totalInvoice - commissionPrice)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+                                )}
+                                {colId === 'status' && (
+                                    <td className="truncate px-3 py-2.5 text-center" style={{ width: `var(--col-cmStatus)` }}>
+                                        <Badge
+                                            variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
+                                            className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
+                                        >
+                                            {reviewRating === 'MET_EXPECTATIONS' ? 'APPROVED' :
+                                                (reviewRating === 'DID_NOT_MEET' || reviewRating === 'NO_CALL_NO_SHOW') ? 'REJECTED' :
+                                                    reviewRating === 'NEEDS_IMPROVEMENT' ? 'REVIEW' : 'PENDING'}
+                                        </Badge>
+                                    </td>
+                                )}
+                            </Fragment>
+                        ))}
                     </>
                 ) : (
                     <>
-                        {/* Actions */}
-                        <td className="w-10 px-2 py-2.5 text-center relative" onClick={(e) => e.stopPropagation()}>
+                        {colOrder.map((colId) => (
+                            <Fragment key={colId}>
+                                {colId === 'action' && (
+                        <td
+                            className="px-2 py-2.5 text-center relative"
+                            style={{ width: `var(--col-action)` }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <ActionDropdown actions={actions} align="start" />
                         </td>
-
-
-                        {/* Talent */}
+                                )}
+                                {colId === 'talent' && (
                         <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-talent)` }}>
                             <div className="flex flex-col gap-0.5">
                                 {ct.staff ? (
@@ -944,9 +962,13 @@ export function TimesheetTableRow({
                                 </span>
                             </div>
                         </td>
+                                )}
+                                {colId === 'service' && (
                         <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-service)` }}>
                             <ServiceBadge service={ct.service} />
                         </td>
+                                )}
+                                {colId === 'startDate' && (
                         <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-date)` }}>
                             <div className="flex items-center gap-1.5 whitespace-nowrap">
                                 <span className="text-sm font-bold text-foreground tabular-nums leading-tight">
@@ -954,6 +976,8 @@ export function TimesheetTableRow({
                                 </span>
                             </div>
                         </td>
+                                )}
+                                {colId === 'scheduledShift' && (
                         <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-scheduled)` }}>
                             {(() => {
                                 const s = formatTime(ct.startTime);
@@ -978,8 +1002,8 @@ export function TimesheetTableRow({
                                 );
                             })()}
                         </td>
-
-                        {/* Actual shift — time range + hrs; popover unchanged */}
+                                )}
+                                {colId === 'actualShift' && (
                         <td className={cn("truncate", rowVariant === 'card' ? 'px-3 py-3.5' : 'px-3 py-2.5')} style={{ width: `var(--col-actual)` }} onClick={e => e.stopPropagation()}>
                             <Popover open={isEditing} onOpenChange={setIsEditing}>
                                 <PopoverTrigger asChild>
@@ -1053,9 +1077,9 @@ export function TimesheetTableRow({
                                 )}
                             </Popover>
                         </td>
-
-                        {/* Variance */}
-                        <td className="px-3 py-2.5 text-center">
+                                )}
+                                {colId === 'variance' && (
+                        <td className="truncate px-3 py-2.5 text-center" style={{ width: `var(--col-variance)` }}>
                             <div className="flex flex-col items-center gap-0.5">
                                 {(() => {
                                     const diff = hoursScheduled - hoursClocked;
@@ -1075,8 +1099,9 @@ export function TimesheetTableRow({
                                 {/* <span className="text-[10px] text-muted-foreground">Difference</span> */}
                             </div>
                         </td>
-
-                        <td className="px-3 py-2.5 text-center">
+                                )}
+                                {colId === 'rateType' && (
+                        <td className="truncate px-3 py-2.5 text-center" style={{ width: `var(--col-rateType)` }}>
                             <div className="flex flex-col items-center">
                                 <span className="text-[11px] font-bold text-foreground whitespace-nowrap">
                                     {(ct.payRateType || '').replace('PER_', '')}
@@ -1084,9 +1109,9 @@ export function TimesheetTableRow({
                                 {/* <span className="text-[10px] text-muted-foreground">Billing model</span> */}
                             </div>
                         </td>
-
-                        {/* Total Invoice */}
-                        <td className="px-3 py-2.5 min-w-[120px]">
+                                )}
+                                {colId === 'invoice' && (
+                        <td className="truncate px-3 py-2.5" style={{ width: `var(--col-invoice)` }}>
                             <Popover open={isEditingOtPrice} onOpenChange={setIsEditingOtPrice}>
                                 <PopoverTrigger asChild>
                                     <div
@@ -1170,9 +1195,9 @@ export function TimesheetTableRow({
                                 </PopoverContent>
                             </Popover>
                         </td>
-
-                        {/* Total Bill */}
-                        <td className="px-3 py-2.5 min-w-[120px]">
+                                )}
+                                {colId === 'bill' && (
+                        <td className="truncate px-3 py-2.5" style={{ width: `var(--col-bill)` }}>
                             <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
                                 <PopoverTrigger asChild>
                                     <div
@@ -1256,13 +1281,14 @@ export function TimesheetTableRow({
                                 </PopoverContent>
                             </Popover>
                         </td>
-
-                        {/* Net Income */}
+                                )}
+                                {colId === 'netIncome' && (
                         <td className="px-3 py-2.5 text-right text-[11px] font-bold text-foreground tabular-nums truncate" style={{ width: `var(--col-netIncome)` }}>
                             {fmtCurrency(totalInvoice - totalBill)}
                         </td>
-
-                        <td className="px-3 py-2.5 text-center">
+                                )}
+                                {colId === 'commission' && (
+                        <td className="truncate px-3 py-2.5 text-center" style={{ width: `var(--col-commission)` }}>
                             <div className="flex items-center justify-center gap-2">
                                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[24px]">
                                     {isCommApp ? 'Yes' : 'No'}
@@ -1283,8 +1309,8 @@ export function TimesheetTableRow({
                                 </button>
                             </div>
                         </td>
-
-                        {/* Minimum (toggle + floor amount; matches Total Invoice / Total Bill when on) */}
+                                )}
+                                {colId === 'minimum' && (
                         <td className="px-3 py-2.5 text-center truncate" style={{ width: `var(--col-minimum)` }} onClick={e => e.stopPropagation()}>
                             <div className="flex flex-col items-center gap-1">
                                 <div className="flex items-center justify-center gap-2">
@@ -1314,9 +1340,9 @@ export function TimesheetTableRow({
                                 )}
                             </div>
                         </td>
-
-                        {/* Status */}
-                        <td className="px-3 py-2.5 text-center">
+                                )}
+                                {colId === 'status' && (
+                        <td className="truncate px-3 py-2.5 text-center" style={{ width: `var(--col-status)` }}>
                             <Badge
                                 variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
                                 className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
@@ -1326,8 +1352,8 @@ export function TimesheetTableRow({
                                         reviewRating === 'NEEDS_IMPROVEMENT' ? 'REVIEW' : 'PENDING'}
                             </Badge>
                         </td>
-
-                        {/* Notes (Internal Notes) - Moved after Status */}
+                                )}
+                                {colId === 'notes' && (
                         <td className="px-3 py-2.5 whitespace-normal truncate text-[10px] text-muted-foreground leading-snug" style={{ width: `var(--col-notes)` }} onClick={e => e.stopPropagation()}>
                             {isEditingNotes ? (
                                 <div className="flex flex-col gap-1">
@@ -1353,6 +1379,9 @@ export function TimesheetTableRow({
                                 </div>
                             )}
                         </td>
+                                )}
+                            </Fragment>
+                        ))}
                     </>
                 )}
 
@@ -1364,15 +1393,7 @@ export function TimesheetTableRow({
                     ct={ct}
                     onViewEvent={onViewEvent}
                     cardStyle={rowVariant === 'card'}
-                    colSpan={
-                        subTab === 'invoice'
-                            ? 9
-                            : subTab === 'bill'
-                                ? 8
-                                : subTab === 'commission'
-                                    ? 6
-                                    : 17
-                    }
+                    colSpan={2 + colOrder.length}
                 />
             )}
         </>

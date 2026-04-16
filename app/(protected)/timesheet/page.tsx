@@ -14,16 +14,17 @@ import {
     TimesheetTalentSummaryTable,
     TimesheetEventSummaryCards,
     TimesheetDetailToolbar,
+    TimesheetDrilldownTheadRow,
 } from '@/components/timesheet';
 import { useTableResize } from '@/hooks/use-table-resize';
-import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
+import { DRILLDOWN_TABLE_RESIZE_DEFAULTS, type TimesheetDrilldownSubTab } from '@/lib/timesheet/drilldown-column-order';
 import { cn } from '@/lib/utils';
 import { CallTimeExportDropdown } from '@/components/events/call-time-export-dropdown';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeftIcon, CheckIcon, CloseIcon, EditIcon, MoreVerticalIcon, CheckCircleIcon, ChevronUpIcon, ChevronDownIcon, ChevronsUpDownIcon } from '@/components/ui/icons';
+import { ChevronLeftIcon, CheckIcon, CloseIcon, EditIcon, MoreVerticalIcon, CheckCircleIcon } from '@/components/ui/icons';
 import type { SortField, SortOrder, StaffingFilter, EventGroup, CallTimeRow, TimesheetTab, ClientGroup, TalentGroup } from '@/components/timesheet/types';
 import { TalentContactPopover } from '@/components/timesheet/talent-contact-popover';
 import { calcTotalBill, calcTotalInvoice, toNumber, calcScheduledHours, calcClockedHours, formatDate } from '@/components/timesheet/helpers';
@@ -56,7 +57,11 @@ function getEventGroupListSortTime(group: EventGroup): number {
 }
 
 export default function TimeManagerPage() {
-    const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-drilldown');
+    const { columnWidths, onMouseDown, getTableStyle } = useTableResize(
+        'timesheet-drilldown',
+        DRILLDOWN_TABLE_RESIZE_DEFAULTS,
+        { lockedColumns: ['action', 'cmAction'] }
+    );
     const { toast } = useToast();
     const router = useRouter();
     const utils = trpc.useUtils();
@@ -76,7 +81,6 @@ export default function TimeManagerPage() {
     const [sortBy, setSortBy] = useState<SortField>('startDate');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
     const [subTab, setSubTab] = useState<'all' | 'bill' | 'invoice' | 'commission'>('all');
-
     /** Event / client / talent detail table (screenshot-style toolbar + card rows) */
     const [detailSearch, setDetailSearch] = useState('');
     const [detailStatus, setDetailStatus] = useState<string>('all');
@@ -418,32 +422,6 @@ export default function TimeManagerPage() {
     };
 
     // ── Data Transformation (Assignments -> Grouped rows for components) ──
-
-    const SortHeader = ({
-        id,
-        label,
-        align = 'text-left',
-        className = '',
-    }: {
-        id: SortField;
-        label: React.ReactNode;
-        align?: 'text-left' | 'text-center' | 'text-right';
-        className?: string;
-    }) => (
-        <th
-            className={`px-3 py-3 whitespace-normal cursor-pointer hover:bg-muted/30 transition-colors text-[10px] font-bold uppercase tracking-wide text-muted-foreground ${align} ${className}`}
-            onClick={() => handleSort(id)}
-        >
-            <div className={`flex items-center gap-1 ${align === 'text-right' ? 'justify-end' : align === 'text-center' ? 'justify-center' : ''}`}>
-                {label}
-                {sortBy === id
-                    ? (sortOrder === 'asc'
-                        ? <ChevronUpIcon className="h-3.5 w-3.5 shrink-0" />
-                        : <ChevronDownIcon className="h-3.5 w-3.5 shrink-0" />)
-                    : <ChevronsUpDownIcon className="h-3.5 w-3.5 shrink-0 opacity-50" />}
-            </div>
-        </th>
-    );
 
     const viewAssignments = useMemo(() => {
         if (subTab === 'all') return assignments;
@@ -1155,144 +1133,37 @@ export default function TimeManagerPage() {
                                                 onRateTypeChange={setDetailRateType}
                                                 variance={detailVariance}
                                                 onVarianceChange={setDetailVariance}
-                                                onCustomizeColumns={() =>
-                                                    toast({
-                                                        title: 'Customize columns',
-                                                        description: 'Column visibility will be available in a future update.',
-                                                    })
-                                                }
                                                 exportControl={<span className="hidden" aria-hidden />}
                                                 subTab={subTab}
                                             />
                                         </div>
                                         <div className="p-4">
                                             <div className="overflow-x-auto">
-                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
+                                                <table
+                                                    className="w-full table-fixed border-separate border-spacing-y-2 text-sm text-foreground antialiased"
+                                                    style={getTableStyle()}
+                                                >
                                                     <thead>
-                                                        <tr className="border-0 bg-transparent">
-                                                            <th className="w-8 px-2 py-3 align-bottom">
-                                                                {(() => {
-                                                                    const groupIds = group.callTimes.map((ct) => ct.id);
-                                                                    const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
-                                                                    return (
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={isGroupAllSelected}
-                                                                            onChange={() => toggleSelectAll(groupIds)}
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                                                                        />
-                                                                    );
-                                                                })()}
-                                                            </th>
-                                                            <th className="w-8 px-2 py-3 align-bottom" />
-                                                            {subTab === 'commission' && (
-                                                                <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                    Action
-                                                                </th>
-                                                            )}
-                                                            {subTab === 'invoice' ? (
-                                                                <>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-startDate)` }}>
-                                                                        <SortHeader id="startDate" label="Service Date" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('startDate', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-service)` }}>
-                                                                        <SortHeader id="service" label={<>Services / <br />Products</>} className="max-w-[100px]" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('service', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px] truncate" style={{ width: `var(--col-description)` }}>
-                                                                        Invoice Description
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-qty)` }}>
-                                                                        Qty
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('qty', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-invoice)` }}>
-                                                                        <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
-                                                                        Net Income
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
-                                                                    </th>
-                                                                </>
-                                                            ) : subTab === 'commission' ? (
-                                                                <>
-                                                                    <SortHeader id="staffName" label="Team / User" />
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Bill Description</th>
-                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                                </>
-                                                            ) : subTab === 'bill' ? (
-                                                                <>
-                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-category)` }}>
-                                                                        Category
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('category', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px] truncate" style={{ width: `var(--col-description)` }}>
-                                                                        Bill Description
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
-                                                                        <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('bill', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
-                                                                        Net Income
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-status)` }}>
-                                                                        <SortHeader id="status" label="Status" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('status', e)} />
-                                                                    </th>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                        Action
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-talent)` }}>
-                                                                        <SortHeader id="staffName" label="Talent" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('talent', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-service)` }}>
-                                                                        <SortHeader id="service" label="Services / Products" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('service', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-date)` }}>
-                                                                        <SortHeader id="startDate" label="Schedule Date" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('date', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-scheduled)` }}>
-                                                                        <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('scheduled', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-actual)` }}>
-                                                                        <SortHeader id="actualShift" label="Actual Shift" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('actual', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-variance)` }}>
-                                                                        <SortHeader id="variance" label="Variance" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('variance', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-rateType)` }}>
-                                                                        <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('rateType', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-invoice)` }}>
-                                                                        <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
-                                                                        Net Income
-                                                                    </th>
-                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
-                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                                    <SortHeader id="status" label="Status" align="text-center" />
-                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                                </>
-                                                            )}
-                                                        </tr>
+                                                        <TimesheetDrilldownTheadRow
+                                                            subTab={subTab as TimesheetDrilldownSubTab}
+                                                            sortBy={sortBy}
+                                                            sortOrder={sortOrder}
+                                                            onSort={handleSort}
+                                                            onResizeMouseDown={onMouseDown}
+                                                            checkboxCell={(() => {
+                                                                const groupIds = group.callTimes.map((ct) => ct.id);
+                                                                const isGroupAllSelected =
+                                                                    groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                                return (
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isGroupAllSelected}
+                                                                        onChange={() => toggleSelectAll(groupIds)}
+                                                                        className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                    />
+                                                                );
+                                                            })()}
+                                                        />
                                                     </thead>
                                                     <tbody>
                                                         {(() => {
@@ -1439,110 +1310,37 @@ export default function TimeManagerPage() {
                                                 onRateTypeChange={setDetailRateType}
                                                 variance={detailVariance}
                                                 onVarianceChange={setDetailVariance}
-                                                onCustomizeColumns={() =>
-                                                    toast({
-                                                        title: 'Customize columns',
-                                                        description: 'Column visibility will be available in a future update.',
-                                                    })
-                                                }
                                                 exportControl={<span className="hidden" aria-hidden />}
                                                 subTab={subTab}
                                             />
                                         </div>
                                         <div className="p-4">
                                             <div className="overflow-x-auto">
-                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
+                                                <table
+                                                    className="w-full table-fixed border-separate border-spacing-y-2 text-sm text-foreground antialiased"
+                                                    style={getTableStyle()}
+                                                >
                                                     <thead>
-                                                        <tr className="border-0 bg-transparent">
-                                                            <th className="w-8 px-2 py-3 align-bottom">
-                                                                {(() => {
-                                                                    const groupIds = group.callTimes.map((ct) => ct.id);
-                                                                    const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
-                                                                    return (
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={isGroupAllSelected}
-                                                                            onChange={() => toggleSelectAll(groupIds)}
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                                                                        />
-                                                                    );
-                                                                })()}
-                                                            </th>
-                                                            <th className="w-8 px-2 py-3 align-bottom" />
-                                                            {subTab === 'commission' && (
-                                                                <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                    Action
-                                                                </th>
-                                                            )}
-                                                            {subTab === 'invoice' ? (
-                                                                <>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-startDate)` }}>
-                                                                        <SortHeader id="startDate" label="Service Date" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('startDate', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-service)` }}>
-                                                                        <SortHeader id="service" label="Services / Products" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('service', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px] truncate" style={{ width: `var(--col-description)` }}>
-                                                                        Invoice Description
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-qty)` }}>
-                                                                        Qty
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('qty', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
-                                                                        <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('bill', e)} />
-                                                                    </th>
-                                                                    <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
-                                                                        Net Income
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
-                                                                    </th>
-                                                                </>
-                                                            ) : subTab === 'commission' ? (
-                                                                <>
-                                                                    <SortHeader id="staffName" label="Team / User" />
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
-                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                                </>
-                                                            ) : subTab === 'bill' ? (
-                                                                <>
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                                    <SortHeader id="status" label="Status" align="text-center" />
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                        Action
-                                                                    </th>
-                                                                    <SortHeader id="staffName" label="Talent" />
-                                                                    <SortHeader id="service" label="Services / Products" />
-                                                                    <SortHeader id="startDate" label="Date" />
-                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                                    <SortHeader id="actualShift" label="Actual Shift" />
-                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
-                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                        Net Income
-                                                                    </th>
-                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
-                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                                    <SortHeader id="status" label="Status" align="text-center" />
-                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                                </>
-                                                            )}
-                                                            {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th> */}
-                                                        </tr>
+                                                        <TimesheetDrilldownTheadRow
+                                                            subTab={subTab as TimesheetDrilldownSubTab}
+                                                            sortBy={sortBy}
+                                                            sortOrder={sortOrder}
+                                                            onSort={handleSort}
+                                                            onResizeMouseDown={onMouseDown}
+                                                            checkboxCell={(() => {
+                                                                const groupIds = group.callTimes.map((ct) => ct.id);
+                                                                const isGroupAllSelected =
+                                                                    groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                                return (
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isGroupAllSelected}
+                                                                        onChange={() => toggleSelectAll(groupIds)}
+                                                                        className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                    />
+                                                                );
+                                                            })()}
+                                                        />
                                                     </thead>
                                                     <tbody>
                                                         {(() => {
@@ -1741,91 +1539,37 @@ export default function TimeManagerPage() {
                                                 onRateTypeChange={setDetailRateType}
                                                 variance={detailVariance}
                                                 onVarianceChange={setDetailVariance}
-                                                onCustomizeColumns={() =>
-                                                    toast({
-                                                        title: 'Customize columns',
-                                                        description: 'Column visibility will be available in a future update.',
-                                                    })
-                                                }
                                                 exportControl={<span className="hidden" aria-hidden />}
                                                 subTab={subTab}
                                             />
                                         </div>
                                         <div className="p-4">
                                             <div className="overflow-x-auto">
-                                                <table className="w-full border-separate border-spacing-y-2 text-sm text-foreground antialiased">
+                                                <table
+                                                    className="w-full table-fixed border-separate border-spacing-y-2 text-sm text-foreground antialiased"
+                                                    style={getTableStyle()}
+                                                >
                                                     <thead>
-                                                        <tr className="border-0 bg-transparent">
-                                                            <th className="w-8 px-2 py-3 align-bottom">
-                                                                {(() => {
-                                                                    const groupIds = group.callTimes.map((ct) => ct.id);
-                                                                    const isGroupAllSelected = groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
-                                                                    return (
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={isGroupAllSelected}
-                                                                            onChange={() => toggleSelectAll(groupIds)}
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                                                                        />
-                                                                    );
-                                                                })()}
-                                                            </th>
-                                                            <th className="w-8 px-2 py-3 align-bottom" />
-                                                            {subTab === 'commission' && (
-                                                                <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                    Action
-                                                                </th>
-                                                            )}
-                                                            {subTab === 'invoice' ? (
-                                                                <>
-                                                                    <SortHeader id="startDate" label="Service Date" />
-                                                                    <SortHeader id="service" label="Services / Products" />
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
-                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty (Staff)</th>
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                                </>
-                                                            ) : subTab === 'commission' ? (
-                                                                <>
-                                                                    <SortHeader id="staffName" label="Team / User" />
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Invoice Description</th>
-                                                                    <SortHeader id="price" label="Commission Price" align="text-right" />
-                                                                </>
-                                                            ) : subTab === 'bill' ? (
-                                                                <>
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
-                                                                    <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
-                                                                    <SortHeader id="status" label="Status" align="text-center" />
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                        Action
-                                                                    </th>
-                                                                    <SortHeader id="staffName" label="Talent" />
-                                                                    <SortHeader id="service" label="Services / Products" />
-                                                                    <SortHeader id="startDate" label="Date" />
-                                                                    <SortHeader id="scheduledShift" label="Scheduled Shift" />
-                                                                    <SortHeader id="actualShift" label="Actual Shift" />
-                                                                    <SortHeader id="variance" label="Variance" align="text-center" />
-                                                                    <SortHeader id="rateType" label="Rate Type" align="text-center" />
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                    <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                                                        Net Income
-                                                                    </th>
-                                                                    <SortHeader id="commission" label="Commission" align="text-center" />
-                                                                    <SortHeader id="minimum" label="Minimum" align="text-right" />
-                                                                    <SortHeader id="status" label="Status" align="text-center" />
-                                                                    <SortHeader id="notes" label="Notes" className="min-w-[250px]" />
-                                                                </>
-                                                            )}
-                                                            {/* <th className="text-right px-3 py-2 font-bold text-red-600 bg-red-50/5 whitespace-normal max-w-[100px]">Total Bill</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Total Invoice</th>
-                                                    <th className="text-right px-3 py-2 font-bold text-foreground bg-slate-50/5 whitespace-normal max-w-[100px]">Net Income</th> */}
-                                                        </tr>
+                                                        <TimesheetDrilldownTheadRow
+                                                            subTab={subTab as TimesheetDrilldownSubTab}
+                                                            sortBy={sortBy}
+                                                            sortOrder={sortOrder}
+                                                            onSort={handleSort}
+                                                            onResizeMouseDown={onMouseDown}
+                                                            checkboxCell={(() => {
+                                                                const groupIds = group.callTimes.map((ct) => ct.id);
+                                                                const isGroupAllSelected =
+                                                                    groupIds.length > 0 && groupIds.every((id) => selectedRows.has(id));
+                                                                return (
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isGroupAllSelected}
+                                                                        onChange={() => toggleSelectAll(groupIds)}
+                                                                        className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                                                    />
+                                                                );
+                                                            })()}
+                                                        />
                                                     </thead>
                                                     <tbody>
                                                         {(() => {

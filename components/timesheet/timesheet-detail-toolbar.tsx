@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -21,7 +20,6 @@ type TimesheetDetailToolbarProps = {
     onRateTypeChange: (v: string) => void;
     variance: string;
     onVarianceChange: (v: string) => void;
-    onCustomizeColumns: () => void;
     exportControl: React.ReactNode;
     subTab?: string;
 };
@@ -37,7 +35,6 @@ export function TimesheetDetailToolbar({
     onRateTypeChange,
     variance,
     onVarianceChange,
-    onCustomizeColumns,
     exportControl,
     subTab,
 }: TimesheetDetailToolbarProps) {
@@ -100,9 +97,6 @@ export function TimesheetDetailToolbar({
                                 <SelectItem value="negative">Under scheduled</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button type="button" variant="outline" size="sm" className="h-9 rounded-lg text-xs" onClick={onCustomizeColumns}>
-                            Customize columns
-                        </Button>
                     </>
                 )}
                 <div className="flex items-center">{exportControl}</div>
