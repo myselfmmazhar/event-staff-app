@@ -878,7 +878,7 @@ export function ClientFormModal({
                   Cancel
                 </Button>
                 {!isEdit && (
-                  <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
+                  <Button type="submit" variant="outline" disabled={isSubmitting || !(canContinueInfo && canContinueAddress)} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
                     {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : isLastStep && hasLoginAccess ? 'Send & New' : 'Save & New'}
                   </Button>
                 )}
