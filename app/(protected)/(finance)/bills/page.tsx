@@ -20,17 +20,32 @@ export default function BillsPage() {
     const [search, setSearch] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showArchived, setShowArchived] = useState(false);
+    const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "billNo" | "billDate" | "status" | "staff">("createdAt");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
     // Action modal state
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [selectedBillForAction, setSelectedBillForAction] = useState<{ id: string, billNo: string, talentName: string } | null>(null);
     const [actionType, setActionType] = useState<'archive' | 'restore' | 'delete'>('archive');
 
+    const handleSort = (field: string) => {
+        const f = field as typeof sortBy;
+        if (sortBy === f) {
+            setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        } else {
+            setSortBy(f);
+            setSortOrder("desc");
+        }
+        setPage(1);
+    };
+
     const { data, isLoading } = trpc.bills.getAll.useQuery({
         page,
         limit,
         showArchived,
-        search: search || undefined
+        search: search || undefined,
+        sortBy,
+        sortOrder,
     }, {
         placeholderData: (previousData) => previousData,
     });
@@ -101,6 +116,9 @@ export default function BillsPage() {
                 <BillTable
                     bills={bills as any}
                     isLoading={isLoading}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     showArchived={showArchived}

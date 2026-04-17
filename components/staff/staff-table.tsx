@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,6 +10,7 @@ import { AvailabilityStatus, AccountStatus, StaffType, StaffRole, SkillLevel, St
 import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
+import { StaffExpandedRow } from './staff-expanded-row';
 
 export type StaffWithRelations = {
     id: string;
@@ -113,6 +115,20 @@ interface StaffTableProps {
 export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, onSort, sortBy, sortOrder, selectedIds, onSelectionChange }: StaffTableProps) {
     const staffTerm = useStaffTerm();
     const { terminology } = useTerminology();
+
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+    const toggleRowExpanded = (staffId: string) => {
+        setExpandedRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(staffId)) {
+                newSet.delete(staffId);
+            } else {
+                newSet.add(staffId);
+            }
+            return newSet;
+        });
+    };
 
     // Get column labels from saved configuration (same pattern as events/clients)
     const columnLabels = useColumnLabels('staff', {
@@ -392,6 +408,10 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
         </div>
     );
 
+    const renderExpandedContent = (member: StaffWithRelations) => (
+        <StaffExpandedRow staffId={member.id} />
+    );
+
     return (
         <DataTable
             tableId="staff"
@@ -404,6 +424,9 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
             emptyDescription="Try adjusting your search or filters"
             mobileCard={renderMobileCard}
             getRowKey={(member) => member.id}
+            expandableContent={renderExpandedContent}
+            expandedKeys={expandedRows}
+            onToggleExpand={toggleRowExpanded}
         />
     );
 }

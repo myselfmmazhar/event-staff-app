@@ -71,6 +71,7 @@ export default function StaffPage() {
     });
     const [selectedStaff, setSelectedStaff] = useState<StaffWithRelations | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isUpdateAndContinue, setIsUpdateAndContinue] = useState(false);
 
     // Confirmation dialog states
     const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
@@ -133,8 +134,11 @@ export default function StaffPage() {
                 title: 'Success',
                 description: `${terminology.staff.singular} updated successfully`,
             });
-            setModals((prev) => ({ ...prev, form: false }));
-            setSelectedStaff(null);
+            if (!isUpdateAndContinue) {
+                setModals((prev) => ({ ...prev, form: false }));
+                setSelectedStaff(null);
+            }
+            setIsUpdateAndContinue(false);
             refetch();
         },
         onError: (error) => {
@@ -393,7 +397,8 @@ export default function StaffPage() {
         setModals((prev) => ({ ...prev, message: true }));
     };
 
-    const handleFormSubmit = (formData: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>) => {
+    const handleFormSubmit = (formData: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>, saveAction?: 'close' | 'update-continue') => {
+        setIsUpdateAndContinue(saveAction === 'update-continue');
         if (selectedStaff) {
             updateMutation.mutate({
                 id: selectedStaff.id,

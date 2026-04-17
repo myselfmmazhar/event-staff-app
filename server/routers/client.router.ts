@@ -180,6 +180,38 @@ export const clientRouter = router({
   }),
 
   /**
+   * Get recent activity (events) for a specific client
+   * Returns the 5 most recent events ordered by startDate/createdAt
+   */
+  getRecentActivity: protectedProcedure
+    .input(z.object({ clientId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const events = await ctx.prisma.event.findMany({
+        where: {
+          clientId: input.clientId,
+          isArchived: false,
+          createdBy: ctx.userId!,
+        },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          startDate: true,
+          startTime: true,
+          venueName: true,
+          city: true,
+          state: true,
+        },
+        orderBy: [
+          { startDate: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        take: 1,
+      });
+      return events;
+    }),
+
+  /**
    * Bulk import clients
    * Supports create-only or upsert modes
    * Clients are created with createdBy = authenticated user

@@ -10,7 +10,7 @@ export class EstimateService {
     constructor(private prisma: PrismaClient) { }
 
     async findAll(query: z.infer<typeof EstimateSchema.query>) {
-        const { page, limit, search, status, clientId, showArchived } = query;
+        const { page, limit, search, status, clientId, showArchived, sortBy = "createdAt", sortOrder = "desc" } = query;
         const skip = (page - 1) * limit;
 
         const where: Prisma.EstimateWhereInput = {
@@ -24,6 +24,11 @@ export class EstimateService {
                 ],
             }),
         };
+
+        const orderBy: Prisma.EstimateOrderByWithRelationInput =
+            sortBy === "client"
+                ? { client: { businessName: sortOrder } }
+                : { [sortBy]: sortOrder };
 
         const [data, total] = await Promise.all([
             this.prisma.estimate.findMany({
@@ -40,7 +45,7 @@ export class EstimateService {
                         },
                     },
                 },
-                orderBy: { createdAt: "desc" },
+                orderBy,
             }),
             this.prisma.estimate.count({ where }),
         ]);

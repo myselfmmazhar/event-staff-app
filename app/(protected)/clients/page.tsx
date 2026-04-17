@@ -90,6 +90,9 @@ export default function ClientsPage() {
   // Reset key for Save & New (incremented to trigger form reset)
   const [clientFormResetKey, setClientFormResetKey] = useState(0);
 
+  // Track if we're doing Update & Continue (to prevent closing the form)
+  const [isUpdateAndContinue, setIsUpdateAndContinue] = useState(false);
+
   // Rehydrate filters from localStorage on mount, then apply URL params if present
   useEffect(() => {
     useClientsFilters.persist.rehydrate();
@@ -174,8 +177,11 @@ export default function ClientsPage() {
           setModals((prev) => ({ ...prev, tempPassword: true }));
         }
 
-        setModals((prev) => ({ ...prev, form: false, view: false }));
-        setSelectedClient(null);
+        if (!isUpdateAndContinue) {
+          setModals((prev) => ({ ...prev, form: false, view: false }));
+          setSelectedClient(null);
+        }
+        setIsUpdateAndContinue(false);
         refetch();
         refetchExport();
       },
@@ -245,7 +251,8 @@ export default function ClientsPage() {
     setModals((prev) => ({ ...prev, form: false, view: true }));
   };
 
-  const handleFormSubmit = async (formData: CreateClientInputWithLocations | Omit<UpdateClientInput, 'id'>, saveAction?: 'close' | 'new') => {
+  const handleFormSubmit = async (formData: CreateClientInputWithLocations | Omit<UpdateClientInput, 'id'>, saveAction?: 'close' | 'new' | 'update-continue') => {
+    setIsUpdateAndContinue(saveAction === 'update-continue');
     if (selectedClient) {
       // Update existing client
       updateMutation.mutate({

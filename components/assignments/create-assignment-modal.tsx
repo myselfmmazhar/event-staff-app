@@ -14,9 +14,41 @@ import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon } from '@/components/ui/icons';
-import { CallTimeFormModal } from '@/components/call-times/call-time-form-modal';
-import type { CreateCallTimeInput } from '@/lib/schemas/call-time.schema';
+import { EventFormModal } from '@/components/events/event-form-modal';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
+import type { CreateEventInput, UpdateEventInput } from '@/lib/schemas/event.schema';
+import { AmountType } from '@prisma/client';
+
+type CallTimeAssignment = {
+  serviceId: string;
+  quantity: number;
+  customCost?: number | null;
+  customPrice?: number | null;
+  startDate?: string | null;
+  startTime?: string | null;
+  endDate?: string | null;
+  endTime?: string | null;
+  experienceRequired?: 'ANY' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  ratingRequired?: 'ANY' | 'NA' | 'A' | 'B' | 'C' | 'D';
+  approveOvertime?: boolean;
+  overtimeRate?: number | null;
+  overtimeRateType?: AmountType | null;
+  commission?: boolean;
+  commissionAmount?: number | null;
+  commissionAmountType?: AmountType | null;
+  payRate?: number | null;
+  billRate?: number | null;
+  rateType?: 'PER_HOUR' | 'PER_SHIFT' | 'PER_DAY' | 'PER_EVENT' | null;
+  expenditure?: boolean;
+  expenditureCost?: number | null;
+  expenditurePrice?: number | null;
+  expenditureAmount?: number | null;
+  expenditureAmountType?: AmountType | null;
+  minimum?: number | null;
+  travelInMinimum?: boolean;
+  notes?: string | null;
+  instructions?: string | null;
+};
 
 interface CreateAssignmentModalProps {
   open: boolean;
@@ -34,67 +66,93 @@ export function CreateAssignmentModal({
   const utils = trpc.useUtils();
 
   const [selectedEventId, setSelectedEventId] = useState<string>('');
-  const [showCallTimeForm, setShowCallTimeForm] = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch events for dropdown
   const { data: eventsData, isLoading: isLoadingEvents } = trpc.event.getAll.useQuery({
     page: 1,
     limit: 100,
   });
 
+  const { data: selectedEventData, isLoading: isLoadingEvent } = trpc.event.getById.useQuery(
+    { id: selectedEventId },
+    { enabled: showEventForm && !!selectedEventId }
+  );
+
   const events = eventsData?.data || [];
 
-  // Create call time mutation
-  const createCallTime = trpc.callTime.create.useMutation({
-    onSuccess: () => {
+  const updateMutation = trpc.event.update.useMutation();
+  const bulkSyncCallTimesMutation = trpc.callTime.bulkSyncForEvent.useMutation();
+  const bulkUpdateProductsMutation = trpc.eventAttachment.bulkUpdateProducts.useMutation();
+
+  const handleEventSelect = () => {
+    if (!selectedEventId) return;
+    setShowEventForm(true);
+  };
+
+  const handleFormSubmit = async (
+    data: CreateEventInput | Omit<UpdateEventInput, 'id'>,
+    attachments?: {
+      callTimes: CallTimeAssignment[];
+      products: Array<{ productId: string; quantity: number; notes?: string | null }>;
+    },
+  ) => {
+    if (!selectedEventId) return;
+    setIsSubmitting(true);
+    try {
+      await updateMutation.mutateAsync({ id: selectedEventId, ...data });
+      if (attachments) {
+        await bulkSyncCallTimesMutation.mutateAsync({
+          eventId: selectedEventId,
+          assignments: attachments.callTimes,
+        });
+        await bulkUpdateProductsMutation.mutateAsync({
+          eventId: selectedEventId,
+          products: attachments.products,
+        });
+      }
+      utils.callTime.getAll.invalidate();
       toast({
         title: 'Assignment created',
         description: 'The assignment has been created successfully',
       });
-      utils.callTime.getAll.invalidate();
-      setShowCallTimeForm(false);
+      setShowEventForm(false);
       setSelectedEventId('');
       onSuccess?.();
       onClose();
-    },
-    onError: (error) => {
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: error?.message ?? 'Something went wrong',
         variant: 'error',
       });
-    },
-  });
-
-  const handleEventSelect = () => {
-    if (!selectedEventId) return;
-    setShowCallTimeForm(true);
-  };
-
-  const handleCallTimeSubmit = (data: CreateCallTimeInput | Record<string, unknown>) => {
-    createCallTime.mutate(data as CreateCallTimeInput);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
     setSelectedEventId('');
-    setShowCallTimeForm(false);
+    setShowEventForm(false);
     onClose();
   };
 
-  const handleCallTimeFormClose = () => {
-    setShowCallTimeForm(false);
+  const handleEventFormClose = () => {
+    setShowEventForm(false);
   };
 
-  // Show call time form modal when event is selected
-  if (showCallTimeForm && selectedEventId) {
+  if (showEventForm && selectedEventId) {
+    if (isLoadingEvent || !selectedEventData) {
+      return null;
+    }
     return (
-      <CallTimeFormModal
-        callTime={null}
-        eventId={selectedEventId}
+      <EventFormModal
+        event={selectedEventData as any}
         open={true}
-        onClose={handleCallTimeFormClose}
-        onSubmit={handleCallTimeSubmit}
-        isSubmitting={createCallTime.isPending}
+        onClose={handleEventFormClose}
+        onSubmit={handleFormSubmit}
+        isSubmitting={isSubmitting}
+        initialTab="staff"
       />
     );
   }

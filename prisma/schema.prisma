@@ -475,6 +475,18 @@ model NotificationPreference {
   @@map("notification_preferences")
 }
 
+model UserPreference {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique
+  financeTabOrder  String[] @default([])
+  catalogTabOrder  String[] @default([])
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @db.Timestamp(6)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
 model Notification {
   id                String               @id @default(uuid()) @db.Uuid
   userId            String
@@ -748,6 +760,7 @@ model User {
   invoicesCreated                  Invoice[]               @relation("invoices_created")
   billsCreated                     Bill[]                  @relation("bills_created")
   notification_preferences         NotificationPreference?
+  user_preferences                 UserPreference?
   notifications                    Notification[]
   products                         Product[]
   services                         Service[]

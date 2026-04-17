@@ -12,7 +12,7 @@ export class InvoiceService {
     async findAll(query: z.infer<typeof InvoiceSchema.query>) {
         console.log("Invoice Prisma keys:", Object.keys(this.prisma));
         console.log("Invoice property:", (this.prisma as any).invoice);
-        const { page, limit, search, status, clientId, showArchived } = query;
+        const { page, limit, search, status, clientId, showArchived, sortBy = "createdAt", sortOrder = "desc" } = query;
         const skip = (page - 1) * limit;
 
         const where: Prisma.InvoiceWhereInput = {
@@ -26,6 +26,11 @@ export class InvoiceService {
                 ],
             }),
         };
+
+        const orderBy: Prisma.InvoiceOrderByWithRelationInput =
+            sortBy === "client"
+                ? { client: { businessName: sortOrder } }
+                : { [sortBy]: sortOrder };
 
         const [data, total] = await Promise.all([
             this.prisma.invoice.findMany({
@@ -42,7 +47,7 @@ export class InvoiceService {
                         },
                     },
                 },
-                orderBy: { createdAt: "desc" },
+                orderBy,
             }),
             this.prisma.invoice.count({ where }),
         ]);
