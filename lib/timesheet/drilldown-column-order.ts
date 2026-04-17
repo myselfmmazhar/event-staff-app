@@ -6,7 +6,7 @@ export type TimesheetDrilldownSubTab = 'all' | 'invoice' | 'bill' | 'commission'
  */
 export const DRILLDOWN_TABLE_RESIZE_DEFAULTS: Record<string, number> = {
     // All tab (aligns with summary / event-group keys)
-    action: 72,
+    action: 56,
     talent: 160,
     service: 128,
     date: 120,
@@ -28,7 +28,7 @@ export const DRILLDOWN_TABLE_RESIZE_DEFAULTS: Record<string, number> = {
     // Bill sub-tab
     category: 100,
     // Commission sub-tab (prefixed so widths do not clash with All)
-    cmAction: 72,
+    cmAction: 56,
     cmStaff: 200,
     cmDesc: 360,
     cmPrice: 132,

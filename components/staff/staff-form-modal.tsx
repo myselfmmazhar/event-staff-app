@@ -41,7 +41,7 @@ import {
     type CompanyOption,
     type TeamMemberInput,
 } from './form-sections';
-import { STAFF_RATING_OPTIONS } from './form-sections/constants';
+import { STAFF_RATING_OPTIONS, STAFF_FORM_RATING_LABELS } from './form-sections/constants';
 import { TaxDetailsForm, type TaxDetailsFormRef } from './tax-details-form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -551,7 +551,7 @@ function StaffFormContent({
             {/* Body */}
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
                 {wizardStep === 'basic' && (
-                    <div className="mx-auto max-w-4xl">
+                    <div className="mx-auto max-w-6xl">
                         <h3 className="text-base font-bold text-slate-900">1. Basic invite information</h3>
                         <p className="mt-1 text-xs text-slate-500">
                             These are the core fields used to create the record and send an invitation. At least one of
@@ -688,7 +688,7 @@ function StaffFormContent({
                 )}
 
                 {wizardStep === 'talentType' && (
-                    <div className="mx-auto max-w-4xl">
+                    <div className="mx-auto max-w-6xl">
                         <h3 className="text-base font-bold text-slate-900">2. Experience Profile</h3>
                         <p className="mt-1 text-xs text-slate-500">
                             Provide background information, skills, or internal notes for this talent.
@@ -815,7 +815,7 @@ function StaffFormContent({
                 )}
 
                 {wizardStep === 'requirements' && (
-                    <div className="mx-auto max-w-4xl">
+                    <div className="mx-auto max-w-6xl">
                         <h3 className="text-base font-bold text-slate-900">3. Requirement templates</h3>
                         <p className="mt-1 text-xs text-slate-500">
                             Select reusable requirement cards to plan the onboarding packet.
@@ -877,7 +877,7 @@ function StaffFormContent({
                 )}
 
                 {wizardStep === 'tax' && (
-                    <div className="mx-auto max-w-4xl">
+                    <div className="mx-auto max-w-6xl">
                         <h3 className="text-base font-bold text-slate-900">4. Tax completion mode</h3>
                         <p className="mt-1 text-xs text-slate-500">
                             Choose who completes tax information for this {terminology.staff.lower}.
@@ -972,7 +972,7 @@ function StaffFormContent({
                 )}
 
                 {wizardStep === 'review' && (
-                    <div className="mx-auto max-w-4xl space-y-8">
+                    <div className="mx-auto max-w-6xl space-y-8">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
@@ -1085,7 +1085,7 @@ function StaffFormContent({
                                             {watch('staffRating') !== StaffRating.NA ? (
                                                 <div className="flex items-center gap-1 bg-slate-50 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 font-bold text-sm">
                                                     <Star className="h-3 w-3 fill-current" />
-                                                    {watch('staffRating')}
+                                                    {STAFF_FORM_RATING_LABELS[watch('staffRating') as StaffRating]}
                                                 </div>
                                             ) : (
                                                 <span className="text-sm font-bold text-slate-400 italic">No initial rating set</span>
@@ -1451,7 +1451,7 @@ export function StaffFormModal({
             <Dialog
                 open={open}
                 onClose={onClose}
-                className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+                className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-7xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
             >
                 <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
                     <StaffFormContent
