@@ -45,15 +45,24 @@ export const SKILL_LEVEL_OPTIONS = [
   { value: SkillLevel.ADVANCED, label: 'Advanced' },
 ] as const;
 
+/** Display labels for staff initial rating (maps Prisma StaffRating to plain language). */
+export const STAFF_FORM_RATING_LABELS: Record<StaffRating, string> = {
+  [StaffRating.NA]: 'No rating',
+  [StaffRating.A]: 'Advanced',
+  [StaffRating.B]: 'Intermediate',
+  [StaffRating.C]: 'Beginner',
+  [StaffRating.D]: 'Developing',
+};
+
 /**
- * Staff rating options for dropdown
+ * Staff rating options for the staff form modal (values stay enum; labels are user-facing tiers).
  */
 export const STAFF_RATING_OPTIONS = [
-  { value: StaffRating.NA, label: 'Pending' },
-  { value: StaffRating.A, label: 'A' },
-  { value: StaffRating.B, label: 'B' },
-  { value: StaffRating.C, label: 'C' },
-  { value: StaffRating.D, label: 'D' },
+  { value: StaffRating.NA, label: STAFF_FORM_RATING_LABELS[StaffRating.NA] },
+  { value: StaffRating.C, label: STAFF_FORM_RATING_LABELS[StaffRating.C] },
+  { value: StaffRating.B, label: STAFF_FORM_RATING_LABELS[StaffRating.B] },
+  { value: StaffRating.A, label: STAFF_FORM_RATING_LABELS[StaffRating.A] },
+  { value: StaffRating.D, label: STAFF_FORM_RATING_LABELS[StaffRating.D] },
 ] as const;
 
 /**

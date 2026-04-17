@@ -102,29 +102,33 @@ export function BillTable({
         ...(selectedIds && onSelectionChange ? [{
             key: "select" as const,
             label: (
-                <Checkbox
-                    checked={allSelected}
-                    indeterminate={someSelected && !allSelected}
-                    onChange={toggleAll}
-                    aria-label="Select all"
-                />
+                <div className="flex items-center justify-center">
+                    <Checkbox
+                        checked={allSelected}
+                        indeterminate={someSelected && !allSelected}
+                        onChange={toggleAll}
+                        aria-label="Select all"
+                    />
+                </div>
             ),
-            headerClassName: "w-12 py-3 px-4",
-            className: "w-12 py-4 px-4",
+            headerClassName: "w-10 min-w-10 max-w-10 py-4 px-2 align-middle text-center",
+            className: "w-10 min-w-10 max-w-10 py-4 px-2 align-middle text-center",
             render: (bill: Bill) => (
-                <Checkbox
-                    checked={selectedIds.has(bill.id)}
-                    onChange={() => toggleOne(bill.id)}
-                    aria-label={`Select ${bill.billNo}`}
-                    onClick={(e) => e.stopPropagation()}
-                />
+                <div className="flex items-center justify-center">
+                    <Checkbox
+                        checked={selectedIds.has(bill.id)}
+                        onChange={() => toggleOne(bill.id)}
+                        aria-label={`Select ${bill.billNo}`}
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
             ),
         }] : []),
         {
             key: "actions",
             label: "Actions",
-            headerClassName: "text-left py-3 px-4 w-10",
-            className: "w-10 py-4 px-4",
+            headerClassName: "py-4 px-2 align-middle text-left whitespace-nowrap",
+            className: "py-4 px-2 align-middle",
             render: (bill) => {
                 const actions: ActionItem[] = [];
 

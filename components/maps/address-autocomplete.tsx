@@ -34,6 +34,7 @@ interface AddressAutocompleteProps {
   label?: string;
   required?: boolean;
   error?: string;
+  disabled?: boolean;
 }
 
 /**
@@ -47,6 +48,7 @@ export function AddressAutocomplete({
   label = "Search Address",
   required = false,
   error,
+  disabled = false,
 }: AddressAutocompleteProps) {
   const [query, setQuery] = useState(defaultValue);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -103,8 +105,14 @@ export function AddressAutocomplete({
     }
   };
 
+  // Keep displayed text in sync when parent updates default value.
+  useEffect(() => {
+    setQuery(defaultValue);
+  }, [defaultValue]);
+
   // Handle input change with debounce
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const value = e.target.value;
     setQuery(value);
 
@@ -180,12 +188,14 @@ export function AddressAutocomplete({
           value={query}
           onChange={handleInputChange}
           onFocus={() => {
+            if (disabled) return;
             if (suggestions.length > 0) {
               setShowSuggestions(true);
             }
           }}
           placeholder={placeholder}
           className={cn("pl-9 pr-9", error && "border-destructive")}
+          disabled={disabled}
         />
         {isLoading && (
           <Loader2
@@ -198,7 +208,7 @@ export function AddressAutocomplete({
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {/* Suggestions Dropdown */}
-      {showSuggestions && suggestions.length > 0 && (
+      {!disabled && showSuggestions && suggestions.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-background border rounded-lg shadow-lg max-h-[300px] overflow-y-auto">
           {suggestions.map((suggestion) => (
             <button

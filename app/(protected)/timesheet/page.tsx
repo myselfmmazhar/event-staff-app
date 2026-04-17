@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, Fragment } from 'react';
 import type React from 'react';
 import { trpc } from '@/lib/client/trpc';
 import {
@@ -240,6 +240,56 @@ export default function TimeManagerPage() {
             setSortBy(field);
             setSortOrder('asc');
         }
+    };
+
+    const renderBillRowsGroupedByTalent = (rows: CallTimeRow[]) => {
+        const grouped = new Map<string, { talentName: string; items: CallTimeRow[] }>();
+
+        rows.forEach((ct) => {
+            const talentId = ct.staff?.id ?? 'unassigned';
+            const talentName = ct.staff
+                ? `${ct.staff.firstName} ${ct.staff.lastName}`.trim() || 'Unnamed Talent'
+                : 'Unassigned Talent';
+            const key = talentId;
+
+            if (!grouped.has(key)) {
+                grouped.set(key, { talentName, items: [ct] });
+            } else {
+                grouped.get(key)!.items.push(ct);
+            }
+        });
+
+        return Array.from(grouped.entries()).map(([key, group]) => (
+            <Fragment key={`bill-talent-${key}`}>
+                <tr className="bg-slate-50/80">
+                    <td colSpan={20} className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700">
+                        Talent: {group.talentName}
+                    </td>
+                </tr>
+                {group.items.map((ct) => (
+                    <TimesheetTableRow
+                        key={ct.id}
+                        ct={ct}
+                        isExpanded={expandedRows.has(ct.id)}
+                        isSelected={selectedRows.has(ct.id)}
+                        onToggleExpand={toggleExpand}
+                        onToggleSelect={toggleSelect}
+                        onViewEvent={(id) => router.push(`/projects/${id}`)}
+                        onSaveTimeEntry={handleSaveTimeEntry}
+                        onApprove={handleApprove}
+                        onReject={handleReject}
+                        onReview={handleReview}
+                        onPending={handlePending}
+                        onEditTask={handleEditTask}
+                        subTab={subTab}
+                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                        includeActual={getShiftMode(ct.id).includeActual}
+                        onShiftModeChange={handleShiftModeChange}
+                        rowVariant="card"
+                    />
+                ))}
+            </Fragment>
+        ));
     };
 
     const handleSaveTimeEntry = (
@@ -1211,6 +1261,10 @@ export default function TimeManagerPage() {
                                                                 ));
                                                             }
 
+                                                            if (subTab === 'bill') {
+                                                                return renderBillRowsGroupedByTalent(filtered);
+                                                            }
+
                                                             return filtered.map((ct) => (
                                                                 <TimesheetTableRow
                                                                     key={ct.id}
@@ -1388,8 +1442,11 @@ export default function TimeManagerPage() {
                                                                 ));
                                                             }
 
-                                                            if (subTab !== 'bill') {
-                                                                return filtered.map(ct => (
+                                                            if (subTab === 'bill') {
+                                                                return renderBillRowsGroupedByTalent(filtered);
+                                                            }
+
+                                                            return filtered.map(ct => (
                                                                     <TimesheetTableRow
                                                                         key={ct.id}
                                                                         ct={ct}
@@ -1411,51 +1468,6 @@ export default function TimeManagerPage() {
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
-                                                            }
-
-                                                            // Group by event for the staff detail view (if they have multiple assignments on same event)
-                                                            const eventMap = new Map<string, CallTimeRow>();
-                                                            filtered.forEach(ct => {
-                                                                const eid = ct.event?.id;
-                                                                if (!eid) return;
-                                                                if (!eventMap.has(eid)) {
-                                                                    eventMap.set(eid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
-                                                                } else {
-                                                                    const existing = eventMap.get(eid)!;
-                                                                    if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
-                                                                        existing.service.title = `${existing.service.title} & ${ct.service.title}`;
-                                                                    }
-                                                                    if (ct.notes && ct.notes !== existing.notes) {
-                                                                        existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
-                                                                    }
-                                                                    existing.invitations.push(...ct.invitations);
-                                                                    if (!existing.mergedRows) existing.mergedRows = [];
-                                                                    existing.mergedRows.push(ct);
-                                                                }
-                                                            });
-
-                                                            return Array.from(eventMap.values()).map(ct => (
-                                                                <TimesheetTableRow
-                                                                    key={ct.id}
-                                                                    ct={ct}
-                                                                    isExpanded={expandedRows.has(ct.id)}
-                                                                    isSelected={selectedRows.has(ct.id)}
-                                                                    onToggleExpand={toggleExpand}
-                                                                    onToggleSelect={toggleSelect}
-                                                                    onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                    onSaveTimeEntry={handleSaveTimeEntry}
-                                                                    onApprove={handleApprove}
-                                                                    onReject={handleReject}
-                                                                    onReview={handleReview}
-                                                                    onPending={handlePending}
-                                                                    onEditTask={handleEditTask}
-                                                                    subTab={subTab}
-                                                                    includeSchedule={getShiftMode(ct.id).includeSchedule}
-                                                                    includeActual={getShiftMode(ct.id).includeActual}
-                                                                    onShiftModeChange={handleShiftModeChange}
-                                                                    rowVariant="card"
-                                                                />
-                                                            ));
                                                         })()}
                                                     </tbody>
                                                 </table>
@@ -1617,8 +1629,11 @@ export default function TimeManagerPage() {
                                                                 ));
                                                             }
 
-                                                            if (subTab !== 'bill') {
-                                                                return filtered.map(ct => (
+                                                            if (subTab === 'bill') {
+                                                                return renderBillRowsGroupedByTalent(filtered);
+                                                            }
+
+                                                            return filtered.map(ct => (
                                                                     <TimesheetTableRow
                                                                         key={ct.id}
                                                                         ct={ct}
@@ -1640,51 +1655,6 @@ export default function TimeManagerPage() {
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
-                                                            }
-
-                                                            // Group by staff for the event detail view
-                                                            const staffMap = new Map<string, CallTimeRow>();
-                                                            filtered.forEach(ct => {
-                                                                const sid = ct.staff?.id;
-                                                                if (!sid) return;
-                                                                if (!staffMap.has(sid)) {
-                                                                    staffMap.set(sid, { ...ct, invitations: [...ct.invitations], mergedRows: [ct] });
-                                                                } else {
-                                                                    const existing = staffMap.get(sid)!;
-                                                                    if (existing.service?.title && ct.service?.title && !existing.service.title.includes(ct.service.title)) {
-                                                                        existing.service.title = `${existing.service.title} & ${ct.service.title}`;
-                                                                    }
-                                                                    if (ct.notes && ct.notes !== existing.notes) {
-                                                                        existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
-                                                                    }
-                                                                    existing.invitations.push(...ct.invitations);
-                                                                    if (!existing.mergedRows) existing.mergedRows = [];
-                                                                    existing.mergedRows.push(ct);
-                                                                }
-                                                            });
-
-                                                            return Array.from(staffMap.values()).map(ct => (
-                                                                <TimesheetTableRow
-                                                                    key={ct.id}
-                                                                    ct={ct}
-                                                                    isExpanded={expandedRows.has(ct.id)}
-                                                                    isSelected={selectedRows.has(ct.id)}
-                                                                    onToggleExpand={toggleExpand}
-                                                                    onToggleSelect={toggleSelect}
-                                                                    onViewEvent={(id) => router.push(`/projects/${id}`)}
-                                                                    onSaveTimeEntry={handleSaveTimeEntry}
-                                                                    onApprove={handleApprove}
-                                                                    onReject={handleReject}
-                                                                    onReview={handleReview}
-                                                                    onPending={handlePending}
-                                                                    onEditTask={handleEditTask}
-                                                                    subTab={subTab}
-                                                                    includeSchedule={getShiftMode(ct.id).includeSchedule}
-                                                                    includeActual={getShiftMode(ct.id).includeActual}
-                                                                    onShiftModeChange={handleShiftModeChange}
-                                                                    rowVariant="card"
-                                                                />
-                                                            ));
                                                         })()}
                                                     </tbody>
                                                 </table>

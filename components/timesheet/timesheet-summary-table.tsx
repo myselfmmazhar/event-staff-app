@@ -137,7 +137,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                             ? (sortOrder === 'asc' ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />)
                                             : <ChevronsUpDownIcon className="h-4 w-4 opacity-50" />}
                                     </div>
-                                    <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.id, e)} />
+                                    <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.widthKey, e)} />
                                 </th>
                             ))}
                             <th className="px-4 py-4 font-semibold text-slate-600 text-right pr-6">Upload</th>

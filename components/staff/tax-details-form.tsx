@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
+import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -389,13 +390,23 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 <Label htmlFor="taxAddress" className="text-sm leading-snug">
                                     Address <span className="font-normal text-muted-foreground">(street, apt. or suite)</span>
                                 </Label>
-                                <Input
-                                    id="taxAddress"
-                                    className="mt-2 h-10"
-                                    {...register('taxAddress')}
-                                    disabled={isDisabled}
-                                    placeholder="Street address"
-                                />
+                                <div className="mt-2">
+                                    <AddressAutocomplete
+                                        label=""
+                                        defaultValue={watch('taxAddress') ?? ''}
+                                        placeholder="Type to search for an address..."
+                                        disabled={isDisabled}
+                                        onSelect={(addressData) => {
+                                            setValue('taxAddress', addressData.address, { shouldDirty: true, shouldValidate: true });
+                                            setValue('taxCity', addressData.city, { shouldDirty: true, shouldValidate: true });
+                                            setValue('taxState', addressData.state, { shouldDirty: true, shouldValidate: true });
+                                            setValue('taxZip', addressData.zipCode, { shouldDirty: true, shouldValidate: true });
+                                        }}
+                                    />
+                                </div>
+                                {errors.taxAddress && (
+                                    <p className="mt-1 text-sm text-destructive">{errors.taxAddress.message}</p>
+                                )}
                             </div>
                             <div className="min-w-0 md:col-span-5">
                                 <Label htmlFor="taxCity">City</Label>
@@ -663,13 +674,23 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 <Label htmlFor="w4Address" className="text-sm font-bold">
                                     Address
                                 </Label>
-                                <Input
-                                    id="w4Address"
-                                    className="mt-2 h-10"
-                                    {...register('taxAddress')}
-                                    disabled={isDisabled}
-                                    placeholder="Street address"
-                                />
+                                <div className="mt-2">
+                                    <AddressAutocomplete
+                                        label=""
+                                        defaultValue={watch('taxAddress') ?? ''}
+                                        placeholder="Type to search for an address..."
+                                        disabled={isDisabled}
+                                        onSelect={(addressData) => {
+                                            setValue('taxAddress', addressData.address, { shouldDirty: true, shouldValidate: true });
+                                            setValue('taxCity', addressData.city, { shouldDirty: true, shouldValidate: true });
+                                            setValue('taxState', addressData.state, { shouldDirty: true, shouldValidate: true });
+                                            setValue('taxZip', addressData.zipCode, { shouldDirty: true, shouldValidate: true });
+                                        }}
+                                    />
+                                </div>
+                                {errors.taxAddress && (
+                                    <p className="mt-1 text-sm text-destructive">{errors.taxAddress.message}</p>
+                                )}
                             </div>
                             <div className="min-w-0 md:col-span-5">
                                 <Label htmlFor="w4City">City</Label>
