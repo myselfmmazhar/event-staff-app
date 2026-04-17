@@ -996,6 +996,13 @@ export function EventFormModal({
     handleSubmit(handleFormSubmit, handleFormError)(e);
   };
 
+  // Prevent Enter key from accidentally submitting the form on non-last steps
+  const onFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === 'Enter' && !isLastFormStep && activeTab !== 'batch') {
+      e.preventDefault();
+    }
+  };
+
   const clients = clientsData?.data || [];
 
   return (
@@ -1005,7 +1012,7 @@ export function EventFormModal({
       className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-7xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
     >
       <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
-        <form onSubmit={onFormSubmit} className="flex h-full min-h-0 flex-col bg-white">
+        <form onSubmit={onFormSubmit} onKeyDown={onFormKeyDown} className="flex h-full min-h-0 flex-col bg-white">
 
           {/* Header + tabs */}
           <div className="shrink-0 border-b border-slate-200 px-6 pb-0 pt-5 sm:px-8">
@@ -1377,8 +1384,8 @@ export function EventFormModal({
                   <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="rounded-lg border-slate-200">
                     Cancel
                   </Button>
-                  {!isEdit && (
-                    <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
+                  {!isEdit && isLastFormStep && (
+                    <Button type="submit" variant="outline" disabled={isSubmitting || !(canContinueBasic && canContinueVenue)} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
                       {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
                     </Button>
                   )}

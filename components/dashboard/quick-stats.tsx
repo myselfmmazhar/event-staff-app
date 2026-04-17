@@ -1,8 +1,9 @@
 "use client";
 
 import { StatsCard } from "./stats-card";
-import { CalendarIcon, UsersIcon } from "@/components/ui/icons";
+import { CalendarIcon, UsersIcon, BriefcaseIcon, ClipboardListIcon } from "@/components/ui/icons";
 import { useTerminology } from "@/lib/hooks/use-terminology";
+import { getEventRoute } from "@/lib/utils/route-helpers";
 
 interface EventStats {
   total: number;
@@ -33,36 +34,48 @@ interface QuickStatsProps {
   isLoading: boolean;
 }
 
-/**
- * Quick Stats Component
- * Displays 3 key metrics: Upcoming Events, Active Staff, and Total Events
- */
 export function QuickStats({ eventStats, staffStats, isLoading }: QuickStatsProps) {
   const { terminology } = useTerminology();
+
+  const openAssignments =
+    (eventStats?.byStatus?.PUBLISHED ?? 0) + (eventStats?.byStatus?.ASSIGNED ?? 0);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       <StatsCard
         title={`Upcoming ${terminology.event.plural}`}
         value={eventStats?.upcoming || 0}
-        icon={<CalendarIcon className="w-6 h-6" />}
+        icon={<CalendarIcon className="w-5 h-5" />}
         description="Next 30 days"
         gradient="purple"
+        href={getEventRoute(terminology)}
         isLoading={isLoading}
       />
       <StatsCard
         title={`Active ${terminology.staff.plural}`}
         value={staffStats?.active || 0}
-        icon={<UsersIcon className="w-6 h-6" />}
+        icon={<UsersIcon className="w-5 h-5" />}
         description={`Available ${terminology.staff.lowerPlural}`}
         gradient="green"
+        href="/staff"
+        isLoading={isLoading}
+      />
+      <StatsCard
+        title="Open Assignments"
+        value={openAssignments}
+        icon={<BriefcaseIcon className="w-5 h-5" />}
+        description="Published & assigned"
+        gradient="blue"
+        href="/assignments"
         isLoading={isLoading}
       />
       <StatsCard
         title={`Total ${terminology.event.plural}`}
         value={eventStats?.total || 0}
-        icon={<CalendarIcon className="w-6 h-6" />}
+        icon={<ClipboardListIcon className="w-5 h-5" />}
         description={`All ${terminology.event.lowerPlural}`}
-        gradient="blue"
+        gradient="rose"
+        href={getEventRoute(terminology)}
         isLoading={isLoading}
       />
     </div>
