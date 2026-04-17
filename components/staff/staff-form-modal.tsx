@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { ServiceSelectionTable } from '@/components/staff/form-sections/service-selection-table';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
 import { AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus, TaxFilledBy } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
@@ -771,15 +772,12 @@ function StaffFormContent({
                                         name="serviceIds"
                                         control={control}
                                         render={({ field }) => (
-                                            <MultiSelect
-                                                id="sf-services"
-                                                options={services.map(s => ({ value: s.id, label: s.title }))}
+                                            <ServiceSelectionTable
+                                                services={services}
                                                 value={field.value || []}
                                                 onChange={field.onChange}
-                                                placeholder="Select services..."
                                                 disabled={isSubmitting}
                                                 error={!!errors.serviceIds}
-                                                searchable
                                             />
                                         )}
                                     />
@@ -978,7 +976,7 @@ function StaffFormContent({
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 shadow-indigo-200 shadow-lg text-white">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-900">
                                         <ClipboardCheck className="h-5 w-5" />
                                     </div>
                                     Review & Confirm
@@ -992,10 +990,10 @@ function StaffFormContent({
                         {/* Full Data Summary Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Section 1: Core Profile */}
-                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-50/50">
+                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-300 hover:shadow-xl hover:shadow-slate-100/50">
                                 <div className="mb-5 flex items-center justify-between">
                                     <div className="flex items-center gap-2.5">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                                             <User className="h-4 w-4" />
                                         </div>
                                         <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Core Profile</h4>
@@ -1003,7 +1001,7 @@ function StaffFormContent({
                                     <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 rounded-full px-3 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                                        className="h-8 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                         onClick={() => setWizardStep('basic')}
                                     >
                                         Edit
@@ -1046,7 +1044,7 @@ function StaffFormContent({
                                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Talent Type</span>
                                             <span className={cn(
                                                 "inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight",
-                                                watch('staffType') === StaffType.CONTRACTOR ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"
+                                                watch('staffType') === StaffType.CONTRACTOR ? "bg-slate-100 text-slate-700" : "bg-slate-100 text-slate-700"
                                             )}>
                                                 {watch('staffType')}
                                             </span>
@@ -1062,10 +1060,10 @@ function StaffFormContent({
                             </div>
 
                             {/* Section 2: Experience & Skills */}
-                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-50/50">
+                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-300 hover:shadow-xl hover:shadow-slate-100/50">
                                 <div className="mb-5 flex items-center justify-between">
                                     <div className="flex items-center gap-2.5">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                                             <Star className="h-4 w-4" />
                                         </div>
                                         <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Professional Profile</h4>
@@ -1073,7 +1071,7 @@ function StaffFormContent({
                                     <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 rounded-full px-3 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                        className="h-8 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                         onClick={() => setWizardStep('talentType')}
                                     >
                                         Edit
@@ -1085,7 +1083,7 @@ function StaffFormContent({
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Initial Quality Rating</span>
                                         <div className="flex items-center gap-1.5">
                                             {watch('staffRating') !== StaffRating.NA ? (
-                                                <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100 font-bold text-sm">
+                                                <div className="flex items-center gap-1 bg-slate-50 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 font-bold text-sm">
                                                     <Star className="h-3 w-3 fill-current" />
                                                     {watch('staffRating')}
                                                 </div>
@@ -1118,10 +1116,10 @@ function StaffFormContent({
                             </div>
 
                             {/* Section 3: Onboarding Requirements */}
-                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-sky-300 hover:shadow-xl hover:shadow-sky-50/50 md:col-span-2">
+                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-300 hover:shadow-xl hover:shadow-slate-100/50 md:col-span-2">
                                 <div className="mb-5 flex items-center justify-between">
                                     <div className="flex items-center gap-2.5">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                                             <FileText className="h-4 w-4" />
                                         </div>
                                         <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Onboarding Packet</h4>
@@ -1129,7 +1127,7 @@ function StaffFormContent({
                                     <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 rounded-full px-3 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                                        className="h-8 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                         onClick={() => setWizardStep('requirements')}
                                     >
                                         Edit
@@ -1141,7 +1139,7 @@ function StaffFormContent({
                                         const card = REQ_TEMPLATE_CARDS.find(c => c.id === id);
                                         return (
                                             <div key={id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
-                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm border border-slate-100 text-sky-600">
+                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm border border-slate-100 text-slate-600">
                                                     {card ? <card.Icon className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
                                                 </div>
                                                 <div className="min-w-0">
@@ -1164,10 +1162,10 @@ function StaffFormContent({
                             </div>
 
                             {/* Section 4: Collection Strategy (Tax Flow) */}
-                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-amber-300 hover:shadow-xl hover:shadow-amber-50/50 md:col-span-2">
+                            <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-300 hover:shadow-xl hover:shadow-slate-100/50 md:col-span-2">
                                 <div className="mb-5 flex items-center justify-between">
                                     <div className="flex items-center gap-2.5">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                                             <Calculator className="h-4 w-4" />
                                         </div>
                                         <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Collection Strategy</h4>
@@ -1175,7 +1173,7 @@ function StaffFormContent({
                                     <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 rounded-full px-3 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                                        className="h-8 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                         onClick={() => setWizardStep('tax')}
                                     >
                                         Edit
@@ -1328,7 +1326,7 @@ function StaffFormContent({
                             <Button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="h-14 w-full rounded-xl bg-indigo-600 px-10 text-lg font-bold text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 hover:shadow-none sm:w-auto sm:min-w-[280px]"
+                                className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[280px]"
                             >
                                 {isSubmitting
                                     ? 'Saving...'

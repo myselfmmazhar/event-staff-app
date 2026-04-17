@@ -214,6 +214,8 @@ interface EventFormModalProps {
   onViewDetails?: () => void;
   /** Increment this key to reset the form for a new entry (used with Save & New) */
   resetKey?: number;
+  /** Override the default starting tab when the modal opens */
+  initialTab?: EventFormTab;
 }
 
 type EventModalTab = EventFormTab | 'batch';
@@ -256,6 +258,7 @@ export function EventFormModal({
   backendErrors = [],
   onViewDetails,
   resetKey = 0,
+  initialTab,
 }: EventFormModalProps) {
   const { terminology } = useTerminology();
   const utils = trpc.useUtils();
@@ -614,10 +617,10 @@ export function EventFormModal({
     }
   }, [open]);
 
-  // Reset tab to 'basic' when dialog opens
+  // Reset tab to initialTab (or 'basic') when dialog opens
   useEffect(() => {
-    if (open) setActiveTab('basic');
-  }, [open]);
+    if (open) setActiveTab(initialTab ?? 'basic');
+  }, [open, initialTab]);
 
   // Reset form when resetKey changes (triggered by Save & New)
   useEffect(() => {
