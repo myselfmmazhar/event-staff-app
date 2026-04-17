@@ -500,8 +500,14 @@ function StaffFormContent({
 
     const titleText = isEdit ? `Edit ${terminology.staff.singular}` : `Add ${terminology.staff.singular.toLowerCase()}`;
 
+    const onFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+        if (e.key === 'Enter' && !isLastStep) {
+            e.preventDefault();
+        }
+    };
+
     return (
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex h-full min-h-0 flex-col bg-white">
+        <form onSubmit={handleSubmit(handleFormSubmit)} onKeyDown={onFormKeyDown} className="flex h-full min-h-0 flex-col bg-white">
             {/* Header + step tabs */}
             <div className="shrink-0 border-b border-slate-200 px-6 pb-0 pt-5 sm:px-8">
                 <div className="flex items-start justify-between gap-4">
@@ -1380,15 +1386,17 @@ function StaffFormContent({
                         >
                             Cancel
                         </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleSaveDraft}
-                            disabled={isSubmitting}
-                            className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                        >
-                            Save Draft
-                        </Button>
+                        {!isEdit && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleSaveDraft}
+                                disabled={isSubmitting}
+                                className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                            >
+                                Save Draft
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>

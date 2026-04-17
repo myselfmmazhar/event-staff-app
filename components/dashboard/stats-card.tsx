@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { AnimatedCounter } from "./animated-counter";
 
@@ -10,77 +11,52 @@ interface StatsCardProps {
   icon: ReactNode;
   description?: string;
   gradient?: "purple" | "rose" | "blue" | "green";
+  href?: string;
   isLoading?: boolean;
 }
 
-/**
- * Stats card component with animated counter and gradient effects
- */
 export function StatsCard({
   title,
   value,
   icon,
   description,
-  gradient = "purple",
+  href,
   isLoading = false,
 }: StatsCardProps) {
-  const gradients = {
-    purple: "from-primary/10 to-primary/5 border-primary/20",
-    rose: "from-secondary/10 to-secondary/5 border-secondary/20",
-    blue: "from-info/10 to-info/5 border-info/20",
-    green: "from-success/10 to-success/5 border-success/20",
-  };
-
-  const iconGradients = {
-    purple: "from-primary to-primary/80",
-    rose: "from-secondary to-secondary/80",
-    blue: "from-info to-info/80",
-    green: "from-success to-success/80",
-  };
-
   if (isLoading) {
     return (
-      <Card className="relative overflow-hidden border-border">
-        <CardContent className="p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 space-y-3">
-              <div className="h-4 w-24 bg-muted rounded animate-pulse" />
-              <div className="h-8 w-20 bg-muted rounded animate-pulse" />
-              <div className="h-3 w-32 bg-muted rounded animate-pulse" />
-            </div>
-            <div className="w-12 h-12 bg-muted rounded-xl animate-pulse" />
+      <Card className="bg-card border border-border shadow-none">
+        <CardContent className="p-5">
+          <div className="flex items-start justify-between mb-3">
+            <div className="h-3.5 w-28 bg-muted rounded animate-pulse" />
+            <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
           </div>
+          <div className="h-10 w-16 bg-muted rounded animate-pulse mb-2" />
+          <div className="h-3 w-24 bg-muted rounded animate-pulse" />
         </CardContent>
       </Card>
     );
   }
 
-  return (
-    <Card
-      className={`relative overflow-hidden border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] bg-gradient-to-br ${gradients[gradient]}`}
-    >
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-muted-foreground mb-2">
-              {title}
-            </p>
-            <h3 className="text-3xl font-bold text-foreground mb-1">
-              <AnimatedCounter value={value} duration={1200} />
-            </h3>
-            {description && (
-              <p className="text-xs text-muted-foreground">
-                {description}
-              </p>
-            )}
-          </div>
-          <div
-            className={`flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${iconGradients[gradient]} shadow-lg`}
-          >
-            <div className="text-white">{icon}</div>
+  const inner = (
+    <Card className={`bg-card border border-border shadow-none transition-shadow duration-150 ${href ? "hover:shadow-sm cursor-pointer" : ""}`}>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between mb-3">
+          <p className="text-sm text-muted-foreground">{title}</p>
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+            <div className="w-4 h-4">{icon}</div>
           </div>
         </div>
+        <h3 className="text-4xl font-bold text-foreground leading-none mb-1.5">
+          <AnimatedCounter value={value} duration={900} />
+        </h3>
+        {description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
       </CardContent>
     </Card>
   );
+
+  if (href) return <Link href={href}>{inner}</Link>;
+  return inner;
 }
