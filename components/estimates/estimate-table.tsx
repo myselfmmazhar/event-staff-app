@@ -102,29 +102,33 @@ export function EstimateTable({
         ...(selectedIds && onSelectionChange ? [{
             key: "select" as const,
             label: (
-                <Checkbox
-                    checked={allSelected}
-                    indeterminate={someSelected && !allSelected}
-                    onChange={toggleAll}
-                    aria-label="Select all"
-                />
+                <div className="flex items-center justify-center">
+                    <Checkbox
+                        checked={allSelected}
+                        indeterminate={someSelected && !allSelected}
+                        onChange={toggleAll}
+                        aria-label="Select all"
+                    />
+                </div>
             ),
-            headerClassName: "w-12 py-3 px-4",
-            className: "w-12 py-4 px-4",
+            headerClassName: "w-10 min-w-10 max-w-10 py-4 px-2 align-middle text-center",
+            className: "w-10 min-w-10 max-w-10 py-4 px-2 align-middle text-center",
             render: (estimate: Estimate) => (
-                <Checkbox
-                    checked={selectedIds.has(estimate.id)}
-                    onChange={() => toggleOne(estimate.id)}
-                    aria-label={`Select ${estimate.estimateNo}`}
-                    onClick={(e) => e.stopPropagation()}
-                />
+                <div className="flex items-center justify-center">
+                    <Checkbox
+                        checked={selectedIds.has(estimate.id)}
+                        onChange={() => toggleOne(estimate.id)}
+                        aria-label={`Select ${estimate.estimateNo}`}
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
             ),
         }] : []),
         {
             key: "actions",
             label: "Actions",
-            headerClassName: "text-left py-3 px-4 w-10",
-            className: "w-10 py-4 px-4",
+            headerClassName: "py-4 px-2 align-middle text-left whitespace-nowrap",
+            className: "py-4 px-2 align-middle",
             render: (estimate) => {
                 const actions: ActionItem[] = [];
 

@@ -382,7 +382,7 @@ export function ClientFormModal({
     <Dialog
       open={open}
       onClose={onClose}
-      className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+      className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-7xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
     >
       <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
         <form onSubmit={onFormSubmit} className="flex h-full min-h-0 flex-col bg-white">
@@ -437,7 +437,7 @@ export function ClientFormModal({
 
             {/* Client Info Tab */}
             {clientTab === 'info' && (
-              <div className="mx-auto max-w-4xl">
+              <div className="mx-auto max-w-6xl">
                 {isEdit && client && (
                   <div className="mb-6 inline-block rounded-md border border-border bg-muted/30 p-3">
                     <p className="text-sm text-muted-foreground">Client ID</p>
@@ -583,7 +583,7 @@ export function ClientFormModal({
 
             {/* Address Tab */}
             {clientTab === 'address' && (
-              <div className="mx-auto max-w-4xl">
+              <div className="mx-auto max-w-6xl">
                 <h3 className="text-base font-bold text-slate-900">Business Address</h3>
                 <p className="mt-1 text-xs text-slate-500">Search or manually enter the primary business address.</p>
                 <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
@@ -672,7 +672,7 @@ export function ClientFormModal({
 
             {/* Billing Tab */}
             {clientTab === 'billing' && (
-              <div className="mx-auto max-w-4xl">
+              <div className="mx-auto max-w-6xl">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-bold text-slate-900">Billing Contact</h3>
@@ -753,7 +753,7 @@ export function ClientFormModal({
 
             {/* Locations & Access Tab */}
             {clientTab === 'access' && (
-              <div className="mx-auto max-w-4xl space-y-6">
+              <div className="mx-auto max-w-6xl space-y-6">
                 {isEdit && client ? (
                   <ClientLocationsSection
                     clientId={client.id}

@@ -57,8 +57,10 @@ function parseMinWidthPx(minWidth: string) {
 }
 
 function getLockedColumnWidth(columnKey: string) {
-  if (columnKey === 'select') return 48;
-  if (columnKey === 'actions') return 96;
+  // Keep utility columns compact and consistent across all manager tables.
+  if (columnKey === 'select') return 40;
+  // Wide enough for the "Actions" header label without ellipsis (table header uses truncate by default).
+  if (columnKey === 'actions') return 100;
   return null;
 }
 
@@ -186,7 +188,8 @@ export function DataTable<T>({
                   <th
                     key={col.key}
                     className={cn(
-                      'relative group transition-colors truncate',
+                      'relative group transition-colors',
+                      col.key === 'actions' ? 'whitespace-nowrap' : 'truncate',
                       col.headerClassName || 'text-left py-3 px-4'
                     )}
                     style={{ width: `var(--col-${col.key})` }}
