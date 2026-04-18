@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure, adminProcedure } from "../trpc";
+import { router, publicProcedure, adminProcedure, managerProcedure } from "../trpc";
 import { SettingsService } from "@/services/settings.service";
 import { updateTerminologySchema } from "@/lib/schemas/settings.schema";
 import {
@@ -114,7 +114,7 @@ export const settingsRouter = router({
         .input(
             z.object({
                 companyName: z.string().max(200).nullish(),
-                companyLogoUrl: z.string().url().nullish(),
+                companyLogoUrl: z.string().nullish(),
                 companyTagline: z.string().max(500).nullish(),
                 companyWebsite: z.string().url().nullish(),
                 companyPhone: z.string().max(50).nullish(),

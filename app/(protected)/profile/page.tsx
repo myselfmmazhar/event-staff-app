@@ -47,7 +47,7 @@ export default function ProfilePage() {
     const isClient = user.role === UserRole.CLIENT;
 
     return (
-        <div className="container mx-auto max-w-5xl py-8">
+        <div className="p-6 space-y-6">
             <ProfileHeader user={userWithName} />
 
             <div className="grid gap-6 lg:grid-cols-2">
