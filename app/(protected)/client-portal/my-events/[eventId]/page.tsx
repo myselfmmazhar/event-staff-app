@@ -66,43 +66,38 @@ export default function ClientEventDetailPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen p-6">
-                <div className="max-w-4xl mx-auto space-y-6">
-                    <Skeleton className="h-10 w-64" />
-                    <Skeleton className="h-40 w-full" />
-                    <Skeleton className="h-60 w-full" />
-                </div>
+            <div className="p-6 space-y-6">
+                <Skeleton className="h-10 w-64" />
+                <Skeleton className="h-40 w-full" />
+                <Skeleton className="h-60 w-full" />
             </div>
         );
     }
 
     if (error || !event) {
         return (
-            <div className="min-h-screen p-6">
-                <div className="max-w-4xl mx-auto space-y-6">
-                    <Link href="/client-portal/my-events">
-                        <Button variant="ghost" size="sm" className="gap-2">
-                            <ArrowLeftIcon className="h-4 w-4" />
-                            Back to My Events
-                        </Button>
-                    </Link>
-                    <Card>
-                        <CardContent className="p-12 text-center">
-                            <InfoIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                            <h3 className="text-lg font-medium mb-2">Event Not Found</h3>
-                            <p className="text-muted-foreground">
-                                This event could not be found or you don't have access to view it.
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
+            <div className="p-6 space-y-6">
+                <Link href="/client-portal/my-events">
+                    <Button variant="ghost" size="sm" className="gap-2">
+                        <ArrowLeftIcon className="h-4 w-4" />
+                        Back to My Events
+                    </Button>
+                </Link>
+                <Card>
+                    <CardContent className="p-12 text-center">
+                        <InfoIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium mb-2">Event Not Found</h3>
+                        <p className="text-muted-foreground">
+                            This event could not be found or you don't have access to view it.
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen p-6">
-            <div className="max-w-4xl mx-auto space-y-6">
+        <div className="p-6 space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <Link href="/client-portal/my-events">
@@ -351,7 +346,6 @@ export default function ClientEventDetailPage() {
                         </CardContent>
                     </Card>
                 )}
-            </div>
         </div>
     );
 }

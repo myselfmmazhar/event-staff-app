@@ -10,6 +10,7 @@ import { UserIcon, BriefcaseIcon, MapPinIcon, CheckCircleIcon, AlertIcon, PlusIc
 import { trpc } from '@/lib/client/trpc';
 import { TIMEZONES } from '@/lib/schemas/event.schema';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { UserRole } from '@prisma/client';
 
 export default function ProfileSettingsPage() {
     const [formData, setFormData] = useState({
@@ -24,12 +25,27 @@ export default function ProfileSettingsPage() {
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch current profile
-    const { data: profile, isLoading } = trpc.settings.getCompanyProfile.useQuery();
+    // Get current user to determine role
+    const { data: currentUser } = trpc.profile.getMyProfile.useQuery();
+    const isClient = currentUser?.role === UserRole.CLIENT;
+
+    // Fetch org company profile (non-client users)
+    const { data: orgProfile, isLoading: orgLoading } = trpc.settings.getCompanyProfile.useQuery(
+        undefined,
+        { enabled: !isClient && currentUser !== undefined }
+    );
+
+    // Fetch client business profile (client users)
+    const { data: clientProfile, isLoading: clientLoading } = trpc.profile.getMyClientProfile.useQuery(
+        undefined,
+        { enabled: isClient }
+    );
+
+    const isLoading = !currentUser || (isClient ? clientLoading : orgLoading);
     const utils = trpc.useUtils();
 
-    // Update mutation
-    const updateMutation = trpc.settings.updateCompanyProfile.useMutation({
+    // Org update mutation (admin/manager/staff)
+    const updateOrgMutation = trpc.settings.updateCompanyProfile.useMutation({
         onSuccess: () => {
             setSavedMessage('success');
             utils.settings.getCompanyProfile.invalidate();
@@ -41,22 +57,55 @@ export default function ProfileSettingsPage() {
         },
     });
 
+    // Client profile update mutation
+    const updateClientMutation = trpc.profile.updateMyClientProfile.useMutation({
+        onSuccess: () => {
+            setSavedMessage('success');
+            utils.profile.getMyClientProfile.invalidate();
+            setTimeout(() => setSavedMessage(null), 3000);
+        },
+        onError: () => {
+            setSavedMessage('error');
+            setTimeout(() => setSavedMessage(null), 5000);
+        },
+    });
+
+    const updateMutation = isClient ? updateClientMutation : updateOrgMutation;
+
     // Load existing data
     useEffect(() => {
-        if (profile) {
+        if (isClient && clientProfile) {
             setFormData({
-                companyName: profile.companyName || '',
-                companyTagline: profile.companyTagline || '',
-                companyPhone: profile.companyPhone || '',
-                companyAddress: profile.companyAddress || '',
-                companyLogoUrl: profile.companyLogoUrl || '',
-                companyTimezone: profile.companyTimezone || 'UTC',
+                companyName: clientProfile.businessName || '',
+                companyTagline: clientProfile.details || '',
+                companyPhone: clientProfile.businessPhone || '',
+                companyAddress: [
+                    clientProfile.businessAddress,
+                    clientProfile.city,
+                    clientProfile.state,
+                    clientProfile.zipCode,
+                ].filter(Boolean).join(', '),
+                companyLogoUrl: '',
+                companyTimezone: 'UTC',
             });
-            if (profile.companyLogoUrl) {
-                setLogoPreview(profile.companyLogoUrl);
+        }
+    }, [isClient, clientProfile]);
+
+    useEffect(() => {
+        if (!isClient && orgProfile) {
+            setFormData({
+                companyName: orgProfile.companyName || '',
+                companyTagline: orgProfile.companyTagline || '',
+                companyPhone: orgProfile.companyPhone || '',
+                companyAddress: orgProfile.companyAddress || '',
+                companyLogoUrl: orgProfile.companyLogoUrl || '',
+                companyTimezone: orgProfile.companyTimezone || 'UTC',
+            });
+            if (orgProfile.companyLogoUrl) {
+                setLogoPreview(orgProfile.companyLogoUrl);
             }
         }
-    }, [profile]);
+    }, [isClient, orgProfile]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -67,19 +116,16 @@ export default function ProfileSettingsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             alert('Please upload an image file');
             return;
         }
 
-        // Validate file size (max 2MB)
         if (file.size > 2 * 1024 * 1024) {
             alert('Image must be less than 2MB');
             return;
         }
 
-        // Convert to base64 for preview and storage
         const reader = new FileReader();
         reader.onload = (event) => {
             const dataUrl = event.target?.result as string;
@@ -99,14 +145,22 @@ export default function ProfileSettingsPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        updateMutation.mutate({
-            companyName: formData.companyName || null,
-            companyTagline: formData.companyTagline || null,
-            companyPhone: formData.companyPhone || null,
-            companyAddress: formData.companyAddress || null,
-            companyLogoUrl: formData.companyLogoUrl || null,
-            companyTimezone: formData.companyTimezone || 'UTC',
-        });
+        if (isClient) {
+            updateClientMutation.mutate({
+                businessName: formData.companyName || undefined,
+                details: formData.companyTagline || undefined,
+                businessPhone: formData.companyPhone || undefined,
+            });
+        } else {
+            updateOrgMutation.mutate({
+                companyName: formData.companyName || null,
+                companyTagline: formData.companyTagline || null,
+                companyPhone: formData.companyPhone || null,
+                companyAddress: formData.companyAddress || null,
+                companyLogoUrl: formData.companyLogoUrl || null,
+                companyTimezone: formData.companyTimezone || 'UTC',
+            });
+        }
     };
 
     if (isLoading) {
@@ -138,8 +192,12 @@ export default function ProfileSettingsPage() {
                     <UserIcon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Profile</h1>
-                    <p className="text-sm text-muted-foreground">Branding and company settings</p>
+                    <h1 className="text-2xl font-bold text-foreground">
+                        {isClient ? 'Business Profile' : 'Profile'}
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                        {isClient ? 'Your business information' : 'Branding and company settings'}
+                    </p>
                 </div>
             </div>
 
@@ -154,7 +212,7 @@ export default function ProfileSettingsPage() {
                     {savedMessage === 'success' ? (
                         <>
                             <CheckCircleIcon className="h-5 w-5" />
-                            <span>Company profile updated successfully!</span>
+                            <span>Profile updated successfully!</span>
                         </>
                     ) : (
                         <>
@@ -166,88 +224,92 @@ export default function ProfileSettingsPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Logo Upload Card */}
-                <Card className="p-6">
-                    <h2 className="text-lg font-semibold mb-4">Company Logo</h2>
-                    <div className="flex flex-col sm:flex-row items-start gap-6">
-                        {/* Logo Preview */}
-                        <div className="flex-shrink-0">
-                            {logoPreview ? (
-                                <div className="relative group">
-                                    <div className="w-32 h-32 rounded-lg border-2 border-dashed border-border bg-muted/50 flex items-center justify-center overflow-hidden">
-                                        <img
-                                            src={logoPreview}
-                                            alt="Company Logo"
-                                            className="max-w-full max-h-full object-contain"
-                                        />
+                {/* Logo Upload Card — only for non-client users */}
+                {!isClient && (
+                    <Card className="p-6">
+                        <h2 className="text-lg font-semibold mb-4">Company Logo</h2>
+                        <div className="flex flex-col sm:flex-row items-start gap-6">
+                            <div className="flex-shrink-0">
+                                {logoPreview ? (
+                                    <div className="relative group">
+                                        <div className="w-32 h-32 rounded-lg border-2 border-dashed border-border bg-muted/50 flex items-center justify-center overflow-hidden">
+                                            <img
+                                                src={logoPreview}
+                                                alt="Company Logo"
+                                                className="max-w-full max-h-full object-contain"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveLogo}
+                                            className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                                        >
+                                            <TrashIcon className="h-4 w-4" />
+                                        </button>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleRemoveLogo}
-                                        className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                                ) : (
+                                    <label
+                                        htmlFor="logo-upload"
+                                        className="w-32 h-32 rounded-lg border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
                                     >
-                                        <TrashIcon className="h-4 w-4" />
-                                    </button>
+                                        <PlusIcon className="h-8 w-8 text-muted-foreground" />
+                                        <span className="text-xs text-muted-foreground mt-1">Add Logo</span>
+                                    </label>
+                                )}
+                            </div>
+
+                            <div className="flex-1 space-y-3">
+                                <div>
+                                    <p className="text-sm text-muted-foreground">
+                                        Upload your company logo. This will appear in emails and throughout the platform.
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Recommended: Square image, PNG or JPG, max 2MB
+                                    </p>
                                 </div>
-                            ) : (
-                                <label
-                                    htmlFor="logo-upload"
-                                    className="w-32 h-32 rounded-lg border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
-                                >
-                                    <PlusIcon className="h-8 w-8 text-muted-foreground" />
-                                    <span className="text-xs text-muted-foreground mt-1">Add Logo</span>
-                                </label>
-                            )}
-                        </div>
-
-                        {/* Upload Instructions */}
-                        <div className="flex-1 space-y-3">
-                            <div>
-                                <p className="text-sm text-muted-foreground">
-                                    Upload your company logo. This will appear in emails and throughout the platform.
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Recommended: Square image, PNG or JPG, max 2MB
-                                </p>
-                            </div>
-                            <div>
-                                <input
-                                    ref={fileInputRef}
-                                    id="logo-upload"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleLogoUpload}
-                                    className="hidden"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    {logoPreview ? 'Change Logo' : 'Upload Logo'}
-                                </Button>
+                                <div>
+                                    <input
+                                        ref={fileInputRef}
+                                        id="logo-upload"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleLogoUpload}
+                                        className="hidden"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        {logoPreview ? 'Change Logo' : 'Upload Logo'}
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </Card>
+                    </Card>
+                )}
 
-                {/* Company Info Card */}
+                {/* Company / Business Info Card */}
                 <Card className="p-6">
                     <div className="flex items-center gap-2 mb-6">
                         <BriefcaseIcon className="h-5 w-5 text-primary" />
-                        <h2 className="text-lg font-semibold">Company Information</h2>
+                        <h2 className="text-lg font-semibold">
+                            {isClient ? 'Business Information' : 'Company Information'}
+                        </h2>
                     </div>
 
                     <div className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2">
-                            <Label htmlFor="companyName">Company Name</Label>
+                            <Label htmlFor="companyName">
+                                {isClient ? 'Business Name' : 'Company Name'}
+                            </Label>
                             <Input
                                 id="companyName"
                                 name="companyName"
                                 value={formData.companyName}
                                 onChange={handleChange}
-                                placeholder="Your company name"
+                                placeholder={isClient ? 'Your business name' : 'Your company name'}
                             />
                         </div>
 
@@ -263,55 +325,63 @@ export default function ProfileSettingsPage() {
                         </div>
 
                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="companyTagline">Tagline</Label>
+                            <Label htmlFor="companyTagline">
+                                {isClient ? 'Details' : 'Tagline'}
+                            </Label>
                             <Input
                                 id="companyTagline"
                                 name="companyTagline"
                                 value={formData.companyTagline}
                                 onChange={handleChange}
-                                placeholder="A short description of your company"
+                                placeholder={isClient ? 'Additional details about your business' : 'A short description of your company'}
                             />
                         </div>
 
-                        <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="companyAddress">Address</Label>
-                            <div className="relative">
-                                <MapPinIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Textarea
-                                    id="companyAddress"
-                                    name="companyAddress"
-                                    value={formData.companyAddress}
-                                    onChange={handleChange}
-                                    placeholder="123 Business Street, Suite 100, City, State 12345"
-                                    className="pl-10 min-h-[80px]"
-                                />
+                        {/* Address — only for non-client users (clients manage address in My Profile) */}
+                        {!isClient && (
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="companyAddress">Address</Label>
+                                <div className="relative">
+                                    <MapPinIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                    <Textarea
+                                        id="companyAddress"
+                                        name="companyAddress"
+                                        value={formData.companyAddress}
+                                        onChange={handleChange}
+                                        placeholder="123 Business Street, Suite 100, City, State 12345"
+                                        className="pl-10 min-h-[80px]"
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="companyTimezone">Default Timezone</Label>
-                            <div className="flex items-center gap-2">
-                                <ClockIcon className="h-4 w-4 text-muted-foreground mr-1" />
-                                <Select
-                                    value={formData.companyTimezone}
-                                    onValueChange={(value) => setFormData(prev => ({ ...prev, companyTimezone: value }))}
-                                >
-                                    <SelectTrigger id="companyTimezone" className="flex-1">
-                                        <SelectValue placeholder="Select timezone..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {TIMEZONES.map((tz) => (
-                                            <SelectItem key={tz} value={tz}>
-                                                {tz}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                        {/* Timezone — only for non-client users */}
+                        {!isClient && (
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="companyTimezone">Default Timezone</Label>
+                                <div className="flex items-center gap-2">
+                                    <ClockIcon className="h-4 w-4 text-muted-foreground mr-1" />
+                                    <Select
+                                        value={formData.companyTimezone}
+                                        onValueChange={(value) => setFormData(prev => ({ ...prev, companyTimezone: value }))}
+                                    >
+                                        <SelectTrigger id="companyTimezone" className="flex-1">
+                                            <SelectValue placeholder="Select timezone..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {TIMEZONES.map((tz) => (
+                                                <SelectItem key={tz} value={tz}>
+                                                    {tz}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    This timezone will be used as the default for all new events and tasks.
+                                </p>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                This timezone will be used as the default for all new events and tasks.
-                            </p>
-                        </div>
+                        )}
                     </div>
                 </Card>
 

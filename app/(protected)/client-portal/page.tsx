@@ -16,8 +16,7 @@ export default function ClientPortalDashboard() {
     const { data: stats, isLoading: statsLoading } = trpc.profile.getMyClientStats.useQuery();
 
     return (
-        <div className="min-h-screen p-6">
-            <div className="max-w-4xl mx-auto space-y-6">
+        <div className="p-6 space-y-6">
                 {/* Welcome Section */}
                 <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
                     {profileLoading ? (
@@ -146,7 +145,6 @@ export default function ClientPortalDashboard() {
                         </CardContent>
                     </Card>
                 </div>
-            </div>
         </div>
     );
 }
