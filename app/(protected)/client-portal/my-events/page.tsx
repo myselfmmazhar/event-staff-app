@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { trpc } from '@/lib/client/trpc';
-import { Card } from '@/components/ui/card';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeftIcon, PlusIcon, PencilIcon, ChevronRightIcon } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { formatDateShort } from '@/lib/utils/date-formatter';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { EventRequestFormModal, type EventRequestData } from '@/components/events/event-request-form-modal';
 import { MapPinIcon, FileTextIcon, EyeIcon } from 'lucide-react';
@@ -483,30 +483,37 @@ export default function ClientPortalMyEvents() {
             </div>
 
             {/* Tabs */}
-            <Tabs
-                value={activeTab}
-                onValueChange={(v) => setActiveTab(v as 'events' | 'requests')}
-                className="space-y-4"
-            >
-                <TabsList>
-                    <TabsTrigger value="events" className="flex items-center gap-2">
-                        My Events
-                        <Badge variant="secondary" className="ml-1 text-xs">
-                            {events.length}
-                        </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="requests" className="flex items-center gap-2">
-                        My Requests
-                        {requests.length > 0 && (
-                            <Badge variant="secondary" className="ml-1 text-xs">
-                                {requests.length}
-                            </Badge>
-                        )}
-                    </TabsTrigger>
-                </TabsList>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="border-b border-border px-6 flex items-center gap-7">
+                    {([
+                        { id: 'events', label: 'My Events', count: events.length },
+                        { id: 'requests', label: 'My Requests', count: requests.length },
+                    ] as const).map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`py-4 text-sm font-medium transition-colors relative whitespace-nowrap flex items-center gap-2 ${
+                                activeTab === tab.id
+                                    ? "text-[#196496] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#196496] after:rounded-full"
+                                    : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            {tab.label}
+                            {tab.count > 0 && (
+                                <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
+                                    activeTab === tab.id
+                                        ? 'bg-[#196496]/10 text-[#196496]'
+                                        : 'bg-muted text-muted-foreground'
+                                }`}>
+                                    {tab.count}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
 
-                <TabsContent value="events">
-                    <Card className="p-4">
+                <div className="p-4">
+                    {activeTab === 'events' && (
                         <DataTable
                             tableId="client-my-events"
                             data={events}
@@ -522,11 +529,9 @@ export default function ClientPortalMyEvents() {
                                 toggleExpand(expandedEventKeys, setExpandedEventKeys, key)
                             }
                         />
-                    </Card>
-                </TabsContent>
+                    )}
 
-                <TabsContent value="requests">
-                    <Card className="p-4">
+                    {activeTab === 'requests' && (
                         <DataTable
                             tableId="client-my-requests"
                             data={requests}
@@ -547,9 +552,9 @@ export default function ClientPortalMyEvents() {
                                 toggleExpand(expandedRequestKeys, setExpandedRequestKeys, key)
                             }
                         />
-                    </Card>
-                </TabsContent>
-            </Tabs>
+                    )}
+                </div>
+            </div>
 
             <EventRequestFormModal
                 open={isEventRequestModalOpen}

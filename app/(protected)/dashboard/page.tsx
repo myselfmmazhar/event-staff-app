@@ -316,7 +316,7 @@ export default function DashboardPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`py-4 text-sm font-medium transition-colors relative whitespace-nowrap ${
                       activeTab === tab.id
-                        ? "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-foreground after:rounded-full"
+                        ? "text-[#196496] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#196496] after:rounded-full"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >

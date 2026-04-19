@@ -16,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary Brand Color - Modern Blue */
-    --primary: 217 91% 60%;               /* Bright Blue (#3b82f6) */
+    /* Primary Brand Color - Tripod Blue */
+    --primary: 204 71% 34%;               /* Tripod Blue (#196496) */
     --primary-foreground: 0 0% 100%;      /* White text on primary */
 
     /* Secondary Brand Color - Vibrant Orange */
@@ -73,8 +73,8 @@
     --popover: 217 33% 16%;
     --popover-foreground: 210 40% 98%;
 
-    /* Primary Brand Color - Modern Blue (Brighter in dark mode) */
-    --primary: 217 91% 65%;               /* Lighter blue for dark mode */
+    /* Primary Brand Color - Tripod Blue (Lighter in dark mode) */
+    --primary: 204 71% 45%;               /* Lighter Tripod Blue for dark mode */
     --primary-foreground: 0 0% 100%;
 
     /* Secondary Brand Color - Vibrant Orange (Brighter in dark mode) */
