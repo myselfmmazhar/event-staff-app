@@ -37,7 +37,7 @@ const fileLinkSchema = z.object({
 
 const eventDocumentSchema = z.object({
   name: z.string(),
-  url: z.string(),
+  url: z.string().url('Invalid document URL'),
   type: z.string().optional(),
   size: z.number().optional(),
 });
@@ -246,7 +246,7 @@ export function EventRequestFormModal({
         variant: 'success',
       });
       utils.eventRequest.getMyRequests.invalidate();
-      handleClose();
+      onClose();
       onSuccess?.();
     },
     onError: (error) => {
@@ -262,7 +262,7 @@ export function EventRequestFormModal({
         variant: 'success',
       });
       utils.eventRequest.getMyRequests.invalidate();
-      handleClose();
+      onClose();
       onSuccess?.();
     },
     onError: (error) => {
@@ -1088,8 +1088,8 @@ export function EventRequestFormModal({
                 </Button>
               ) : (
                 <Button
-                  type="submit"
-                  form="event-request-form"
+                  type="button"
+                  onClick={() => handleSubmit(onSubmit)()}
                   disabled={isPending}
                   className="h-12 shrink-0 rounded-lg bg-slate-900 px-8 text-base font-semibold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-14 sm:px-10 sm:min-w-[220px]"
                 >
