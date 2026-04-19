@@ -68,6 +68,7 @@ export const TIMESHEET_TALENT_TABLE_RESIZE_DEFAULTS: Record<string, number> = {
 export const DRILLDOWN_COLUMN_IDS: Record<TimesheetDrilldownSubTab, readonly string[]> = {
     all: [
         'action',
+        'status',
         'talent',
         'service',
         'startDate',
@@ -80,10 +81,9 @@ export const DRILLDOWN_COLUMN_IDS: Record<TimesheetDrilldownSubTab, readonly str
         'netIncome',
         'commission',
         'minimum',
-        'status',
         'notes',
     ],
     invoice: ['startDate', 'service', 'description', 'qty', 'invoice', 'netIncome'],
-    bill: ['category', 'description', 'bill', 'netIncome', 'status'],
-    commission: ['action', 'staffName', 'description', 'price', 'status'],
+    bill: ['status', 'category', 'description', 'bill', 'netIncome'],
+    commission: ['action', 'status', 'staffName', 'description', 'price'],
 };

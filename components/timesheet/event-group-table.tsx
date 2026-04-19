@@ -102,6 +102,10 @@ export function EventGroupTable({
                                     <th className={cn("px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-action)` }}>
                                         Action
                                     </th>
+                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-status)` }}>
+                                        Status
+                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('status', e)} />
+                                    </th>
                                     <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-left truncate")} style={{ width: `var(--col-talent)` }}>
                                         Talent
                                         <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('talent', e)} />
@@ -149,10 +153,6 @@ export function EventGroupTable({
                                     <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-right truncate")} style={{ width: `var(--col-minimum)` }}>
                                         Minimum
                                         <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('minimum', e)} />
-                                    </th>
-                                    <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground whitespace-nowrap text-center truncate")} style={{ width: `var(--col-status)` }}>
-                                        Status
-                                        <TableColumnResizeHandle onMouseDown={(e) => onMouseDown('status', e)} />
                                     </th>
                                     <th className={cn("relative group px-3 py-2 font-medium text-muted-foreground pr-6 text-left truncate")} style={{ width: `var(--col-notes)` }}>
                                         Notes
