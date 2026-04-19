@@ -189,7 +189,7 @@ export function DataTable<T>({
                     key={col.key}
                     className={cn(
                       'relative group transition-colors',
-                      col.key === 'actions' ? 'whitespace-nowrap' : 'truncate',
+                      col.key === 'actions' ? 'whitespace-nowrap' : col.key === 'select' ? '' : 'truncate',
                       col.headerClassName || 'text-left py-3 px-4'
                     )}
                     style={{ width: `var(--col-${col.key})` }}
@@ -244,7 +244,7 @@ export function DataTable<T>({
                       {columns.map((col) => (
                         <td
                           key={col.key}
-                          className={cn('truncate', col.className || 'py-4 px-4')}
+                          className={cn(col.key !== 'select' && 'truncate', col.className || 'py-4 px-4')}
                           style={{ width: `var(--col-${col.key})` }}
                         >
                           {col.render(item)}
