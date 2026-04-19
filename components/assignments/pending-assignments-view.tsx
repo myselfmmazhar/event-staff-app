@@ -260,6 +260,13 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
             },
         },
         {
+            key: 'status',
+            label: 'Status',
+            render: () => (
+                <Badge variant="warning">Pending</Badge>
+            ),
+        },
+        {
             key: 'firstName',
             label: 'First Name',
             sortable: true,
@@ -328,13 +335,6 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
                 <span className="text-foreground font-medium">
                     {formatRate(getPayRateValue(item.payRate), item.payRateType)}
                 </span>
-            ),
-        },
-        {
-            key: 'status',
-            label: 'Status',
-            render: () => (
-                <Badge variant="warning">Pending</Badge>
             ),
         },
     ];

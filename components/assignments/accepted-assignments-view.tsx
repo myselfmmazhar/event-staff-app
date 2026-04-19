@@ -169,6 +169,15 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
       ),
     },
     {
+      key: 'confirmed',
+      label: 'Confirmed',
+      render: (item) => (
+        <Badge variant={item.isConfirmed ? 'success' : 'secondary'}>
+          {item.isConfirmed ? 'Yes' : 'No'}
+        </Badge>
+      ),
+    },
+    {
       key: 'firstName',
       label: 'First Name',
       sortable: true,
@@ -237,15 +246,6 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
       label: 'Phone',
       render: (item) => (
         <span className="text-muted-foreground">{item.phone || '-'}</span>
-      ),
-    },
-    {
-      key: 'confirmed',
-      label: 'Confirmed',
-      render: (item) => (
-        <Badge variant={item.isConfirmed ? 'success' : 'secondary'}>
-          {item.isConfirmed ? 'Yes' : 'No'}
-        </Badge>
       ),
     },
   ];

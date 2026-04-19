@@ -99,12 +99,12 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
         label: string;
         align?: 'text-center' | 'text-right';
     }> = [
+        { id: 'status', widthKey: 'status', label: 'Status', align: 'text-center' },
         { id: 'startDate', widthKey: 'date', label: 'Date / Time' },
         { id: 'event', widthKey: 'task', label: 'Task' },
         { id: 'client', widthKey: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
         { id: 'location', widthKey: 'location', label: 'Location' },
         { id: 'assignments', widthKey: 'assignments', label: subTab === 'invoice' ? 'Total Approve Shifts' : 'Assignments', align: 'text-center' },
-        { id: 'status', widthKey: 'status', label: 'Status', align: 'text-center' },
         { id: 'invoice', widthKey: 'totalInvoice', label: subTab === 'invoice' ? 'Total Approve Invoice amount' : 'Total Invoice', align: 'text-right' },
         { id: 'bill', widthKey: 'totalBill', label: subTab === 'invoice' ? 'Total Approve Bill amount' : 'Total Bill', align: 'text-right' },
         ...(showNetIncomeColumn ? [{ id: 'netIncome', widthKey: 'netIncome', label: subTab === 'invoice' ? 'Approve Net Income' : 'Net Income', align: 'text-right' as const }] : []),
@@ -231,6 +231,17 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     <td className="w-16 min-w-16 max-w-16 px-4 py-5 text-center align-top">
                                         <ActionDropdown actions={actions} align="start" />
                                     </td>
+                                    <td className="px-4 py-5 text-center align-top truncate" style={{ width: 'var(--col-status)' }}>
+                                        <div className="flex justify-center">
+                                            {event?.status === 'COMPLETED' ? (
+                                                <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">Completed</Badge>
+                                            ) : event?.status === 'IN_PROGRESS' || (completedCount > 0 && completedCount < group.callTimes.length) ? (
+                                                <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">In Progress</Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="text-muted-foreground font-bold px-3 py-1 pointer-events-none text-xs">Pending</Badge>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-5 text-slate-900 whitespace-nowrap align-top truncate" style={{ width: 'var(--col-date)' }}>
                                         <div className="flex flex-col leading-tight">
                                             <span className="font-bold">
@@ -276,17 +287,6 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                             <Badge variant="secondary" className="font-bold px-2.5 py-0.5 pointer-events-none text-xs border border-border">
                                                 {group.callTimes.length}
                                             </Badge>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-5 text-center align-top truncate" style={{ width: 'var(--col-status)' }}>
-                                        <div className="flex justify-center">
-                                            {event?.status === 'COMPLETED' ? (
-                                                <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">Completed</Badge>
-                                            ) : event?.status === 'IN_PROGRESS' || (completedCount > 0 && completedCount < group.callTimes.length) ? (
-                                                <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">In Progress</Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="text-muted-foreground font-bold px-3 py-1 pointer-events-none text-xs">Pending</Badge>
-                                            )}
                                         </div>
                                     </td>
                                     <td className="px-4 py-5 text-right tabular-nums align-top font-bold text-slate-900 truncate" style={{ width: 'var(--col-totalInvoice)' }}>
