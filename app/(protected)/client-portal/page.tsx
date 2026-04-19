@@ -3,9 +3,10 @@
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, UserIcon, BriefcaseIcon, ClockIcon, MapPinIcon } from 'lucide-react';
+import { CalendarIcon, UserIcon, BriefcaseIcon, ClockIcon, MapPinIcon, FileTextIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 export default function ClientPortalDashboard() {
     const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
@@ -13,7 +14,14 @@ export default function ClientPortalDashboard() {
     const { data: events, isLoading: eventsLoading } = trpc.profile.getMyClientEvents.useQuery();
 
     const upcomingEvents = events
-        ?.filter(e => e.startDate && new Date(e.startDate) >= new Date())
+        ?.filter(e => {
+            if (!e.startDate) return false;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const eventDate = new Date(e.startDate);
+            eventDate.setHours(0, 0, 0, 0);
+            return eventDate >= today && !['CANCELLED', 'COMPLETED'].includes(e.status);
+        })
         .sort((a, b) => new Date(a.startDate!).getTime() - new Date(b.startDate!).getTime())
         .slice(0, 6) ?? [];
 
@@ -79,11 +87,12 @@ export default function ClientPortalDashboard() {
                 </div>
 
                 {/* Stats Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
                         { label: 'Upcoming Events', value: stats?.upcoming ?? 0, icon: CalendarIcon },
                         { label: 'Completed Events', value: stats?.completed ?? 0, icon: BriefcaseIcon },
                         { label: 'Total Events',     value: stats?.total ?? 0,     icon: ClockIcon },
+                        { label: 'Total Requests',   value: stats?.requests ?? 0, icon: FileTextIcon },
                     ].map(({ label, value, icon: Icon }) => (
                         <div key={label} className="bg-card border border-border rounded-xl p-5">
                             <div className="flex items-center justify-between">
@@ -119,60 +128,101 @@ export default function ClientPortalDashboard() {
                         {eventsLoading ? (
                             <div className="divide-y divide-border">
                                 {[1, 2, 3].map(i => (
-                                    <div key={i} className="px-6 py-4 flex items-center gap-4">
-                                        <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
-                                        <div className="flex-1 space-y-1.5">
-                                            <Skeleton className="h-4 w-48" />
-                                            <Skeleton className="h-3 w-32" />
-                                        </div>
-                                        <Skeleton className="h-5 w-20" />
+                                    <div key={i} className="px-6 py-4 grid grid-cols-[140px_1fr_140px_140px_100px] gap-4 items-center">
+                                        <Skeleton className="h-4 w-24" />
+                                        <Skeleton className="h-4 w-48" />
+                                        <Skeleton className="h-4 w-32" />
+                                        <Skeleton className="h-4 w-24" />
+                                        <Skeleton className="h-6 w-20 rounded-md" />
                                     </div>
                                 ))}
                             </div>
                         ) : upcomingEvents.length === 0 ? (
-                            <div className="py-12 text-center">
+                            <div className="py-12 text-center border-t border-border">
                                 <p className="text-sm text-muted-foreground">No upcoming events.</p>
                                 <Link href="/client-portal/my-events">
                                     <Button variant="outline" size="sm" className="mt-3 text-xs">View All Events</Button>
                                 </Link>
                             </div>
                         ) : (
-                            <div className="divide-y divide-border">
-                                {upcomingEvents.map(event => (
-                                    <Link key={event.id} href={`/client-portal/my-events/${event.id}`}>
-                                        <div className="px-6 py-4 flex items-center gap-4 hover:bg-muted/30 transition-colors cursor-pointer">
-                                            <div className="h-10 w-10 shrink-0 bg-muted rounded-lg flex flex-col items-center justify-center">
-                                                <span className="text-[9px] font-bold text-muted-foreground uppercase leading-none">
-                                                    {new Date(event.startDate!).toLocaleDateString('en-US', { month: 'short' })}
-                                                </span>
-                                                <span className="text-base font-bold text-foreground leading-none">
-                                                    {new Date(event.startDate!).getDate()}
-                                                </span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-foreground truncate">{event.title}</p>
-                                                <div className="flex items-center gap-1 mt-0.5">
-                                                    {event.venueName && (
-                                                        <>
-                                                            <MapPinIcon className="h-3 w-3 text-muted-foreground shrink-0" />
-                                                            <p className="text-xs text-muted-foreground truncate">{event.venueName}</p>
-                                                        </>
-                                                    )}
-                                                    {event.startTime && (
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {event.venueName ? ' · ' : ''}{event.startTime}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-md border shrink-0 ${statusColor[event.status] ?? 'border-muted-foreground/30 text-muted-foreground'}`}>
-                                                {event.status}
+                            <div className="overflow-x-auto">
+                                <div className="min-w-[800px]">
+                                    {/* Table Header */}
+                                    <div className="grid grid-cols-[150px_1fr_160px_150px_110px] gap-4 px-6 py-3 border-b border-border bg-muted/20">
+                                        {["Date", "Task", "Venue", "Assignment Progress", "Status"].map((h) => (
+                                            <span key={h} className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                {h}
                                             </span>
-                                        </div>
-                                    </Link>
-                                ))}
+                                        ))}
+                                    </div>
+
+                                    {/* Rows */}
+                                    <div className="divide-y divide-border">
+                                        {upcomingEvents.map((event: any) => {
+                                            const totalRequired = event.callTimes?.reduce((sum: number, ct: any) => sum + (ct.numberOfStaffRequired || 0), 0) || 0;
+                                            const totalFilled = event.callTimes?.reduce((sum: number, ct: any) => sum + (ct.invitations?.length || 0), 0) || 0;
+                                            const open = Math.max(0, totalRequired - totalFilled);
+                                            
+                                            const isNeedsTalent = event.status === 'PUBLISHED';
+                                            const badgeLabel = isNeedsTalent ? "Needs Talent" : (event.status.charAt(0) + event.status.slice(1).toLowerCase());
+                                            const badgeClass = isNeedsTalent 
+                                                ? "border-amber-400 text-amber-700 bg-amber-50/50" 
+                                                : (statusColor[event.status] || "border-muted-foreground/30 text-muted-foreground");
+
+                                            return (
+                                                <Link key={event.id} href={`/client-portal/my-events/${event.id}`}>
+                                                    <div className="grid grid-cols-[150px_1fr_160px_150px_110px] gap-4 px-6 py-4 hover:bg-muted/30 cursor-pointer transition-colors items-center">
+                                                        {/* Date / Time */}
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-foreground leading-snug">
+                                                                {event.startDate ? format(new Date(event.startDate), "MMM d, yyyy") : "Date TBD"}
+                                                            </p>
+                                                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                                {event.startTime || "TBD"}{event.endTime ? ` – ${event.endTime}` : ''}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Task (Title / ID) */}
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-semibold text-foreground leading-snug truncate">
+                                                                {event.title}
+                                                            </p>
+                                                            <p className="text-[11px] text-muted-foreground mt-0.5 font-mono uppercase tracking-tight">
+                                                                {event.eventId}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Venue */}
+                                                        <div className="flex items-center min-w-0">
+                                                            <span className="text-sm text-muted-foreground truncate">
+                                                                {event.venueName || "TBD"}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Assignment Progress */}
+                                                        <div>
+                                                            <p className="text-sm font-medium text-foreground">
+                                                                {totalFilled} / {totalRequired} filled
+                                                            </p>
+                                                            {open > 0 && (
+                                                                <p className="text-[11px] text-amber-600 font-medium mt-0.5">{open} open</p>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Status Badge */}
+                                                        <div className="flex items-center">
+                                                            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold border ${badgeClass}`}>
+                                                                {badgeLabel}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
-                        )}
+                        ) }
                     </div>
 
                     {/* Right — sidebar */}

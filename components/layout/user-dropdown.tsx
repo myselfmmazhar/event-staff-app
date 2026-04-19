@@ -68,7 +68,7 @@ export function UserDropdown() {
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
+        className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-hover px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-active-bg"
       >
         <div className="relative flex h-7 w-7 shrink-0 overflow-hidden rounded-full">
           {profilePhoto ? (
@@ -85,15 +85,15 @@ export function UserDropdown() {
           )}
         </div>
         <div className="hidden sm:block text-left">
-          <div className="text-sm font-medium text-card-foreground">
+          <div className="text-sm font-medium text-sidebar-foreground">
             {firstName} {lastName}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-sidebar-muted-foreground">
             {user.role?.replace('_', ' ')}
           </div>
         </div>
         <ChevronDownIcon
-          className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''
+          className={`h-4 w-4 text-sidebar-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''
             }`}
         />
       </button>

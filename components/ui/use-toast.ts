@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export type ToastType = 'success' | 'error' | 'info'
 export type ToastVariant = 'success' | 'error' | 'info' | 'destructive'
@@ -67,7 +67,7 @@ export function toast(props: Omit<Toast, 'id'>) {
 export function useToast() {
   const [state, setState] = useState<Toast[]>(memoryState)
 
-  useState(() => {
+  useEffect(() => {
     listeners.push(setState)
     return () => {
       const index = listeners.indexOf(setState)
@@ -75,7 +75,7 @@ export function useToast() {
         listeners.splice(index, 1)
       }
     }
-  })
+  }, [])
 
   const dismiss = useCallback((toastId?: string) => {
     if (!toastId) {

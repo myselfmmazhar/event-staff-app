@@ -188,6 +188,7 @@ model Client {
   eventTemplates                 EventTemplate[]
   events                         Event[]
   invoices                       Invoice[]
+  eventRequests                  EventRequest[]
 
   @@index([clientId])
   @@index([createdBy])
@@ -293,6 +294,7 @@ model Event {
   eventProducts        EventProduct[]
   client               Client?        @relation(fields: [clientId], references: [id])
   createdByUser        User           @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  sourceRequest        EventRequest?  @relation("EventRequestToEvent")
 
   @@index([clientId])
   @@index([createdBy])
@@ -346,6 +348,70 @@ model EventTemplate {
 
   @@index([createdBy])
   @@map("event_templates")
+}
+
+model EventRequest {
+  id              String               @id @default(uuid()) @db.Uuid
+  eventRequestId  String               @unique
+  
+  // Requester Info
+  clientId        String               @db.Uuid
+  client          Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Event Details
+  title           String
+  description     String?
+  requirements    String?
+  venueName       String?
+  address         String?
+  addressLine2    String?
+  city            String?
+  state           String?
+  zipCode         String?
+  meetingPoint    String?
+  onsitePocName   String?
+  onsitePocPhone  String?
+  onsitePocEmail  String?
+  // Instructions
+  preEventInstructions String?
+  requestMethod   RequestMethod?
+  poNumber        String?
+  requestorName   String?
+  requestorPhone  String?
+  requestorEmail  String?
+  // Documents & custom data
+  fileLinks       Json?
+  eventDocuments  Json?
+  customFields    Json?
+  estimate        Boolean?
+  startDate       DateTime?            @db.Date
+  startTime       String?
+  endDate         DateTime?            @db.Date
+  endTime         String?
+  timezone        String?
+  
+  // Request Status
+  status          EventRequestStatus   @default(PENDING)
+  rejectionReason String?
+  
+  // Audit Trail
+  createdAt       DateTime             @default(now()) @db.Timestamp(6)
+  requestedAt     DateTime             @default(now()) @db.Timestamp(6)
+  reviewedAt      DateTime?            @db.Timestamp(6)
+  reviewedBy      String?
+  reviewer        User?                @relation("eventRequestReviewers", fields: [reviewedBy], references: [id])
+  
+  // Link to created event
+  createdEventId  String?              @unique @db.Uuid
+  createdEvent    Event?               @relation("EventRequestToEvent", fields: [createdEventId], references: [id])
+  
+  // Additional metadata
+  notes           String?
+  
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("event_requests")
 }
 
 enum CategoryRequirementType {
@@ -750,6 +816,7 @@ model User {
   updatedAt                        DateTime                @updatedAt @db.Timestamp(6)
   accounts                         Account[]
   invitationReviews                CallTimeInvitation[]    @relation("invitation_reviews")
+  eventRequestReviews              EventRequest[]          @relation("eventRequestReviewers")
   clients_clients_createdByTousers Client[]                @relation("clients_createdByTousers")
   clients_clients_userIdTousers    Client?                 @relation("clients_userIdTousers")
   communicationLogs                CommunicationLog[]
@@ -1074,6 +1141,12 @@ enum EventStatus {
   COMPLETED
   CANCELLED
   PUBLISHED
+}
+
+enum EventRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum RequestMethod {
