@@ -5,13 +5,14 @@ import { trpc } from '@/lib/client/trpc';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeftIcon, PlusIcon, PencilIcon } from 'lucide-react';
+import { ArrowLeftIcon, PlusIcon, PencilIcon, ChevronRightIcon } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { formatDateShort } from '@/lib/utils/date-formatter';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { EventRequestFormModal, type EventRequestData } from '@/components/events/event-request-form-modal';
-import { MapPinIcon, UserIcon, PhoneIcon, MailIcon, FileTextIcon, EyeIcon } from 'lucide-react';
+import { MapPinIcon, FileTextIcon, EyeIcon } from 'lucide-react';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
 
@@ -31,16 +32,34 @@ function formatTime(time: string | null | undefined): string {
     return `${hour12}:${minutes}${ampm}`;
 }
 
-function formatDateShort(date: Date | string | null | undefined): string {
-    if (!date) return 'UBD';
+function formatDateTime(date: Date | string | null | undefined, time: string | null | undefined): string {
+    if (!date) return 'TBD';
     const d = typeof date === 'string' ? new Date(date) : date;
-    if (d.getFullYear() === 1970) return 'UBD';
-    return format(d, 'EEE, MMM d');
+    if (d.getFullYear() === 1970) return 'TBD';
+    const dateStr = format(d, 'MMM d, yyyy');
+    if (!time) return dateStr;
+    const parts = time.split(':');
+    const hour = parseInt(parts[0] ?? '0', 10);
+    if (isNaN(hour)) return dateStr;
+    const minutes = parts[1] ?? '00';
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${dateStr} ${hour12}:${minutes} ${ampm}`;
+}
+
+function getAssignmentStats(callTimes: Array<{ numberOfStaffRequired: number; invitations: Array<{ status: string; isConfirmed: boolean }> }>) {
+    const totalRequired = callTimes.reduce((sum, ct) => sum + ct.numberOfStaffRequired, 0);
+    const totalSent = callTimes.reduce((sum, ct) => sum + ct.invitations.length, 0);
+    const totalAccepted = callTimes.reduce((sum, ct) => sum + ct.invitations.filter(i => i.isConfirmed || i.status === 'ACCEPTED').length, 0);
+    const totalPending = callTimes.reduce((sum, ct) => sum + ct.invitations.filter(i => i.status === 'PENDING').length, 0);
+    const totalOpen = Math.max(0, totalRequired - totalAccepted);
+    return { totalRequired, totalSent, totalAccepted, totalPending, totalOpen };
 }
 
 function getEventStatusBadgeVariant(status: string): 'success' | 'warning' | 'info' | 'destructive' | 'secondary' {
     switch (status) {
         case 'PUBLISHED':
+            return 'success';
         case 'ASSIGNED':
             return 'info';
         case 'IN_PROGRESS':
@@ -71,94 +90,74 @@ function getRequestStatusBadgeVariant(status: string): 'warning' | 'success' | '
 // Expanded row: My Events
 // ---------------------------------------------------------------------------
 function EventExpandedRow({ event }: { event: ClientEventListItem }) {
-    const hasVenueDetails = event.address || event.city || event.state;
-    const hasPoc = event.onsitePocName || event.onsitePocPhone || event.onsitePocEmail;
+    const { totalRequired, totalSent, totalAccepted, totalPending, totalOpen } = getAssignmentStats(event.callTimes);
 
     return (
-        <div className="p-4 bg-muted/10 border-t border-border">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Description & Requirements */}
-                {(event.description || event.requirements) && (
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                            <FileTextIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                            Details
-                        </h4>
-                        {event.description && (
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Description</p>
-                                <p className="text-sm text-foreground">{event.description}</p>
-                            </div>
-                        )}
-                        {event.requirements && (
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Requirements</p>
-                                <p className="text-sm text-foreground">{event.requirements}</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Venue & Meeting Point */}
-                {(hasVenueDetails || event.meetingPoint) && (
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                            <MapPinIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                            Venue
-                        </h4>
-                        {hasVenueDetails && (
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Address</p>
-                                <p className="text-sm text-foreground">
-                                    {[event.address, event.city, event.state, event.zipCode].filter(Boolean).join(', ')}
-                                </p>
-                            </div>
-                        )}
-                        {event.meetingPoint && (
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Meeting Point</p>
-                                <p className="text-sm text-foreground">{event.meetingPoint}</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Onsite POC */}
-                {hasPoc && (
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                            <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                            Onsite Contact
-                        </h4>
-                        {event.onsitePocName && (
-                            <p className="text-sm text-foreground font-medium">{event.onsitePocName}</p>
-                        )}
-                        {event.onsitePocPhone && (
-                            <div className="flex items-center gap-1.5">
-                                <PhoneIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                <p className="text-sm text-foreground">{event.onsitePocPhone}</p>
-                            </div>
-                        )}
-                        {event.onsitePocEmail && (
-                            <div className="flex items-center gap-1.5">
-                                <MailIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                <p className="text-sm text-foreground">{event.onsitePocEmail}</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Pre-Event Instructions */}
-                {event.preEventInstructions && (
-                    <div className="space-y-3 md:col-span-2 lg:col-span-3">
-                        <h4 className="text-sm font-semibold text-foreground">Pre-Event Instructions</h4>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{event.preEventInstructions}</p>
-                    </div>
-                )}
+        <div className="px-6 py-4 bg-muted/20 border-t border-border/50">
+            {/* Assignment Summary header */}
+            <div className="flex items-center gap-3 mb-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Assignment Summary</span>
+                <span className="bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full text-xs font-medium">
+                    {totalRequired} Required
+                </span>
+                <span className="bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full text-xs font-medium">
+                    {totalSent} Sent
+                </span>
             </div>
 
-            {/* View Full Details link */}
-            <div className="flex items-center gap-2 pt-3 mt-3 border-t border-border">
+            {/* 3 cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Open Positions */}
+                <Link href={`/client-portal/my-events/${event.id}`}>
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-red-100 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-red-100 border-2 border-red-300 flex items-center justify-center shrink-0">
+                                <span className="text-red-600 font-bold text-base">{totalOpen}</span>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-red-700 text-sm">Open Positions</p>
+                                <p className="text-[10px] text-red-500 uppercase tracking-wide font-medium">Needs Staffing</p>
+                            </div>
+                        </div>
+                        <ChevronRightIcon className="h-5 w-5 text-red-400 shrink-0" />
+                    </div>
+                </Link>
+
+                {/* Pending */}
+                <Link href={`/client-portal/my-events/${event.id}`}>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center shrink-0">
+                                <span className="text-amber-600 font-bold text-base">{totalPending}</span>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-amber-700 text-sm">Pending</p>
+                                <p className="text-[10px] text-amber-500 uppercase tracking-wide font-medium">Awaiting Confirmation</p>
+                            </div>
+                        </div>
+                        <ChevronRightIcon className="h-5 w-5 text-amber-400 shrink-0" />
+                    </div>
+                </Link>
+
+                {/* Accepted */}
+                <Link href={`/client-portal/my-events/${event.id}`}>
+                    <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-green-100 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-green-100 border-2 border-green-300 flex items-center justify-center shrink-0">
+                                <span className="text-green-600 font-bold text-base">{totalAccepted}</span>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-green-700 text-sm">Accepted</p>
+                                <p className="text-[10px] text-green-500 uppercase tracking-wide font-medium">{totalAccepted} Confirmed</p>
+                            </div>
+                        </div>
+                        <ChevronRightIcon className="h-5 w-5 text-green-400 shrink-0" />
+                    </div>
+                </Link>
+            </div>
+
+            {/* View Full Details */}
+            <div className="flex items-center gap-2 pt-3 mt-3 border-t border-border/50">
                 <Link href={`/client-portal/my-events/${event.id}`}>
                     <Button variant="outline" size="sm">
                         <EyeIcon className="h-4 w-4 mr-1" />
@@ -312,35 +311,35 @@ export default function ClientPortalMyEvents() {
             label: 'Date',
             sortable: true,
             render: (item) => (
-                <span className="font-medium text-foreground">
-                    {formatDateShort(item.startDate)}
-                </span>
+                <div className="text-sm font-medium text-foreground whitespace-nowrap">
+                    <div>{formatDateTime(item.startDate, item.startTime)}</div>
+                    {(item.endDate || item.endTime) && (
+                        <div className="text-muted-foreground">- {formatDateTime(item.endDate, item.endTime)}</div>
+                    )}
+                </div>
             ),
         },
         {
-            key: 'time',
-            label: 'Time',
-            render: (item) => (
-                <span className="text-muted-foreground">
-                    {item.startTime ? formatTime(item.startTime) : '-'}
-                    {item.endTime ? ` - ${formatTime(item.endTime)}` : ''}
-                </span>
-            ),
-        },
-        {
-            key: 'event',
-            label: 'Task',
+            key: 'title',
+            label: 'Title',
             sortable: true,
             render: (item) => (
-                <div>
-                    <p className="font-medium text-foreground">{item.title}</p>
-                    <p className="text-sm text-muted-foreground">{item.eventId}</p>
-                </div>
+                <p className="font-bold text-foreground">{item.title}</p>
+            ),
+        },
+        {
+            key: 'client',
+            label: 'Client',
+            render: (item) => (
+                <span className="text-sm text-muted-foreground truncate max-w-[160px] block">
+                    {item.client?.businessName ?? [item.client?.firstName, item.client?.lastName].filter(Boolean).join(' ') ?? '-'}
+                </span>
             ),
         },
         {
             key: 'location',
             label: 'Location',
+            sortable: true,
             render: (item) => (
                 <div className="text-sm">
                     <p className="text-foreground">{item.venueName || '-'}</p>
@@ -353,13 +352,33 @@ export default function ClientPortalMyEvents() {
             ),
         },
         {
-            key: 'callTimes',
-            label: 'Assignments',
-            render: (item) => (
-                <span className="text-muted-foreground">
-                    {item._count?.callTimes ?? 0} shift{(item._count?.callTimes ?? 0) !== 1 ? 's' : ''}
-                </span>
-            ),
+            key: 'assignmentProgress',
+            label: 'Assignment Progress',
+            render: (item) => {
+                const { totalRequired, totalAccepted, totalPending, totalOpen } = getAssignmentStats(item.callTimes);
+                return (
+                    <div className="space-y-1 text-xs">
+                        <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground w-16">Open:</span>
+                            <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium">
+                                {totalOpen} of {totalRequired}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground w-16">Pending:</span>
+                            <span className="bg-gray-900 text-white px-1.5 py-0.5 rounded font-medium">
+                                {totalPending} of {totalRequired}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground w-16">Accepted:</span>
+                            <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
+                                {totalAccepted} of {totalRequired}
+                            </span>
+                        </div>
+                    </div>
+                );
+            },
         },
     ];
 

@@ -103,9 +103,19 @@ export const profileRouter = router({
         onsitePocEmail: true,
         preEventInstructions: true,
         eventDocuments: true,
-        _count: {
+        client: {
           select: {
-            callTimes: true,
+            businessName: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        callTimes: {
+          select: {
+            numberOfStaffRequired: true,
+            invitations: {
+              select: { status: true, isConfirmed: true },
+            },
           },
         },
       },
@@ -241,7 +251,14 @@ export const profileRouter = router({
       },
     });
 
-    return { upcoming, completed, total };
+    // Count total event requests
+    const requests = await ctx.prisma.eventRequest.count({
+      where: {
+        clientId: client.id,
+      },
+    });
+
+    return { upcoming, completed, total, requests };
   }),
 
   /**

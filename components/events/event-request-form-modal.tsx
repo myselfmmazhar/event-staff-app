@@ -159,7 +159,7 @@ function defaultValues(request?: EventRequestData): FormData {
     startTime: request?.startTime ?? '',
     endDate: toDateString(request?.endDate),
     endTime: request?.endTime ?? '',
-    timezone: request?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: request?.timezone ?? 'UTC',
     venueName: request?.venueName ?? '',
     address: request?.address ?? '',
     addressLine2: request?.addressLine2 ?? '',
@@ -227,10 +227,10 @@ export function EventRequestFormModal({
     if (open) {
       reset(defaultValues(request));
       setActiveTab('basic');
-      setStartDateTBD(!request?.startDate);
-      setEndDateTBD(!request?.endDate);
-      setStartTimeTBD(!request?.startTime);
-      setEndTimeTBD(!request?.endTime);
+      setStartDateTBD(request ? !request.startDate : false);
+      setEndDateTBD(request ? !request.endDate : false);
+      setStartTimeTBD(request ? !request.startTime : false);
+      setEndTimeTBD(request ? !request.endTime : false);
     }
   }, [open, request]);
 
