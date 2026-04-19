@@ -622,6 +622,16 @@ export class ClientService {
   }
 
   /**
+   * Find a client by the associated user ID
+   */
+  async findByUserId(userId: string): Promise<ClientSelect | null> {
+    return await this.prisma.client.findFirst({
+      where: { userId },
+      select: this.clientSelect,
+    });
+  }
+
+  /**
    * Find client by email
    */
   async findByEmail(email: string): Promise<ClientSelect | null> {

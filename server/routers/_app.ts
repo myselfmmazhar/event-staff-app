@@ -3,6 +3,7 @@ import { userRouter } from "./user.router";
 import { profileRouter } from "./profile.router";
 import { sessionRouter } from "./session.router";
 import { eventRouter } from "./event.router";
+import { eventRequestRouter } from "./event-request.router";
 import { eventTemplateRouter } from "./event-template.router";
 import { clientRouter } from "./client.router";
 import { clientLocationRouter } from "./client-location.router";
@@ -33,6 +34,7 @@ export const appRouter = router({
   profile: profileRouter,
   session: sessionRouter,
   event: eventRouter,
+  eventRequest: eventRequestRouter,
   eventTemplate: eventTemplateRouter,
   clients: clientRouter,
   clientLocation: clientLocationRouter,
