@@ -48,6 +48,14 @@
     --ring: 262 80% 50%;                  /* Focus ring matches primary */
 
     --radius: 0.5rem;
+
+    /* Sidebar - Dark Navy Theme */
+    --sidebar: 204 71% 34%;
+    --sidebar-foreground: 210 40% 92%;
+    --sidebar-border: 204 55% 28%;
+    --sidebar-muted-foreground: 204 30% 75%;
+    --sidebar-hover: 204 65% 40%;
+    --sidebar-active-bg: 204 60% 28%;
   }
 
   .dark {
@@ -99,7 +107,7 @@
 }
 
 @theme inline {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
@@ -144,6 +152,14 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--border));
   --color-ring: hsl(var(--ring));
+
+  /* Sidebar Colors */
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-muted-foreground: hsl(var(--sidebar-muted-foreground));
+  --color-sidebar-hover: hsl(var(--sidebar-hover));
+  --color-sidebar-active-bg: hsl(var(--sidebar-active-bg));
 }
 
 @layer base {
