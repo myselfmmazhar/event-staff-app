@@ -36,6 +36,14 @@ export function PasswordForm() {
     });
 
     const newPassword = form.watch('newPassword');
+    const confirmPassword = form.watch('confirmPassword');
+    const currentPassword = form.watch('currentPassword');
+
+    const isButtonEnabled =
+        currentPassword.length > 0 &&
+        newPassword.length >= 8 &&
+        confirmPassword.length > 0 &&
+        newPassword === confirmPassword;
 
     const changePassword = trpc.profile.changePassword.useMutation({
         onSuccess: () => {
@@ -87,43 +95,45 @@ export function PasswordForm() {
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="newPassword">New Password</Label>
-                        <Input
-                            id="newPassword"
-                            type="password"
-                            {...form.register('newPassword')}
-                            disabled={changePassword.isPending}
-                        />
-                        {form.formState.errors.newPassword && (
-                            <p className="text-xs text-destructive">
-                                {form.formState.errors.newPassword.message}
-                            </p>
-                        )}
-                        {newPassword && (
-                            <div className="mt-2">
-                                <PasswordStrength password={newPassword} />
-                            </div>
-                        )}
-                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="newPassword">New Password</Label>
+                            <Input
+                                id="newPassword"
+                                type="password"
+                                {...form.register('newPassword')}
+                                disabled={changePassword.isPending}
+                            />
+                            {form.formState.errors.newPassword && (
+                                <p className="text-xs text-destructive">
+                                    {form.formState.errors.newPassword.message}
+                                </p>
+                            )}
+                            {newPassword && (
+                                <div className="mt-2">
+                                    <PasswordStrength password={newPassword} />
+                                </div>
+                            )}
+                        </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                        <Input
-                            id="confirmPassword"
-                            type="password"
-                            {...form.register('confirmPassword')}
-                            disabled={changePassword.isPending}
-                        />
-                        {form.formState.errors.confirmPassword && (
-                            <p className="text-xs text-destructive">
-                                {form.formState.errors.confirmPassword.message}
-                            </p>
-                        )}
+                        <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                            <Input
+                                id="confirmPassword"
+                                type="password"
+                                {...form.register('confirmPassword')}
+                                disabled={changePassword.isPending}
+                            />
+                            {form.formState.errors.confirmPassword && (
+                                <p className="text-xs text-destructive">
+                                    {form.formState.errors.confirmPassword.message}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex justify-end">
-                        <Button type="submit" disabled={changePassword.isPending}>
+                        <Button type="submit" disabled={!isButtonEnabled || changePassword.isPending}>
                             {changePassword.isPending && <Spinner className="mr-2 h-4 w-4" />}
                             Change Password
                         </Button>

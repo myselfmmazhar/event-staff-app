@@ -219,6 +219,15 @@ export function AssignmentTable({
       },
     },
     {
+      key: 'status',
+      label: 'Status',
+      render: (item) => (
+        <Badge variant={item.needsStaff ? 'warning' : 'success'}>
+          {item.needsStaff ? `Needs ${staffTerm.singular}` : 'Filled'}
+        </Badge>
+      ),
+    },
+    {
       key: 'startDate',
       label: 'Date',
       sortable: true,
@@ -283,15 +292,6 @@ export function AssignmentTable({
           </span>
           <span className="text-muted-foreground text-sm">filled</span>
         </div>
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (item) => (
-        <Badge variant={item.needsStaff ? 'warning' : 'success'}>
-          {item.needsStaff ? `Needs ${staffTerm.singular}` : 'Filled'}
-        </Badge>
       ),
     },
   ];

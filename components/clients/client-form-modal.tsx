@@ -836,9 +836,13 @@ export function ClientFormModal({
                   </Button>
                 ) : (
                   <Button
-                    type="submit"
+                    type="button"
                     disabled={isSubmitting}
-                    onClick={handleSaveAndClose}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleSaveAndClose();
+                      handleSubmit(handleFormSubmit)(e as any);
+                    }}
                     className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
                   >
                     {isSubmitting && pendingSaveAction === 'close'
@@ -854,9 +858,13 @@ export function ClientFormModal({
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {isEdit && !isLastStep && (
                   <Button
-                    type="submit"
+                    type="button"
                     variant="outline"
-                    onClick={handleUpdateAndContinue}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleUpdateAndContinue();
+                      handleSubmit(handleFormSubmit)(e as any);
+                    }}
                     disabled={isSubmitting || !canContinue}
                     className="rounded-lg border-slate-200"
                   >
@@ -878,7 +886,17 @@ export function ClientFormModal({
                   Cancel
                 </Button>
                 {!isEdit && (
-                  <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    disabled={isSubmitting || !(canContinueInfo && canContinueAddress)} 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleSaveAndNew();
+                      handleSubmit(handleFormSubmit)(e as any);
+                    }}
+                    className="rounded-lg border-slate-200"
+                  >
                     {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : isLastStep && hasLoginAccess ? 'Send & New' : 'Save & New'}
                   </Button>
                 )}

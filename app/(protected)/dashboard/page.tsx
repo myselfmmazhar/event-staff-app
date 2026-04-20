@@ -3,42 +3,31 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/client/trpc";
-import {
-  WelcomeSection,
-  QuickStats,
-  UpcomingEventsSection,
-  DashboardTabs,
-  UpcomingEventsTable,
-} from "@/components/dashboard";
+import { WelcomeSection, QuickStats } from "@/components/dashboard";
+import { DashboardUpcomingList } from "@/components/dashboard/dashboard-upcoming-list";
 import { ViewEventModal } from "@/components/events/view-event-modal";
 import { useEventTerm, useTerminology } from "@/lib/hooks/use-terminology";
 import { UserRole } from "@prisma/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  CalendarIcon, 
-  ClockIcon, 
-  BriefcaseIcon, 
-  MessageSquare as MessageSquareIcon, 
-  AlertCircle, 
-  CheckCircle as CheckCircleIcon 
+import {
+  CalendarIcon,
+  ClockIcon,
+  MessageSquare as MessageSquareIcon,
+  AlertCircle,
+  CheckCircle as CheckCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HeatMap } from "@/components/maps/heat-map";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PendingRequestsList, UpcomingEventsList } from "@/components/staff-dashboard";
 import { useToast } from "@/components/ui/use-toast";
+import { getEventRoute } from "@/lib/utils/route-helpers";
 
-/**
- * Staff Dashboard - Revamped for Talent view
- */
-function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?: string }) {
+function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }) {
   const { terminology } = useTerminology();
-  const eventTerm = useEventTerm();
   const { data: staff, isLoading: staffLoading } = trpc.staff.getMyProfile.useQuery();
   const { data: invitations, isLoading: invitationsLoading } = trpc.callTime.getMyInvitations.useQuery({}, {
-    refetchInterval: 30000, // Refresh every 30 seconds for real-time status updates
-    staleTime: 5000,        // Consider data stale after 5 seconds to allow more frequent updates
+    refetchInterval: 30000,
+    staleTime: 5000,
     refetchOnWindowFocus: true,
   });
   const [respondingTo, setRespondingTo] = useState<string | undefined>();
@@ -46,7 +35,7 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
   const { toast } = useToast();
 
   const isProfileComplete = (staff: any) => {
-    if (!staff) return true; // Don't show alert while loading
+    if (!staff) return true;
     const criticalFields = ['phone', 'streetAddress', 'city', 'state', 'zipCode', 'dateOfBirth'];
     return criticalFields.every(field => !!staff[field]);
   };
@@ -69,18 +58,11 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
 
   const batchRespondMutation = trpc.callTime.batchRespond.useMutation({
     onSuccess: (data) => {
-      toast({
-        title: 'Invitations Processed',
-        description: `Successfully processed ${data.count} invitation(s).`,
-      });
+      toast({ title: 'Invitations Processed', description: `Successfully processed ${data.count} invitation(s).` });
       utils.callTime.getMyInvitations.invalidate();
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -90,16 +72,13 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
   };
 
   const handleBatchRespond = (invitationIds: string[], accept: boolean) => {
-    batchRespondMutation.mutate({
-      invitationIds,
-      accept,
-    });
+    batchRespondMutation.mutate({ invitationIds, accept });
   };
 
   if (staffLoading || invitationsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
   }
@@ -109,151 +88,136 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
   const acceptedOffers = invitations?.accepted || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted/30 to-muted/50 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Welcome Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card rounded-xl p-6 shadow-sm border border-border">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Welcome back, {firstName || 'Team Member'}!
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Your {terminology.staff.singular} Dashboard
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/communication-manager">
-              <Button variant="outline" className="gap-2 shadow-sm font-bold">
-                <MessageSquareIcon className="h-4 w-4" />
-                Communication History
-              </Button>
-            </Link>
-            <Link href="/my-schedule">
-              <Button variant="default" className="gap-2 shadow-sm font-bold">
-                <CalendarIcon className="h-4 w-4" />
-                Full Schedule
-              </Button>
-            </Link>
+    <div className="min-h-screen bg-muted/30 px-6 py-6">
+      <div className="space-y-7">
+        {/* Welcome */}
+        <div className="bg-card border border-border rounded-xl px-6 py-5">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Welcome back, {firstName || "Team Member"}!
+          </h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm text-muted-foreground">{terminology.staff.singular} Dashboard</span>
+            <div className="flex gap-2">
+              <Link href="/communication-manager">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                  <MessageSquareIcon className="h-3.5 w-3.5" />
+                  Communication
+                </Button>
+              </Link>
+              <Link href="/my-schedule">
+                <Button size="sm" className="gap-1.5 text-xs">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  Full Schedule
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
 
-        {/* Profile Completeness Alert */}
+        {/* Profile Alert */}
         {!complete && (
-          <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-900/30">
-            <CardHeader className="py-3 px-6">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-amber-800 dark:text-amber-400 uppercase tracking-widest">
-                <AlertCircle className="h-4 w-4" />
-                Complete Your Profile
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-6 pb-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <p className="text-sm text-amber-700 dark:text-amber-500 font-medium">
-                  Some details are missing in your profile. Complete it to ensure your account remains active and ready for offers.
-                </p>
-                <Link href="/profile">
-                  <Button variant="outline" size="sm" className="bg-white border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-800/20 dark:border-amber-900/30 dark:text-amber-400 font-bold whitespace-nowrap">
-                    Update Profile Now
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-6 py-4 flex items-center justify-between gap-4 dark:bg-amber-900/10 dark:border-amber-900/30">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+              <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                Some profile details are missing. Complete your profile to stay active for offers.
+              </p>
+            </div>
+            <Link href="/profile">
+              <Button variant="outline" size="sm" className="text-xs whitespace-nowrap border-amber-300 text-amber-700 hover:bg-amber-100">
+                Update Profile
+              </Button>
+            </Link>
+          </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Main Content Area */}
-          <div className="lg:col-span-8 space-y-6">
-            <Tabs defaultValue="pending">
-              <div className="flex items-center justify-between mb-2">
-                <TabsList className="bg-muted shadow-sm rounded-xl p-1 h-11">
-                  <TabsTrigger value="pending" className="flex items-center gap-2 px-6 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md font-bold text-xs uppercase tracking-wider">
-                    <ClockIcon className="h-4 w-4" />
-                    Pending Offers
-                    {pendingOffers.length > 0 && (
-                      <span className="ml-1 flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="accepted" className="flex items-center gap-2 px-6 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md font-bold text-xs uppercase tracking-wider">
-                    <CheckCircleIcon className="h-4 w-4" />
-                    Accepted Assignments 
-                  </TabsTrigger>
-                </TabsList>
+          {/* Main */}
+          <div className="lg:col-span-8">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="border-b border-border px-6">
+                <Tabs defaultValue="pending" className="w-full">
+                  <div className="flex items-center justify-between py-4">
+                    <TabsList className="bg-muted p-1 rounded-lg h-9">
+                      <TabsTrigger value="pending" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md px-4">
+                        <ClockIcon className="h-3.5 w-3.5" />
+                        Pending Offers
+                        {pendingOffers.length > 0 && (
+                          <span className="ml-1 h-2 w-2 rounded-full bg-amber-500 animate-pulse inline-block" />
+                        )}
+                      </TabsTrigger>
+                      <TabsTrigger value="accepted" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md px-4">
+                        <CheckCircleIcon className="h-3.5 w-3.5" />
+                        Accepted
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+                  <TabsContent value="pending" className="px-0 pb-6 focus-visible:outline-none focus-visible:ring-0">
+                    <PendingRequestsList
+                      invitations={pendingOffers as any}
+                      onRespond={handleRespond}
+                      onBatchRespond={handleBatchRespond}
+                      isResponding={respondingTo}
+                      isBatchResponding={batchRespondMutation.isPending}
+                    />
+                  </TabsContent>
+                  <TabsContent value="accepted" className="px-0 pb-6 focus-visible:outline-none focus-visible:ring-0">
+                    <UpcomingEventsList invitations={acceptedOffers as any} />
+                  </TabsContent>
+                </Tabs>
               </div>
-
-              <TabsContent value="pending" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
-                <PendingRequestsList
-                  invitations={pendingOffers as any}
-                  onRespond={handleRespond}
-                  onBatchRespond={handleBatchRespond}
-                  isResponding={respondingTo}
-                  isBatchResponding={batchRespondMutation.isPending}
-                />
-              </TabsContent>
-
-              <TabsContent value="accepted" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
-                <UpcomingEventsList
-                  invitations={acceptedOffers as any}
-                />
-              </TabsContent>
-            </Tabs>
+            </div>
           </div>
 
-          {/* Sidebar Area */}
-          <div className="lg:col-span-4 space-y-6">
-            <Card className="shadow-sm overflow-hidden border-border bg-card">
-              <CardHeader className="bg-primary/5 py-3 px-5 border-b border-primary/10">
-                <CardTitle className="text-xs font-black uppercase tracking-[0.15em] text-primary flex items-center justify-between">
-                  Your Schedule
-                  <CalendarIcon className="h-4 w-4 opacity-50" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {acceptedOffers.length === 0 ? (
-                    <div className="p-8 text-center bg-muted/20">
-                      <p className="text-sm text-muted-foreground font-medium italic">No accepted assignments yet.</p>
-                      <Link href="/my-schedule">
-                        <Button variant="ghost" className="mt-2 text-xs font-bold uppercase tracking-wider h-auto p-0 hover:bg-transparent hover:text-primary">Browse Invitations</Button>
-                      </Link>
-                    </div>
-                  ) : (
-                    acceptedOffers.slice(0, 5).map((inv: any) => (
-                      <div key={inv.id} className="p-4 hover:bg-muted/30 transition-colors flex items-start gap-3 group group cursor-pointer">
-                        <div className="h-10 w-10 shrink-0 bg-primary/10 rounded-xl flex flex-col items-center justify-center border border-primary/5 group-hover:bg-primary/20 transition-colors">
-                          <span className="text-[10px] font-black leading-none text-primary/60 uppercase">{new Date(inv.callTime.startDate).toLocaleDateString('en-US', { month: 'short' })}</span>
-                          <span className="text-base font-black leading-none text-primary">{new Date(inv.callTime.startDate).getDate()}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-sm truncate text-foreground group-hover:text-primary transition-colors">{inv.callTime.service?.title || 'Assignment'}</h4>
-                          <p className="text-xs text-muted-foreground truncate">{inv.callTime.event.title}</p>
-                          <div className="flex items-center gap-2 mt-1.5 opacity-60">
-                            <ClockIcon className="h-3 w-3" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">
-                              {inv.callTime.startTime} - {inv.callTime.endTime}
-                            </span>
-                          </div>
-                        </div>
+          {/* Sidebar */}
+          <div className="lg:col-span-4 space-y-5">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">Your Schedule</p>
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="divide-y divide-border">
+                {acceptedOffers.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <p className="text-sm text-muted-foreground">No accepted assignments yet.</p>
+                  </div>
+                ) : (
+                  acceptedOffers.slice(0, 5).map((inv: any) => (
+                    <div key={inv.id} className="px-5 py-3.5 flex items-start gap-3 hover:bg-muted/30 transition-colors cursor-pointer">
+                      <div className="h-9 w-9 shrink-0 bg-muted rounded-lg flex flex-col items-center justify-center">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase leading-none">
+                          {new Date(inv.callTime.startDate).toLocaleDateString('en-US', { month: 'short' })}
+                        </span>
+                        <span className="text-base font-bold text-foreground leading-none">
+                          {new Date(inv.callTime.startDate).getDate()}
+                        </span>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">
+                          {inv.callTime.service?.title || 'Assignment'}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{inv.callTime.event.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {inv.callTime.startTime} – {inv.callTime.endTime}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
-            <Card className="shadow-sm bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-              <CardContent className="p-5 space-y-4">
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold uppercase tracking-widest text-primary">Need Help?</h4>
-                  <p className="text-xs text-muted-foreground font-medium">Reach out to your manager for any assignment-related questions.</p>
-                </div>
-                <Link href="/communication-manager">
-                  <Button variant="outline" className="w-full bg-white border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm font-bold h-10">
-                    Contact Management
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+            <div className="bg-card border border-border rounded-xl p-5">
+              <p className="text-sm font-semibold text-foreground mb-1">Need Help?</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                Reach out to your manager for assignment-related questions.
+              </p>
+              <Link href="/communication-manager" className="block">
+                <Button variant="outline" className="w-full text-sm h-9">
+                  Contact Management
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -261,154 +225,269 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
   );
 }
 
-/**
- * Main dashboard page - revamped to focus on events and staff management
- * Shows upcoming events, key metrics, and actionable information
- * Staff users see a coming soon dashboard
- * Client users are redirected to the client portal
- */
 export default function DashboardPage() {
   const router = useRouter();
   const eventTerm = useEventTerm();
+  const { terminology } = useTerminology();
   const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
   const isStaff = profile?.role === UserRole.STAFF;
   const isClient = profile?.role === UserRole.CLIENT;
 
-  // Redirect CLIENT users to the client portal
   useEffect(() => {
-    if (!profileLoading && isClient) {
-      router.push('/client-portal');
-    }
+    if (!profileLoading && isClient) router.push('/client-portal');
   }, [profileLoading, isClient, router]);
 
-  // Only fetch admin data if user is not staff or client
-  const { data: eventStats, isLoading: eventLoading, error: eventError } = trpc.event.getStats.useQuery(
-    undefined,
-    { enabled: !profileLoading && !isStaff && !isClient }
+  const { data: eventStats, isLoading: eventLoading } = trpc.event.getStats.useQuery(
+    undefined, { enabled: !profileLoading && !isStaff && !isClient }
   );
-  const { data: staffStats, isLoading: staffLoading, error: staffError } = trpc.staff.getStats.useQuery(
-    undefined,
-    { enabled: !profileLoading && !isStaff && !isClient }
+  const { data: staffStats, isLoading: staffLoading } = trpc.staff.getStats.useQuery(
+    undefined, { enabled: !profileLoading && !isStaff && !isClient }
   );
-  const { data: upcomingEvents, isLoading: upcomingLoading, error: upcomingError } = trpc.event.getUpcoming.useQuery(
-    undefined,
+  const { data: upcomingEvents, isLoading: upcomingLoading } = trpc.event.getUpcoming.useQuery(
+    undefined, { enabled: !profileLoading && !isStaff && !isClient }
+  );
+
+  const { data: recentInvoices, isLoading: invoicesLoading } = trpc.invoices.getAll.useQuery(
+    { page: 1, limit: 5, showArchived: false },
     { enabled: !profileLoading && !isStaff && !isClient }
   );
 
-  // Modal state for viewing event details
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"upcoming-tasks" | "open-assignments" | "staffing" | "finance">("upcoming-tasks");
 
-  const isStatsLoading = eventLoading || staffLoading;
-
-  // Handler to open event details modal
   const handleViewEvent = (eventId: string) => {
     setSelectedEventId(eventId);
     setIsViewOpen(true);
   };
 
-  // Handler to close event details modal
   const handleCloseView = () => {
     setIsViewOpen(false);
     setSelectedEventId(null);
   };
 
-  // Show loading while redirecting CLIENT users
   if (profileLoading || isClient) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
   }
 
-  // Show staff dashboard for STAFF role users
   if (isStaff) {
-    return (
-      <StaffDashboard
-        firstName={profile?.firstName}
-        lastName={profile?.lastName}
-      />
-    );
+    return <StaffDashboard firstName={profile?.firstName} lastName={profile?.lastName} />;
   }
 
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted/30 to-muted/50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Welcome Section */}
+    <div className="min-h-screen bg-muted/30 px-6 py-6">
+      <div className="space-y-6">
+
+        {/* Page Header */}
         <WelcomeSection
           firstName={profile?.firstName}
           lastName={profile?.lastName}
           role={profile?.role}
         />
 
-        {/* Error States */}
-        {(eventError || staffError || upcomingError) && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
-            <p className="text-destructive text-sm">
-              Failed to load dashboard data. Please try refreshing the page.
-            </p>
-          </div>
-        )}
-
-        {/* Quick Stats */}
+        {/* Stats Row */}
         <QuickStats
           eventStats={eventStats}
           staffStats={staffStats}
-          isLoading={isStatsLoading}
+          isLoading={eventLoading || staffLoading}
         />
 
-        {/* Dashboard Tabs */}
-        <DashboardTabs
-          tabs={[
-            {
-              id: "overview",
-              label: "Overview",
-              content: (
-                <UpcomingEventsSection
-                  events={upcomingEvents}
-                  isLoading={upcomingLoading}
-                  onEventClick={handleViewEvent}
-                />
-              ),
-            },
-            {
-              id: "upcoming-events",
-              label: `Upcoming ${eventTerm.plural}`,
-              content: (
-                <UpcomingEventsTable
-                  events={upcomingEvents}
-                  isLoading={upcomingLoading}
-                  onEventClick={handleViewEvent}
-                />
-              ),
-            },
-            {
-              id: "event-distribution",
-              label: "Event Distribution",
-              content: (
-                <div className="space-y-4">
+        {/* Two-column content area */}
+        <div className="flex gap-6 items-start">
+
+          {/* Left — tabs + content */}
+          <div className="flex-1 min-w-0 bg-card border border-border rounded-xl overflow-hidden">
+            {/* Tab bar */}
+            <div className="border-b border-border px-6 flex items-center justify-between">
+              <div className="flex gap-7">
+                {([
+                  { id: "upcoming-tasks",    label: "Upcoming Tasks" },
+                  { id: "open-assignments",  label: "Open Assignments" },
+                  { id: "staffing",          label: "Staffing" },
+                  { id: "finance",           label: "Finance" },
+                ] as const).map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`py-4 text-sm font-medium transition-colors relative whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? "text-[#196496] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#196496] after:rounded-full"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <Link href={`${getEventRoute(terminology)}?create=true`}>
+                <Button size="sm" className="text-xs h-8 my-3">
+                  Create {eventTerm.singular}
+                </Button>
+              </Link>
+            </div>
+
+            {/* Upcoming Tasks */}
+            {activeTab === "upcoming-tasks" && (
+              <>
+                <div className="px-6 pt-5 pb-2 flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold mb-1">Geographic Distribution</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Heat map showing where your events are located
-                    </p>
+                    <h2 className="text-sm font-semibold text-foreground">Upcoming {eventTerm.plural}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">High-signal list of your next events</p>
                   </div>
-                  <HeatMap />
+                  <Link href={getEventRoute(terminology)}>
+                    <Button variant="outline" size="sm" className="text-xs">View All</Button>
+                  </Link>
                 </div>
-              ),
-            },
-          ]}
-          defaultTab="overview"
-        />
+                <DashboardUpcomingList
+                  events={upcomingEvents}
+                  isLoading={upcomingLoading}
+                  onEventClick={handleViewEvent}
+                />
+              </>
+            )}
 
-        {/* View Event Details Modal */}
-        <ViewEventModal
-          eventId={selectedEventId}
-          open={isViewOpen}
-          onClose={handleCloseView}
-        />
+            {/* Open Assignments */}
+            {activeTab === "open-assignments" && (
+              <>
+                <div className="px-6 pt-5 pb-2 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Open Assignments</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Events published or assigned that still need staffing</p>
+                  </div>
+                  <Link href="/assignments">
+                    <Button variant="outline" size="sm" className="text-xs">View All</Button>
+                  </Link>
+                </div>
+                <DashboardUpcomingList
+                  events={upcomingEvents?.filter(e => e.status === "PUBLISHED" || e.status === "ASSIGNED")}
+                  isLoading={upcomingLoading}
+                  onEventClick={handleViewEvent}
+                />
+              </>
+            )}
+
+            {/* Staffing */}
+            {activeTab === "staffing" && (
+              <div className="p-6 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Staff Overview</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Current status of your talent pool</p>
+                  </div>
+                  <Link href="/staff">
+                    <Button variant="outline" size="sm" className="text-xs">View All</Button>
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {[
+                    { label: "Active", value: staffStats?.active ?? 0, color: "text-green-600" },
+                    { label: "Pending", value: staffStats?.pending ?? 0, color: "text-amber-600" },
+                    { label: "Disabled", value: staffStats?.disabled ?? 0, color: "text-muted-foreground" },
+                    { label: "Employees", value: staffStats?.employees ?? 0, color: "text-foreground" },
+                    { label: "Contractors", value: staffStats?.contractors ?? 0, color: "text-foreground" },
+                    { label: "Companies", value: staffStats?.companies ?? 0, color: "text-foreground" },
+                  ].map((item) => (
+                    <div key={item.label} className="bg-muted/40 rounded-lg p-4 border border-border">
+                      <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                      <p className={`text-3xl font-bold ${item.color}`}>{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Finance */}
+            {activeTab === "finance" && (
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Recent Invoices</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Latest invoices across all clients</p>
+                  </div>
+                  <Link href="/invoices">
+                    <Button variant="outline" size="sm" className="text-xs">View All</Button>
+                  </Link>
+                </div>
+                {invoicesLoading ? (
+                  <div className="space-y-3">
+                    {[1,2,3].map(i => <div key={i} className="h-12 bg-muted rounded animate-pulse" />)}
+                  </div>
+                ) : !recentInvoices?.data?.length ? (
+                  <div className="py-8 text-center">
+                    <p className="text-sm text-muted-foreground">No invoices found.</p>
+                    <Link href="/invoices">
+                      <Button variant="outline" size="sm" className="mt-3 text-xs">Create Invoice</Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-[1fr_140px_100px_80px] gap-3 px-3 py-2">
+                      {["Invoice", "Client", "Amount", "Status"].map(h => (
+                        <span key={h} className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{h}</span>
+                      ))}
+                    </div>
+                    <div className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+                      {recentInvoices.data.map((inv: any) => (
+                        <Link key={inv.id} href={`/invoices/${inv.id}`}>
+                          <div className="grid grid-cols-[1fr_140px_100px_80px] gap-3 px-3 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer items-center">
+                            <p className="text-sm font-semibold text-foreground truncate">{inv.invoiceNo}</p>
+                            <p className="text-sm text-muted-foreground truncate">{inv.client?.businessName || "—"}</p>
+                            <p className="text-sm text-foreground">
+                              {inv.total != null ? `$${Number(inv.total).toLocaleString()}` : "—"}
+                            </p>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-md border w-fit ${
+                              inv.status === "PAID"    ? "border-green-400 text-green-700" :
+                              inv.status === "SENT"    ? "border-blue-400 text-blue-600" :
+                              inv.status === "OVERDUE" ? "border-red-400 text-red-600" :
+                                                         "border-muted-foreground/30 text-muted-foreground"
+                            }`}>{inv.status}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right — sidebar */}
+          <div className="w-72 shrink-0 space-y-5">
+            <div className="bg-card border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-0.5">Quick links</h3>
+              <p className="text-xs text-muted-foreground mb-4">Navigate to key areas</p>
+              <div className="space-y-2.5">
+                {[
+                  { label: `All ${eventTerm.plural}`, href: getEventRoute(terminology) },
+                  { label: "Talent Manager", href: "/staff" },
+                  { label: "Assignment Manager", href: "/assignments" },
+                  { label: "Invoices", href: "/invoices" },
+                  { label: "Communication", href: "/communication-manager" },
+                ].map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="block text-sm text-foreground hover:text-primary transition-colors py-0.5"
+                  >
+                    {link.label} →
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <ViewEventModal
+        eventId={selectedEventId}
+        open={isViewOpen}
+        onClose={handleCloseView}
+      />
     </div>
   );
 }

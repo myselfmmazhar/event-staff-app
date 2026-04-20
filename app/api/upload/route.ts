@@ -62,9 +62,9 @@ export async function POST(request: NextRequest) {
         const filePath = path.join(uploadDir, filename);
         fs.writeFileSync(filePath, buffer);
 
+        const origin = request.headers.get('origin') || request.nextUrl.origin;
         return NextResponse.json({
-            url: `/uploads/${filename}`,
-            absolutePath: filePath,
+            url: `${origin}/uploads/${filename}`,
             name: file.name,
             type: file.type,
             size: file.size,

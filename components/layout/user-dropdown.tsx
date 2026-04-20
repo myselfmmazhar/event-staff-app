@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSession, signOut } from '@/lib/client/auth';
 import { UserIcon, LogoutIcon, ChevronDownIcon } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
+import { trpc } from '@/lib/client/trpc';
 import type { SessionUser } from '@/lib/types/auth.types';
 
 export function UserDropdown() {
@@ -12,6 +13,17 @@ export function UserDropdown() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session } = useSession();
   const user = session?.user as SessionUser | undefined;
+
+  // Use tRPC to get fresh profile data (including profilePhoto after updates)
+  const { data: profileData } = trpc.profile.getMyProfile.useQuery(undefined, {
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Prefer fresh tRPC data for display, fall back to session
+  const profilePhoto = profileData?.profilePhoto ?? user?.profilePhoto;
+  const firstName = profileData?.firstName ?? user?.firstName;
+  const lastName = profileData?.lastName ?? user?.lastName;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -56,32 +68,32 @@ export function UserDropdown() {
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
+        className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-hover px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-active-bg"
       >
         <div className="relative flex h-7 w-7 shrink-0 overflow-hidden rounded-full">
-          {user.profilePhoto ? (
+          {profilePhoto ? (
             <img
-              src={user.profilePhoto}
-              alt={`${user.firstName} ${user.lastName}`}
+              src={profilePhoto}
+              alt={`${firstName} ${lastName}`}
               className="aspect-square h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-secondary text-xs font-bold text-primary-foreground">
-              {user.firstName?.[0]}
-              {user.lastName?.[0]}
+              {firstName?.[0]}
+              {lastName?.[0]}
             </div>
           )}
         </div>
         <div className="hidden sm:block text-left">
-          <div className="text-sm font-medium text-card-foreground">
-            {user.firstName} {user.lastName}
+          <div className="text-sm font-medium text-sidebar-foreground">
+            {firstName} {lastName}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-sidebar-muted-foreground">
             {user.role?.replace('_', ' ')}
           </div>
         </div>
         <ChevronDownIcon
-          className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''
+          className={`h-4 w-4 text-sidebar-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''
             }`}
         />
       </button>
@@ -94,16 +106,16 @@ export function UserDropdown() {
             <div className="flex items-center gap-3">
               {/* Profile Photo */}
               <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full">
-                {user.profilePhoto ? (
+                {profilePhoto ? (
                   <img
-                    src={user.profilePhoto}
-                    alt={`${user.firstName} ${user.lastName}`}
+                    src={profilePhoto}
+                    alt={`${firstName} ${lastName}`}
                     className="aspect-square h-full w-full object-cover"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-secondary text-sm font-bold text-primary-foreground">
-                    {user.firstName?.[0]}
-                    {user.lastName?.[0]}
+                    {firstName?.[0]}
+                    {lastName?.[0]}
                   </div>
                 )}
               </div>
@@ -111,7 +123,7 @@ export function UserDropdown() {
               {/* Name, Role, and Email */}
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-card-foreground truncate mb-1">
-                  {user.firstName} {user.lastName}
+                  {firstName} {lastName}
                 </div>
                 <Badge variant={getRoleBadgeVariant(user.role)} size="sm" className="mb-1">
                   {user.role?.replace('_', ' ')}

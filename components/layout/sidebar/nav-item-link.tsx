@@ -92,7 +92,7 @@ export function NavItemLink({
   if (!isClickable || !item.href) {
     return (
       <div
-        className={`${baseClasses} cursor-not-allowed opacity-60 text-muted-foreground`}
+        className={`${baseClasses} cursor-not-allowed opacity-60 text-white`}
       >
         {content}
       </div>
@@ -105,8 +105,8 @@ export function NavItemLink({
       onClick={isMobile ? onMobileClose : undefined}
       className={`${baseClasses} ${
         isActive
-          ? 'bg-primary text-primary-foreground shadow-md'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          ? 'bg-white text-[#196496] shadow-md font-bold'
+          : 'text-white hover:bg-sidebar-hover hover:text-sidebar-foreground'
       }`}
     >
       {content}

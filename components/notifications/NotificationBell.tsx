@@ -61,7 +61,7 @@ export function NotificationBell() {
                 className="relative p-2"
                 aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
             >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-5 w-5 text-white" />
 
                 {/* Unread count badge */}
                 {unreadCount > 0 && (

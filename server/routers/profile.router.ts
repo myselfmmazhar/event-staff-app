@@ -103,9 +103,19 @@ export const profileRouter = router({
         onsitePocEmail: true,
         preEventInstructions: true,
         eventDocuments: true,
-        _count: {
+        client: {
           select: {
-            callTimes: true,
+            businessName: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        callTimes: {
+          select: {
+            numberOfStaffRequired: true,
+            invitations: {
+              select: { status: true, isConfirmed: true },
+            },
           },
         },
       },
@@ -241,7 +251,14 @@ export const profileRouter = router({
       },
     });
 
-    return { upcoming, completed, total };
+    // Count total event requests
+    const requests = await ctx.prisma.eventRequest.count({
+      where: {
+        clientId: client.id,
+      },
+    });
+
+    return { upcoming, completed, total, requests };
   }),
 
   /**
@@ -267,12 +284,47 @@ export const profileRouter = router({
     }),
 
   /**
+   * Update current client user's business profile
+   * Clients can update their own business info, contact, and address - but NOT clientId
+   */
+  updateMyClientProfile: protectedProcedure
+    .input(
+      z.object({
+        businessName: z.string().min(1, "Business name is required").max(200).optional(),
+        firstName: z.string().min(1, "First name is required").max(50).optional(),
+        lastName: z.string().min(1, "Last name is required").max(50).optional(),
+        cellPhone: z.string().optional(),
+        businessPhone: z.string().optional(),
+        details: z.string().max(5000).optional(),
+        businessAddress: z.string().max(300).optional(),
+        city: z.string().min(1, "City is required").max(100).optional(),
+        state: z.string().min(1, "State is required").max(50).optional(),
+        zipCode: z.string().min(1, "ZIP code is required").max(20).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const client = await ctx.prisma.client.findUnique({
+        where: { userId: ctx.userId! },
+        select: { id: true },
+      });
+
+      if (!client) {
+        throw new Error("Client profile not found");
+      }
+
+      return await ctx.prisma.client.update({
+        where: { id: client.id },
+        data: input,
+      });
+    }),
+
+  /**
    * Change current user's password
    */
   changePassword: protectedProcedure
     .input(
       z.object({
-        currentPassword: z.string().min(8),
+        currentPassword: z.string().min(1, "Current password is required"),
         newPassword: z.string().min(8, "Password must be at least 8 characters"),
       })
     )
@@ -280,25 +332,39 @@ export const profileRouter = router({
       const userService = new UserService(ctx.prisma);
 
       // Get current user with password
-      // ctx.session is guaranteed to exist by protectedProcedure middleware
       const user = await userService.findByEmail(ctx.session!.user.email);
 
       if (!user) {
         throw new Error("User not found");
       }
 
-      // Verify current password
-      const bcrypt = await import("bcryptjs");
-      const isValid = await bcrypt.compare(input.currentPassword, user.password!);
+      if (!user.password) {
+        throw new Error("No password set for this account. Please use social login.");
+      }
+
+      // Verify current password using better-auth's scrypt verifier
+      const { verifyPassword, hashPassword } = await import("better-auth/crypto");
+      const isValid = await verifyPassword({ hash: user.password, password: input.currentPassword });
 
       if (!isValid) {
         throw new Error("Current password is incorrect");
       }
 
-      // Update to new password
-      // ctx.userId is guaranteed to be a string by protectedProcedure middleware
-      return await userService.update(ctx.userId!, {
-        password: input.newPassword,
+      // Hash the new password once using better-auth's scrypt
+      const hashedPassword = await hashPassword(input.newPassword);
+
+      // Update user table password
+      await ctx.prisma.user.update({
+        where: { id: ctx.userId! },
+        data: { password: hashedPassword },
       });
+
+      // Update account table password — better-auth credential provider authenticates against this
+      await ctx.prisma.account.updateMany({
+        where: { userId: ctx.userId!, providerId: "credential" },
+        data: { password: hashedPassword },
+      });
+
+      return await userService.findOne(ctx.userId!);
     }),
 });

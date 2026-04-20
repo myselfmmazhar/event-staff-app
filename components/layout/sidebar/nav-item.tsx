@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { ChevronDownIcon, ChevronRightIcon, ClockIcon } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { getFeatureStatus } from '@/lib/config/feature-flags';
@@ -29,7 +28,7 @@ const depthConfig = {
     button: 'px-3 py-2.5 text-sm',
     icon: 'h-5 w-5',
     chevron: 'h-4 w-4',
-    border: 'border-l-2 border-border',
+    border: 'border-l-2 border-sidebar-border',
     indent: 'ml-4 pl-2',
   },
   1: {
@@ -37,7 +36,7 @@ const depthConfig = {
     button: 'px-3 py-2 text-sm',
     icon: 'h-4 w-4',
     chevron: 'h-3 w-3',
-    border: 'border-l border-border/50',
+    border: 'border-l border-sidebar-border',
     indent: 'ml-4 pl-2',
   },
   2: {
@@ -45,7 +44,7 @@ const depthConfig = {
     button: 'px-3 py-1.5 text-xs',
     icon: 'h-3.5 w-3.5',
     chevron: 'h-3 w-3',
-    border: 'border-l border-border/30',
+    border: 'border-l border-sidebar-border/60',
     indent: 'ml-4 pl-2',
   },
   3: {
@@ -53,7 +52,7 @@ const depthConfig = {
     button: 'px-2 py-1 text-xs',
     icon: 'h-3 w-3',
     chevron: 'h-3 w-3',
-    border: 'border-l border-border/20',
+    border: 'border-l border-sidebar-border/40',
     indent: 'ml-4 pl-2',
   },
 } as const;
@@ -114,11 +113,11 @@ export function NavItem({
           flex w-full items-center gap-3 rounded-lg ${config.button} font-medium transition-all duration-200
           ${hasActiveChildFlag
             ? depth === 0
-              ? 'bg-primary/10 text-primary'
-              : 'bg-primary/5 text-primary'
+              ? 'bg-sidebar-active-bg text-sidebar-foreground'
+              : 'bg-sidebar-active-bg/70 text-sidebar-foreground'
             : isParentComingSoon || isDisabled
-              ? 'text-muted-foreground opacity-60'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              ? 'text-white opacity-60'
+              : 'text-white hover:bg-sidebar-hover hover:text-sidebar-foreground'
           }
         `}
       >

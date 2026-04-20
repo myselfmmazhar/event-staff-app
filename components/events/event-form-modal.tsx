@@ -12,7 +12,7 @@ import { EventSchema } from '@/lib/schemas/event.schema';
 import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument, CustomField } from '@/lib/schemas/event.schema';
 import { EventStatus, RequestMethod, AmountType } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
@@ -286,6 +286,7 @@ export function EventFormModal({
 
   // Save action state (for Save & Close vs Save & New)
   const [pendingSaveAction, setPendingSaveAction] = useState<SaveAction>('close');
+  const pendingSaveActionRef = useRef<SaveAction>('close');
 
   // Data queries
   const { data: clientsData } = trpc.clients.getAll.useQuery({ page: 1, limit: 100 });
@@ -902,10 +903,10 @@ export function EventFormModal({
         const finalData = editFormSchema.parse(normalizedData);
         console.log('[EventFormModal] Parsed finalData:', finalData);
         console.log('[EventFormModal] Calling onSubmit...');
-        onSubmit(finalData, attachments, pendingSaveAction);
+        onSubmit(finalData, attachments, pendingSaveActionRef.current);
         console.log('[EventFormModal] onSubmit called successfully');
         // Navigate to next step after triggering update-and-continue
-        if (pendingSaveAction === 'update-continue') {
+        if (pendingSaveActionRef.current === 'update-continue') {
           goNextForm();
         }
       } else {
@@ -913,7 +914,7 @@ export function EventFormModal({
         const finalData = createFormSchema.parse(normalizedData);
         console.log('[EventFormModal] Parsed finalData:', finalData);
         console.log('[EventFormModal] Calling onSubmit...');
-        onSubmit(finalData, attachments, pendingSaveAction);
+        onSubmit(finalData, attachments, pendingSaveActionRef.current);
         console.log('[EventFormModal] onSubmit called successfully');
       }
 
@@ -965,15 +966,18 @@ export function EventFormModal({
 
   const handleSaveAndClose = () => {
     console.log('[EventFormModal] handleSaveAndClose clicked');
+    pendingSaveActionRef.current = 'close';
     setPendingSaveAction('close');
   };
 
   const handleSaveAndNew = () => {
     console.log('[EventFormModal] handleSaveAndNew clicked');
+    pendingSaveActionRef.current = 'new';
     setPendingSaveAction('new');
   };
 
   const handleUpdateAndContinue = () => {
+    pendingSaveActionRef.current = 'update-continue';
     setPendingSaveAction('update-continue');
   };
 
@@ -996,6 +1000,13 @@ export function EventFormModal({
     handleSubmit(handleFormSubmit, handleFormError)(e);
   };
 
+  // Prevent Enter key from accidentally submitting the form on non-last steps
+  const onFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === 'Enter' && !isLastFormStep && activeTab !== 'batch') {
+      e.preventDefault();
+    }
+  };
+
   const clients = clientsData?.data || [];
 
   return (
@@ -1005,7 +1016,7 @@ export function EventFormModal({
       className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-7xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
     >
       <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
-        <form onSubmit={onFormSubmit} className="flex h-full min-h-0 flex-col bg-white">
+        <form onSubmit={onFormSubmit} onKeyDown={onFormKeyDown} className="flex h-full min-h-0 flex-col bg-white">
 
           {/* Header + tabs */}
           <div className="shrink-0 border-b border-slate-200 px-6 pb-0 pt-5 sm:px-8">
@@ -1338,9 +1349,9 @@ export function EventFormModal({
                     </Button>
                   ) : (
                     <Button
-                      type="submit"
+                      type="button"
                       disabled={isSubmitting}
-                      onClick={handleSaveAndClose}
+                      onClick={() => { handleSaveAndClose(); handleSubmit(handleFormSubmit, handleFormError)(); }}
                       className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
                     >
                       {isSubmitting && pendingSaveAction === 'close'
@@ -1354,9 +1365,9 @@ export function EventFormModal({
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                   {isEdit && isFormTab && !isLastFormStep && (
                     <Button
-                      type="submit"
+                      type="button"
                       variant="outline"
-                      onClick={handleUpdateAndContinue}
+                      onClick={() => { handleUpdateAndContinue(); handleSubmit(handleFormSubmit, handleFormError)(); }}
                       disabled={isSubmitting || !canContinueForm}
                       className="rounded-lg border-slate-200"
                     >
@@ -1377,8 +1388,8 @@ export function EventFormModal({
                   <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="rounded-lg border-slate-200">
                     Cancel
                   </Button>
-                  {!isEdit && (
-                    <Button type="submit" variant="outline" disabled={isSubmitting} onClick={handleSaveAndNew} className="rounded-lg border-slate-200">
+                  {!isEdit && isLastFormStep && (
+                    <Button type="button" variant="outline" disabled={isSubmitting || !(canContinueBasic && canContinueVenue)} onClick={() => { handleSaveAndNew(); handleSubmit(handleFormSubmit, handleFormError)(); }} className="rounded-lg border-slate-200">
                       {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
                     </Button>
                   )}

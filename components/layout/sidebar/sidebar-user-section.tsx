@@ -61,8 +61,8 @@ export function SidebarUserSection({
         className={`
           flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
           ${pathname.startsWith('/profile')
-            ? 'bg-primary/10 text-primary'
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            ? 'bg-sidebar-active-bg text-sidebar-foreground'
+            : 'text-white hover:bg-sidebar-hover hover:text-sidebar-foreground'
           }
         `}
       >
@@ -74,7 +74,7 @@ export function SidebarUserSection({
       </button>
 
       {isExpanded && (
-        <div className="ml-3 mt-1 space-y-1 border-l-2 border-border pl-4">
+        <div className="ml-3 mt-1 space-y-1 border-l-2 border-sidebar-border pl-4">
           {profileLinks.map(({ href, label, icon: Icon, comingSoon }) => {
             if (comingSoon) {
               return (
@@ -84,7 +84,7 @@ export function SidebarUserSection({
                   onClick={(e) => e.preventDefault()}
                   aria-disabled="true"
                   tabIndex={-1}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 cursor-not-allowed opacity-60 text-muted-foreground"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 cursor-not-allowed opacity-60 text-white"
                 >
                   <Icon className="h-4 w-4" />
                   <span className="flex-1">{label}</span>
@@ -101,8 +101,8 @@ export function SidebarUserSection({
                 className={`
                   flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
                   ${pathname === href
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-white text-[#196496] shadow-md font-bold'
+                    : 'text-white hover:bg-sidebar-hover hover:text-sidebar-foreground'
                   }
                 `}
               >

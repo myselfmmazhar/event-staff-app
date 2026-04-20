@@ -11,6 +11,7 @@ export enum UserRole {
   ADMIN = "ADMIN",
   MANAGER = "MANAGER",
   STAFF = "STAFF",
+  CLIENT = "CLIENT",
 }
 
 /**
@@ -21,6 +22,7 @@ const ROLE_HIERARCHY: Record<UserRole, number> = {
   [UserRole.ADMIN]: 3,
   [UserRole.MANAGER]: 2,
   [UserRole.STAFF]: 1,
+  [UserRole.CLIENT]: 0,
 };
 
 /**
