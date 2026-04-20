@@ -38,7 +38,9 @@ export function EditLabelsButton({ page, className }: EditLabelsButtonProps) {
   const { isEditMode, currentPage, toggleEditMode } = useLabelEditMode();
 
   // Check if user is admin
-  const { data: profile, isLoading: isLoadingProfile } = trpc.profile.getMyProfile.useQuery();
+  const { data: profile, isLoading: isLoadingProfile } = trpc.profile.getMyProfile.useQuery(undefined, {
+    enabled: typeof window !== "undefined",
+  });
 
   const isAdmin = profile?.role === "ADMIN" || profile?.role === "SUPER_ADMIN";
   const isEditingThisPage = isEditMode && currentPage === page;
@@ -105,7 +107,9 @@ export function EditLabelsSaveBar() {
   } = useLabelEditMode();
 
   // Check if user is admin
-  const { data: profile } = trpc.profile.getMyProfile.useQuery();
+  const { data: profile } = trpc.profile.getMyProfile.useQuery(undefined, {
+    enabled: typeof window !== "undefined",
+  });
   const isAdmin = profile?.role === "ADMIN" || profile?.role === "SUPER_ADMIN";
 
   // Don't show bar if not in edit mode or not admin

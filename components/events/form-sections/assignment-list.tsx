@@ -115,38 +115,47 @@ export function AssignmentList({
       {/* Totals Summary */}
       <div className="pt-6 mt-6 space-y-3">
         {totals.servicesCount > 0 && (
-          <div className="flex justify-between items-center text-sm px-1">
-            <span className="text-slate-500 font-medium">
+          <div className="flex justify-between items-start gap-4 text-sm px-1">
+            <span className="text-slate-500 font-medium shrink-0 pt-0.5">
               Services ({totals.servicesCount})
             </span>
-            <div className="text-right">
-              <span className="font-bold text-slate-900">{formatCurrency(totals.servicesTotalPrice)}</span>
-              <span className="text-[11px] text-slate-400 ml-3 font-medium">
+            <div className="text-right flex flex-col items-end gap-0.5 min-w-0">
+              <div>
+                <span className="text-[11px] font-medium text-slate-500">Price: </span>
+                <span className="font-bold text-slate-900">{formatCurrency(totals.servicesTotalPrice)}</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-medium">
                 Cost: {formatCurrency(totals.servicesTotalCost)}
-              </span>
+              </div>
             </div>
           </div>
         )}
         {totals.productsCount > 0 && (
-          <div className="flex justify-between items-center text-sm px-1">
-            <span className="text-slate-500 font-medium">
+          <div className="flex justify-between items-start gap-4 text-sm px-1">
+            <span className="text-slate-500 font-medium shrink-0 pt-0.5">
               Products ({totals.productsCount})
             </span>
-            <div className="text-right">
-              <span className="font-bold text-slate-900">{formatCurrency(totals.productsTotalPrice)}</span>
-              <span className="text-[11px] text-slate-400 ml-3 font-medium">
+            <div className="text-right flex flex-col items-end gap-0.5 min-w-0">
+              <div>
+                <span className="text-[11px] font-medium text-slate-500">Price: </span>
+                <span className="font-bold text-slate-900">{formatCurrency(totals.productsTotalPrice)}</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-medium">
                 Cost: {formatCurrency(totals.productsTotalCost)}
-              </span>
+              </div>
             </div>
           </div>
         )}
-        <div className="flex justify-between items-center text-base border-t border-slate-100 pt-3 px-1">
-          <span className="font-bold text-slate-900">Grand Total</span>
-          <div className="text-right flex items-center gap-3">
-            <span className="font-extrabold text-[#1e293b] text-lg">{formatCurrency(totals.grandTotalPrice)}</span>
-            <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
+        <div className="flex justify-between items-start gap-4 text-base border-t border-slate-100 pt-3 px-1">
+          <span className="font-bold text-slate-900 shrink-0 pt-1">Grand Total</span>
+          <div className="text-right flex flex-col items-end gap-1 min-w-0">
+            <div className="flex flex-wrap items-baseline justify-end gap-x-1.5 gap-y-0">
+              <span className="text-sm font-semibold text-slate-600">Price:</span>
+              <span className="font-extrabold text-[#1e293b] text-lg">{formatCurrency(totals.grandTotalPrice)}</span>
+            </div>
+            <div className="text-[11px] text-slate-400 font-semibold tracking-wide">
               Cost: {formatCurrency(totals.grandTotalCost)}
-            </span>
+            </div>
           </div>
         </div>
       </div>

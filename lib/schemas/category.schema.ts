@@ -1,12 +1,7 @@
-import { CATEGORY_REQUIREMENT_TYPE } from '@/lib/category-requirements';
 import { z } from 'zod';
+import { REQ_TEMPLATE_IDS } from '@/lib/requirement-templates';
 
-const requirementFields = {
-  requirementType: z
-    .nativeEnum(CATEGORY_REQUIREMENT_TYPE)
-    .default(CATEGORY_REQUIREMENT_TYPE.STANDARD),
-  isRequired: z.boolean().default(false),
-};
+const reqTemplateIdSchema = z.enum(REQ_TEMPLATE_IDS);
 
 export const CategorySchema = {
   create: z.object({
@@ -21,7 +16,8 @@ export const CategorySchema = {
       .transform((value) => value.trim())
       .optional()
       .nullable(),
-    ...requirementFields,
+    requirementTemplateIds: z.array(reqTemplateIdSchema).default([]),
+    isRequired: z.boolean().default(false),
   }),
 
   update: z.object({
@@ -38,7 +34,7 @@ export const CategorySchema = {
       .transform((value) => value.trim())
       .optional()
       .nullable(),
-    requirementType: z.nativeEnum(CATEGORY_REQUIREMENT_TYPE).optional(),
+    requirementTemplateIds: z.array(reqTemplateIdSchema).optional(),
     isRequired: z.boolean().optional(),
   }),
 

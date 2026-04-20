@@ -342,7 +342,11 @@ export function EventRequestFormModal({
   // -------------------------------------------------------------------------
 
   return (
-    <Dialog open={open} onClose={handleClose} className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-7xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-xl">
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+    >
       <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
         {/* Header */}
         <div className="shrink-0 border-b border-slate-200 px-6 pb-0 pt-5 sm:px-8">

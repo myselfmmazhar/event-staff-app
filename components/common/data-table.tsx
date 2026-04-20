@@ -58,7 +58,8 @@ function parseMinWidthPx(minWidth: string) {
 
 function getLockedColumnWidth(columnKey: string) {
   // Keep utility columns compact and consistent across all manager tables.
-  if (columnKey === 'select') return 40;
+  // 48px fits w-4 checkbox (16px) + default px-4 padding (32px); narrower locks caused ellipsis from `truncate` on th/td.
+  if (columnKey === 'select') return 48;
   // Wide enough for the "Actions" header label without ellipsis (table header uses truncate by default).
   if (columnKey === 'actions') return 100;
   return null;
@@ -189,7 +190,9 @@ export function DataTable<T>({
                     key={col.key}
                     className={cn(
                       'relative group transition-colors',
-                      col.key === 'actions' ? 'whitespace-nowrap' : col.key === 'select' ? '' : 'truncate',
+                      col.key === 'actions' || col.key === 'select'
+                        ? 'whitespace-nowrap'
+                        : 'truncate',
                       col.headerClassName || 'text-left py-3 px-4'
                     )}
                     style={{ width: `var(--col-${col.key})` }}
@@ -244,7 +247,12 @@ export function DataTable<T>({
                       {columns.map((col) => (
                         <td
                           key={col.key}
-                          className={cn(col.key !== 'select' && 'truncate', col.className || 'py-4 px-4')}
+                          className={cn(
+                            col.key === 'actions' || col.key === 'select'
+                              ? 'whitespace-nowrap'
+                              : 'truncate',
+                            col.className || 'py-4 px-4'
+                          )}
                           style={{ width: `var(--col-${col.key})` }}
                         >
                           {col.render(item)}

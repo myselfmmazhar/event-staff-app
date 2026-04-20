@@ -1013,7 +1013,7 @@ export function EventFormModal({
     <Dialog
       open={open}
       onClose={onClose}
-      className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-7xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+      className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
     >
       <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
         <form onSubmit={onFormSubmit} onKeyDown={onFormKeyDown} className="flex h-full min-h-0 flex-col bg-white">
@@ -1348,18 +1348,31 @@ export function EventFormModal({
                       Continue
                     </Button>
                   ) : (
-                    <Button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => { handleSaveAndClose(); handleSubmit(handleFormSubmit, handleFormError)(); }}
-                      className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
-                    >
-                      {isSubmitting && pendingSaveAction === 'close'
-                        ? 'Saving...'
-                        : isEdit
-                          ? `Update ${terminology.event.singular}`
-                          : 'Save & Close'}
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button
+                        type="button"
+                        disabled={isSubmitting || !canContinueBasic || !canContinueVenue}
+                        onClick={() => { handleSaveAndClose(); handleSubmit(handleFormSubmit, handleFormError)(); }}
+                        className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
+                      >
+                        {isSubmitting && pendingSaveAction === 'close'
+                          ? 'Saving...'
+                          : isEdit
+                            ? `Update ${terminology.event.singular}`
+                            : 'Save & Close'}
+                      </Button>
+                      {!isEdit && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={isSubmitting || !canContinueBasic || !canContinueVenue}
+                          onClick={() => { handleSaveAndNew(); handleSubmit(handleFormSubmit, handleFormError)(); }}
+                          className="h-14 shrink-0 rounded-xl border-slate-200 px-8 text-lg font-bold shadow-sm transition-all hover:bg-slate-50 sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
+                        >
+                          {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -1388,11 +1401,6 @@ export function EventFormModal({
                   <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="rounded-lg border-slate-200">
                     Cancel
                   </Button>
-                  {!isEdit && isLastFormStep && (
-                    <Button type="button" variant="outline" disabled={isSubmitting || !(canContinueBasic && canContinueVenue)} onClick={() => { handleSaveAndNew(); handleSubmit(handleFormSubmit, handleFormError)(); }} className="rounded-lg border-slate-200">
-                      {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
-                    </Button>
-                  )}
                 </div>
               </div>
             )}

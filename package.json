@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev --webpack --port 3000",
     "dev:clean": "node scripts/clean-next.mjs && next dev --webpack --port 3000",
     "prebuild": "node scripts/clean-next.mjs",

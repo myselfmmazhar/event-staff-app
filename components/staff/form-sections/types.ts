@@ -14,6 +14,7 @@ import type {
   StaffRating,
   AvailabilityStatus,
 } from '@prisma/client';
+import type { CategoryRequirementType } from '@/lib/category-requirements';
 import type { StaffFormInput } from '../staff-form-modal';
 
 /**
@@ -43,6 +44,10 @@ export interface StaffFormSectionProps {
 export interface ServiceOption {
   id: string;
   title: string;
+  category?: {
+    requirementTemplateIds: string[];
+    requirementType: CategoryRequirementType;
+  } | null;
 }
 
 /**

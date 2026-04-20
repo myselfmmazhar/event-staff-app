@@ -1,4 +1,6 @@
 import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
@@ -6,6 +8,7 @@ import pg from "pg";
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
   pgPool: pg.Pool | undefined;
+  prismaArtifactMark: string | undefined;
 };
 
 const pooledConnectionString = process.env.DATABASE_URL;
@@ -39,6 +42,23 @@ function normalizePgConnectionString(raw: string) {
   }
 }
 
+/** Changes after `prisma generate`; used to drop a stale cached PrismaClient (e.g. dev HMR). */
+function readPrismaClientArtifactMark(): string {
+  try {
+    const schemaPath = path.join(
+      process.cwd(),
+      "node_modules",
+      ".prisma",
+      "client",
+      "schema.prisma",
+    );
+    const stat = fs.statSync(schemaPath);
+    return `${stat.mtimeMs}:${stat.size}`;
+  } catch {
+    return "0";
+  }
+}
+
 // PrismaPg creates a new pg.Pool when passed a PoolConfig. Cache an external pool
 // to avoid creating many pools/connections in dev/HMR.
 const poolMax =
@@ -54,15 +74,41 @@ const pgPool =
 
 const adapter = new PrismaPg(pgPool);
 
-export const prisma =
-  (globalForPrisma.prisma && (globalForPrisma.prisma as any).serviceCategory) ? globalForPrisma.prisma :
-  new PrismaClient({
+function createPrisma(): PrismaClient {
+  return new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
     adapter,
   });
-
-// Last updated: 2026-04-05T12:59:00Z - Triggering schema reload
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-  globalForPrisma.pgPool = pgPool;
 }
+
+function getPrisma(): PrismaClient {
+  const mark = readPrismaClientArtifactMark();
+  if (globalForPrisma.prisma && globalForPrisma.prismaArtifactMark === mark) {
+    return globalForPrisma.prisma;
+  }
+  if (globalForPrisma.prisma) {
+    void globalForPrisma.prisma.$disconnect().catch(() => {});
+  }
+  const client = createPrisma();
+  globalForPrisma.prisma = client;
+  globalForPrisma.prismaArtifactMark = mark;
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.pgPool = pgPool;
+  }
+  return client;
+}
+
+/**
+ * Lazy singleton: after `prisma generate`, the next access sees an updated artifact mark,
+ * disconnects the old client, and builds a new one (avoids UNKNOWN_ARGUMENT on new fields until full dev restart).
+ */
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getPrisma();
+    const value = Reflect.get(client, prop, receiver);
+    if (typeof value === "function") {
+      return (value as (...args: unknown[]) => unknown).bind(client);
+    }
+    return value;
+  },
+});

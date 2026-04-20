@@ -124,7 +124,11 @@ export function AssignStaffModal({ staff, open, onClose }: AssignStaffModalProps
   const selectedEvent = events.find((e) => e.id === selectedEventId);
 
   return (
-    <Dialog open={open} onClose={handleClose} className="max-w-lg">
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+    >
       <DialogHeader>
         <div className="flex items-center justify-between">
           <DialogTitle>Assign to {terminology.event.singular}</DialogTitle>

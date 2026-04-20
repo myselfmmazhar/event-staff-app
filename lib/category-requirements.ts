@@ -47,8 +47,24 @@ export function requirementTypeNeedsEsignature(type: CategoryRequirementType): b
   return type === 'ESIGNATURE';
 }
 
+/** True when catalog rule implies document uploads (legacy type or template cards). */
+export function categoryRuleNeedsDocuments(rule: CategoryRequirementRule): boolean {
+  if (requirementTypeNeedsDocuments(rule.requirementType)) return true;
+  return rule.requirementTemplateIds.some((id) =>
+    id === 'upload' || id === 'idv' || id === 'headshot'
+  );
+}
+
+/** True when catalog rule implies tax/policy e-signature (legacy type or esign card). */
+export function categoryRuleNeedsEsignature(rule: CategoryRequirementRule): boolean {
+  if (requirementTypeNeedsEsignature(rule.requirementType)) return true;
+  return rule.requirementTemplateIds.includes('esign');
+}
+
 export type CategoryRequirementRule = {
   requirementType: CategoryRequirementType;
   isRequired: boolean;
   categoryName: string;
+  /** Onboarding template ids from catalog (w9, upload, …); may be empty for legacy rows. */
+  requirementTemplateIds: string[];
 };

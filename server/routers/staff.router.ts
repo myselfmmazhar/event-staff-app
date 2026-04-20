@@ -255,6 +255,12 @@ export const staffRouter = router({
                 id: true,
                 title: true,
                 description: true,
+                category: {
+                    select: {
+                        requirementTemplateIds: true,
+                        requirementType: true,
+                    },
+                },
             },
             orderBy: { title: "asc" },
         });

@@ -278,7 +278,7 @@ export function TimesheetDrilldownTheadRow({
                             className="whitespace-nowrap px-3 py-3 text-center align-bottom text-[10px] font-bold uppercase tracking-wide text-muted-foreground"
                             style={{ width: `var(--col-cmAction)` }}
                         >
-                            <StaticLabel label="Action" align="text-center" />
+                        <StaticLabel label="Action" align="text-left" className="pl-4" />
                         </ResizableTh>
                     );
                 case 'staffName':
@@ -321,7 +321,7 @@ export function TimesheetDrilldownTheadRow({
                             className="relative truncate p-0"
                             style={{ width: `var(--col-cmStatus)` }}
                         >
-                            <SortCell id="status" label="Status" align="text-center" {...sortProps} />
+                            <SortCell id="status" label="Status" align="text-right" className="pr-4" {...sortProps} />
                             <TableColumnResizeHandle onMouseDown={(e) => onResizeMouseDown('cmStatus', e)} />
                         </ResizableTh>
                     );
@@ -339,7 +339,7 @@ export function TimesheetDrilldownTheadRow({
                         className="whitespace-nowrap px-3 py-3 text-center align-bottom text-[10px] font-bold uppercase tracking-wide text-muted-foreground"
                         style={{ width: `var(--col-action)` }}
                     >
-                        <StaticLabel label="Action" align="text-center" />
+                        <StaticLabel label="Action" align="text-left" className="pl-4" />
                     </ResizableTh>
                 );
             case 'talent':
@@ -481,7 +481,7 @@ export function TimesheetDrilldownTheadRow({
                         className="relative truncate p-0"
                         style={{ width: `var(--col-status)` }}
                     >
-                        <SortCell id="status" label="Status" align="text-center" {...sortProps} />
+                        <SortCell id="status" label="Status" align="text-right" className="pr-4" {...sortProps} />
                         <TableColumnResizeHandle onMouseDown={(e) => onResizeMouseDown('status', e)} />
                     </ResizableTh>
                 );

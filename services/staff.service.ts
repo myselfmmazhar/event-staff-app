@@ -12,8 +12,8 @@ import {
 import {
     CATEGORY_REQUIREMENT_LABELS,
     type CategoryRequirementRule,
-    requirementTypeNeedsDocuments,
-    requirementTypeNeedsEsignature,
+    categoryRuleNeedsDocuments,
+    categoryRuleNeedsEsignature,
 } from "@/lib/category-requirements";
 import { TRPCError } from "@trpc/server";
 import { randomBytes } from "crypto";
@@ -198,6 +198,7 @@ export class StaffService {
                 category: {
                     select: {
                         requirementType: true,
+                        requirementTemplateIds: true,
                         isRequired: true,
                         name: true,
                     },
@@ -211,6 +212,7 @@ export class StaffService {
                 requirementType: s.category.requirementType,
                 isRequired: s.category.isRequired,
                 categoryName: s.category.name,
+                requirementTemplateIds: s.category.requirementTemplateIds ?? [],
             });
         }
         return rules;
@@ -229,28 +231,24 @@ export class StaffService {
         }
     ): void {
         const docs = opts.documents ?? [];
-        const needDocs = rules.some(
-            (r) => r.isRequired && requirementTypeNeedsDocuments(r.requirementType)
-        );
+        const needDocs = rules.some((r) => r.isRequired && categoryRuleNeedsDocuments(r));
         if (needDocs && docs.length === 0) {
             const labels = rules
-                .filter((r) => r.isRequired && requirementTypeNeedsDocuments(r.requirementType))
+                .filter((r) => r.isRequired && categoryRuleNeedsDocuments(r))
                 .map((r) => `${CATEGORY_REQUIREMENT_LABELS[r.requirementType]} (${r.categoryName})`);
             throw new TRPCError({
                 code: "BAD_REQUEST",
                 message: `Please upload at least one document. Required for: ${[...new Set(labels)].join(", ")}`,
             });
         }
-        const needSign = rules.some(
-            (r) => r.isRequired && requirementTypeNeedsEsignature(r.requirementType)
-        );
+        const needSign = rules.some((r) => r.isRequired && categoryRuleNeedsEsignature(r));
         if (
             needSign &&
             !opts.allowMissingTaxSignature &&
             !(opts.taxSignatureUrl && String(opts.taxSignatureUrl).trim().length > 0)
         ) {
             const names = rules
-                .filter((r) => r.isRequired && requirementTypeNeedsEsignature(r.requirementType))
+                .filter((r) => r.isRequired && categoryRuleNeedsEsignature(r))
                 .map((r) => r.categoryName);
             throw new TRPCError({
                 code: "BAD_REQUEST",
@@ -794,9 +792,7 @@ export class StaffService {
         const rules = await this.getCategoryRulesForServiceIds(
             staff.services.map((s) => s.serviceId)
         );
-        const docRules = rules.filter(
-            (r) => r.isRequired && requirementTypeNeedsDocuments(r.requirementType)
-        );
+        const docRules = rules.filter((r) => r.isRequired && categoryRuleNeedsDocuments(r));
         const documentRequirementLabels = [
             ...new Set(
                 docRules.map(

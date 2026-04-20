@@ -303,13 +303,16 @@ export function TaskMessageModal({ event, open, onClose }: TaskMessageModalProps
     };
 
     return (
-        <Dialog open={open} onClose={onClose}>
-            <DialogHeader>
-                <DialogTitle>Send Task Message</DialogTitle>
-            </DialogHeader>
-
-            <DialogContent className="sm:max-w-[550px]">
-                <div className="space-y-6 py-4">
+        <Dialog
+            open={open}
+            onClose={onClose}
+            className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+        >
+            <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
+                <DialogHeader>
+                    <DialogTitle>Send Task Message</DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 overflow-y-auto space-y-6 px-6 py-4">
                     {/* 1. Comm Method */}
                     <div className="space-y-2">
                         <Label className="text-sm font-semibold">1. Select Communication Method</Label>
