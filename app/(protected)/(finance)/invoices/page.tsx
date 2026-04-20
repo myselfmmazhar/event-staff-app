@@ -80,8 +80,8 @@ export default function InvoicesPage() {
                 <Button
                     variant={showArchived ? "default" : "outline"}
                     onClick={() => setShowArchived(!showArchived)}
-                    className={showArchived ? "bg-blue-600 hover:bg-blue-700 font-bold uppercase tracking-widest text-[10px]" : "font-bold uppercase tracking-widest text-[10px]"}
-                    size="sm"
+                    className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
+                    size="lg"
                 >
                     <ArchiveIcon className="h-4 w-4 mr-2" />
                     {showArchived ? "Showing Archived" : "View Archive"}
