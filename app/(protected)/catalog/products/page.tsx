@@ -298,7 +298,7 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-end">
         <Button onClick={handleCreate} size="lg" className="rounded-xl shadow-lg shadow-primary/10">
           <PlusIcon className="h-5 w-5 mr-2" />

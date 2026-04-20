@@ -9,8 +9,8 @@ interface SidebarHeaderProps {
 }
 
 export function SidebarHeader({ companyLogoUrl, isMobile, onClose }: SidebarHeaderProps) {
-  return (
-    <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
+  return (  <div className="flex h-16 items-center justify-between px-6">
+  
       <div className="flex items-center gap-2">
         {companyLogoUrl ? (
           <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden bg-white">
