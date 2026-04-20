@@ -105,6 +105,7 @@ export function CallTimeExportDropdown({
         <div className="relative" ref={dropdownRef}>
             <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setIsOpen(!isOpen)}
                 disabled={disabled || isExporting}
                 className="gap-2"

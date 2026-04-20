@@ -430,22 +430,36 @@ export class EventRequestService {
       const createdEvent = await this.prisma.event.create({
         data: {
           eventId,
-          title: eventRequest.title,
-          description: eventRequest.description,
-          requirements: eventRequest.requirements,
-          venueName: eventRequest.venueName || "To Be Determined",
-          address: eventRequest.address || "",
-          city: eventRequest.city || "",
-          state: eventRequest.state || "",
-          zipCode: eventRequest.zipCode || "",
+          title: eventRequest.title.trim(),
+          description: eventRequest.description?.trim() || null,
+          requirements: eventRequest.requirements?.trim() || null,
+          venueName: eventRequest.venueName?.trim() || "To Be Determined",
+          address: eventRequest.address?.trim() || "",
+          addressLine2: eventRequest.addressLine2?.trim() || null,
+          city: eventRequest.city?.trim() || '',
+          state: eventRequest.state?.trim() || '',
+          zipCode: eventRequest.zipCode?.trim() || '',
+          meetingPoint: eventRequest.meetingPoint?.trim() || null,
+          onsitePocName: eventRequest.onsitePocName?.trim() || null,
+          onsitePocPhone: eventRequest.onsitePocPhone?.trim() || null,
+          onsitePocEmail: eventRequest.onsitePocEmail?.trim() || null,
           startDate: eventRequest.startDate,
-          startTime: eventRequest.startTime,
+          startTime: eventRequest.startTime ?? 'TBD',
           endDate: eventRequest.endDate,
-          endTime: eventRequest.endTime,
+          endTime: eventRequest.endTime ?? 'TBD',
           timezone: eventRequest.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
           status: "PUBLISHED",
           clientId: eventRequest.clientId,
           createdBy: userId,
+          preEventInstructions: eventRequest.preEventInstructions || null,
+          requestMethod: eventRequest.requestMethod || null,
+          poNumber: eventRequest.poNumber?.trim() || null,
+          requestorName: eventRequest.requestorName?.trim() || null,
+          requestorPhone: eventRequest.requestorPhone?.trim() || null,
+          requestorEmail: eventRequest.requestorEmail?.trim() || null,
+          eventDocuments: eventRequest.eventDocuments ?? undefined,
+          fileLinks: eventRequest.fileLinks ?? undefined,
+          customFields: eventRequest.customFields ?? undefined,
         },
         select: {
           id: true,
@@ -487,6 +501,19 @@ export class EventRequestService {
         message: "Failed to approve event request",
       });
     }
+  }
+
+  /**
+   * Get counts per status (admin only)
+   */
+  async getCounts(): Promise<{ PENDING: number; APPROVED: number; REJECTED: number; total: number }> {
+    const [PENDING, APPROVED, REJECTED, total] = await Promise.all([
+      this.prisma.eventRequest.count({ where: { status: EventRequestStatus.PENDING } }),
+      this.prisma.eventRequest.count({ where: { status: EventRequestStatus.APPROVED } }),
+      this.prisma.eventRequest.count({ where: { status: EventRequestStatus.REJECTED } }),
+      this.prisma.eventRequest.count(),
+    ]);
+    return { PENDING, APPROVED, REJECTED, total };
   }
 
   /**

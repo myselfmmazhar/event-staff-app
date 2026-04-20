@@ -144,4 +144,13 @@ export const eventRequestRouter = router({
         ctx.userId!
       );
     }),
+
+  /**
+   * Get status counts for all event requests (admin only)
+   * Returns counts per status and total
+   */
+  getCounts: adminProcedure.query(async ({ ctx }) => {
+    const eventRequestService = new EventRequestService(ctx.prisma);
+    return await eventRequestService.getCounts();
+  }),
 });
