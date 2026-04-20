@@ -20,7 +20,7 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
 
   const sidebarContent = (
-    <div className="flex h-full min-h-0 flex-col bg-sidebar border-r border-sidebar-border">
+    <div className="flex h-full min-h-0 flex-col bg-sidebar">
       <SidebarHeader
         companyLogoUrl={companyProfile?.companyLogoUrl}
         isMobile={isMobile}

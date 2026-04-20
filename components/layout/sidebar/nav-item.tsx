@@ -132,7 +132,7 @@ export function NavItem({
       </button>
 
       {expanded && item.subItems && (
-        <div className={`${config.indent} mt-1 space-y-${depth >= 2 ? '0.5' : '1'} ${config.border}`}>
+        <div className={`${config.indent} mt-1 space-y-${depth >= 2 ? '0.5' : '1'}`}>
           {item.subItems.map((subItem) => (
             <NavItem
               key={subItem.label}
