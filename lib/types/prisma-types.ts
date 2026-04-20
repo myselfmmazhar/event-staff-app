@@ -497,6 +497,7 @@ export type CategorySelect = Prisma.ServiceCategoryGetPayload<{
     name: true;
     description: true;
     requirementType: true;
+    requirementTemplateIds: true;
     isRequired: true;
     isActive: true;
     createdBy: true;

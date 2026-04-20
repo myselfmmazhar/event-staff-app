@@ -59,6 +59,8 @@ export function TerminologyProvider({ children }: TerminologyProviderProps) {
 
   // Fetch terminology from tRPC
   const terminologyQuery = trpc.settings.getTerminology.useQuery(undefined, {
+    // Only fetch on the client to avoid SSR issues with server-to-server calls
+    enabled: typeof window !== "undefined",
     // Fetch on mount
     refetchOnMount: true,
     // Don't refetch on window focus (terminology rarely changes)

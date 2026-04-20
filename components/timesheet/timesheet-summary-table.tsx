@@ -99,7 +99,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
         label: string;
         align?: 'text-center' | 'text-right';
     }> = [
-        { id: 'status', widthKey: 'status', label: 'Status', align: 'text-center' },
+        { id: 'status', widthKey: 'status', label: 'Status', align: 'text-right' },
         { id: 'startDate', widthKey: 'date', label: 'Date / Time' },
         { id: 'event', widthKey: 'task', label: 'Task' },
         { id: 'client', widthKey: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
@@ -120,7 +120,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                     <thead className="bg-slate-50 border-b border-border">
                         <tr>
                             <th className="w-10 min-w-10 max-w-10 px-2 py-4" />
-                            <th className="w-16 min-w-16 max-w-16 px-4 py-4 font-semibold text-slate-600 text-center">Action</th>
+                            <th className="w-20 min-w-20 max-w-20 px-4 py-4 font-semibold text-slate-600 text-left pl-6">Action</th>
                             {summaryColumns.map((col) => (
                                 <th
                                     key={col.id}
@@ -228,10 +228,10 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                             }
                                         </button>
                                     </td>
-                                    <td className="w-16 min-w-16 max-w-16 px-4 py-5 text-center align-top">
+                                    <td className="w-20 min-w-20 max-w-20 px-4 py-5 text-left pl-6 align-top">
                                         <ActionDropdown actions={actions} align="start" />
                                     </td>
-                                    <td className="px-4 py-5 text-center align-top truncate" style={{ width: 'var(--col-status)' }}>
+                                    <td className="px-4 py-5 text-right pr-6 align-top truncate" style={{ width: 'var(--col-status)' }}>
                                         <div className="flex justify-center">
                                             {event?.status === 'COMPLETED' ? (
                                                 <Badge variant="secondary" className="font-bold px-3 py-1 pointer-events-none text-xs border border-border">Completed</Badge>

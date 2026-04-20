@@ -51,7 +51,11 @@ export function ViewEventModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullScreen>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+    >
       <div className="h-full flex flex-col">
         <DialogHeader>
           <DialogTitle>{terminology.event.singular} Details</DialogTitle>

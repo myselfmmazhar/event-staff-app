@@ -9,6 +9,7 @@ export type CategoryTableRow = Pick<
   | 'name'
   | 'description'
   | 'requirementType'
+  | 'requirementTemplateIds'
   | 'isRequired'
   | 'isActive'
   | 'createdAt'

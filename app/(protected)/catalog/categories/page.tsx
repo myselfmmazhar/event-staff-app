@@ -130,6 +130,7 @@ export default function CategoriesPage() {
     name: category.name,
     description: category.description ?? null,
     requirementType: category.requirementType,
+    requirementTemplateIds: category.requirementTemplateIds ?? [],
     isRequired: category.isRequired,
     isActive: category.isActive,
     createdAt: category.createdAt,

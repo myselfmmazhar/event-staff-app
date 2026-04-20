@@ -1,5 +1,9 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { CATEGORY_REQUIREMENT_TYPE } from '@/lib/category-requirements';
+import {
+  deriveRequirementTypeFromTemplateIds,
+  normalizeReqTemplateIds,
+} from '@/lib/requirement-templates';
 import { TRPCError } from '@trpc/server';
 import type {
   CreateCategoryInput,
@@ -20,6 +24,7 @@ export class CategoryService {
     name: true,
     description: true,
     requirementType: true,
+    requirementTemplateIds: true,
     isRequired: true,
     isActive: true,
     createdBy: true,
@@ -31,7 +36,8 @@ export class CategoryService {
     try {
       const categoryId = await generateCategoryId(this.prisma);
 
-      const requirementType = data.requirementType ?? CATEGORY_REQUIREMENT_TYPE.STANDARD;
+      const templateIds = normalizeReqTemplateIds(data.requirementTemplateIds);
+      const requirementType = deriveRequirementTypeFromTemplateIds(templateIds);
       const isRequired =
         requirementType === CATEGORY_REQUIREMENT_TYPE.STANDARD
           ? false
@@ -42,6 +48,7 @@ export class CategoryService {
           categoryId,
           name: data.name.trim(),
           description: data.description?.trim() || null,
+          requirementTemplateIds: templateIds,
           requirementType,
           isRequired,
           createdBy: createdByUserId,
@@ -134,9 +141,14 @@ export class CategoryService {
     const current = await this.findOne(id);
 
     try {
-      const mergedType = data.requirementType ?? current.requirementType;
+      const mergedTemplates = normalizeReqTemplateIds(
+        data.requirementTemplateIds !== undefined
+          ? data.requirementTemplateIds
+          : (current.requirementTemplateIds as string[] | undefined) ?? []
+      );
+      const requirementType = deriveRequirementTypeFromTemplateIds(mergedTemplates);
       const mergedRequired =
-        mergedType === CATEGORY_REQUIREMENT_TYPE.STANDARD
+        requirementType === CATEGORY_REQUIREMENT_TYPE.STANDARD
           ? false
           : (data.isRequired ?? current.isRequired);
 
@@ -147,7 +159,10 @@ export class CategoryService {
           ...(data.description !== undefined && {
             description: data.description === null ? null : data.description.trim(),
           }),
-          ...(data.requirementType !== undefined && { requirementType: data.requirementType }),
+          ...(data.requirementTemplateIds !== undefined && {
+            requirementTemplateIds: mergedTemplates,
+          }),
+          requirementType,
           isRequired: mergedRequired,
         },
         select: this.categorySelect,

@@ -49,6 +49,8 @@ export function LabelsProvider({ children }: LabelsProviderProps) {
 
   // Fetch labels from tRPC
   const labelsQuery = trpc.settings.getLabels.useQuery(undefined, {
+    // Only fetch on the client to avoid SSR issues with server-to-server calls
+    enabled: typeof window !== "undefined",
     // Fetch on mount
     refetchOnMount: true,
     // Don't refetch on window focus (labels rarely change)

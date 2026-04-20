@@ -158,7 +158,7 @@ export function CreateAssignmentModal({
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} className="max-w-md">
+    <Dialog open={open} onClose={handleClose} className="max-w-2xl">
       <DialogHeader>
         <div className="flex items-center justify-between">
           <DialogTitle>Create Assignment</DialogTitle>

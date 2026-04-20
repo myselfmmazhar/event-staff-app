@@ -349,7 +349,11 @@ export function CallTimeFormModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullScreen>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+    >
       <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">

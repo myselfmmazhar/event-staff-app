@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, SubmitHandler } from 'react-hook-form';
@@ -16,30 +16,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { CloseIcon } from '@/components/ui/icons';
 import type { Category } from '@/lib/types/category';
 import type { CreateCategoryInput } from '@/lib/schemas/category.schema';
 import {
-  CATEGORY_REQUIREMENT_TYPE,
-  CATEGORY_REQUIREMENT_LABELS,
-  type CategoryRequirementType,
-} from '@/lib/category-requirements';
+  REQ_TEMPLATE_IDS,
+  templatesFromCategoryRow,
+  type ReqTemplateId,
+} from '@/lib/requirement-templates';
+import { RequirementTemplateCardGrid } from '@/components/common/requirement-template-card-grid';
 
-const REQUIREMENT_OPTIONS: { value: CategoryRequirementType; group: string }[] = [
-  { value: CATEGORY_REQUIREMENT_TYPE.STANDARD, group: 'Standard' },
-  { value: CATEGORY_REQUIREMENT_TYPE.ESIGNATURE, group: 'Standard' },
-  { value: CATEGORY_REQUIREMENT_TYPE.FILE_UPLOAD, group: 'Standard' },
-  { value: CATEGORY_REQUIREMENT_TYPE.DRIVER_LICENSE, group: 'Smart' },
-  { value: CATEGORY_REQUIREMENT_TYPE.HEADSHOT, group: 'Smart' },
-  { value: CATEGORY_REQUIREMENT_TYPE.RESUME, group: 'Smart' },
-];
+const reqTemplateIdSchema = z.enum(REQ_TEMPLATE_IDS);
 
 const formSchema = z.object({
   name: z
@@ -53,7 +40,7 @@ const formSchema = z.object({
     .transform((v) => v.trim())
     .nullable()
     .default(null),
-  requirementType: z.nativeEnum(CATEGORY_REQUIREMENT_TYPE),
+  requirementTemplateIds: z.array(reqTemplateIdSchema).default([]),
   isRequired: z.boolean(),
 });
 
@@ -93,36 +80,46 @@ export function CategoryFormModal({
     defaultValues: {
       name: '',
       description: null,
-      requirementType: CATEGORY_REQUIREMENT_TYPE.STANDARD,
+      requirementTemplateIds: [],
       isRequired: false,
     },
   });
 
-  const requirementType = watch('requirementType');
+  const templateIds = watch('requirementTemplateIds') ?? [];
+
+  const hasDocumentOrEsignStep = useMemo(
+    () => templateIds.some((t) => t === 'upload' || t === 'idv' || t === 'headshot' || t === 'esign'),
+    [templateIds]
+  );
+
+  const selectedSet = useMemo(() => new Set(templateIds), [templateIds]);
 
   useEffect(() => {
     if (category && open) {
       reset({
         name: category.name,
         description: category.description ?? null,
-        requirementType: category.requirementType ?? CATEGORY_REQUIREMENT_TYPE.STANDARD,
+        requirementTemplateIds: templatesFromCategoryRow({
+          requirementTemplateIds: category.requirementTemplateIds ?? [],
+          requirementType: category.requirementType,
+        }),
         isRequired: category.isRequired ?? false,
       });
     } else if (!category && open) {
       reset({
         name: '',
         description: null,
-        requirementType: CATEGORY_REQUIREMENT_TYPE.STANDARD,
+        requirementTemplateIds: [],
         isRequired: false,
       });
     }
   }, [category, open, reset]);
 
   useEffect(() => {
-    if (requirementType === CATEGORY_REQUIREMENT_TYPE.STANDARD) {
+    if (!hasDocumentOrEsignStep) {
       setValue('isRequired', false);
     }
-  }, [requirementType, setValue]);
+  }, [hasDocumentOrEsignStep, setValue]);
 
   useEffect(() => {
     if (backendErrors.length > 0) {
@@ -135,21 +132,28 @@ export function CategoryFormModal({
     }
   }, [backendErrors, setError]);
 
+  const toggleTemplate = (id: ReqTemplateId) => {
+    const next = new Set(templateIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setValue('requirementTemplateIds', [...next]);
+  };
+
   const handleFormSubmit: SubmitHandler<FormOutput> = (data) => {
     onSubmit({
       name: data.name,
       description: data.description || null,
-      requirementType: data.requirementType,
-      isRequired:
-        data.requirementType === CATEGORY_REQUIREMENT_TYPE.STANDARD ? false : data.isRequired,
+      requirementTemplateIds: data.requirementTemplateIds,
+      isRequired: data.isRequired,
     });
   };
 
-  const standardOptions = REQUIREMENT_OPTIONS.filter((o) => o.group === 'Standard');
-  const smartOptions = REQUIREMENT_OPTIONS.filter((o) => o.group === 'Smart');
-
   return (
-    <Dialog open={open} onClose={onClose} className="max-w-lg">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -178,7 +182,7 @@ export function CategoryFormModal({
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
               <Label htmlFor="name" required>
                 Category Name
@@ -199,7 +203,7 @@ export function CategoryFormModal({
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                rows={4}
+                rows={3}
                 {...register('description')}
                 error={!!errors.description}
                 disabled={isSubmitting}
@@ -211,37 +215,17 @@ export function CategoryFormModal({
             </div>
 
             <div>
-              <Label htmlFor="requirementType">Data collection type</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Choose what talent must provide when this category applies to their assigned services.
+              <Label>Onboarding requirement cards</Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-4">
+                Select which reusable requirements apply to services in this category. When talent is
+                assigned those services, these cards are suggested automatically (you can still adjust on
+                the talent form).
               </p>
-              <Select
-                value={requirementType}
-                onValueChange={(v) => setValue('requirementType', v as CategoryRequirementType)}
+              <RequirementTemplateCardGrid
+                selected={selectedSet}
+                onToggle={toggleTemplate}
                 disabled={isSubmitting}
-              >
-                <SelectTrigger id="requirementType" className="w-full">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
-                    Standard
-                  </div>
-                  {standardOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {CATEGORY_REQUIREMENT_LABELS[opt.value]}
-                    </SelectItem>
-                  ))}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase mt-1">
-                    Smart
-                  </div>
-                  {smartOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {CATEGORY_REQUIREMENT_LABELS[opt.value]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
 
             <div className="flex items-start gap-3 rounded-md border border-border p-3 bg-muted/20">
@@ -249,17 +233,16 @@ export function CategoryFormModal({
                 id="isRequired"
                 checked={watch('isRequired')}
                 onChange={(e) => setValue('isRequired', e.target.checked)}
-                disabled={
-                  isSubmitting || requirementType === CATEGORY_REQUIREMENT_TYPE.STANDARD
-                }
+                disabled={isSubmitting || !hasDocumentOrEsignStep}
               />
               <div>
                 <Label htmlFor="isRequired" className="cursor-pointer font-medium">
                   Required when talent submits data
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  When enabled, talent must satisfy this requirement (uploaded documents or e-signed
-                  tax form, depending on type) before saving their profile or invitation acceptance.
+                  When enabled, talent must satisfy document upload or e-signature requirements from the
+                  cards above before saving their profile or accepting an invitation. Tax form (W-9) flow
+                  is handled separately.
                 </p>
               </div>
             </div>

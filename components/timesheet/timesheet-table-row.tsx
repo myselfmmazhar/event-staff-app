@@ -794,7 +794,7 @@ export function TimesheetTableRow({
                         </td>
                                 )}
                                 {colId === 'status' && (
-                        <td className="px-3 py-2.5 text-center">
+                        <td className="px-3 py-2.5 text-right pr-4">
                             <Badge
                                 variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
                                 className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
@@ -814,7 +814,7 @@ export function TimesheetTableRow({
                             <Fragment key={colId}>
                                 {colId === 'action' && (
                                     <td
-                                        className="px-2 py-2.5 text-center relative"
+                                        className="px-2 py-2.5 text-left pl-4 relative"
                                         style={{ width: `var(--col-cmAction)` }}
                                         onClick={e => e.stopPropagation()}
                                     >
@@ -923,7 +923,7 @@ export function TimesheetTableRow({
                                     </td>
                                 )}
                                 {colId === 'status' && (
-                                    <td className="truncate px-3 py-2.5 text-center" style={{ width: `var(--col-cmStatus)` }}>
+                                    <td className="truncate px-3 py-2.5 text-right pr-4" style={{ width: `var(--col-cmStatus)` }}>
                                         <Badge
                                             variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
                                             className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"
@@ -943,7 +943,7 @@ export function TimesheetTableRow({
                             <Fragment key={colId}>
                                 {colId === 'action' && (
                         <td
-                            className="px-2 py-2.5 text-center relative"
+                            className="px-2 py-2.5 text-left pl-4 relative"
                             style={{ width: `var(--col-action)` }}
                             onClick={(e) => e.stopPropagation()}
                         >
@@ -1363,7 +1363,7 @@ export function TimesheetTableRow({
                         </td>
                                 )}
                                 {colId === 'status' && (
-                        <td className="truncate px-3 py-2.5 text-center" style={{ width: `var(--col-status)` }}>
+                        <td className="truncate px-3 py-2.5 text-right pr-4" style={{ width: `var(--col-status)` }}>
                             <Badge
                                 variant={isRejected ? 'destructive' : reviewRating ? 'info' : 'secondary'}
                                 className="text-[9px] font-bold px-1.5 py-0.5 whitespace-nowrap"

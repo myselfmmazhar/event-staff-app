@@ -49,18 +49,12 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { phoneValidation } from '@/lib/utils/validation';
 import {
-    FileText,
-    Cloud,
-    PenLine,
-    Smartphone,
-    Search,
-    Camera,
-    ClipboardCheck,
-    User,
-    MapPin,
-    Star,
-    Calculator,
-} from 'lucide-react';
+    REQ_TEMPLATE_CARDS,
+    type ReqTemplateId,
+    computeRequirementTemplatesFromServices,
+} from '@/lib/requirement-templates';
+import { RequirementTemplateCardGrid } from '@/components/common/requirement-template-card-grid';
+import { FileText, ClipboardCheck, User, MapPin, Star, Calculator } from 'lucide-react';
 
 const STAFF_FORM_DRAFT_KEY = 'staff-add-form-draft-v1';
 
@@ -105,66 +99,6 @@ function defaultTalentChipIdForStaffType(t: StaffType): string {
             return 'contractor';
     }
 }
-
-type ReqTemplateId = 'w9' | 'upload' | 'esign' | 'idv' | 'bg' | 'headshot';
-
-const REQ_TEMPLATE_CARDS: {
-    id: ReqTemplateId;
-    title: string;
-    badge: 'Standard' | 'Smart';
-    description: string;
-    footer: string;
-    Icon: typeof FileText;
-}[] = [
-        {
-            id: 'w9',
-            title: 'Tax form - W-9',
-            badge: 'Standard',
-            description: 'Contractor tax requirement with acknowledgement and signature.',
-            footer: 'Included for contractor',
-            Icon: FileText,
-        },
-        {
-            id: 'upload',
-            title: 'File upload',
-            badge: 'Standard',
-            description: 'Upload certifications, insurance, IDs, or supporting documents.',
-            footer: 'Add supporting docs',
-            Icon: Cloud,
-        },
-        {
-            id: 'esign',
-            title: 'E-signature',
-            badge: 'Standard',
-            description: 'Signature-only requirement for policies, agreements, or acknowledgements.',
-            footer: 'Signature required',
-            Icon: PenLine,
-        },
-        {
-            id: 'idv',
-            title: 'ID verification',
-            badge: 'Smart',
-            description: 'Identity or document verification based on role and compliance need.',
-            footer: 'Optional requirement',
-            Icon: Smartphone,
-        },
-        {
-            id: 'bg',
-            title: 'Background check',
-            badge: 'Smart',
-            description: 'Use when the role, client, venue, or market requires it.',
-            footer: 'Optional requirement',
-            Icon: Search,
-        },
-        {
-            id: 'headshot',
-            title: 'Headshot / profile photo',
-            badge: 'Smart',
-            description: 'Useful for promotional talent, models, and client-facing roles.',
-            footer: 'Optional requirement',
-            Icon: Camera,
-        },
-    ];
 
 // Helper to get default form values
 const getDefaultFormValues = () => ({
@@ -343,6 +277,23 @@ function StaffFormContent({
     const email = watch('email');
     const phone = watch('phone');
     const serviceIds = watch('serviceIds') ?? [];
+    const staffType = watch('staffType');
+
+    const prevServiceKeyRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!services.length) return;
+        const key = [...serviceIds].sort().join(',');
+        if (prevServiceKeyRef.current === null) {
+            prevServiceKeyRef.current = key;
+            if (isEdit) {
+                setSelectedReqTemplates(computeRequirementTemplatesFromServices(serviceIds, services));
+            }
+            return;
+        }
+        if (prevServiceKeyRef.current === key) return;
+        prevServiceKeyRef.current = key;
+        setSelectedReqTemplates(computeRequirementTemplatesFromServices(serviceIds, services));
+    }, [serviceIds, services, isEdit]);
 
     useEffect(() => {
         if (staff) return;
@@ -824,55 +775,21 @@ function StaffFormContent({
                     <div className="mx-auto max-w-6xl">
                         <h3 className="text-base font-bold text-slate-900">3. Requirement templates</h3>
                         <p className="mt-1 text-xs text-slate-500">
-                            Select reusable requirement cards to plan the onboarding packet.
+                            Cards are pre-filled from the <strong>service categories</strong> you chose on Experience.
+                            Adjust here if this onboarding packet should differ. Manage defaults in{' '}
+                            <strong>Catalog → Categories</strong>.
                             {SHOW_REQUIREMENTS_DOCUMENT_UPLOAD
                                 ? ' Upload documents below when you have files ready.'
                                 : ''}
                         </p>
-                        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {REQ_TEMPLATE_CARDS.map((card) => {
-                                const selected = selectedReqTemplates.has(card.id);
-                                const Icon = card.Icon;
-                                return (
-                                    <button
-                                        key={card.id}
-                                        type="button"
-                                        onClick={() => toggleReqTemplate(card.id)}
-                                        disabled={isSubmitting}
-                                        className={cn(
-                                            'flex flex-col rounded-xl border bg-white p-4 text-left transition-shadow',
-                                            selected
-                                                ? 'border-slate-900 shadow-sm ring-1 ring-slate-900/10'
-                                                : 'border-slate-200 hover:border-slate-300'
-                                        )}
-                                    >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <span className="text-sm font-bold text-slate-900">
-                                                {card.id === 'w9' 
-                                                    ? (watch('staffType') === StaffType.EMPLOYEE ? 'Tax form - W-4' : 'Tax form - W-9') 
-                                                    : card.title}
-                                            </span>
-                                            <span
-                                                className={cn(
-                                                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                                                    card.badge === 'Smart'
-                                                        ? 'bg-sky-100 text-sky-800'
-                                                        : 'bg-slate-100 text-slate-700'
-                                                )}
-                                            >
-                                                {card.badge}
-                                            </span>
-                                        </div>
-                                        <p className="mt-2 flex-1 text-xs leading-relaxed text-slate-500">
-                                            {card.description}
-                                        </p>
-                                        <div className="mt-4 flex h-24 items-center justify-center rounded-lg bg-slate-100/90">
-                                            <Icon className="h-10 w-10 text-slate-400" strokeWidth={1.25} />
-                                        </div>
-                                        <p className="mt-3 text-xs font-bold text-slate-900">{card.footer}</p>
-                                    </button>
-                                );
-                            })}
+                        <div className="mt-6">
+                            <RequirementTemplateCardGrid
+                                staffAppearance
+                                staffType={staffType}
+                                selected={selectedReqTemplates}
+                                onToggle={toggleReqTemplate}
+                                disabled={isSubmitting}
+                            />
                         </div>
                         {SHOW_REQUIREMENTS_DOCUMENT_UPLOAD && (
                             <div className="mt-10">
@@ -1426,8 +1343,8 @@ export function StaffFormModal({
     // Fetch lookup data
     const { data: servicesData } = trpc.staff.getServices.useQuery(undefined, { enabled: open });
     const { data: companiesData } = trpc.staff.getCompanies.useQuery(undefined, { enabled: open });
-    const services = (servicesData ?? []) as ServiceOption[];
-    const companies = (companiesData ?? []) as CompanyOption[];
+    const services = useMemo(() => (servicesData ?? []) as ServiceOption[], [servicesData]);
+    const companies = useMemo(() => (companiesData ?? []) as CompanyOption[], [companiesData]);
 
     // Service creation mutation
     const createServiceMutation = trpc.service.create.useMutation({
@@ -1459,7 +1376,7 @@ export function StaffFormModal({
             <Dialog
                 open={open}
                 onClose={onClose}
-                className="mx-4 flex h-[min(92vh,900px)] w-full max-h-[min(92vh,900px)] max-w-7xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+                className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
             >
                 <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
                     <StaffFormContent
