@@ -161,13 +161,18 @@ export function ProductFormModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} className="max-w-3xl">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
           handleSubmit(handleFormSubmit)(e);
         }}
+        className="flex h-full flex-col overflow-hidden"
       >
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -182,7 +187,7 @@ export function ProductFormModal({
           </div>
         </DialogHeader>
 
-        <DialogContent>
+        <DialogContent className="flex-1 overflow-y-auto px-6 py-6 sm:px-8">
           {isEdit && product && (
             <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
               <p className="text-sm text-muted-foreground">Product ID</p>
@@ -190,7 +195,7 @@ export function ProductFormModal({
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="sm:col-span-3">
               <Label htmlFor="title" required>
                 Product Title
@@ -356,7 +361,7 @@ export function ProductFormModal({
               />
             </div>
 
-            <div className="sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="brand">Brand</Label>
                 <Input
@@ -403,7 +408,7 @@ export function ProductFormModal({
           </div>
         </DialogContent>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
