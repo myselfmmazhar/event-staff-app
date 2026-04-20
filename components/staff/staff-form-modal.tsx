@@ -353,9 +353,15 @@ function StaffFormContent({
     const canProceedBasic = emailValid;
 
     const [pendingSaveAction, setPendingSaveAction] = useState<SaveAction>('close');
+    const pendingSaveActionRef = useRef<SaveAction>('close');
+
+    const setSaveAction = (action: SaveAction) => {
+        pendingSaveActionRef.current = action;
+        setPendingSaveAction(action);
+    };
 
     const handleUpdateAndContinue = () => {
-        setPendingSaveAction('update-continue');
+        setSaveAction('update-continue');
     };
 
     const handleFormSubmit: SubmitHandler<StaffFormInput> = async (data) => {
@@ -372,16 +378,17 @@ function StaffFormContent({
             ...data,
             teamMembers: data.staffRole === StaffRole.TEAM ? teamMembers : undefined,
         };
+        const action = pendingSaveActionRef.current;
         if (!isEdit && taxFormRef.current) {
             const taxData = await taxFormRef.current.getFormData();
-            onSubmit(submitData, taxData ? (taxData as unknown as Record<string, unknown>) : undefined, pendingSaveAction);
+            onSubmit(submitData, taxData ? (taxData as unknown as Record<string, unknown>) : undefined, action);
         } else {
-            onSubmit(submitData, undefined, pendingSaveAction);
+            onSubmit(submitData, undefined, action);
         }
-        if (pendingSaveAction === 'update-continue') {
+        if (action === 'update-continue') {
             goNext();
         }
-        setPendingSaveAction('close');
+        setSaveAction('close');
     };
 
     const sectionProps = {
@@ -921,9 +928,10 @@ function StaffFormContent({
                                         </div>
                                         <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Core Profile</h4>
                                     </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
                                         className="h-8 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                         onClick={() => setWizardStep('basic')}
                                     >
@@ -991,9 +999,10 @@ function StaffFormContent({
                                         </div>
                                         <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Professional Profile</h4>
                                     </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
                                         className="h-8 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                         onClick={() => setWizardStep('talentType')}
                                     >
@@ -1047,9 +1056,10 @@ function StaffFormContent({
                                         </div>
                                         <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Onboarding Packet</h4>
                                     </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
                                         className="h-8 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                         onClick={() => setWizardStep('requirements')}
                                     >
@@ -1093,9 +1103,10 @@ function StaffFormContent({
                                         </div>
                                         <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Collection Strategy</h4>
                                     </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
                                         className="h-8 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                         onClick={() => setWizardStep('tax')}
                                     >
@@ -1247,8 +1258,9 @@ function StaffFormContent({
                             </Button>
                         ) : (
                             <Button
-                                type="submit"
+                                type="button"
                                 disabled={isSubmitting}
+                                onClick={() => handleSubmit(handleFormSubmit)()}
                                 className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[280px]"
                             >
                                 {isSubmitting
@@ -1263,9 +1275,13 @@ function StaffFormContent({
                     <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
                         {isEdit && !isLastStep && (
                             <Button
-                                type="submit"
+                                type="button"
                                 variant="outline"
-                                onClick={handleUpdateAndContinue}
+                                onClick={() => {
+                                    pendingSaveActionRef.current = 'update-continue';
+                                    setPendingSaveAction('update-continue');
+                                    handleSubmit(handleFormSubmit)();
+                                }}
                                 disabled={isSubmitting || (wizardStep === 'basic' && !canProceedBasic)}
                                 className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
                             >
