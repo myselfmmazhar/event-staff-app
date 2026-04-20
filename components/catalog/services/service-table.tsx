@@ -92,7 +92,7 @@ export function ServiceTable({
               aria-label="Select all"
             />
           ),
-          headerClassName: 'w-12 py-3 px-4',
+          headerClassName: 'w-12 py-3 px-4 text-left',
           className: 'w-12 py-4 px-4',
           render: (service: ServiceTableRow) => (
             <Checkbox
