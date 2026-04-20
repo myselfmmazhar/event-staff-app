@@ -128,7 +128,7 @@ export function DataTable<T>({
         initialWidths[col.key] = estimatedFlexibleWidth;
       }
 
-      if (col.key === 'select' || col.key === 'actions') {
+      if (col.key === 'select') {
         lockedColumns.push(col.key);
       }
     }

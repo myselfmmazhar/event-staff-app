@@ -88,7 +88,7 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
   const acceptedOffers = invitations?.accepted || [];
 
   return (
-    <div className="min-h-screen bg-muted/30 px-6 py-6">
+    <div className="min-h-screen bg-muted/30">
       <div className="space-y-7">
         {/* Welcome */}
         <div className="bg-card border border-border rounded-xl px-6 py-5">
@@ -280,7 +280,7 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="min-h-screen bg-muted/30 px-6 py-6">
+    <div className="min-h-screen bg-muted/30">
       <div className="space-y-6">
 
         {/* Page Header */}

@@ -79,7 +79,7 @@ export function CategoryTable({
                 aria-label="Select all"
               />
             ),
-            headerClassName: 'w-12 py-3 px-4',
+            headerClassName: 'w-12 py-3 px-4 text-left',
             className: 'w-12 py-4 px-4',
             render: (category: CategoryTableRow) => (
               <Checkbox

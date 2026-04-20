@@ -407,7 +407,7 @@ export default function EventTemplatesPage() {
   );
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>

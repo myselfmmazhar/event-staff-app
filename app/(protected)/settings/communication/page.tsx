@@ -314,7 +314,7 @@ export default function CommunicationSettingsPage() {
     }
 
     return (
-        <div className="container max-w-5xl py-10 space-y-8">
+        <div className="space-y-8">
             <div className="flex justify-between items-end">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Communication Settings</h1>

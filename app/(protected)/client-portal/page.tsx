@@ -44,7 +44,7 @@ export default function ClientPortalDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-muted/30 px-6 py-6">
+        <div className="min-h-screen bg-muted/30">
             <div className="space-y-6">
 
                 {/* Welcome */}
