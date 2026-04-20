@@ -39,7 +39,7 @@ export function TemplatePreviewModal({
 
   return (
     <Dialog
-      open={open}
+      open
       onClose={onClose}
       className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
     >
