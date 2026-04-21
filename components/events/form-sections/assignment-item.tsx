@@ -126,8 +126,9 @@ export function AssignmentItem({
           className="flex min-w-0 flex-1 flex-col gap-2 px-3 py-2.5 sm:gap-2.5 sm:px-4"
           onClick={editable ? (e) => e.stopPropagation() : undefined}
         >
-          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-2.5">
-            <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {/* Row 1: Title and Dates */}
+          <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+            <div className="flex min-w-[220px] shrink-0 items-center gap-1 sm:min-w-[260px]" onClick={(e) => e.stopPropagation()}>
               <ActionDropdown
                 actions={[
                   {
@@ -146,19 +147,19 @@ export function AssignmentItem({
                 ]}
               />
               <AccordionArrow className="h-6 w-6" />
-            </div>
 
-            <div className="min-w-[100px] max-w-[200px] shrink-0 sm:min-w-[128px] sm:max-w-[240px]">
-              <div className="truncate text-[13px] font-bold leading-tight text-slate-900">{title}</div>
-              <div className="mt-0.5 truncate text-[11px] font-medium leading-tight text-slate-400">
-                {isProduct ? 'Product' : 'Service'}
+              <div className="min-w-[100px] max-w-[200px] shrink-0 sm:min-w-[128px] sm:max-w-[240px]">
+                <div className="truncate text-[13px] font-bold leading-tight text-slate-900">{title}</div>
+                <div className="mt-0.5 truncate text-[11px] font-medium leading-tight text-slate-400">
+                  {isProduct ? 'Product' : 'Service'}
+                </div>
               </div>
             </div>
 
             {!isProduct && serviceAssignment && onQuickUpdate && (
               <>
                 <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
-                <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto">
+                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                   <Input
                     type="date"
                     value={serviceAssignment.startDate || ''}
@@ -197,47 +198,66 @@ export function AssignmentItem({
             )}
           </div>
 
+          {/* Row 2: Quantity, Cost, Price - aligned with row 1 columns */}
           {editable && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-100 pt-2 sm:gap-4">
-              <div className="flex items-center gap-1">
-                <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Quantity:</span>
-                <Input
-                  type="number"
-                  min={1}
-                  value={assignment.quantity}
-                  onChange={(e) => handleQtyChange(parseInt(e.target.value, 10) || 1)}
-                  disabled={disabled}
-                  className="h-8 w-12 rounded-lg border-slate-200 bg-slate-50 px-1 text-center text-[12px] focus:bg-white sm:w-14"
-                />
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Cost: $</span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  value={cost ?? 0}
-                  onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
-                  disabled={disabled}
-                  className="h-8 w-[4.5rem] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] text-slate-700 focus:bg-white sm:w-20"
-                />
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Price: $</span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  value={price ?? 0}
-                  onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
-                  disabled={disabled}
-                  className="h-8 w-[4.5rem] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] font-semibold text-slate-900 focus:bg-white sm:w-20"
-                />
-              </div>
-              <div className="flex h-8 shrink-0 items-center rounded-lg border border-slate-200/80 bg-slate-50 px-2 sm:px-2.5">
-                <span className="whitespace-nowrap text-[10px] font-medium text-slate-500 sm:text-[11px]">
-                  {rateLabel}
-                </span>
+            <div className="border-t border-slate-100 pt-3">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+                {/* Column 1: Quantity - same width as menu/arrow + title */}
+                <div className="flex min-w-[220px] items-center gap-2 shrink-0 sm:min-w-[260px]">
+                  <div className="w-8 shrink-0" />
+                  <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Qty:</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={assignment.quantity}
+                    onChange={(e) => handleQtyChange(parseInt(e.target.value, 10) || 1)}
+                    disabled={disabled}
+                    className="h-8 w-12 rounded-lg border-slate-200 bg-slate-50 px-1 text-center text-[12px] focus:bg-white sm:w-14"
+                  />
+                </div>
+
+                {/* Separator */}
+                <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
+
+                {/* Column 2 & 3: Cost and Price */}
+                {!isProduct && serviceAssignment && onQuickUpdate && (
+                  <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+                    <div className="flex min-w-[220px] items-center gap-2 sm:min-w-[236px]">
+                      <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Cost: $</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={cost ?? 0}
+                        onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
+                        disabled={disabled}
+                        className="h-8 flex-1 rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] text-slate-700 focus:bg-white"
+                      />
+                    </div>
+
+                    <span className="shrink-0 px-0.5 text-xs font-light text-slate-300">—</span>
+
+                    <div className="flex min-w-[220px] items-center gap-2 sm:min-w-[236px]">
+                      <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Price: $</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={price ?? 0}
+                        onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
+                        disabled={disabled}
+                        className="h-8 flex-1 rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] font-semibold text-slate-900 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Rate label */}
+                <div className="flex h-8 shrink-0 items-center rounded-lg border border-slate-200/80 bg-slate-50 px-2 sm:px-2.5">
+                  <span className="whitespace-nowrap text-[10px] font-medium text-slate-500 sm:text-[11px]">
+                    {rateLabel}
+                  </span>
+                </div>
               </div>
             </div>
           )}
