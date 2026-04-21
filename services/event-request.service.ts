@@ -208,7 +208,7 @@ export class EventRequestService {
       const sortBy = query.sortBy ?? "createdAt";
       const sortOrder = query.sortOrder ?? "desc";
 
-      const [data, total] = await Promise.all([
+      const [rows, total] = await Promise.all([
         this.prisma.eventRequest.findMany({
           where,
           select: {
@@ -216,17 +216,30 @@ export class EventRequestService {
             eventRequestId: true,
             title: true,
             description: true,
+            requirements: true,
             status: true,
             createdAt: true,
             requestedAt: true,
             reviewedAt: true,
             venueName: true,
+            address: true,
             city: true,
             state: true,
+            zipCode: true,
+            timezone: true,
             startDate: true,
             startTime: true,
             endDate: true,
             endTime: true,
+            onsitePocName: true,
+            onsitePocPhone: true,
+            requestorName: true,
+            requestorPhone: true,
+            requestorEmail: true,
+            poNumber: true,
+            preEventInstructions: true,
+            rejectionReason: true,
+            requestedServiceIds: true,
             client: {
               select: {
                 id: true,
@@ -257,6 +270,34 @@ export class EventRequestService {
         }),
         this.prisma.eventRequest.count({ where }),
       ]);
+
+      // Resolve service names for all requests in one query
+      const allServiceIds = Array.from(
+        new Set(
+          rows.flatMap((r) =>
+            Array.isArray(r.requestedServiceIds) ? (r.requestedServiceIds as string[]) : []
+          )
+        )
+      );
+
+      const servicesMap: Record<string, { id: string; title: string; description: string | null }> = {};
+      if (allServiceIds.length > 0) {
+        const services = await this.prisma.service.findMany({
+          where: { id: { in: allServiceIds } },
+          select: { id: true, title: true, description: true },
+        });
+        for (const s of services) {
+          servicesMap[s.id] = s;
+        }
+      }
+
+      const data = rows.map((r) => {
+        const ids = Array.isArray(r.requestedServiceIds) ? (r.requestedServiceIds as string[]) : [];
+        return {
+          ...r,
+          requestedServices: ids.map((id) => servicesMap[id]).filter(Boolean),
+        };
+      });
 
       return {
         data,
