@@ -5,7 +5,13 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { GripVertical } from 'lucide-react';
-import { SquaresIcon, WrenchScrewdriverIcon, CubeIcon, MapPinIcon } from '@/components/ui/icons';
+import {
+  SquaresIcon,
+  WrenchScrewdriverIcon,
+  CubeIcon,
+  MapPinIcon,
+  ClipboardListIcon,
+} from '@/components/ui/icons';
 import { trpc as api } from '@/lib/client/trpc';
 import {
   DndContext,
@@ -33,9 +39,10 @@ type Tab = {
 
 const ALL_TABS: Tab[] = [
   { id: 'categories', name: 'Categories', href: '/catalog/categories', icon: SquaresIcon },
-  { id: 'services',   name: 'Services',   href: '/catalog/services',   icon: WrenchScrewdriverIcon },
-  { id: 'products',   name: 'Products',   href: '/catalog/products',   icon: CubeIcon },
-  { id: 'locations',  name: 'Locations',  href: '/catalog/locations',  icon: MapPinIcon, disabled: true },
+  { id: 'requirements', name: 'Requirements', href: '/catalog/requirements', icon: ClipboardListIcon },
+  { id: 'services', name: 'Services', href: '/catalog/services', icon: WrenchScrewdriverIcon },
+  { id: 'products', name: 'Products', href: '/catalog/products', icon: CubeIcon },
+  { id: 'locations', name: 'Locations', href: '/catalog/locations', icon: MapPinIcon, disabled: true },
 ];
 
 function SortableTab({ tab, isActive }: { tab: Tab; isActive: boolean }) {

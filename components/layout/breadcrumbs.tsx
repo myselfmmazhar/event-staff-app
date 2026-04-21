@@ -24,6 +24,7 @@ export function Breadcrumbs() {
       'services': 'Services',
       'products': 'Products',
       'locations': 'Locations',
+      'requirements': 'Requirements',
 
       // Time Pod section
       'timesheet': 'Time Manager',
@@ -135,6 +136,13 @@ export function Breadcrumbs() {
         hierarchy.push({ label: 'Categories' });
         if (isCreate) {
           hierarchy.push({ label: 'Add Category' });
+        } else {
+          hierarchy.push({ label: 'Overview' });
+        }
+      } else if (secondSegment === 'requirements') {
+        hierarchy.push({ label: 'Requirements' });
+        if (isCreate) {
+          hierarchy.push({ label: 'Add Requirement' });
         } else {
           hierarchy.push({ label: 'Overview' });
         }

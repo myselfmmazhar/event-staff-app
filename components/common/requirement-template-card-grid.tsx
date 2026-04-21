@@ -12,6 +12,12 @@ export interface RequirementTemplateCardGridProps {
   staffType?: StaffType;
   /** Match the slate styling used inside the staff wizard dialog. */
   staffAppearance?: boolean;
+  /** Single-select mode (e.g. catalog requirement wizard). */
+  selectionMode?: 'multi' | 'single';
+  singleSelected?: ReqTemplateId | null;
+  onSingleChange?: (id: ReqTemplateId | null) => void;
+  /** When set, only these template ids are shown (order preserved from REQ_TEMPLATE_CARDS). */
+  visibleIds?: readonly ReqTemplateId[];
 }
 
 export function RequirementTemplateCardGrid({
@@ -20,11 +26,21 @@ export function RequirementTemplateCardGrid({
   disabled = false,
   staffType = StaffType.CONTRACTOR,
   staffAppearance = false,
+  selectionMode = 'multi',
+  singleSelected = null,
+  onSingleChange,
+  visibleIds,
 }: RequirementTemplateCardGridProps) {
+  const visibleSet = visibleIds?.length ? new Set(visibleIds) : null;
+  const cards = REQ_TEMPLATE_CARDS.filter((c) => !visibleSet || visibleSet.has(c.id));
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {REQ_TEMPLATE_CARDS.map((card) => {
-        const isSelected = selected.has(card.id);
+      {cards.map((card) => {
+        const isSelected =
+          selectionMode === 'single'
+            ? singleSelected === card.id
+            : selected.has(card.id);
         const Icon = card.Icon;
         const title =
           card.id === 'w9'
@@ -36,7 +52,13 @@ export function RequirementTemplateCardGrid({
           <button
             key={card.id}
             type="button"
-            onClick={() => onToggle(card.id)}
+            onClick={() => {
+              if (selectionMode === 'single' && onSingleChange) {
+                onSingleChange(singleSelected === card.id ? null : card.id);
+              } else {
+                onToggle(card.id);
+              }
+            }}
             disabled={disabled}
             className={cn(
               'flex flex-col rounded-xl border p-4 text-left transition-shadow',

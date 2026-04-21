@@ -14,6 +14,13 @@ export const REQ_TEMPLATE_IDS = ['w9', 'upload', 'esign', 'idv', 'bg', 'headshot
 
 export type ReqTemplateId = (typeof REQ_TEMPLATE_IDS)[number];
 
+const TALENT_SUBMISSION_TEMPLATE_IDS = new Set<ReqTemplateId>(['upload', 'esign', 'idv', 'headshot']);
+
+/** Templates that can gate talent profile / invitation submission (matches category form logic). */
+export function isTalentSubmissionTemplateId(id: ReqTemplateId): boolean {
+  return TALENT_SUBMISSION_TEMPLATE_IDS.has(id);
+}
+
 const REQ_TEMPLATE_ID_SET = new Set<string>(REQ_TEMPLATE_IDS);
 
 export function isReqTemplateId(value: string): value is ReqTemplateId {
