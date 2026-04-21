@@ -6,7 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
-import { ClipboardListIcon, SearchIcon, CheckIcon, XIcon, MapPinIcon, CalendarIcon, UserIcon, FileTextIcon } from '@/components/ui/icons';
+import { ClipboardListIcon, SearchIcon, CheckIcon, XIcon, MapPinIcon, CalendarIcon, UserIcon, CheckCircleIcon, XCircleIcon, BriefcaseIcon } from '@/components/ui/icons';
+import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
+import { useToast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
 import { format, parseISO } from 'date-fns';
 import type { EventRequestStatus } from '@prisma/client';
@@ -36,6 +38,7 @@ type RequestData = {
     poNumber: string | null;
     preEventInstructions: string | null;
     rejectionReason: string | null;
+    requestedServices: { id: string; title: string; description: string | null }[];
     client: {
         id: string;
         businessName: string | null;
@@ -51,7 +54,6 @@ const STATUS_TABS: { label: string; value: StatusFilter }[] = [
     { label: 'Pending', value: 'PENDING' },
     { label: 'Approved', value: 'APPROVED' },
     { label: 'Rejected', value: 'REJECTED' },
-    { label: 'All', value: 'ALL' },
 ];
 
 const STATUS_BADGE: Record<EventRequestStatus, { label: string; variant: 'warning' | 'success' | 'destructive' }> = {
@@ -91,7 +93,7 @@ function ExpandedRow({
 
     return (
         <div className="px-6 py-5 bg-muted/10 border-t border-border">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {/* Event Details */}
                 <div className="space-y-3">
                     <div className="flex items-center gap-1.5 mb-2">
@@ -163,6 +165,31 @@ function ExpandedRow({
                         </div>
                     )}
                 </div>
+
+                {/* Requested Services — 4th column */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                        <BriefcaseIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Services</span>
+                    </div>
+                    {r.requestedServices && r.requestedServices.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                            {r.requestedServices.map((service) => (
+                                <div
+                                    key={service.id}
+                                    className="flex flex-col gap-0.5 px-3 py-2 rounded-lg border border-border bg-background shadow-sm"
+                                >
+                                    <span className="text-xs font-semibold text-foreground leading-tight">{service.title}</span>
+                                    {service.description && (
+                                        <span className="text-[11px] text-muted-foreground leading-tight line-clamp-2">{service.description}</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No services requested</p>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -177,6 +204,11 @@ export default function EventRequestsPage() {
     const [rejectReason, setRejectReason] = useState('');
     const [approveId, setApproveId] = useState<string | null>(null);
     const [approveNotes, setApproveNotes] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [pendingBatchAction, setPendingBatchAction] = useState<'APPROVE' | 'REJECT' | null>(null);
+    const [batchRejectReason, setBatchRejectReason] = useState('');
+
+    const { toast } = useToast();
 
     const utils = trpc.useUtils();
 
@@ -209,6 +241,35 @@ export default function EventRequestsPage() {
         },
     });
 
+    const batchApproveMutation = trpc.eventRequest.batchApprove.useMutation({
+        onSuccess: (data) => {
+            toast({ title: 'Requests Approved', description: `${data.count} request(s) approved.` });
+            setSelectedIds(new Set());
+            setPendingBatchAction(null);
+            utils.eventRequest.getAll.invalidate();
+            utils.eventRequest.getCounts.invalidate();
+        },
+        onError: (error) => {
+            toast({ title: 'Error', description: error.message, variant: 'error' });
+            setPendingBatchAction(null);
+        },
+    });
+
+    const batchRejectMutation = trpc.eventRequest.batchReject.useMutation({
+        onSuccess: (data) => {
+            toast({ title: 'Requests Rejected', description: `${data.count} request(s) rejected.` });
+            setSelectedIds(new Set());
+            setPendingBatchAction(null);
+            setBatchRejectReason('');
+            utils.eventRequest.getAll.invalidate();
+            utils.eventRequest.getCounts.invalidate();
+        },
+        onError: (error) => {
+            toast({ title: 'Error', description: error.message, variant: 'error' });
+            setPendingBatchAction(null);
+        },
+    });
+
     const requests = (data?.data || []) as RequestData[];
     const meta = data?.meta;
 
@@ -221,6 +282,7 @@ export default function EventRequestsPage() {
         setStatusFilter(value);
         setPage(1);
         setExpandedKeys(new Set());
+        setSelectedIds(new Set());
     };
 
     const handleToggleExpand = (key: string) => {
@@ -240,7 +302,87 @@ export default function EventRequestsPage() {
     const getClientName = (client: RequestData['client']) =>
         client.businessName || [client.firstName, client.lastName].filter(Boolean).join(' ') || client.email || 'Unknown';
 
+    const pendingRequests = requests.filter((r) => r.status === 'PENDING');
+    const allSelected = pendingRequests.length > 0 && pendingRequests.every((r) => selectedIds.has(r.id));
+    const someSelected = pendingRequests.some((r) => selectedIds.has(r.id)) && !allSelected;
+
+    const handleSelectAll = () => {
+        if (allSelected) {
+            const next = new Set(selectedIds);
+            pendingRequests.forEach((r) => next.delete(r.id));
+            setSelectedIds(next);
+        } else {
+            const next = new Set(selectedIds);
+            pendingRequests.forEach((r) => next.add(r.id));
+            setSelectedIds(next);
+        }
+    };
+
+    const handleSelectOne = (id: string) => {
+        const next = new Set(selectedIds);
+        next.has(id) ? next.delete(id) : next.add(id);
+        setSelectedIds(next);
+    };
+
+    const showActionColumns = statusFilter === 'PENDING' || statusFilter === 'ALL';
+
     const columns: ColumnDef<RequestData>[] = [
+        ...(showActionColumns ? [
+            {
+                key: 'select',
+                label: (
+                    <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={(el: HTMLInputElement | null) => { if (el) el.indeterminate = someSelected; }}
+                        onChange={handleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                ),
+                headerClassName: 'text-center py-3 px-2 w-10',
+                render: (r: RequestData) =>
+                    r.status === 'PENDING' ? (
+                        <input
+                            type="checkbox"
+                            checked={selectedIds.has(r.id)}
+                            onChange={() => handleSelectOne(r.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                    ) : null,
+            } as ColumnDef<RequestData>,
+            {
+                key: 'actions',
+                label: 'Actions',
+                headerClassName: 'text-left py-3 px-4 w-10',
+                className: 'w-10 py-3 px-2',
+                render: (r: RequestData) => {
+                    if (r.status !== 'PENDING') return null;
+                    const actions: ActionItem[] = [
+                        {
+                            label: 'Approve',
+                            icon: <CheckCircleIcon className="h-3.5 w-3.5" />,
+                            onClick: () => setApproveId(r.id),
+                        },
+                        {
+                            label: 'Reject',
+                            icon: <XCircleIcon className="h-3.5 w-3.5" />,
+                            onClick: () => setRejectId(r.id),
+                            variant: 'destructive',
+                        },
+                    ];
+                    return <ActionDropdown actions={actions} />;
+                },
+            } as ColumnDef<RequestData>,
+        ] : []),
+        {
+            key: 'status',
+            label: 'Status',
+            render: (r) => {
+                const s = STATUS_BADGE[r.status];
+                return <Badge variant={s.variant}>{s.label}</Badge>;
+            },
+        },
         {
             key: 'eventRequestId',
             label: 'Request ID',
@@ -309,14 +451,6 @@ export default function EventRequestsPage() {
                 <span className="text-sm text-muted-foreground">{formatDate(r.createdAt)}</span>
             ),
         },
-        {
-            key: 'status',
-            label: 'Status',
-            render: (r) => {
-                const s = STATUS_BADGE[r.status];
-                return <Badge variant={s.variant}>{s.label}</Badge>;
-            },
-        },
     ];
 
     return (
@@ -381,6 +515,42 @@ export default function EventRequestsPage() {
 
             {/* Table */}
             <Card className="p-4">
+                {selectedIds.size > 0 && (
+                    <div className="mb-3 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-foreground">
+                                {selectedIds.size} request{selectedIds.size > 1 ? 's' : ''} selected
+                            </span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedIds(new Set())}
+                                className="text-muted-foreground"
+                            >
+                                <XIcon className="h-4 w-4 mr-1" />
+                                Clear
+                            </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => setPendingBatchAction('APPROVE')}
+                            >
+                                <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                Accept All
+                            </Button>
+                            <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => setPendingBatchAction('REJECT')}
+                            >
+                                <XCircleIcon className="h-4 w-4 mr-1" />
+                                Reject All
+                            </Button>
+                        </div>
+                    </div>
+                )}
                 <DataTable
                     tableId="event-requests"
                     data={requests}
@@ -495,6 +665,68 @@ export default function EventRequestsPage() {
                                 variant="danger"
                             >
                                 {rejectMutation.isPending ? 'Rejecting…' : 'Reject'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Batch Approve Dialog */}
+            {pendingBatchAction === 'APPROVE' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+                        <h2 className="text-lg font-semibold mb-1">
+                            Approve {selectedIds.size} Request{selectedIds.size > 1 ? 's' : ''}?
+                        </h2>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            This will approve all selected requests and create new events in Published status.
+                        </p>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setPendingBatchAction(null)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => batchApproveMutation.mutate({ ids: Array.from(selectedIds) })}
+                                disabled={batchApproveMutation.isPending}
+                            >
+                                {batchApproveMutation.isPending ? 'Approving…' : 'Yes, Accept All'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Batch Reject Dialog */}
+            {pendingBatchAction === 'REJECT' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+                        <h2 className="text-lg font-semibold mb-1">
+                            Reject {selectedIds.size} Request{selectedIds.size > 1 ? 's' : ''}?
+                        </h2>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            This reason will be applied to all selected requests and will be visible to clients.
+                        </p>
+                        <label className="text-sm font-medium text-foreground block mb-1">
+                            Rejection Reason <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            className="w-full border border-border rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 mb-4"
+                            rows={3}
+                            placeholder="Explain why these requests are being rejected..."
+                            value={batchRejectReason}
+                            onChange={(e) => setBatchRejectReason(e.target.value)}
+                        />
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => { setPendingBatchAction(null); setBatchRejectReason(''); }}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="danger"
+                                onClick={() => batchRejectMutation.mutate({ ids: Array.from(selectedIds), rejectionReason: batchRejectReason })}
+                                disabled={batchRejectMutation.isPending || !batchRejectReason.trim()}
+                            >
+                                {batchRejectMutation.isPending ? 'Rejecting…' : 'Yes, Reject All'}
                             </Button>
                         </div>
                     </div>

@@ -407,7 +407,9 @@ model EventRequest {
   
   // Additional metadata
   notes           String?
-  
+  // Client-selected services for assignment on approval
+  requestedServiceIds Json?
+
   @@index([clientId])
   @@index([status])
   @@index([createdAt])

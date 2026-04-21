@@ -190,7 +190,7 @@ export function DataTable<T>({
                     key={col.key}
                     className={cn(
                       'relative group transition-colors',
-                      col.key === 'actions' || col.key === 'select'
+                      col.key === 'actions' || col.key === 'select' || col.key === 'status'
                         ? 'whitespace-nowrap'
                         : 'truncate',
                       col.headerClassName || 'text-left py-3 px-4'
@@ -248,7 +248,7 @@ export function DataTable<T>({
                         <td
                           key={col.key}
                           className={cn(
-                            col.key === 'actions' || col.key === 'select'
+                            col.key === 'actions' || col.key === 'select' || col.key === 'status'
                               ? 'whitespace-nowrap'
                               : 'truncate',
                             col.className || 'py-4 px-4'

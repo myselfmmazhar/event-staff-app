@@ -146,6 +146,39 @@ export const eventRequestRouter = router({
     }),
 
   /**
+   * Batch approve event requests (admin only)
+   */
+  batchApprove: adminProcedure
+    .input(z.object({ ids: z.array(z.string().uuid()).min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const service = new EventRequestService(ctx.prisma);
+      const results = await Promise.allSettled(
+        input.ids.map((id) => service.approve({ id }, ctx.userId!))
+      );
+      const count = results.filter((r) => r.status === 'fulfilled').length;
+      return { count };
+    }),
+
+  /**
+   * Batch reject event requests (admin only)
+   */
+  batchReject: adminProcedure
+    .input(z.object({
+      ids: z.array(z.string().uuid()).min(1),
+      rejectionReason: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const service = new EventRequestService(ctx.prisma);
+      const results = await Promise.allSettled(
+        input.ids.map((id) =>
+          service.reject({ id, rejectionReason: input.rejectionReason }, ctx.userId!)
+        )
+      );
+      const count = results.filter((r) => r.status === 'fulfilled').length;
+      return { count };
+    }),
+
+  /**
    * Get status counts for all event requests (admin only)
    * Returns counts per status and total
    */

@@ -1,7 +1,8 @@
-import { PrismaClient, EventRequestStatus, Prisma } from "@prisma/client";
+import { PrismaClient, EventRequestStatus, Prisma, RateType } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { EventRequestCreateInput, EventRequestUpdateInput, EventRequestQueryInput, EventRequestApproveInput, EventRequestRejectInput } from "@/lib/schemas/event-request.schema";
 import { EventService } from "./event.service";
+import { generateCallTimeId } from "@/lib/utils/id-generator";
 
 /**
  * Event Request Service
@@ -62,6 +63,7 @@ export class EventRequestService {
           eventDocuments: data.eventDocuments ?? undefined,
           customFields: data.customFields ?? undefined,
           estimate: data.estimate ?? null,
+          requestedServiceIds: data.requestedServiceIds ?? undefined,
           status: EventRequestStatus.PENDING,
         },
         include: {
@@ -142,6 +144,7 @@ export class EventRequestService {
           eventDocuments: data.eventDocuments ?? undefined,
           customFields: data.customFields ?? undefined,
           estimate: data.estimate ?? null,
+          requestedServiceIds: data.requestedServiceIds ?? undefined,
         },
         include: {
           client: {
@@ -205,7 +208,7 @@ export class EventRequestService {
       const sortBy = query.sortBy ?? "createdAt";
       const sortOrder = query.sortOrder ?? "desc";
 
-      const [data, total] = await Promise.all([
+      const [rows, total] = await Promise.all([
         this.prisma.eventRequest.findMany({
           where,
           select: {
@@ -213,17 +216,30 @@ export class EventRequestService {
             eventRequestId: true,
             title: true,
             description: true,
+            requirements: true,
             status: true,
             createdAt: true,
             requestedAt: true,
             reviewedAt: true,
             venueName: true,
+            address: true,
             city: true,
             state: true,
+            zipCode: true,
+            timezone: true,
             startDate: true,
             startTime: true,
             endDate: true,
             endTime: true,
+            onsitePocName: true,
+            onsitePocPhone: true,
+            requestorName: true,
+            requestorPhone: true,
+            requestorEmail: true,
+            poNumber: true,
+            preEventInstructions: true,
+            rejectionReason: true,
+            requestedServiceIds: true,
             client: {
               select: {
                 id: true,
@@ -254,6 +270,34 @@ export class EventRequestService {
         }),
         this.prisma.eventRequest.count({ where }),
       ]);
+
+      // Resolve service names for all requests in one query
+      const allServiceIds = Array.from(
+        new Set(
+          rows.flatMap((r) =>
+            Array.isArray(r.requestedServiceIds) ? (r.requestedServiceIds as string[]) : []
+          )
+        )
+      );
+
+      const servicesMap: Record<string, { id: string; title: string; description: string | null }> = {};
+      if (allServiceIds.length > 0) {
+        const services = await this.prisma.service.findMany({
+          where: { id: { in: allServiceIds } },
+          select: { id: true, title: true, description: true },
+        });
+        for (const s of services) {
+          servicesMap[s.id] = s;
+        }
+      }
+
+      const data = rows.map((r) => {
+        const ids = Array.isArray(r.requestedServiceIds) ? (r.requestedServiceIds as string[]) : [];
+        return {
+          ...r,
+          requestedServices: ids.map((id) => servicesMap[id]).filter(Boolean),
+        };
+      });
 
       return {
         data,
@@ -371,6 +415,7 @@ export class EventRequestService {
           fileLinks: true,
           eventDocuments: true,
           customFields: true,
+          requestedServiceIds: true,
           rejectionReason: true,
           createdEvent: {
             select: {
@@ -402,7 +447,7 @@ export class EventRequestService {
     try {
       const eventRequest = await this.prisma.eventRequest.findUnique({
         where: { id: data.id },
-        include: { client: true },
+        include: { client: true, createdEvent: true },
       });
 
       if (!eventRequest) {
@@ -469,6 +514,56 @@ export class EventRequestService {
           createdAt: true,
         },
       });
+
+      // Auto-create call times for each client-selected service
+      const serviceIds = Array.isArray(eventRequest.requestedServiceIds)
+        ? (eventRequest.requestedServiceIds as string[])
+        : [];
+
+      if (serviceIds.length > 0) {
+        const costUnitTypeToRateType: Record<string, RateType> = {
+          HOURLY: 'PER_HOUR',
+          SHIFT: 'PER_SHIFT',
+          DAY: 'PER_DAY',
+          ASSIGNMENT: 'PER_SHIFT',
+          JOB: 'PER_SHIFT',
+        };
+
+        const services = await this.prisma.service.findMany({
+          where: { id: { in: serviceIds } },
+        });
+
+        for (const service of services) {
+          const callTimeId = await generateCallTimeId(this.prisma);
+          const rateType: RateType = service.costUnitType
+            ? costUnitTypeToRateType[service.costUnitType] ?? 'PER_HOUR'
+            : 'PER_HOUR';
+
+          await this.prisma.callTime.create({
+            data: {
+              callTimeId,
+              eventId: createdEvent.id,
+              serviceId: service.id,
+              numberOfStaffRequired: 1,
+              startDate: eventRequest.startDate ?? null,
+              startTime: eventRequest.startTime ?? null,
+              endDate: eventRequest.endDate ?? null,
+              endTime: eventRequest.endTime ?? null,
+              payRate: service.cost ?? 0,
+              payRateType: rateType,
+              billRate: service.price ?? 0,
+              billRateType: rateType,
+              travelInMinimum: service.travelInMinimum,
+              expenditure: service.expenditure,
+              expenditureCost: service.expenditureCost ?? null,
+              expenditurePrice: service.expenditurePrice ?? null,
+              expenditureAmount: service.expenditureAmount ?? null,
+              expenditureAmountType: service.expenditureAmountType ?? null,
+              minimum: service.minimum ?? null,
+            },
+          });
+        }
+      }
 
       // Update event request with approval details
       const updatedRequest = await this.prisma.eventRequest.update({

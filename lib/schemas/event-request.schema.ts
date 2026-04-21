@@ -106,6 +106,7 @@ const sharedFields = {
   eventDocuments: z.array(eventDocumentSchema).optional().nullable(),
   customFields: z.array(customFieldSchema).optional().nullable(),
   estimate: z.boolean().optional().nullable(),
+  requestedServiceIds: z.array(z.string().uuid()).optional().nullable(),
 };
 
 /**

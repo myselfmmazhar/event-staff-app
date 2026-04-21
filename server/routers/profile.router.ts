@@ -114,7 +114,11 @@ export const profileRouter = router({
           select: {
             numberOfStaffRequired: true,
             invitations: {
-              select: { status: true, isConfirmed: true },
+              select: {
+                status: true,
+                isConfirmed: true,
+                staff: { select: { firstName: true, lastName: true } },
+              },
             },
           },
         },
