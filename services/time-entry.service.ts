@@ -385,10 +385,10 @@ export class TimeEntryService {
     async generateInvoices(
         invitationIds: string[],
         userId: string,
-        shiftSelections?: Array<{ invitationId: string; includeSchedule: boolean; includeActual: boolean }>
+        shiftSelections?: Array<{ invitationId: string; includeSchedule: boolean; includeActual: boolean; includeName?: boolean; includeNotes?: boolean }>
     ) {
         const selectionMap = new Map(
-            (shiftSelections ?? []).map((s) => [s.invitationId, { includeSchedule: s.includeSchedule, includeActual: s.includeActual }])
+            (shiftSelections ?? []).map((s) => [s.invitationId, { includeSchedule: s.includeSchedule, includeActual: s.includeActual, includeName: s.includeName ?? true, includeNotes: s.includeNotes ?? true }])
         );
         const invitations = await (this.prisma as any).callTimeInvitation.findMany({
             where: {
@@ -435,7 +435,7 @@ export class TimeEntryService {
             const invoiceNo = `INV-${Math.floor(Date.now() / 1000)}-${Math.floor(Math.random() * 1000)}`;
 
             const items = group.map((inv: any) => {
-                const mode = selectionMap.get(inv.id) ?? { includeSchedule: true, includeActual: true };
+                const mode = selectionMap.get(inv.id) ?? { includeSchedule: true, includeActual: true, includeName: true, includeNotes: true };
                 const includeSchedule = mode.includeSchedule;
                 const includeActual = mode.includeActual;
                 if (!includeSchedule && !includeActual) {
@@ -510,9 +510,12 @@ export class TimeEntryService {
 
                 const itemsList = [];
 
+                const staffLine = mode.includeName ? ` - ${inv.staff.firstName} ${inv.staff.lastName}` : '';
+                const baseDescription = `${inv.callTime.service?.title || 'Staff'}${staffLine}`;
+
                 // Add Base Item
                 itemsList.push({
-                    description: `${inv.callTime.service?.title || 'Staff'} - ${inv.staff.firstName} ${inv.staff.lastName}`,
+                    description: baseDescription,
                     quantity: baseQuantity,
                     price: rate,
                     amount: baseQuantity * rate,
@@ -526,13 +529,13 @@ export class TimeEntryService {
                     actualHours,
                     scheduleShiftDetail: includeSchedule ? scheduleShiftDetail : '',
                     actualShiftDetails: includeActual ? actualShiftDetails : '',
-                    internalNotes: inv.timeEntry?.notes || ""
+                    internalNotes: mode.includeNotes ? (inv.timeEntry?.notes || "") : ""
                 });
 
                 // Add Overtime Item if applicable
                 if (otHours > 0) {
                     itemsList.push({
-                        description: `Overtime - ${inv.callTime.service?.title || 'Staff'} - ${inv.staff.firstName} ${inv.staff.lastName}`,
+                        description: `Overtime - ${baseDescription}`,
                         quantity: otHours,
                         price: rate,
                         amount: otHours * rate,

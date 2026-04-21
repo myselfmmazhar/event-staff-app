@@ -1235,7 +1235,8 @@ export function AssignmentForm({
                   </div>
                 </div>
               )}
-              {!!watch('expenditure') && watch('travelInMinimum') === false && (
+              {/* {!!watch('expenditure') && watch('travelInMinimum') === false && ( */}
+              {!!watch('expenditure') && (
                 <>
                   <div>
                     <Label className="text-sm font-medium mb-2 block">Travel Type</Label>
@@ -1275,13 +1276,13 @@ export function AssignmentForm({
                     />
                     {watch('expenditureAmountType') === 'MULTIPLIER' && watch('payRate') != null && watch('expenditureCost') != null && (
                       <div className="text-[11px] text-blue-600 font-semibold mt-1 px-1 flex items-center gap-1">
-                         <span>Calculated Value:</span>
-                         <span className="bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
-                           ${((Number(watch('payRate')) || 0) * (Number(watch('expenditureCost')) || 0)).toFixed(2)}
-                         </span>
-                         <span className="text-muted-foreground text-[10px] font-normal italic">
-                           ({Number(watch('payRate')).toFixed(2)} x {Number(watch('expenditureCost'))})
-                         </span>
+                        <span>Calculated Value:</span>
+                        <span className="bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                          ${((Number(watch('payRate')) || 0) * (Number(watch('expenditureCost')) || 0)).toFixed(2)}
+                        </span>
+                        <span className="text-muted-foreground text-[10px] font-normal italic">
+                          ({Number(watch('payRate')).toFixed(2)} x {Number(watch('expenditureCost'))})
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1298,13 +1299,13 @@ export function AssignmentForm({
                     />
                     {watch('expenditureAmountType') === 'MULTIPLIER' && watch('billRate') != null && watch('expenditurePrice') != null && (
                       <div className="text-[11px] text-blue-600 font-semibold mt-1 px-1 flex items-center gap-1">
-                         <span>Calculated Value:</span>
-                         <span className="bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
-                           ${((Number(watch('billRate')) || 0) * (Number(watch('expenditurePrice')) || 0)).toFixed(2)}
-                         </span>
-                         <span className="text-muted-foreground text-[10px] font-normal italic">
-                           ({Number(watch('billRate')).toFixed(2)} x {Number(watch('expenditurePrice'))})
-                         </span>
+                        <span>Calculated Value:</span>
+                        <span className="bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                          ${((Number(watch('billRate')) || 0) * (Number(watch('expenditurePrice')) || 0)).toFixed(2)}
+                        </span>
+                        <span className="text-muted-foreground text-[10px] font-normal italic">
+                          ({Number(watch('billRate')).toFixed(2)} x {Number(watch('expenditurePrice'))})
+                        </span>
                       </div>
                     )}
                   </div>

@@ -91,7 +91,7 @@ export default function TimeManagerPage() {
     // ── Row State ──
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-    const [shiftModeByInvitation, setShiftModeByInvitation] = useState<Record<string, { includeSchedule: boolean; includeActual: boolean }>>({});
+    const [shiftModeByInvitation, setShiftModeByInvitation] = useState<Record<string, { includeSchedule: boolean; includeActual: boolean; includeName: boolean; includeNotes: boolean }>>({});
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
     const [confirmState, setConfirmState] = useState<{
         open: boolean;
@@ -219,10 +219,19 @@ export default function TimeManagerPage() {
     };
 
     const getShiftMode = (invitationId: string) =>
-        shiftModeByInvitation[invitationId] ?? { includeSchedule: true, includeActual: true };
+        shiftModeByInvitation[invitationId] ?? { includeSchedule: true, includeActual: true, includeName: true, includeNotes: true };
 
-    const handleShiftModeChange = (invitationId: string, next: { includeSchedule: boolean; includeActual: boolean }) => {
-        setShiftModeByInvitation((prev) => ({ ...prev, [invitationId]: next }));
+    const handleShiftModeChange = (invitationId: string, next: { includeSchedule: boolean; includeActual: boolean; includeName?: boolean; includeNotes?: boolean }) => {
+        setShiftModeByInvitation((prev) => {
+            const current = prev[invitationId] ?? { includeSchedule: true, includeActual: true, includeName: true, includeNotes: true };
+            return {
+                ...prev,
+                [invitationId]: {
+                    ...current,
+                    ...next
+                }
+            };
+        });
     };
 
     const toggleGroup = (eventId: string) => {
@@ -284,6 +293,8 @@ export default function TimeManagerPage() {
                         subTab={subTab}
                         includeSchedule={getShiftMode(ct.id).includeSchedule}
                         includeActual={getShiftMode(ct.id).includeActual}
+                        includeName={getShiftMode(ct.id).includeName}
+                        includeNotes={getShiftMode(ct.id).includeNotes}
                         onShiftModeChange={handleShiftModeChange}
                         rowVariant="card"
                     />
@@ -337,6 +348,8 @@ export default function TimeManagerPage() {
             invitationId,
             includeSchedule: getShiftMode(invitationId).includeSchedule,
             includeActual: getShiftMode(invitationId).includeActual,
+            includeName: getShiftMode(invitationId).includeName,
+            includeNotes: getShiftMode(invitationId).includeNotes,
         }));
         const hasAtLeastOneShiftSelected = shiftSelections.some((s) => s.includeSchedule || s.includeActual);
         if (!hasAtLeastOneShiftSelected) {
@@ -1623,6 +1636,8 @@ export default function TimeManagerPage() {
                                                                         subTab={subTab}
                                                                         includeSchedule={getShiftMode(ct.id).includeSchedule}
                                                                         includeActual={getShiftMode(ct.id).includeActual}
+                                                                        includeName={getShiftMode(ct.id).includeName}
+                                                                        includeNotes={getShiftMode(ct.id).includeNotes}
                                                                         onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
@@ -1651,6 +1666,8 @@ export default function TimeManagerPage() {
                                                                         subTab={subTab}
                                                                         includeSchedule={getShiftMode(ct.id).includeSchedule}
                                                                         includeActual={getShiftMode(ct.id).includeActual}
+                                                                        includeName={getShiftMode(ct.id).includeName}
+                                                                        includeNotes={getShiftMode(ct.id).includeNotes}
                                                                         onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />

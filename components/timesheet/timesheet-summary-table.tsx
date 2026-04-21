@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { format, parseISO } from 'date-fns';
@@ -211,9 +211,8 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                 .slice(0, 5);
 
                             return (
-                                <>
+                                <Fragment key={group.eventId}>
                                 <tr
-                                    key={group.eventId}
                                     className="hover:bg-slate-50/50 transition-colors group"
                                 >
                                     <td className="w-10 min-w-10 max-w-10 px-2 py-5 text-center align-top">
@@ -428,7 +427,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                         </td>
                                     </tr>
                                 )}
-                                </>
+                                </Fragment>
                             );
                         })}
                     </tbody>

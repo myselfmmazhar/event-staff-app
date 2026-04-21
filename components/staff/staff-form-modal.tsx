@@ -661,40 +661,6 @@ function StaffFormContent({
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <button
                                     type="button"
-                                    onClick={() => setExperienceMode('talent')}
-                                    disabled={isSubmitting}
-                                    className={cn(
-                                        'relative rounded-xl border p-5 text-left transition-all',
-                                        experienceMode === 'talent'
-                                            ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
-                                            : 'border-slate-200 hover:border-slate-300'
-                                    )}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900">Talent</p>
-                                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                                                Use talent profile defaults and skip service selection in this step.
-                                            </p>
-                                        </div>
-                                        <span
-                                            className={cn(
-                                                'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
-                                                experienceMode === 'talent' ? 'bg-slate-900' : 'bg-slate-200'
-                                            )}
-                                            aria-hidden
-                                        >
-                                            <span
-                                                className={cn(
-                                                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
-                                                    experienceMode === 'talent' ? 'left-5' : 'left-0.5'
-                                                )}
-                                            />
-                                        </span>
-                                    </div>
-                                </button>
-                                <button
-                                    type="button"
                                     onClick={() => setExperienceMode('company')}
                                     disabled={isSubmitting}
                                     className={cn(
@@ -722,6 +688,40 @@ function StaffFormContent({
                                                 className={cn(
                                                     'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
                                                     experienceMode === 'company' ? 'left-5' : 'left-0.5'
+                                                )}
+                                            />
+                                        </span>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setExperienceMode('talent')}
+                                    disabled={isSubmitting}
+                                    className={cn(
+                                        'relative rounded-xl border p-5 text-left transition-all',
+                                        experienceMode === 'talent'
+                                            ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
+                                            : 'border-slate-200 hover:border-slate-300'
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900">Talent</p>
+                                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                                Use talent profile defaults and skip service selection in this step.
+                                            </p>
+                                        </div>
+                                        <span
+                                            className={cn(
+                                                'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+                                                experienceMode === 'talent' ? 'bg-slate-900' : 'bg-slate-200'
+                                            )}
+                                            aria-hidden
+                                        >
+                                            <span
+                                                className={cn(
+                                                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
+                                                    experienceMode === 'talent' ? 'left-5' : 'left-0.5'
                                                 )}
                                             />
                                         </span>
@@ -773,7 +773,7 @@ function StaffFormContent({
                                     )}
                                 />
                             </div>
-                            
+
                         </div>
                     </div>
                 )}
@@ -790,13 +790,33 @@ function StaffFormContent({
                                 : ''}
                         </p>
                         <div className="mt-6">
-                            <RequirementTemplateCardGrid
-                                staffAppearance
-                                staffType={staffType}
-                                selected={selectedReqTemplates}
-                                onToggle={toggleReqTemplate}
-                                disabled={isSubmitting}
-                            />
+                            {serviceIds.length > 0 ? (
+                                <RequirementTemplateCardGrid
+                                    staffAppearance
+                                    staffType={staffType}
+                                    selected={selectedReqTemplates}
+                                    onToggle={toggleReqTemplate}
+                                    disabled={isSubmitting}
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-20 text-center">
+                                    <div className="h-12 w-12 rounded-full bg-slate-50 p-3 text-slate-400">
+                                        <ClipboardCheck className="h-full w-full" />
+                                    </div>
+                                    <h4 className="mt-4 text-sm font-bold text-slate-900">No services selected</h4>
+                                    <p className="mt-1 max-w-xs text-xs text-slate-500">
+                                        Requirement cards will appear here once you select one or more services in the{' '}
+                                        <strong>Experience</strong> tab.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setWizardStep('talentType')}
+                                        className="mt-6 text-xs font-bold text-sky-600 hover:text-sky-700 underline underline-offset-4"
+                                    >
+                                        Go to Experience tab
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         {SHOW_REQUIREMENTS_DOCUMENT_UPLOAD && (
                             <div className="mt-10">
@@ -815,6 +835,40 @@ function StaffFormContent({
 
                         {!isEdit && (
                             <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setCreateTaxMode(TaxFilledBy.STAFF)}
+                                    disabled={isSubmitting}
+                                    className={cn(
+                                        'relative rounded-xl border p-5 text-left transition-all',
+                                        createTaxFilledBy === TaxFilledBy.STAFF
+                                            ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
+                                            : 'border-slate-200 hover:border-slate-300'
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900">Company completes the tax form</p>
+                                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                                Admin pre-fills tax details now; the {terminology.staff.lower} reviews later.
+                                            </p>
+                                        </div>
+                                        <span
+                                            className={cn(
+                                                'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+                                                createTaxFilledBy === TaxFilledBy.STAFF ? 'bg-slate-900' : 'bg-slate-200'
+                                            )}
+                                            aria-hidden
+                                        >
+                                            <span
+                                                className={cn(
+                                                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
+                                                    createTaxFilledBy === TaxFilledBy.STAFF ? 'left-5' : 'left-0.5'
+                                                )}
+                                            />
+                                        </span>
+                                    </div>
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => setCreateTaxMode(TaxFilledBy.TALENT)}
@@ -846,40 +900,6 @@ function StaffFormContent({
                                                 className={cn(
                                                     'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
                                                     createTaxFilledBy === TaxFilledBy.TALENT ? 'left-5' : 'left-0.5'
-                                                )}
-                                            />
-                                        </span>
-                                    </div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setCreateTaxMode(TaxFilledBy.STAFF)}
-                                    disabled={isSubmitting}
-                                    className={cn(
-                                        'relative rounded-xl border p-5 text-left transition-all',
-                                        createTaxFilledBy === TaxFilledBy.STAFF
-                                            ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
-                                            : 'border-slate-200 hover:border-slate-300'
-                                    )}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900">Company completes the tax form</p>
-                                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                                                Admin pre-fills tax details now; the {terminology.staff.lower} reviews later.
-                                            </p>
-                                        </div>
-                                        <span
-                                            className={cn(
-                                                'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
-                                                createTaxFilledBy === TaxFilledBy.STAFF ? 'bg-slate-900' : 'bg-slate-200'
-                                            )}
-                                            aria-hidden
-                                        >
-                                            <span
-                                                className={cn(
-                                                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
-                                                    createTaxFilledBy === TaxFilledBy.STAFF ? 'left-5' : 'left-0.5'
                                                 )}
                                             />
                                         </span>
@@ -938,7 +958,7 @@ function StaffFormContent({
                                         Edit
                                     </Button>
                                 </div>
-                                
+
                                 <div className="space-y-4">
                                     <div className="flex flex-col gap-1">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Identity</span>
@@ -1077,8 +1097,8 @@ function StaffFormContent({
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-xs font-bold text-slate-900 truncate">
-                                                        {id === 'w9' 
-                                                            ? (watch('staffType') === StaffType.EMPLOYEE ? 'Form W-4' : 'Form W-9') 
+                                                        {id === 'w9'
+                                                            ? (watch('staffType') === StaffType.EMPLOYEE ? 'Form W-4' : 'Form W-9')
                                                             : card?.title || id}
                                                     </p>
                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Active Requirement</p>
@@ -1123,13 +1143,13 @@ function StaffFormContent({
                                             <p className="text-sm font-black uppercase tracking-tight">Active Workflow</p>
                                         </div>
                                         <p className="text-lg font-bold leading-tight mb-2">
-                                            {createTaxFilledBy === TaxFilledBy.TALENT 
-                                                ? `${terminology.staff.singular} will complete their own tax form` 
+                                            {createTaxFilledBy === TaxFilledBy.TALENT
+                                                ? `${terminology.staff.singular} will complete their own tax form`
                                                 : "Company will pre-fill tax details"
                                             }
                                         </p>
                                         <p className="text-xs text-slate-400 font-medium">
-                                            {createTaxFilledBy === TaxFilledBy.TALENT 
+                                            {createTaxFilledBy === TaxFilledBy.TALENT
                                                 ? "Best for remote onboarding and privacy. The talent will be prompted to provide these details during their setup."
                                                 : "Best for internal records or when you already have the paperwork in hand. You have pre-filled the necessary fields."
                                             }
@@ -1138,7 +1158,7 @@ function StaffFormContent({
 
                                     <div className="flex-1 space-y-3 py-1">
                                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Workflow Steps</h5>
-                                        {(createTaxFilledBy === TaxFilledBy.TALENT 
+                                        {(createTaxFilledBy === TaxFilledBy.TALENT
                                             ? [
                                                 'Talent reviews invite & signs up',
                                                 'Talent verifies basic info accuracy',
@@ -1152,17 +1172,17 @@ function StaffFormContent({
                                             ]
                                         ).map((step, i) => (
                                             <div key={i} className="flex items-center gap-3 text-sm font-bold text-slate-700">
-                                                <div className="h-5 w-5 shrink-0 flex items-center justify-center rounded-full bg-slate-100 text-[10px] text-slate-500">{i+1}</div>
+                                                <div className="h-5 w-5 shrink-0 flex items-center justify-center rounded-full bg-slate-100 text-[10px] text-slate-500">{i + 1}</div>
                                                 {step}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                </div>
                             </div>
-                        </div>
-                        </div>
-                        {/* Final closing for the grid container */}
+                            {/* Final closing for the grid container */}
                         </div>
 
-                {/* <div className="rounded-xl border border-slate-200 bg-slate-100/70 px-4 py-3">
+                        {/* <div className="rounded-xl border border-slate-200 bg-slate-100/70 px-4 py-3">
                             <p className="text-sm font-bold text-slate-900">Suggested statuses after send</p>
                             <p className="mt-1 text-sm text-slate-600">
                                 Draft · Invited · In Progress · Awaiting Signature · Completed

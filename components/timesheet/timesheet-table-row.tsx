@@ -108,6 +108,8 @@ export function TimesheetTableRow({
     rowVariant = 'default',
     includeSchedule = true,
     includeActual = true,
+    includeName = true,
+    includeNotes = true,
     onShiftModeChange,
 }: {
     ct: CallTimeRow;
@@ -128,7 +130,9 @@ export function TimesheetTableRow({
     rowVariant?: 'default' | 'card';
     includeSchedule?: boolean;
     includeActual?: boolean;
-    onShiftModeChange?: (invitationId: string, next: { includeSchedule: boolean; includeActual: boolean }) => void;
+    includeName?: boolean;
+    includeNotes?: boolean;
+    onShiftModeChange?: (invitationId: string, next: { includeSchedule: boolean; includeActual: boolean; includeName: boolean; includeNotes: boolean }) => void;
 }) {
     const { toast } = useToast();
     const [isEditing, setIsEditing] = useState(false);
@@ -409,7 +413,27 @@ export function TimesheetTableRow({
                                                 key={row.id ?? idx}
                                                 className={`flex flex-col gap-2.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}
                                             >
-                                                <div className="font-semibold text-slate-900 text-[12px] leading-snug">
+                                                <div className="flex items-center gap-2 font-semibold text-slate-900 text-[11px] leading-snug">
+                                                    {idx === 0 && (
+                                                        <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={includeName}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                onChange={(e) =>
+                                                                    onShiftModeChange?.(ct.id, {
+                                                                        includeSchedule,
+                                                                        includeActual,
+                                                                        includeName: e.target.checked,
+                                                                        includeNotes,
+                                                                    })
+                                                                }
+                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                title="Include name in description"
+                                                                aria-label="Include name"
+                                                            />
+                                                        </label>
+                                                    )}
                                                     {invoiceStaffHeadline(row, row.event ?? ct.event)}
                                                 </div>
                                                 <div className="text-slate-800">{row.service?.title || ct.service?.title || '—'}</div>
@@ -427,6 +451,8 @@ export function TimesheetTableRow({
                                                                     onShiftModeChange?.(ct.id, {
                                                                         includeSchedule: e.target.checked,
                                                                         includeActual,
+                                                                        includeName,
+                                                                        includeNotes,
                                                                     })
                                                                 }
                                                                 className="h-3.5 w-3.5 rounded border-border accent-primary"
@@ -455,6 +481,8 @@ export function TimesheetTableRow({
                                                                     onShiftModeChange?.(ct.id, {
                                                                         includeSchedule,
                                                                         includeActual: e.target.checked,
+                                                                        includeName,
+                                                                        includeNotes,
                                                                     })
                                                                 }
                                                                 className="h-3.5 w-3.5 rounded border-border accent-primary"
@@ -525,7 +553,27 @@ export function TimesheetTableRow({
                                 })()}
 
                                 <div className="flex flex-col gap-1 pt-2 border-t border-border/60">
-                                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Notes</span>
+                                    <div className="flex items-center gap-2">
+                                        <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                            <input
+                                                type="checkbox"
+                                                checked={includeNotes}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onChange={(e) =>
+                                                    onShiftModeChange?.(ct.id, {
+                                                        includeSchedule,
+                                                        includeActual,
+                                                        includeName,
+                                                        includeNotes: e.target.checked,
+                                                    })
+                                                }
+                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                title="Include notes in description"
+                                                aria-label="Include notes"
+                                            />
+                                        </label>
+                                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Notes</span>
+                                    </div>
                                     {isEditingNotes ? (
                                         <div onClick={(e) => e.stopPropagation()}>
                                             <textarea
@@ -647,6 +695,26 @@ export function TimesheetTableRow({
                                         return (
                                             <div key={row.id || idx} className={`flex flex-col gap-0.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}>
                                                 <div className="flex items-center gap-2 font-bold text-[12px]">
+                                                    {idx === 0 && (
+                                                        <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={includeName}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                onChange={(e) =>
+                                                                    onShiftModeChange?.(ct.id, {
+                                                                        includeSchedule,
+                                                                        includeActual,
+                                                                        includeName: e.target.checked,
+                                                                        includeNotes,
+                                                                    })
+                                                                }
+                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                title="Include group name in description"
+                                                                aria-label="Include group name"
+                                                            />
+                                                        </label>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
@@ -676,6 +744,8 @@ export function TimesheetTableRow({
                                                                     onShiftModeChange?.(ct.id, {
                                                                         includeSchedule: e.target.checked,
                                                                         includeActual,
+                                                                        includeName,
+                                                                        includeNotes,
                                                                     })
                                                                 }
                                                                 className="h-3.5 w-3.5 rounded border-border accent-primary"
@@ -701,6 +771,8 @@ export function TimesheetTableRow({
                                                                     onShiftModeChange?.(ct.id, {
                                                                         includeSchedule,
                                                                         includeActual: e.target.checked,
+                                                                        includeName,
+                                                                        includeNotes,
                                                                     })
                                                                 }
                                                                 className="h-3.5 w-3.5 rounded border-border accent-primary"
@@ -719,7 +791,27 @@ export function TimesheetTableRow({
 
                                 {/* Notes Section */}
                                 <div className="flex flex-col pt-2 border-t border-slate-100">
-                                    <span className="font-bold text-[9px] text-slate-400 uppercase tracking-widest mb-1">Notes</span>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                            <input
+                                                type="checkbox"
+                                                checked={includeNotes}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onChange={(e) =>
+                                                    onShiftModeChange?.(ct.id, {
+                                                        includeSchedule,
+                                                        includeActual,
+                                                        includeName,
+                                                        includeNotes: e.target.checked,
+                                                    })
+                                                }
+                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                title="Include notes in description"
+                                                aria-label="Include notes"
+                                            />
+                                        </label>
+                                        <span className="font-bold text-[9px] text-slate-400 uppercase tracking-widest">Notes</span>
+                                    </div>
                                     {isEditingNotes ? (
                                         <div onClick={e => e.stopPropagation()}>
                                             <textarea

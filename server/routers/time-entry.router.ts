@@ -89,6 +89,8 @@ export const timeEntryRouter = router({
                     invitationId: z.string().uuid(),
                     includeSchedule: z.boolean(),
                     includeActual: z.boolean(),
+                    includeName: z.boolean().optional(),
+                    includeNotes: z.boolean().optional(),
                 }))
                 .optional(),
         }))
