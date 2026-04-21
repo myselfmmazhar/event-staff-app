@@ -5,7 +5,8 @@ import { trpc } from '@/lib/client/trpc';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeftIcon, PlusIcon, PencilIcon, ChevronRightIcon } from 'lucide-react';
+import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeftIcon, PlusIcon, PencilIcon, ChevronRightIcon, UsersIcon } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { formatDateShort } from '@/lib/utils/date-formatter';
@@ -47,13 +48,15 @@ function formatDateTime(date: Date | string | null | undefined, time: string | n
     return `${dateStr} ${hour12}:${minutes} ${ampm}`;
 }
 
-function getAssignmentStats(callTimes: Array<{ numberOfStaffRequired: number; invitations: Array<{ status: string; isConfirmed: boolean }> }>) {
+function getAssignmentStats(callTimes: Array<{ numberOfStaffRequired: number; invitations: Array<{ status: string; isConfirmed: boolean; staff: { firstName: string; lastName: string } }> }>) {
     const totalRequired = callTimes.reduce((sum, ct) => sum + ct.numberOfStaffRequired, 0);
     const totalSent = callTimes.reduce((sum, ct) => sum + ct.invitations.length, 0);
-    const totalAccepted = callTimes.reduce((sum, ct) => sum + ct.invitations.filter(i => i.isConfirmed || i.status === 'ACCEPTED').length, 0);
+    const acceptedInvitations = callTimes.flatMap(ct => ct.invitations.filter(i => i.isConfirmed || i.status === 'ACCEPTED'));
+    const totalAccepted = acceptedInvitations.length;
     const totalPending = callTimes.reduce((sum, ct) => sum + ct.invitations.filter(i => i.status === 'PENDING').length, 0);
     const totalOpen = Math.max(0, totalRequired - totalAccepted);
-    return { totalRequired, totalSent, totalAccepted, totalPending, totalOpen };
+    const acceptedStaffNames = acceptedInvitations.map(i => `${i.staff.firstName} ${i.staff.lastName}`);
+    return { totalRequired, totalSent, totalAccepted, totalPending, totalOpen, acceptedStaffNames };
 }
 
 function getEventStatusBadgeVariant(status: string): 'success' | 'warning' | 'info' | 'destructive' | 'secondary' {
@@ -90,7 +93,8 @@ function getRequestStatusBadgeVariant(status: string): 'warning' | 'success' | '
 // Expanded row: My Events
 // ---------------------------------------------------------------------------
 function EventExpandedRow({ event }: { event: ClientEventListItem }) {
-    const { totalRequired, totalSent, totalAccepted, totalPending, totalOpen } = getAssignmentStats(event.callTimes);
+    const { totalRequired, totalSent, totalAccepted, totalPending, totalOpen, acceptedStaffNames } = getAssignmentStats(event.callTimes);
+    const [staffDialogOpen, setStaffDialogOpen] = useState(false);
 
     return (
         <div className="px-6 py-4 bg-muted/20 border-t border-border/50">
@@ -108,52 +112,43 @@ function EventExpandedRow({ event }: { event: ClientEventListItem }) {
             {/* 3 cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Open Positions */}
-                <Link href={`/client-portal/my-events/${event.id}`}>
-                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-red-100 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-red-100 border-2 border-red-300 flex items-center justify-center shrink-0">
-                                <span className="text-red-600 font-bold text-base">{totalOpen}</span>
-                            </div>
-                            <div>
-                                <p className="font-semibold text-red-700 text-sm">Open Positions</p>
-                                <p className="text-[10px] text-red-500 uppercase tracking-wide font-medium">Needs Staffing</p>
-                            </div>
-                        </div>
-                        <ChevronRightIcon className="h-5 w-5 text-red-400 shrink-0" />
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-100 border-2 border-red-300 flex items-center justify-center shrink-0">
+                        <span className="text-red-600 font-bold text-base">{totalOpen}</span>
                     </div>
-                </Link>
+                    <div>
+                        <p className="font-semibold text-red-700 text-sm">Open Positions</p>
+                        <p className="text-[10px] text-red-500 uppercase tracking-wide font-medium">Needs Staffing</p>
+                    </div>
+                </div>
 
                 {/* Pending */}
-                <Link href={`/client-portal/my-events/${event.id}`}>
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center shrink-0">
-                                <span className="text-amber-600 font-bold text-base">{totalPending}</span>
-                            </div>
-                            <div>
-                                <p className="font-semibold text-amber-700 text-sm">Pending</p>
-                                <p className="text-[10px] text-amber-500 uppercase tracking-wide font-medium">Awaiting Confirmation</p>
-                            </div>
-                        </div>
-                        <ChevronRightIcon className="h-5 w-5 text-amber-400 shrink-0" />
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center shrink-0">
+                        <span className="text-amber-600 font-bold text-base">{totalPending}</span>
                     </div>
-                </Link>
+                    <div>
+                        <p className="font-semibold text-amber-700 text-sm">Pending</p>
+                        <p className="text-[10px] text-amber-500 uppercase tracking-wide font-medium">Awaiting Confirmation</p>
+                    </div>
+                </div>
 
-                {/* Accepted */}
-                <Link href={`/client-portal/my-events/${event.id}`}>
-                    <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-green-100 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-green-100 border-2 border-green-300 flex items-center justify-center shrink-0">
-                                <span className="text-green-600 font-bold text-base">{totalAccepted}</span>
-                            </div>
-                            <div>
-                                <p className="font-semibold text-green-700 text-sm">Accepted</p>
-                                <p className="text-[10px] text-green-500 uppercase tracking-wide font-medium">{totalAccepted} Confirmed</p>
-                            </div>
+                {/* Accepted — clickable, opens staff list popup */}
+                <button
+                    onClick={() => setStaffDialogOpen(true)}
+                    className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-green-100 transition-colors text-left w-full"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-green-100 border-2 border-green-300 flex items-center justify-center shrink-0">
+                            <span className="text-green-600 font-bold text-base">{totalAccepted}</span>
                         </div>
-                        <ChevronRightIcon className="h-5 w-5 text-green-400 shrink-0" />
+                        <div>
+                            <p className="font-semibold text-green-700 text-sm">Accepted</p>
+                            <p className="text-[10px] text-green-500 uppercase tracking-wide font-medium">{totalAccepted} Confirmed</p>
+                        </div>
                     </div>
-                </Link>
+                    <ChevronRightIcon className="h-5 w-5 text-green-400 shrink-0" />
+                </button>
             </div>
 
             {/* View Full Details */}
@@ -165,6 +160,29 @@ function EventExpandedRow({ event }: { event: ClientEventListItem }) {
                     </Button>
                 </Link>
             </div>
+
+            {/* Accepted Staff Dialog */}
+            <Dialog open={staffDialogOpen} onClose={() => setStaffDialogOpen(false)}>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <UsersIcon className="h-5 w-5 text-green-600" />
+                        Accepted Staff
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="px-6 py-4">
+                    {acceptedStaffNames.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">No staff have accepted yet.</p>
+                    ) : (
+                        <ul className="divide-y divide-border">
+                            {acceptedStaffNames.map((name, i) => (
+                                <li key={i} className="py-2.5 text-sm font-medium">
+                                    {name}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </Dialog>
         </div>
     );
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useEffect, useState, useMemo } from 'react';
+import { useForm, Controller, useFieldArray, Control, UseFormWatch, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { RequestMethod } from '@prisma/client';
@@ -70,8 +70,8 @@ const formSchema = z.object({
   onsitePocName: z.string().max(200),
   onsitePocPhone: z.string().max(50),
   onsitePocEmail: z.string().max(255),
-  // Staff & Rates
-  estimate: z.boolean().nullable(),
+  // Assignments
+  requestedServiceIds: z.array(z.string()),
   // Instructions
   preEventInstructions: z.string().max(10000),
   requestMethod: z.nativeEnum(RequestMethod).nullable(),
@@ -96,7 +96,7 @@ type Tab = 'basic' | 'venue' | 'staff' | 'instructions' | 'documents';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'basic', label: 'Basic Info' },
   { id: 'venue', label: 'Venue' },
-  { id: 'staff', label: 'Staff & Rates' },
+  { id: 'staff', label: 'Assignments' },
   { id: 'instructions', label: 'Instructions' },
   { id: 'documents', label: 'Documents' },
 ];
@@ -121,7 +121,7 @@ export interface EventRequestData {
   endDate?: Date | string | null;
   endTime?: string | null;
   timezone?: string | null;
-  estimate?: boolean | null;
+  requestedServiceIds?: string[] | null;
   preEventInstructions?: string | null;
   requestMethod?: RequestMethod | null;
   poNumber?: string | null;
@@ -170,7 +170,7 @@ function defaultValues(request?: EventRequestData): FormData {
     onsitePocName: request?.onsitePocName ?? '',
     onsitePocPhone: request?.onsitePocPhone ?? '',
     onsitePocEmail: request?.onsitePocEmail ?? '',
-    estimate: request?.estimate ?? null,
+    requestedServiceIds: request?.requestedServiceIds ?? [],
     preEventInstructions: request?.preEventInstructions ?? '',
     requestMethod: request?.requestMethod ?? null,
     poNumber: request?.poNumber ?? '',
@@ -181,6 +181,106 @@ function defaultValues(request?: EventRequestData): FormData {
     eventDocuments: request?.eventDocuments ?? [],
     customFields: request?.customFields ?? [],
   };
+}
+
+// ---------------------------------------------------------------------------
+// Assignments Tab
+// ---------------------------------------------------------------------------
+
+type AssignmentsTabProps = {
+  control: Control<FormData>;
+  watch: UseFormWatch<FormData>;
+  setValue: UseFormSetValue<FormData>;
+  disabled: boolean;
+};
+
+function AssignmentsTab({ watch, setValue, disabled }: AssignmentsTabProps) {
+  const [search, setSearch] = useState('');
+
+  const servicesQuery = trpc.service.getAll.useQuery(
+    { search: '', isActive: true, limit: 100 },
+    { staleTime: 30000 }
+  );
+
+  const selectedIds = watch('requestedServiceIds') ?? [];
+
+  const services = useMemo(() => {
+    const all = servicesQuery.data?.data ?? [];
+    if (!search.trim()) return all;
+    const q = search.toLowerCase();
+    return all.filter((s) => s.title.toLowerCase().includes(q));
+  }, [servicesQuery.data, search]);
+
+  const toggle = (id: string) => {
+    if (selectedIds.includes(id)) {
+      setValue('requestedServiceIds', selectedIds.filter((x) => x !== id));
+    } else {
+      setValue('requestedServiceIds', [...selectedIds, id]);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-slate-50/50 px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900 tracking-tight uppercase">Assignments</h3>
+          {selectedIds.length > 0 && (
+            <span className="text-xs font-medium text-slate-500">
+              {selectedIds.length} service{selectedIds.length !== 1 ? 's' : ''} selected
+            </span>
+          )}
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-sm text-slate-500">
+            Select the services you need for this event. The admin team will configure staffing details upon approval.
+          </p>
+
+          <Input
+            placeholder="Search services..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            disabled={disabled}
+          />
+
+          {servicesQuery.isLoading && (
+            <p className="text-sm text-slate-400">Loading services...</p>
+          )}
+
+          {!servicesQuery.isLoading && services.length === 0 && (
+            <p className="text-sm text-slate-400">No services found.</p>
+          )}
+
+          {!servicesQuery.isLoading && services.length > 0 && (
+            <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
+              {services.map((service) => {
+                const checked = selectedIds.includes(service.id);
+                return (
+                  <label
+                    key={service.id}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 cursor-pointer transition-colors',
+                      checked
+                        ? 'bg-slate-100 text-slate-900'
+                        : 'hover:bg-slate-50 text-slate-700'
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggle(service.id)}
+                      disabled={disabled}
+                      className="rounded border-slate-300 accent-slate-900"
+                    />
+                    <span className="text-sm font-medium">{service.title}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -219,8 +319,6 @@ export function EventRequestFormModal({
 
   const fileLinksArray = useFieldArray({ control, name: 'fileLinks' });
   const customFieldsArray = useFieldArray({ control, name: 'customFields' });
-
-  const estimate = watch('estimate');
 
   // Reset form when modal opens / request changes
   useEffect(() => {
@@ -301,7 +399,7 @@ export function EventRequestFormModal({
       endDate: endDateTBD ? null : data.endDate || null,
       endTime: endTimeTBD ? null : data.endTime || null,
       timezone: data.timezone,
-      estimate: data.estimate ?? undefined,
+      requestedServiceIds: data.requestedServiceIds.length ? data.requestedServiceIds : undefined,
       preEventInstructions: data.preEventInstructions || undefined,
       requestMethod: data.requestMethod ?? undefined,
       poNumber: data.poNumber || undefined,
@@ -777,54 +875,15 @@ export function EventRequestFormModal({
           )}
 
           {/* ----------------------------------------------------------------
-              Tab: Staff & Rates
+              Tab: Assignments
           ---------------------------------------------------------------- */}
           {activeTab === 'staff' && (
-            <div className="space-y-8">
-              {/* Assignments */}
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
-                <div className="bg-slate-50/50 px-5 py-3 border-b border-slate-100">
-                  <h3 className="text-sm font-bold text-slate-900 tracking-tight uppercase">Assignments</h3>
-                </div>
-                <div className="p-5">
-                  <p className="text-sm text-slate-500">
-                    Staff assignments will be configured by the admin team after your request is reviewed and approved.
-                  </p>
-                </div>
-              </div>
-
-              {/* Task Settings */}
-              <div className="border-t border-slate-200 pt-6">
-                <h3 className="text-base font-bold text-slate-900 mb-5">Task Settings</h3>
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">Create an estimate?</Label>
-                  <div className="flex items-center gap-4 h-10">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="estimate"
-                        checked={estimate === true}
-                        onChange={() => setValue('estimate', true)}
-                        disabled={isPending}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm">Yes</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="estimate"
-                        checked={estimate === false || estimate === null}
-                        onChange={() => setValue('estimate', false)}
-                        disabled={isPending}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm">No</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AssignmentsTab
+              control={control}
+              watch={watch}
+              setValue={setValue}
+              disabled={isPending}
+            />
           )}
 
           {/* ----------------------------------------------------------------
