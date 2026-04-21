@@ -103,9 +103,11 @@ function getPrisma(): PrismaClient {
  * disconnects the old client, and builds a new one (avoids UNKNOWN_ARGUMENT on new fields until full dev restart).
  */
 export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
-  get(_target, prop, receiver) {
+  get(_target, prop) {
     const client = getPrisma();
-    const value = Reflect.get(client, prop, receiver);
+    // Use `client` as the receiver, not the Proxy. Prisma model delegates are getters that rely on
+    // `this` being the real client; `Reflect.get(client, prop, proxy)` can yield undefined for new models.
+    const value = Reflect.get(client, prop, client);
     if (typeof value === "function") {
       return (value as (...args: unknown[]) => unknown).bind(client);
     }

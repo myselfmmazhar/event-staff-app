@@ -423,6 +423,36 @@ enum CategoryRequirementType {
   RESUME
 }
 
+enum CatalogRequirementExpiration {
+  NEVER
+  FROM_YEAR_START
+  FROM_COMPLETION
+  BEFORE_YEAR_END
+}
+
+model CatalogRequirement {
+  id                 String                       @id @default(uuid()) @db.Uuid
+  serviceCategoryId  String                       @db.Uuid
+  templateId         String                       @db.VarChar(32)
+  name               String                       @db.VarChar(200)
+  instructions       String?
+  allowPdf           Boolean                      @default(true)
+  allowImage         Boolean                      @default(true)
+  allowOther         Boolean                      @default(false)
+  expirationType     CatalogRequirementExpiration @default(NEVER)
+  allowEarlyRenewal  Boolean                      @default(false)
+  requiresApproval   Boolean                      @default(false)
+  isTalentRequired   Boolean                      @default(false)
+  createdBy          String
+  createdAt          DateTime                     @default(now()) @db.Timestamp(6)
+  updatedAt          DateTime                     @updatedAt @db.Timestamp(6)
+  serviceCategory    ServiceCategory              @relation(fields: [serviceCategoryId], references: [id], onDelete: Cascade)
+  createdByUser      User                         @relation("catalog_requirements_created", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([serviceCategoryId])
+  @@map("catalog_requirements")
+}
+
 model ServiceCategory {
   id                       String                  @id @default(uuid()) @db.Uuid
   categoryId               String                  @unique
@@ -436,6 +466,7 @@ model ServiceCategory {
   createdAt              DateTime                @default(now()) @db.Timestamp(6)
   updatedAt              DateTime                @updatedAt @db.Timestamp(6)
   services               Service[]
+  catalogRequirements    CatalogRequirement[]
   createdByUser          User                    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([categoryId])
@@ -833,6 +864,7 @@ model User {
   products                         Product[]
   services                         Service[]
   serviceCategories                ServiceCategory[]
+  catalogRequirementsCreated       CatalogRequirement[]    @relation("catalog_requirements_created")
   sessions                         Session[]
   staff_staff_createdByTousers     Staff[]                 @relation("staff_createdByTousers")
   staff_staff_userIdTousers        Staff?                  @relation("staff_userIdTousers")

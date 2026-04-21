@@ -17,9 +17,9 @@ import { CategoryFilters } from '@/components/catalog/categories/category-filter
 import { CategoryTable } from '@/components/catalog/categories/category-table';
 import { CategoryFormModal } from '@/components/catalog/categories/category-form-modal';
 import { DeleteCategoryModal } from '@/components/catalog/categories/delete-category-modal';
+import { CreateRequirementWizardModal } from '@/components/catalog/requirements/create-requirement-wizard-modal';
 import { useCategoriesFilters, type CategoryStatus, type CategorySortBy, type SortOrder } from '@/store/categories-filters.store';
 import type { Category, CategoryTableRow } from '@/lib/types/category';
-import type { CreateCategoryInput } from '@/lib/schemas/category.schema';
 
 const STATUS_LABELS: Record<CategoryStatus, string> = {
   active: 'Active',
@@ -62,9 +62,11 @@ export default function CategoriesPage() {
   const [modals, setModals] = useState({
     form: false,
     delete: false,
+    requirementWizard: false,
   });
 
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [pendingRequirementCategory, setPendingRequirementCategory] = useState<Category | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
@@ -141,10 +143,14 @@ export default function CategoriesPage() {
 
   const createMutation = trpc.category.create.useMutation(
     createMutationOptions('Category created successfully', {
-      onSuccess: () => {
+      onSuccess: (created) => {
         setModals((prev) => ({ ...prev, form: false }));
         setSelectedCategory(null);
         refetch();
+        if (created) {
+          setPendingRequirementCategory(created as Category);
+          setModals((prev) => ({ ...prev, requirementWizard: true }));
+        }
       },
     })
   );
@@ -354,15 +360,41 @@ export default function CategoriesPage() {
           setSelectedCategory(null);
           setBackendErrors([]);
         }}
-        onSubmit={(formData: CreateCategoryInput) => {
+        onSubmit={(formData) => {
           if (selectedCategory) {
-            updateMutation.mutate({ id: selectedCategory.id, ...formData });
+            updateMutation.mutate({
+              id: selectedCategory.id,
+              name: formData.name,
+              description: formData.description,
+            });
           } else {
-            createMutation.mutate(formData);
+            createMutation.mutate({
+              ...formData,
+              requirementTemplateIds: [],
+              isRequired: false,
+            });
           }
         }}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
         backendErrors={backendErrors}
+      />
+
+      <CreateRequirementWizardModal
+        open={modals.requirementWizard}
+        onClose={() => {
+          setModals((prev) => ({ ...prev, requirementWizard: false }));
+          setPendingRequirementCategory(null);
+        }}
+        fixedCategory={
+          pendingRequirementCategory
+            ? {
+                id: pendingRequirementCategory.id,
+                name: pendingRequirementCategory.name,
+                categoryId: pendingRequirementCategory.categoryId,
+              }
+            : null
+        }
+        onSaved={() => refetch()}
       />
 
       <DeleteCategoryModal

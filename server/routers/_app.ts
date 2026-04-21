@@ -23,6 +23,7 @@ import { contactRouter } from "./contact.router";
 import { timeEntryRouter } from "./time-entry.router";
 import { billRouter } from "./bill.router";
 import { categoryRouter } from "./category.router";
+import { catalogRequirementRouter } from "./catalog-requirement.router";
 import { userPreferenceRouter } from "./user-preference.router";
 
 /**
@@ -54,6 +55,7 @@ export const appRouter = router({
   timeEntry: timeEntryRouter,
   bills: billRouter,
   category: categoryRouter,
+  catalogRequirement: catalogRequirementRouter,
   userPreference: userPreferenceRouter,
 });
 

@@ -28,4 +28,3 @@ ALTER TABLE "time_entry_revisions" ADD CONSTRAINT "time_entry_revisions_timeEntr
 
 -- AddForeignKey
 ALTER TABLE "time_entry_revisions" ADD CONSTRAINT "time_entry_revisions_editedBy_fkey" FOREIGN KEY ("editedBy") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
