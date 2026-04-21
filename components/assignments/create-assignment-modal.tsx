@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,13 +11,25 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { SearchIcon, ChevronDownIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon } from '@/components/ui/icons';
 import { EventFormModal } from '@/components/events/event-form-modal';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
 import type { CreateEventInput, UpdateEventInput } from '@/lib/schemas/event.schema';
-import { AmountType } from '@prisma/client';
+import { AmountType, EventStatus } from '@prisma/client';
+
+const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
+  [EventStatus.DRAFT]: 'Draft',
+  [EventStatus.ASSIGNED]: 'Assigned',
+  [EventStatus.IN_PROGRESS]: 'In Progress',
+  [EventStatus.COMPLETED]: 'Completed',
+  [EventStatus.CANCELLED]: 'Cancelled',
+  [EventStatus.PUBLISHED]: 'Published',
+};
 
 type CallTimeAssignment = {
   serviceId: string;
@@ -69,17 +81,42 @@ export function CreateAssignmentModal({
   const [showEventForm, setShowEventForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [eventSelectorOpen, setEventSelectorOpen] = useState(false);
+  const [eventSearch, setEventSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<EventStatus | 'ALL'>('ALL');
+  const [clientIdFilter, setClientIdFilter] = useState<string>('ALL');
+
+  const { data: clientsData } = trpc.clients.getAll.useQuery({ page: 1, limit: 100 });
+  const clients = clientsData?.data ?? [];
+
   const { data: eventsData, isLoading: isLoadingEvents } = trpc.event.getAll.useQuery({
     page: 1,
     limit: 100,
+    status: statusFilter !== 'ALL' ? (statusFilter as EventStatus) : undefined,
+    clientId: clientIdFilter !== 'ALL' ? clientIdFilter : undefined,
   });
+
+  const allEvents = eventsData?.data ?? [];
+
+  const events = useMemo(() => {
+    if (!eventSearch.trim()) return allEvents;
+    const q = eventSearch.toLowerCase();
+    return allEvents.filter(
+      (e) =>
+        e.title.toLowerCase().includes(q) ||
+        e.eventId.toLowerCase().includes(q),
+    );
+  }, [allEvents, eventSearch]);
+
+  const selectedEvent = useMemo(
+    () => allEvents.find((e) => e.id === selectedEventId) ?? null,
+    [allEvents, selectedEventId],
+  );
 
   const { data: selectedEventData, isLoading: isLoadingEvent } = trpc.event.getById.useQuery(
     { id: selectedEventId },
     { enabled: showEventForm && !!selectedEventId }
   );
-
-  const events = eventsData?.data || [];
 
   const updateMutation = trpc.event.update.useMutation();
   const bulkSyncCallTimesMutation = trpc.callTime.bulkSyncForEvent.useMutation();
@@ -134,6 +171,9 @@ export function CreateAssignmentModal({
   const handleClose = () => {
     setSelectedEventId('');
     setShowEventForm(false);
+    setEventSearch('');
+    setStatusFilter('ALL');
+    setClientIdFilter('ALL');
     onClose();
   };
 
@@ -183,32 +223,113 @@ export function CreateAssignmentModal({
           </p>
 
           <div>
-            <Label htmlFor="eventSelect" required>
-              {eventTerm.singular}
-            </Label>
-            <Select
-              value={selectedEventId}
-              onValueChange={setSelectedEventId}
-              disabled={isLoadingEvents}
-            >
-              <SelectTrigger id="eventSelect">
-                <SelectValue placeholder={`Select an ${eventTerm.lower}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {events.map((event) => (
-                  <SelectItem key={event.id} value={event.id}>
-                    {event.title} ({event.eventId})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <Label required>{eventTerm.singular}</Label>
 
-          {events.length === 0 && !isLoadingEvents && (
-            <p className="text-sm text-muted-foreground">
-              No {eventTerm.lowerPlural} found. Create an {eventTerm.lower} first.
-            </p>
-          )}
+            {/* Filters row */}
+            <div className="flex gap-2 mt-2 mb-2">
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as EventStatus | 'ALL')}
+              >
+                <SelectTrigger className="h-8 text-xs flex-1">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Statuses</SelectItem>
+                  {Object.values(EventStatus).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {EVENT_STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={clientIdFilter}
+                onValueChange={setClientIdFilter}
+              >
+                <SelectTrigger className="h-8 text-xs flex-1">
+                  <SelectValue placeholder="Client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Clients</SelectItem>
+                  {clients.map((c: { id: string; businessName: string }) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.businessName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Event selector with search */}
+            <Popover open={eventSelectorOpen} onOpenChange={setEventSelectorOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between font-normal"
+                  disabled={isLoadingEvents}
+                >
+                  <span className={selectedEvent ? 'text-foreground' : 'text-muted-foreground'}>
+                    {selectedEvent
+                      ? `${selectedEvent.title} (${selectedEvent.eventId})`
+                      : `Select an ${eventTerm.lower}`}
+                  </span>
+                  <ChevronDownIcon className="h-4 w-4 opacity-50 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)' }} align="start">
+                <div className="p-2 border-b">
+                  <div className="relative">
+                    <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={`Search by name or ID…`}
+                      value={eventSearch}
+                      onChange={(e) => setEventSearch(e.target.value)}
+                      className="pl-8 h-9"
+                    />
+                  </div>
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {isLoadingEvents ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">Loading…</div>
+                  ) : events.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      {eventSearch ? `No ${eventTerm.lowerPlural} match your search` : `No ${eventTerm.lowerPlural} found`}
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      {events.map((event) => (
+                        <button
+                          key={event.id}
+                          type="button"
+                          className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors ${
+                            selectedEventId === event.id ? 'bg-accent/30' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedEventId(event.id);
+                            setEventSelectorOpen(false);
+                            setEventSearch('');
+                          }}
+                        >
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm truncate">{event.title}</div>
+                            <div className="text-xs text-muted-foreground truncate">{event.eventId}</div>
+                          </div>
+                          {event.status && (
+                            <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                              {EVENT_STATUS_LABELS[event.status as EventStatus]}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </DialogContent>
 
