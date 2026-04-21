@@ -52,7 +52,7 @@ const settingsSchema = z.object({
     .string()
     .max(5000)
     .optional()
-    .transform((v) => (v?.trim() ? v.trim() : null)),
+    .transform((v) => (v?.trim() ? v.trim() : undefined)),
   allowPdf: z.boolean(),
   allowImage: z.boolean(),
   allowOther: z.boolean(),
@@ -62,7 +62,8 @@ const settingsSchema = z.object({
   isTalentRequired: z.boolean(),
 });
 
-type SettingsForm = z.infer<typeof settingsSchema>;
+type SettingsFormInput = z.input<typeof settingsSchema>;
+type SettingsFormOutput = z.infer<typeof settingsSchema>;
 
 type TemplateTab = 'all' | 'standard' | 'smart';
 
@@ -79,9 +80,9 @@ function templateTabFilter(tab: TemplateTab): readonly ReqTemplateId[] | undefin
   return REQ_TEMPLATE_CARDS.filter((c) => c.badge === badge).map((c) => c.id);
 }
 
-const defaultSettings = (): SettingsForm => ({
+const defaultSettings = (): SettingsFormInput => ({
   name: '',
-  instructions: null,
+  instructions: undefined,
   allowPdf: true,
   allowImage: true,
   allowOther: false,
@@ -101,7 +102,7 @@ export function CreateRequirementWizardModal({
   const [templateTab, setTemplateTab] = useState<TemplateTab>('all');
   const [selectedTemplate, setSelectedTemplate] = useState<ReqTemplateId | null>(null);
   const [categoryId, setCategoryId] = useState<string>('');
-  const [preview, setPreview] = useState<SettingsForm | null>(null);
+  const [preview, setPreview] = useState<SettingsFormOutput | null>(null);
 
   const { data: activeCategories } = trpc.category.getAllActive.useQuery(undefined, {
     enabled: open && !fixedCategory,
@@ -127,7 +128,7 @@ export function CreateRequirementWizardModal({
     setError,
     clearErrors,
     formState: { errors },
-  } = useForm<SettingsForm>({
+  } = useForm<SettingsFormInput, unknown, SettingsFormOutput>({
     resolver: zodResolver(settingsSchema),
     defaultValues: defaultSettings(),
   });
@@ -162,7 +163,7 @@ export function CreateRequirementWizardModal({
     setStep(2);
   };
 
-  const onSettingsSubmit = (data: SettingsForm) => {
+  const onSettingsSubmit = (data: SettingsFormOutput) => {
     if (selectedTemplate === 'upload' && !data.allowPdf && !data.allowImage && !data.allowOther) {
       setError('allowPdf', { type: 'manual', message: 'Select at least one accepted file format' });
       return;
@@ -178,7 +179,7 @@ export function CreateRequirementWizardModal({
       serviceCategoryId: effectiveCategoryId,
       templateId: selectedTemplate,
       name: preview.name,
-      instructions: preview.instructions,
+      instructions: preview.instructions ?? null,
       allowPdf: isUploadTemplate ? preview.allowPdf : true,
       allowImage: isUploadTemplate ? preview.allowImage : true,
       allowOther: isUploadTemplate ? preview.allowOther : false,
