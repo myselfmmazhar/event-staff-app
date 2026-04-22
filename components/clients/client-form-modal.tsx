@@ -25,11 +25,12 @@ import { TemporaryLocationsSection, type TemporaryLocation } from './temporary-l
 
 // Create a unified form schema that includes hasLoginAccess
 const formSchema = z.object({
-  businessName: z.string().min(1, "Business name is required").max(200).transform(val => val.trim()),
-  firstName: z.string().min(1, "First name is required").max(50).transform(val => val.trim()),
-  lastName: z.string().min(1, "Last name is required").max(50).transform(val => val.trim()),
+  businessName: z.string().max(200).transform(val => val.trim()).optional(),
+  firstName: z.string().max(50).transform(val => val.trim()).optional(),
+  lastName: z.string().max(50).transform(val => val.trim()).optional(),
   email: z
     .string()
+    .min(1, "Email is required")
     .email({ message: FieldErrors.email.invalid })
     .transform(val => val.trim().toLowerCase())
     .refine(
@@ -39,10 +40,11 @@ const formSchema = z.object({
   cellPhone: z
     .string()
     .refine(
-      (phone) => phoneValidation.isValid(phone),
+      (phone) => !phone || phoneValidation.isValid(phone),
       { message: FieldErrors.phone.invalid }
     )
-    .transform(val => val?.trim()),
+    .transform(val => val?.trim())
+    .optional(),
   businessPhone: z
     .string()
     .refine(
@@ -57,9 +59,9 @@ const formSchema = z.object({
   // Business Address
   businessAddress: z.string().max(300).transform(val => val?.trim()).optional(),
   businessAddressLine2: z.string().max(200).transform(val => val?.trim()).optional(),
-  city: z.string().min(1, "City is required").max(100).transform(val => val.trim()),
-  state: z.string().min(1, "State is required").max(50).transform(val => val.trim()),
-  zipCode: z.string().min(1, "ZIP code is required").max(20).transform(val => val.trim()),
+  city: z.string().max(100).transform(val => val?.trim()).optional(),
+  state: z.string().max(50).transform(val => val?.trim()).optional(),
+  zipCode: z.string().max(20).transform(val => val?.trim()).optional(),
 
   // CC Email
   ccEmail: z
@@ -188,11 +190,6 @@ export function ClientFormModal({
   const lastName = watch('lastName');
   const email = watch('email');
   const cellPhone = watch('cellPhone');
-  const businessName = watch('businessName');
-  const city = watch('city');
-  const state = watch('state');
-  const zipCode = watch('zipCode');
-
   useEffect(() => {
     if (sameAsContact) {
       setValue('billingFirstName', firstName);
@@ -209,21 +206,10 @@ export function ClientFormModal({
   const stepIndex = CLIENT_STEP_IDS.indexOf(clientTab as typeof CLIENT_STEP_IDS[number]);
   const isLastStep = clientTab === 'access';
 
-  const canContinueInfo =
-    Boolean(businessName?.trim()) &&
-    Boolean(firstName?.trim()) &&
-    Boolean(lastName?.trim()) &&
-    Boolean(email?.trim()) &&
-    Boolean(cellPhone?.trim());
-
-  const canContinueAddress =
-    Boolean(city?.trim()) &&
-    Boolean(state?.trim()) &&
-    Boolean(zipCode?.trim());
+  const canContinueInfo = Boolean(email?.trim());
 
   const canContinue =
     clientTab === 'info' ? canContinueInfo :
-    clientTab === 'address' ? canContinueAddress :
     true;
 
   const goNext = () => {
@@ -456,7 +442,7 @@ export function ClientFormModal({
                 <p className="mt-1 text-xs text-slate-500">Core contact and business details for this client.</p>
                 <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
                   <div>
-                    <Label htmlFor="businessName" className="text-sm font-bold text-slate-900" required>Business Name</Label>
+                    <Label htmlFor="businessName" className="text-sm font-bold text-slate-900">Business Name</Label>
                     <Input
                       id="businessName"
                       {...register('businessName')}
@@ -470,7 +456,7 @@ export function ClientFormModal({
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="firstName" className="text-sm font-bold text-slate-900" required>First Name</Label>
+                    <Label htmlFor="firstName" className="text-sm font-bold text-slate-900">First Name</Label>
                     <Input
                       id="firstName"
                       {...register('firstName')}
@@ -484,7 +470,7 @@ export function ClientFormModal({
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="lastName" className="text-sm font-bold text-slate-900" required>Last Name</Label>
+                    <Label htmlFor="lastName" className="text-sm font-bold text-slate-900">Last Name</Label>
                     <Input
                       id="lastName"
                       {...register('lastName')}
@@ -528,7 +514,7 @@ export function ClientFormModal({
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="cellPhone" className="text-sm font-bold text-slate-900" required>Cell Phone</Label>
+                    <Label htmlFor="cellPhone" className="text-sm font-bold text-slate-900">Cell Phone</Label>
                     <Input
                       id="cellPhone"
                       {...register('cellPhone')}
@@ -633,7 +619,7 @@ export function ClientFormModal({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="city" className="text-sm font-bold text-slate-900" required>City</Label>
+                    <Label htmlFor="city" className="text-sm font-bold text-slate-900">City</Label>
                     <Input
                       id="city"
                       {...register('city')}
@@ -647,7 +633,7 @@ export function ClientFormModal({
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="state" className="text-sm font-bold text-slate-900" required>State</Label>
+                    <Label htmlFor="state" className="text-sm font-bold text-slate-900">State</Label>
                     <Input
                       id="state"
                       {...register('state')}
@@ -661,7 +647,7 @@ export function ClientFormModal({
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="zipCode" className="text-sm font-bold text-slate-900" required>ZIP Code</Label>
+                    <Label htmlFor="zipCode" className="text-sm font-bold text-slate-900">ZIP Code</Label>
                     <Input
                       id="zipCode"
                       {...register('zipCode')}
@@ -889,7 +875,7 @@ export function ClientFormModal({
                   <Button 
                     type="button" 
                     variant="outline" 
-                    disabled={isSubmitting || !(canContinueInfo && canContinueAddress)} 
+                    disabled={isSubmitting || !canContinueInfo} 
                     onClick={(e) => {
                       e.preventDefault();
                       handleSaveAndNew();

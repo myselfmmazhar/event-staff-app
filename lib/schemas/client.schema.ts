@@ -13,19 +13,19 @@ const clientIdRegex = /^CLT-\d{4}-\d{3}$/;
 const baseFields = {
   businessName: z
     .string()
-    .min(1, "Business name is required")
     .max(200, "Business name must be 200 characters or less")
-    .transform((val) => val.trim()),
+    .transform((val) => val.trim())
+    .optional(),
   firstName: z
     .string()
-    .min(1, "First name is required")
     .max(50, "First name must be 50 characters or less")
-    .transform((val) => val.trim()),
+    .transform((val) => val.trim())
+    .optional(),
   lastName: z
     .string()
-    .min(1, "Last name is required")
     .max(50, "Last name must be 50 characters or less")
-    .transform((val) => val.trim()),
+    .transform((val) => val.trim())
+    .optional(),
   email: z
     .string()
     .min(1, "Email is required")
@@ -37,12 +37,12 @@ const baseFields = {
     ),
   cellPhone: z
     .string()
-    .min(1, "Cell phone is required")
     .refine(
-      (phone) => phoneValidation.isValid(phone),
+      (phone) => !phone || phoneValidation.isValid(phone),
       { message: FieldErrors.phone.invalid }
     )
-    .transform((val) => val.trim()),
+    .transform((val) => val?.trim())
+    .optional(),
   businessPhone: z
     .string()
     .refine(
@@ -75,19 +75,19 @@ const baseFields = {
     .optional(),
   city: z
     .string()
-    .min(1, "City is required")
     .max(100, "City must be 100 characters or less")
-    .transform((val) => val.trim()),
+    .transform((val) => val?.trim())
+    .optional(),
   state: z
     .string()
-    .min(1, "State is required")
     .max(50, "State must be 50 characters or less")
-    .transform((val) => val.trim()),
+    .transform((val) => val?.trim())
+    .optional(),
   zipCode: z
     .string()
-    .min(1, "ZIP code is required")
     .max(20, "ZIP code must be 20 characters or less")
-    .transform((val) => val.trim()),
+    .transform((val) => val?.trim())
+    .optional(),
 
   // CC Email
   ccEmail: z

@@ -155,18 +155,18 @@ model CallTime {
 model Client {
   id                             String           @id @default(uuid()) @db.Uuid
   clientId                       String           @unique
-  businessName                   String
-  firstName                      String
-  lastName                       String
+  businessName                   String?
+  firstName                      String?
+  lastName                       String?
   email                          String
-  cellPhone                      String
+  cellPhone                      String?
   businessPhone                  String?
   details                        String?
   requirements                   String?
   businessAddress                String?
-  city                           String
-  state                          String
-  zipCode                        String
+  city                           String?
+  state                          String?
+  zipCode                        String?
   ccEmail                        String?
   billingFirstName               String?
   billingLastName                String?
