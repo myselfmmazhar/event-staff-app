@@ -25,6 +25,7 @@ import { billRouter } from "./bill.router";
 import { categoryRouter } from "./category.router";
 import { catalogRequirementRouter } from "./catalog-requirement.router";
 import { userPreferenceRouter } from "./user-preference.router";
+import { eventUpdateRequestRouter } from "./event-update-request.router";
 
 /**
  * Main application router
@@ -57,6 +58,7 @@ export const appRouter = router({
   category: categoryRouter,
   catalogRequirement: catalogRequirementRouter,
   userPreference: userPreferenceRouter,
+  eventUpdateRequest: eventUpdateRequestRouter,
 });
 
 export type AppRouter = typeof appRouter;

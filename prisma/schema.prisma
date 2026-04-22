@@ -189,6 +189,7 @@ model Client {
   events                         Event[]
   invoices                       Invoice[]
   eventRequests                  EventRequest[]
+  eventUpdateRequests            EventUpdateRequest[]
 
   @@index([clientId])
   @@index([createdBy])
@@ -295,6 +296,7 @@ model Event {
   client               Client?        @relation(fields: [clientId], references: [id])
   createdByUser        User           @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   sourceRequest        EventRequest?  @relation("EventRequestToEvent")
+  updateRequests       EventUpdateRequest[]
 
   @@index([clientId])
   @@index([createdBy])
@@ -414,6 +416,29 @@ model EventRequest {
   @@index([status])
   @@index([createdAt])
   @@map("event_requests")
+}
+
+model EventUpdateRequest {
+  id         String                    @id @default(uuid()) @db.Uuid
+  requestId  String                    @unique
+  eventId    String                    @db.Uuid
+  clientId   String                    @db.Uuid
+  note       String
+  status     EventUpdateRequestStatus  @default(PENDING)
+  adminNote  String?
+  reviewedAt DateTime?                 @db.Timestamp(6)
+  reviewedBy String?
+  createdAt  DateTime                  @default(now()) @db.Timestamp(6)
+
+  event      Event                     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  client     Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  reviewer   User?                     @relation("eventUpdateRequestReviewers", fields: [reviewedBy], references: [id])
+
+  @@index([eventId])
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("event_update_requests")
 }
 
 enum CategoryRequirementType {
@@ -855,6 +880,7 @@ model User {
   accounts                         Account[]
   invitationReviews                CallTimeInvitation[]    @relation("invitation_reviews")
   eventRequestReviews              EventRequest[]          @relation("eventRequestReviewers")
+  eventUpdateRequestReviews        EventUpdateRequest[]    @relation("eventUpdateRequestReviewers")
   clients_clients_createdByTousers Client[]                @relation("clients_createdByTousers")
   clients_clients_userIdTousers    Client?                 @relation("clients_userIdTousers")
   communicationLogs                CommunicationLog[]
@@ -1186,6 +1212,12 @@ enum EventRequestStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum EventUpdateRequestStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
 }
 
 enum RequestMethod {

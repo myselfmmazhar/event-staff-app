@@ -6,13 +6,14 @@ import { trpc } from '@/lib/client/trpc';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeftIcon, PlusIcon, PencilIcon, ChevronRightIcon, UsersIcon } from 'lucide-react';
+import { ArrowLeftIcon, PlusIcon, PencilIcon, ChevronRightIcon, UsersIcon, MessageSquarePlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { formatDateShort } from '@/lib/utils/date-formatter';
 
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { EventRequestFormModal, type EventRequestData } from '@/components/events/event-request-form-modal';
+import { EventUpdateRequestModal } from '@/components/events/event-update-request-modal';
 import { MapPinIcon, FileTextIcon, EyeIcon } from 'lucide-react';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
@@ -92,7 +93,7 @@ function getRequestStatusBadgeVariant(status: string): 'warning' | 'success' | '
 // ---------------------------------------------------------------------------
 // Expanded row: My Events
 // ---------------------------------------------------------------------------
-function EventExpandedRow({ event }: { event: ClientEventListItem }) {
+function EventExpandedRow({ event, onRequestEdit }: { event: ClientEventListItem; onRequestEdit: (event: ClientEventListItem) => void }) {
     const { totalRequired, totalSent, totalAccepted, totalPending, totalOpen, acceptedStaffNames } = getAssignmentStats(event.callTimes);
     const [staffDialogOpen, setStaffDialogOpen] = useState(false);
 
@@ -151,7 +152,7 @@ function EventExpandedRow({ event }: { event: ClientEventListItem }) {
                 </button>
             </div>
 
-            {/* View Full Details */}
+            {/* Actions */}
             <div className="flex items-center gap-2 pt-3 mt-3 border-t border-border/50">
                 <Link href={`/client-portal/my-events/${event.id}`}>
                     <Button variant="outline" size="sm">
@@ -159,6 +160,10 @@ function EventExpandedRow({ event }: { event: ClientEventListItem }) {
                         View Full Details
                     </Button>
                 </Link>
+                <Button variant="outline" size="sm" onClick={() => onRequestEdit(event)}>
+                    <MessageSquarePlusIcon className="h-4 w-4 mr-1" />
+                    Request Edit
+                </Button>
             </div>
 
             {/* Accepted Staff Dialog */}
@@ -287,6 +292,7 @@ export default function ClientPortalMyEvents() {
     const [activeTab, setActiveTab] = useState<'events' | 'requests'>('events');
     const [isEventRequestModalOpen, setIsEventRequestModalOpen] = useState(false);
     const [editingRequest, setEditingRequest] = useState<EventRequestData | undefined>(undefined);
+    const [updateRequestTarget, setUpdateRequestTarget] = useState<ClientEventListItem | null>(null);
 
     const [expandedEventKeys, setExpandedEventKeys] = useState<Set<string>>(new Set());
     const [expandedRequestKeys, setExpandedRequestKeys] = useState<Set<string>>(new Set());
@@ -541,7 +547,7 @@ export default function ClientPortalMyEvents() {
                             emptyMessage="No Events Yet"
                             emptyDescription="You don't have any events associated with your account yet."
                             minWidth="900px"
-                            expandableContent={(item) => <EventExpandedRow event={item} />}
+                            expandableContent={(item) => <EventExpandedRow event={item} onRequestEdit={setUpdateRequestTarget} />}
                             expandedKeys={expandedEventKeys}
                             onToggleExpand={(key) =>
                                 toggleExpand(expandedEventKeys, setExpandedEventKeys, key)
@@ -583,6 +589,15 @@ export default function ClientPortalMyEvents() {
                 onSuccess={() => {}}
                 request={editingRequest}
             />
+
+            {updateRequestTarget && (
+                <EventUpdateRequestModal
+                    open={!!updateRequestTarget}
+                    onClose={() => setUpdateRequestTarget(null)}
+                    eventId={updateRequestTarget.id}
+                    eventTitle={updateRequestTarget.title}
+                />
+            )}
         </div>
     );
 }

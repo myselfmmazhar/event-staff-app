@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
-import { ClipboardListIcon, SearchIcon, CheckIcon, XIcon, MapPinIcon, CalendarIcon, UserIcon, CheckCircleIcon, XCircleIcon, BriefcaseIcon } from '@/components/ui/icons';
+import { ClipboardListIcon, SearchIcon, CheckIcon, XIcon, MapPinIcon, CalendarIcon, UserIcon, CheckCircleIcon, XCircleIcon, BriefcaseIcon, EditIcon } from '@/components/ui/icons';
 import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 import { useToast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
@@ -195,7 +195,146 @@ function ExpandedRow({
     );
 }
 
+// ---------------------------------------------------------------------------
+// Update Requests types & components
+// ---------------------------------------------------------------------------
+type UpdateRequestStatus = 'PENDING' | 'REVIEWED' | 'DISMISSED';
+
+type UpdateRequestData = {
+    id: string;
+    requestId: string;
+    note: string;
+    status: UpdateRequestStatus;
+    adminNote: string | null;
+    createdAt: string | Date;
+    reviewedAt: string | Date | null;
+    event: {
+        id: string;
+        eventId: string;
+        title: string;
+        startDate: string | Date | null;
+        startTime: string | null;
+        venueName: string | null;
+        city: string | null;
+        state: string | null;
+    };
+    client: {
+        id: string;
+        businessName: string | null;
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+    };
+    reviewer: { id: string; name: string; email: string } | null;
+};
+
+const UPDATE_STATUS_BADGE: Record<UpdateRequestStatus, { label: string; variant: 'warning' | 'success' | 'secondary' }> = {
+    PENDING: { label: 'Pending', variant: 'warning' },
+    REVIEWED: { label: 'Reviewed', variant: 'success' },
+    DISMISSED: { label: 'Dismissed', variant: 'secondary' },
+};
+
+function UpdateRequestExpandedRow({
+    r,
+    onMarkReviewed,
+    onDismiss,
+}: {
+    r: UpdateRequestData;
+    onMarkReviewed: (id: string) => void;
+    onDismiss: (id: string) => void;
+}) {
+    const formatDate = (date: Date | string | null) => {
+        if (!date) return 'TBD';
+        const d = typeof date === 'string' ? parseISO(date) : date;
+        return format(d, 'MMM d, yyyy');
+    };
+
+    const clientName = r.client.businessName
+        || [r.client.firstName, r.client.lastName].filter(Boolean).join(' ')
+        || r.client.email
+        || 'Unknown';
+
+    return (
+        <div className="px-6 py-5 bg-muted/10 border-t border-border">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Client Note */}
+                <div className="space-y-2 md:col-span-2">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <EditIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Client&apos;s Note</span>
+                    </div>
+                    <div className="rounded-lg border border-border bg-background p-4">
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{r.note}</p>
+                    </div>
+                    {r.adminNote && (
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 mt-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1">Admin Note</p>
+                            <p className="text-sm text-foreground">{r.adminNote}</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Event & Client info */}
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Event</span>
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{r.event.title}</p>
+                        <p className="text-xs font-mono text-muted-foreground">{r.event.eventId}</p>
+                        {r.event.startDate && (
+                            <p className="text-xs text-muted-foreground">{formatDate(r.event.startDate)}{r.event.startTime ? ` at ${r.event.startTime}` : ''}</p>
+                        )}
+                        {(r.event.venueName || r.event.city) && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <MapPinIcon className="h-3 w-3" />
+                                {[r.event.venueName, r.event.city, r.event.state].filter(Boolean).join(', ')}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Client</span>
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{clientName}</p>
+                        {r.client.email && <p className="text-xs text-muted-foreground">{r.client.email}</p>}
+                    </div>
+
+                    {/* Actions — only for PENDING */}
+                    {r.status === 'PENDING' && (
+                        <div className="flex gap-2 pt-3 mt-1 border-t border-border">
+                            <Button
+                                size="sm"
+                                className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => onMarkReviewed(r.id)}
+                            >
+                                <CheckIcon className="h-3.5 w-3.5" />
+                                Mark Reviewed
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1.5"
+                                onClick={() => onDismiss(r.id)}
+                            >
+                                <XIcon className="h-3.5 w-3.5" />
+                                Dismiss
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function EventRequestsPage() {
+    const [activeSection, setActiveSection] = useState<'task-requests' | 'update-requests'>('task-requests');
+
+    // Task request state
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
     const [page, setPage] = useState(1);
@@ -208,11 +347,47 @@ export default function EventRequestsPage() {
     const [pendingBatchAction, setPendingBatchAction] = useState<'APPROVE' | 'REJECT' | null>(null);
     const [batchRejectReason, setBatchRejectReason] = useState('');
 
+    // Update request state
+    const [urSearch, setUrSearch] = useState('');
+    const [urStatusFilter, setUrStatusFilter] = useState<UpdateRequestStatus | 'ALL'>('PENDING');
+    const [urPage, setUrPage] = useState(1);
+    const [urExpandedKeys, setUrExpandedKeys] = useState<Set<string>>(new Set());
+    const [reviewId, setReviewId] = useState<string | null>(null);
+    const [reviewAdminNote, setReviewAdminNote] = useState('');
+    const [dismissId, setDismissId] = useState<string | null>(null);
+
     const { toast } = useToast();
 
     const utils = trpc.useUtils();
 
     const { data: counts } = trpc.eventRequest.getCounts.useQuery();
+
+    // Update requests queries
+    const { data: urData, isLoading: urLoading } = trpc.eventUpdateRequest.getAll.useQuery({
+        page: urPage,
+        limit: 20,
+        search: urSearch || undefined,
+        status: urStatusFilter === 'ALL' ? undefined : urStatusFilter,
+    });
+
+    const markReviewedMutation = trpc.eventUpdateRequest.markReviewed.useMutation({
+        onSuccess: () => {
+            toast({ title: 'Marked as Reviewed' });
+            utils.eventUpdateRequest.getAll.invalidate();
+            setReviewId(null);
+            setReviewAdminNote('');
+        },
+        onError: (err) => toast({ title: 'Error', description: err.message, variant: 'error' }),
+    });
+
+    const dismissMutation = trpc.eventUpdateRequest.dismiss.useMutation({
+        onSuccess: () => {
+            toast({ title: 'Request Dismissed' });
+            utils.eventUpdateRequest.getAll.invalidate();
+            setDismissId(null);
+        },
+        onError: (err) => toast({ title: 'Error', description: err.message, variant: 'error' }),
+    });
 
     const { data, isLoading } = trpc.eventRequest.getAll.useQuery({
         page,
@@ -453,6 +628,9 @@ export default function EventRequestsPage() {
         },
     ];
 
+    const urRequests = (urData?.data || []) as UpdateRequestData[];
+    const urCounts = urData?.counts;
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -468,6 +646,230 @@ export default function EventRequestsPage() {
                 </div>
             </div>
 
+            {/* Section Tabs */}
+            <div className="border-b border-border">
+                <div className="flex items-center gap-0">
+                    {([
+                        { id: 'task-requests', label: 'Task Requests', count: counts?.PENDING ?? null },
+                        { id: 'update-requests', label: 'Update Requests', count: urCounts?.pending ?? null },
+                    ] as const).map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveSection(tab.id)}
+                            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors relative ${
+                                activeSection === tab.id
+                                    ? 'text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            {tab.label}
+                            {tab.count != null && tab.count > 0 && (
+                                <span className={`text-xs font-semibold rounded-full px-1.5 py-0.5 min-w-[20px] text-center leading-none ${
+                                    activeSection === tab.id
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'bg-muted-foreground/15 text-muted-foreground'
+                                }`}>
+                                    {tab.count}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* ---------------------------------------------------------------- */}
+            {/* UPDATE REQUESTS SECTION */}
+            {/* ---------------------------------------------------------------- */}
+            {activeSection === 'update-requests' && (
+                <>
+                    {/* Status filter + Search */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                            {(['PENDING', 'REVIEWED', 'DISMISSED'] as const).map((s) => {
+                                const cnt = s === 'PENDING' ? urCounts?.pending : s === 'REVIEWED' ? urCounts?.reviewed : urCounts?.dismissed;
+                                return (
+                                    <button
+                                        key={s}
+                                        onClick={() => { setUrStatusFilter(s); setUrPage(1); setUrExpandedKeys(new Set()); }}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                                            urStatusFilter === s
+                                                ? 'bg-background text-foreground shadow-sm'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        {s.charAt(0) + s.slice(1).toLowerCase()}
+                                        {cnt != null && (
+                                            <span className={`text-xs font-semibold rounded-full px-1.5 py-0.5 min-w-[20px] text-center leading-none ${
+                                                urStatusFilter === s ? 'bg-muted text-foreground' : 'bg-muted-foreground/15 text-muted-foreground'
+                                            }`}>
+                                                {cnt}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="relative flex-1 max-w-md">
+                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="text"
+                                placeholder="Search by event title or client..."
+                                value={urSearch}
+                                onChange={(e) => { setUrSearch(e.target.value); setUrPage(1); }}
+                                className="pl-10"
+                            />
+                        </div>
+                    </div>
+
+                    <Card className="p-4">
+                        <DataTable
+                            tableId="event-update-requests"
+                            data={urRequests}
+                            isLoading={urLoading}
+                            getRowKey={(r) => r.id}
+                            emptyMessage="No Update Requests"
+                            emptyDescription={urStatusFilter === 'PENDING' ? 'No pending update requests.' : `No ${urStatusFilter.toLowerCase()} update requests found.`}
+                            columns={[
+                                {
+                                    key: 'status',
+                                    label: 'Status',
+                                    render: (r: UpdateRequestData) => {
+                                        const s = UPDATE_STATUS_BADGE[r.status];
+                                        return <Badge variant={s.variant}>{s.label}</Badge>;
+                                    },
+                                },
+                                {
+                                    key: 'requestId',
+                                    label: 'Request ID',
+                                    render: (r: UpdateRequestData) => (
+                                        <span className="font-mono text-xs uppercase tracking-tight text-muted-foreground">{r.requestId}</span>
+                                    ),
+                                },
+                                {
+                                    key: 'event',
+                                    label: 'Event',
+                                    render: (r: UpdateRequestData) => (
+                                        <div>
+                                            <p className="font-medium text-sm text-foreground">{r.event.title}</p>
+                                            <p className="text-xs text-muted-foreground font-mono">{r.event.eventId}</p>
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    key: 'client',
+                                    label: 'Client',
+                                    render: (r: UpdateRequestData) => {
+                                        const name = r.client.businessName || [r.client.firstName, r.client.lastName].filter(Boolean).join(' ') || 'Unknown';
+                                        return (
+                                            <div>
+                                                <p className="text-sm font-medium">{name}</p>
+                                                {r.client.email && <p className="text-xs text-muted-foreground">{r.client.email}</p>}
+                                            </div>
+                                        );
+                                    },
+                                },
+                                {
+                                    key: 'note',
+                                    label: 'Note Preview',
+                                    render: (r: UpdateRequestData) => (
+                                        <p className="text-sm text-muted-foreground line-clamp-2 max-w-xs">{r.note}</p>
+                                    ),
+                                },
+                                {
+                                    key: 'createdAt',
+                                    label: 'Submitted',
+                                    render: (r: UpdateRequestData) => (
+                                        <span className="text-sm text-muted-foreground">
+                                            {format(typeof r.createdAt === 'string' ? parseISO(r.createdAt) : r.createdAt, 'MMM d, yyyy')}
+                                        </span>
+                                    ),
+                                },
+                            ]}
+                            expandableContent={(r) => (
+                                <UpdateRequestExpandedRow
+                                    r={r}
+                                    onMarkReviewed={(id) => setReviewId(id)}
+                                    onDismiss={(id) => setDismissId(id)}
+                                />
+                            )}
+                            expandedKeys={urExpandedKeys}
+                            onToggleExpand={(key) => {
+                                setUrExpandedKeys((prev) => {
+                                    const next = new Set(prev);
+                                    next.has(key) ? next.delete(key) : next.add(key);
+                                    return next;
+                                });
+                            }}
+                        />
+
+                        {urData && Math.ceil(urData.total / urData.limit) > 1 && (
+                            <div className="flex items-center justify-between pt-4 border-t mt-4">
+                                <p className="text-sm text-muted-foreground">
+                                    Page {urData.page} of {Math.ceil(urData.total / urData.limit)} ({urData.total} total)
+                                </p>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => setUrPage((p) => Math.max(1, p - 1))} disabled={urPage <= 1}>Previous</Button>
+                                    <Button variant="outline" size="sm" onClick={() => setUrPage((p) => p + 1)} disabled={urPage >= Math.ceil(urData.total / urData.limit)}>Next</Button>
+                                </div>
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* Mark Reviewed Dialog */}
+                    {reviewId && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                            <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+                                <h2 className="text-lg font-semibold mb-1">Mark as Reviewed</h2>
+                                <p className="text-sm text-muted-foreground mb-4">Optionally add a note for the client before marking this request as reviewed.</p>
+                                <label className="text-sm font-medium text-foreground block mb-1">Admin Note (optional)</label>
+                                <textarea
+                                    className="w-full border border-border rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 mb-4"
+                                    rows={3}
+                                    placeholder="Add a note visible to the client..."
+                                    value={reviewAdminNote}
+                                    onChange={(e) => setReviewAdminNote(e.target.value)}
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <Button variant="outline" onClick={() => { setReviewId(null); setReviewAdminNote(''); }}>Cancel</Button>
+                                    <Button
+                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                        onClick={() => markReviewedMutation.mutate({ id: reviewId, adminNote: reviewAdminNote || undefined })}
+                                        disabled={markReviewedMutation.isPending}
+                                    >
+                                        {markReviewedMutation.isPending ? 'Saving…' : 'Mark Reviewed'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Dismiss Dialog */}
+                    {dismissId && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                            <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+                                <h2 className="text-lg font-semibold mb-1">Dismiss Request</h2>
+                                <p className="text-sm text-muted-foreground mb-4">This will mark the update request as dismissed. The client will see the updated status.</p>
+                                <div className="flex justify-end gap-2">
+                                    <Button variant="outline" onClick={() => setDismissId(null)}>Cancel</Button>
+                                    <Button
+                                        variant="danger"
+                                        onClick={() => dismissMutation.mutate({ id: dismissId })}
+                                        disabled={dismissMutation.isPending}
+                                    >
+                                        {dismissMutation.isPending ? 'Dismissing…' : 'Dismiss'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* ---------------------------------------------------------------- */}
+            {/* TASK REQUESTS SECTION */}
+            {/* ---------------------------------------------------------------- */}
+            {activeSection === 'task-requests' && (
+            <>
             {/* Status Tabs + Search */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
@@ -731,6 +1133,8 @@ export default function EventRequestsPage() {
                         </div>
                     </div>
                 </div>
+            )}
+            </>
             )}
         </div>
     );
