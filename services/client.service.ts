@@ -273,8 +273,8 @@ export class ClientService {
           email: client.email,
           password,
           name: `${client.firstName} ${client.lastName}`,
-          firstName: client.firstName,
-          lastName: client.lastName,
+          firstName: client.firstName ?? '',
+          lastName: client.lastName ?? '',
         },
       });
 
@@ -380,9 +380,9 @@ export class ClientService {
   async getInvitationInfo(token: string): Promise<{
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
-    businessName: string;
+    firstName: string | null;
+    lastName: string | null;
+    businessName: string | null;
     isExpired: boolean;
   }> {
     const client = await this.prisma.client.findUnique({

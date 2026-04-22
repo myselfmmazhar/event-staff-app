@@ -30,7 +30,7 @@ interface Event {
   createdAt: Date;
   client?: {
     id: string;
-    businessName: string;
+    businessName: string | null;
   } | null;
   callTimes?: Array<{
     id: string;

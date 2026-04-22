@@ -230,9 +230,13 @@ export default function DashboardPage() {
   const { data: staffStats, isLoading: staffLoading } = trpc.staff.getStats.useQuery(
     undefined, { enabled: !profileLoading && !isStaff && !isClient }
   );
-  const { data: upcomingEvents, isLoading: upcomingLoading } = trpc.event.getUpcoming.useQuery(
+  const { data: upcomingEventsRaw, isLoading: upcomingLoading } = trpc.event.getUpcoming.useQuery(
     undefined, { enabled: !profileLoading && !isStaff && !isClient }
   );
+  const upcomingEvents = upcomingEventsRaw?.map(e => ({
+    ...e,
+    client: e.client ? { ...e.client, businessName: e.client.businessName ?? '' } : null,
+  }));
 
   const { data: recentInvoices, isLoading: invoicesLoading } = trpc.invoices.getAll.useQuery(
     { page: 1, limit: 5, showArchived: false },

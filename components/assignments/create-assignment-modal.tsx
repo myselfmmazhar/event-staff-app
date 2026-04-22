@@ -253,7 +253,7 @@ export function CreateAssignmentModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Clients</SelectItem>
-                  {clients.map((c: { id: string; businessName: string }) => (
+                  {clients.map((c: { id: string; businessName: string | null }) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.businessName}
                     </SelectItem>

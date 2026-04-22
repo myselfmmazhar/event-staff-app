@@ -44,7 +44,7 @@ export function EventFilters() {
   // Build client options for multi-select
   const clientOptions = (clientsData?.data || []).map((client) => ({
     value: client.id,
-    label: client.businessName,
+    label: client.businessName ?? '',
   }));
 
   const hasActiveFilters =

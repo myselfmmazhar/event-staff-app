@@ -50,7 +50,7 @@ export const clientRouter = router({
         // Send invitation email
         await emailService.sendClientInvitation(
           accessResult.client.email,
-          accessResult.client.firstName,
+          accessResult.client.firstName ?? '',
           accessResult.invitationToken
         );
 
@@ -74,7 +74,7 @@ export const clientRouter = router({
       if (result.invitationToken) {
         await emailService.sendClientInvitation(
           result.client.email,
-          result.client.firstName,
+          result.client.firstName ?? '',
           result.invitationToken
         );
       }
@@ -112,7 +112,7 @@ export const clientRouter = router({
       // Send invitation email
       await emailService.sendClientInvitation(
         result.client.email,
-        result.client.firstName,
+        result.client.firstName ?? '',
         result.invitationToken
       );
 
@@ -140,7 +140,7 @@ export const clientRouter = router({
       // Send invitation email
       await emailService.sendClientInvitation(
         result.client.email,
-        result.client.firstName,
+        result.client.firstName ?? '',
         result.invitationToken
       );
 
@@ -166,7 +166,7 @@ export const clientRouter = router({
       const result = await ctx.clientService.acceptInvitation(input);
       const otpService = new OtpService(ctx.prisma);
       const code = await otpService.generateAndStore(result.userId);
-      await emailService.sendOtpEmail(result.email, result.client.firstName, code);
+      await emailService.sendOtpEmail(result.email, result.client.firstName ?? '', code);
       return { email: result.email };
     }),
 

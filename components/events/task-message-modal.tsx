@@ -26,7 +26,7 @@ interface TaskMessageModalProps {
     event: {
         id: string;
         title: string;
-        client?: { businessName: string } | null;
+        client?: { businessName: string | null } | null;
         callTimes?: Array<{
             invitations: Array<{
                 status: string;
