@@ -20,7 +20,6 @@ import {
   BanknotesIcon,
   ChatBubbleLeftRightIcon,
   EnvelopeIcon,
-  FileTextIcon,
 } from '@/components/ui/icons';
 import {
   getStaffRoute,
@@ -98,11 +97,6 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           label: 'Assignment Manager',
           href: '/assignments',
           icon: ClipboardListIcon,
-        },
-        {
-          label: 'Pending Requests',
-          href: '/event-requests',
-          icon: FileTextIcon,
         },
       ],
     },
