@@ -3,6 +3,7 @@ import { z } from "zod";
 import { StaffService } from "@/services/staff.service";
 import { StaffSchema } from "@/lib/schemas/staff.schema";
 import { emailService } from "@/services/email.service";
+import { OtpService } from "@/services/otp.service";
 import { SettingsService } from "@/services/settings.service";
 
 /**
@@ -163,13 +164,65 @@ export const staffRouter = router({
         }),
 
     /**
-     * Accept staff invitation (public - staff completes their profile)
+     * Accept staff invitation (public - password setup only)
+     * Creates the account, sends OTP, returns email for redirect.
      */
     acceptInvitation: publicProcedure
         .input(StaffSchema.acceptInvitation)
         .mutation(async ({ ctx, input }) => {
             const staffService = new StaffService(ctx.prisma);
-            return await staffService.acceptInvitation(input);
+            const result = await staffService.acceptInvitation(input);
+            const otpService = new OtpService(ctx.prisma);
+            const code = await otpService.generateAndStore(result.userId);
+            await emailService.sendOtpEmail(result.email, result.staff.firstName, code);
+            return { email: result.email };
+        }),
+
+    /**
+     * Verify OTP for staff (public - verifies email, enables login)
+     */
+    verifyOtp: publicProcedure
+        .input(z.object({ email: z.string().email(), otp: z.string().length(6) }))
+        .mutation(async ({ ctx, input }) => {
+            const user = await ctx.prisma.user.findUnique({
+                where: { email: input.email },
+                select: { id: true },
+            });
+            if (!user) {
+                throw new (await import("@trpc/server")).TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+            }
+            const otpService = new OtpService(ctx.prisma);
+            await otpService.verify(user.id, input.otp);
+            return { success: true };
+        }),
+
+    /**
+     * Resend OTP for staff (public)
+     */
+    resendOtp: publicProcedure
+        .input(z.object({ email: z.string().email() }))
+        .mutation(async ({ ctx, input }) => {
+            const user = await ctx.prisma.user.findUnique({
+                where: { email: input.email },
+                select: { id: true, firstName: true },
+            });
+            if (!user) {
+                throw new (await import("@trpc/server")).TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+            }
+            const otpService = new OtpService(ctx.prisma);
+            const code = await otpService.generateAndStore(user.id);
+            await emailService.sendOtpEmail(input.email, user.firstName, code);
+            return { success: true };
+        }),
+
+    /**
+     * Complete staff profile (protected - called after first login)
+     */
+    completeProfile: protectedProcedure
+        .input(StaffSchema.completeProfile)
+        .mutation(async ({ ctx, input }) => {
+            const staffService = new StaffService(ctx.prisma);
+            return await staffService.completeProfile(ctx.userId!, input);
         }),
 
     /**

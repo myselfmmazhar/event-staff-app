@@ -48,12 +48,10 @@ function AcceptClientInvitationContent() {
     );
 
     const acceptMutation = trpc.clients.acceptInvitation.useMutation({
-        onSuccess: () => {
-            toast({
-                message: 'Your account has been created successfully! You can now log in.',
-                type: 'success',
-            });
-            router.push('/login');
+        onSuccess: (data) => {
+            sessionStorage.setItem('otp_email', data.email);
+            sessionStorage.setItem('otp_type', 'client');
+            router.push(`/verify-otp?email=${encodeURIComponent(data.email)}&type=client`);
         },
         onError: (error) => {
             toast({
@@ -73,11 +71,8 @@ function AcceptClientInvitationContent() {
 
     const onSubmit = (data: FormData) => {
         if (!token) return;
-
-        acceptMutation.mutate({
-            token,
-            password: data.password,
-        });
+        sessionStorage.setItem('otp_password', data.password);
+        acceptMutation.mutate({ token, password: data.password });
     };
 
     // Handle missing token

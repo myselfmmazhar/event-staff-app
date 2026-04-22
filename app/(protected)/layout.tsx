@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AuthGuard } from '@/components/guards';
+import { AuthGuard, StaffProfileGuard } from '@/components/guards';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 
@@ -14,6 +14,7 @@ export default function ProtectedLayout({
 
   return (
     <AuthGuard>
+      <StaffProfileGuard>
       <div className="flex h-screen overflow-hidden">
         {/* Desktop Sidebar */}
         <div className="hidden md:block">
@@ -38,6 +39,7 @@ export default function ProtectedLayout({
           </main>
         </div>
       </div>
+      </StaffProfileGuard>
     </AuthGuard>
   );
 }

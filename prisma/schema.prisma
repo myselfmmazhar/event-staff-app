@@ -721,6 +721,7 @@ model Staff {
   accountStatus                AccountStatus            @default(PENDING)
   staffType                    StaffType                @default(EMPLOYEE)
   staffRole                    StaffRole                @default(INDIVIDUAL)
+  profileCompleted             Boolean                  @default(false)
   firstName                    String
   lastName                     String
   phone                        String                   @default("")
@@ -846,6 +847,8 @@ model User {
   lastLoginAt                      DateTime?               @db.Timestamp(6)
   invitationToken                  String?                 @unique
   invitationExpiresAt              DateTime?               @db.Timestamp(6)
+  otpCode                          String?
+  otpExpiresAt                     DateTime?               @db.Timestamp(6)
   createdAt                        DateTime                @default(now()) @db.Timestamp(6)
   updatedAt                        DateTime                @updatedAt @db.Timestamp(6)
   accounts                         Account[]
