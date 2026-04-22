@@ -15,5 +15,24 @@ export const getConversationsSchema = z.object({
     contactType: z.enum(['STAFF', 'CLIENT', 'ALL']).default('ALL').optional(),
 });
 
+export const queryPortalLogsSchema = z.object({
+    page: z.number().int().min(1).default(1).optional(),
+    limit: z.number().int().min(1).max(100).default(20).optional(),
+    type: z.nativeEnum(MessageType).optional(),
+    status: z.nativeEnum(MessageStatus).optional(),
+    search: z.string().optional(),
+    showTrashed: z.boolean().default(false).optional(),
+});
+
+export const getPortalConversationsSchema = z.object({
+    type: z.nativeEnum(MessageType),
+});
+
+export const getPortalChatHistorySchema = z.object({
+    recipient: z.string(),
+    type: z.nativeEnum(MessageType),
+});
+
 export type QueryCommunicationLogsInput = z.infer<typeof queryCommunicationLogsSchema>;
 export type GetConversationsInput = z.infer<typeof getConversationsSchema>;
+export type QueryPortalLogsInput = z.infer<typeof queryPortalLogsSchema>;

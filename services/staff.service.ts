@@ -85,6 +85,7 @@ export class StaffService {
         internalNotes: true,
         companyId: true,
         hasLoginAccess: true,
+        profileCompleted: true,
         userId: true,
         invitationToken: true,
         invitationExpiresAt: true,
@@ -480,21 +481,17 @@ export class StaffService {
     }
 
     /**
-     * Accept staff invitation and complete profile
+     * Accept staff invitation — password setup only.
+     * Profile fields (phone, address, documents) are collected separately after OTP verification.
+     * Does NOT set emailVerified — OTP flow handles that.
      */
     async acceptInvitation(
         data: AcceptStaffInvitationInput
-    ): Promise<StaffSelect> {
-        const { token, password, documents, ...profileData } = data;
+    ): Promise<{ staff: StaffSelect; userId: string; email: string }> {
+        const { token, password } = data;
 
-        // Find staff by invitation token
         const staff = await this.prisma.staff.findUnique({
             where: { invitationToken: token },
-            include: {
-                services: {
-                    select: { serviceId: true },
-                },
-            },
         });
 
         if (!staff) {
@@ -511,27 +508,12 @@ export class StaffService {
             });
         }
 
-        const rules = await this.getCategoryRulesForServiceIds(
-            staff.services.map((s) => s.serviceId)
-        );
-        this.assertCategoryRequirementsMet(rules, {
-            documents: documents ?? [],
-            allowMissingTaxSignature: true,
-        });
-
-        const documentsPatch =
-            documents !== undefined
-                ? { documents: documents as Prisma.InputJsonValue }
-                : {};
-
         try {
-            // Check if user already exists with this email
             const existingUser = await this.prisma.user.findUnique({
                 where: { email: staff.email },
             });
 
             if (existingUser) {
-                // Check if this user is already linked to the staff record
                 if (staff.userId === existingUser.id) {
                     throw new TRPCError({
                         code: "BAD_REQUEST",
@@ -539,43 +521,19 @@ export class StaffService {
                     });
                 }
 
-                // User exists but not linked to this staff - link them and update staff profile
-                // This handles the case where a user was created previously (e.g., leftover test data)
-                // and we need to complete the staff profile setup
-
-                // Hash the new password
+                // Link pre-existing user (emailVerified stays false until OTP)
                 const hashedPassword = await hashPassword(password);
-
-                // Update user with STAFF role, verified status, and new password
                 await this.prisma.user.update({
                     where: { id: existingUser.id },
-                    data: {
-                        role: UserRole.STAFF,
-                        emailVerified: true,
-                        phone: profileData.phone,
-                        isActive: true,
-                        password: hashedPassword,
-                    },
+                    data: { role: UserRole.STAFF, isActive: true, password: hashedPassword },
                 });
-
-                // Also update the account password for Better Auth credential provider
                 await this.prisma.account.updateMany({
-                    where: {
-                        userId: existingUser.id,
-                        providerId: 'credential',
-                    },
-                    data: {
-                        password: hashedPassword,
-                    },
+                    where: { userId: existingUser.id, providerId: 'credential' },
+                    data: { password: hashedPassword },
                 });
-
-                // Update staff with profile data and link to existing user
                 const updatedStaff = await this.prisma.staff.update({
                     where: { id: staff.id },
                     data: {
-                        ...profileData,
-                        ...documentsPatch,
-                        accountStatus: AccountStatus.ACTIVE,
                         hasLoginAccess: true,
                         userId: existingUser.id,
                         invitationToken: null,
@@ -583,11 +541,10 @@ export class StaffService {
                     },
                     select: this.staffSelect,
                 });
-
-                return updatedStaff;
+                return { staff: updatedStaff, userId: existingUser.id, email: staff.email };
             }
 
-            // Create User account via Better Auth
+            // Create User account via Better Auth (emailVerified will be false by default)
             const authResult = await auth.api.signUpEmail({
                 body: {
                     email: staff.email,
@@ -605,23 +562,14 @@ export class StaffService {
                 });
             }
 
-            // Update the created user with STAFF role and verified status
             await this.prisma.user.update({
                 where: { id: authResult.user.id },
-                data: {
-                    role: UserRole.STAFF,
-                    emailVerified: true,
-                    phone: profileData.phone,
-                },
+                data: { role: UserRole.STAFF },
             });
 
-            // Update staff with profile data and link to user
             const updatedStaff = await this.prisma.staff.update({
                 where: { id: staff.id },
                 data: {
-                    ...profileData,
-                    ...documentsPatch,
-                    accountStatus: AccountStatus.ACTIVE,
                     hasLoginAccess: true,
                     userId: authResult.user.id,
                     invitationToken: null,
@@ -630,59 +578,27 @@ export class StaffService {
                 select: this.staffSelect,
             });
 
-            return updatedStaff;
+            return { staff: updatedStaff, userId: authResult.user.id, email: staff.email };
         } catch (error) {
-            if (error instanceof TRPCError) {
-                throw error;
-            }
+            if (error instanceof TRPCError) throw error;
 
-            // Check for duplicate email error from Better Auth
-            // This can happen if signUpEmail partially succeeds (creates user) but throws an error
-            // We need to check if user was actually created and link them instead of throwing
             if (error instanceof Error) {
-                const errorMessage = error.message.toLowerCase();
-                if (errorMessage.includes("already exists") ||
-                    errorMessage.includes("accept your invitation") ||
-                    errorMessage.includes("duplicate")) {
-                    // Re-check if user was created (race condition handling)
-                    const createdUser = await this.prisma.user.findUnique({
-                        where: { email: staff.email },
-                    });
-
+                const msg = error.message.toLowerCase();
+                if (msg.includes("already exists") || msg.includes("accept your invitation") || msg.includes("duplicate")) {
+                    const createdUser = await this.prisma.user.findUnique({ where: { email: staff.email } });
                     if (createdUser && !staff.userId) {
-                        // User was created but staff wasn't linked - complete the linking
                         const hashedPassword = await hashPassword(password);
-
-                        // Update user with STAFF role and new password
                         await this.prisma.user.update({
                             where: { id: createdUser.id },
-                            data: {
-                                role: UserRole.STAFF,
-                                emailVerified: true,
-                                phone: profileData.phone,
-                                isActive: true,
-                                password: hashedPassword,
-                            },
+                            data: { role: UserRole.STAFF, isActive: true, password: hashedPassword },
                         });
-
-                        // Update account password for Better Auth
                         await this.prisma.account.updateMany({
-                            where: {
-                                userId: createdUser.id,
-                                providerId: 'credential',
-                            },
-                            data: {
-                                password: hashedPassword,
-                            },
+                            where: { userId: createdUser.id, providerId: 'credential' },
+                            data: { password: hashedPassword },
                         });
-
-                        // Update staff with profile data and link to user
                         const updatedStaff = await this.prisma.staff.update({
                             where: { id: staff.id },
                             data: {
-                                ...profileData,
-                                ...documentsPatch,
-                                accountStatus: AccountStatus.ACTIVE,
                                 hasLoginAccess: true,
                                 userId: createdUser.id,
                                 invitationToken: null,
@@ -690,10 +606,8 @@ export class StaffService {
                             },
                             select: this.staffSelect,
                         });
-
-                        return updatedStaff;
+                        return { staff: updatedStaff, userId: createdUser.id, email: staff.email };
                     }
-
                     throw new TRPCError({
                         code: "CONFLICT",
                         message: "A user account with this email already exists. Please try logging in instead.",
@@ -702,11 +616,41 @@ export class StaffService {
             }
 
             console.error("Error accepting invitation:", error);
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: "Failed to complete registration",
-            });
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to complete registration" });
         }
+    }
+
+    /**
+     * Complete staff profile after OTP verification (first login).
+     * Sets phone, address, optional documents; marks profileCompleted and activates account.
+     */
+    async completeProfile(
+        userId: string,
+        data: import("@/lib/schemas/staff.schema").CompleteStaffProfileInput
+    ): Promise<StaffSelect> {
+        const staff = await this.prisma.staff.findFirst({ where: { userId } });
+
+        if (!staff) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Staff record not found" });
+        }
+
+        if (staff.profileCompleted) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Profile is already complete" });
+        }
+
+        const { documents, ...profileData } = data;
+        const documentsPatch = documents !== undefined ? { documents: documents as Prisma.InputJsonValue } : {};
+
+        return this.prisma.staff.update({
+            where: { id: staff.id },
+            data: {
+                ...profileData,
+                ...documentsPatch,
+                accountStatus: AccountStatus.ACTIVE,
+                profileCompleted: true,
+            },
+            select: this.staffSelect,
+        });
     }
 
     /**

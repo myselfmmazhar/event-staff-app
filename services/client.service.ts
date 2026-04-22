@@ -186,11 +186,12 @@ export class ClientService {
   }
 
   /**
-   * Accept client invitation and create user account
+   * Accept client invitation and create user account.
+   * Does NOT verify email — OTP verification happens separately before login.
    */
   async acceptInvitation(
     data: AcceptClientInvitationInput
-  ): Promise<ClientSelect> {
+  ): Promise<{ client: ClientSelect; userId: string; email: string }> {
     const { token, password } = data;
 
     // Find client by invitation token
@@ -230,12 +231,11 @@ export class ClientService {
         // User exists but not linked to this client - link them
         const hashedPassword = await hashPassword(password);
 
-        // Update user with CLIENT role, verified status, and new password
+        // Update user with CLIENT role and new password (emailVerified stays false until OTP)
         await this.prisma.user.update({
           where: { id: existingUser.id },
           data: {
             role: UserRole.CLIENT,
-            emailVerified: true,
             phone: client.cellPhone,
             isActive: true,
             password: hashedPassword,
@@ -264,7 +264,7 @@ export class ClientService {
           select: this.clientSelect,
         });
 
-        return updatedClient;
+        return { client: updatedClient, userId: existingUser.id, email: client.email };
       }
 
       // Create User account via Better Auth
@@ -273,8 +273,8 @@ export class ClientService {
           email: client.email,
           password,
           name: `${client.firstName} ${client.lastName}`,
-          firstName: client.firstName,
-          lastName: client.lastName,
+          firstName: client.firstName ?? '',
+          lastName: client.lastName ?? '',
         },
       });
 
@@ -285,12 +285,11 @@ export class ClientService {
         });
       }
 
-      // Update the created user with CLIENT role and verified status
+      // Update the created user with CLIENT role (emailVerified stays false until OTP)
       await this.prisma.user.update({
         where: { id: authResult.user.id },
         data: {
           role: UserRole.CLIENT,
-          emailVerified: true,
           phone: client.cellPhone,
         },
       });
@@ -306,7 +305,7 @@ export class ClientService {
         select: this.clientSelect,
       });
 
-      return updatedClient;
+      return { client: updatedClient, userId: authResult.user.id, email: client.email };
     } catch (error) {
       if (error instanceof TRPCError) {
         throw error;
@@ -331,7 +330,6 @@ export class ClientService {
               where: { id: createdUser.id },
               data: {
                 role: UserRole.CLIENT,
-                emailVerified: true,
                 phone: client.cellPhone,
                 isActive: true,
                 password: hashedPassword,
@@ -358,7 +356,7 @@ export class ClientService {
               select: this.clientSelect,
             });
 
-            return updatedClient;
+            return { client: updatedClient, userId: createdUser.id, email: client.email };
           }
 
           throw new TRPCError({
@@ -382,9 +380,9 @@ export class ClientService {
   async getInvitationInfo(token: string): Promise<{
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
-    businessName: string;
+    firstName: string | null;
+    lastName: string | null;
+    businessName: string | null;
     isExpired: boolean;
   }> {
     const client = await this.prisma.client.findUnique({

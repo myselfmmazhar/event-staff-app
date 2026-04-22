@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,10 +38,10 @@ export default function ClientPortalDashboard() {
 
     const statusColor: Record<string, string> = {
         PUBLISHED: 'border-blue-400 text-blue-600',
-        ASSIGNED:  'border-green-400 text-green-700',
+        ASSIGNED: 'border-green-400 text-green-700',
         COMPLETED: 'border-muted-foreground/30 text-muted-foreground',
         CANCELLED: 'border-red-400 text-red-600',
-        DRAFT:     'border-amber-400 text-amber-600',
+        DRAFT: 'border-amber-400 text-amber-600',
     };
 
     return (
@@ -91,8 +92,8 @@ export default function ClientPortalDashboard() {
                     {[
                         { label: 'Upcoming Events', value: stats?.upcoming ?? 0, icon: CalendarIcon },
                         { label: 'Completed Events', value: stats?.completed ?? 0, icon: BriefcaseIcon },
-                        { label: 'Total Events',     value: stats?.total ?? 0,     icon: ClockIcon },
-                        { label: 'Total Requests',   value: stats?.requests ?? 0, icon: FileTextIcon },
+                        { label: 'Total Events', value: stats?.total ?? 0, icon: ClockIcon },
+                        { label: 'Total Requests', value: stats?.requests ?? 0, icon: FileTextIcon },
                     ].map(({ label, value, icon: Icon }) => (
                         <div key={label} className="bg-card border border-border rounded-xl p-5">
                             <div className="flex items-center justify-between">
@@ -162,11 +163,11 @@ export default function ClientPortalDashboard() {
                                             const totalRequired = event.callTimes?.reduce((sum: number, ct: any) => sum + (ct.numberOfStaffRequired || 0), 0) || 0;
                                             const totalFilled = event.callTimes?.reduce((sum: number, ct: any) => sum + (ct.invitations?.length || 0), 0) || 0;
                                             const open = Math.max(0, totalRequired - totalFilled);
-                                            
+
                                             const isNeedsTalent = event.status === 'PUBLISHED';
                                             const badgeLabel = isNeedsTalent ? "Needs Talent" : (event.status.charAt(0) + event.status.slice(1).toLowerCase());
-                                            const badgeClass = isNeedsTalent 
-                                                ? "border-amber-400 text-amber-700 bg-amber-50/50" 
+                                            const badgeClass = isNeedsTalent
+                                                ? "border-amber-400 text-amber-700 bg-amber-50/50"
                                                 : (statusColor[event.status] || "border-muted-foreground/30 text-muted-foreground");
 
                                             return (
@@ -222,7 +223,7 @@ export default function ClientPortalDashboard() {
                                     </div>
                                 </div>
                             </div>
-                        ) }
+                        )}
                     </div>
 
                     {/* Right — sidebar */}
@@ -233,7 +234,7 @@ export default function ClientPortalDashboard() {
                             <div className="space-y-2.5">
                                 {[
                                     { label: 'All My Events', href: '/client-portal/my-events' },
-                                    { label: 'My Profile',    href: '/profile' },
+                                    { label: 'My Profile', href: '/profile' },
                                 ].map(link => (
                                     <Link
                                         key={link.href}

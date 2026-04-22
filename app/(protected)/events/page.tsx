@@ -33,6 +33,7 @@ import { EventsMapView } from '@/components/events/events-map-view';
 import { EventCalendar } from '@/components/events/calendar/event-calendar';
 import { Calendar, Map, TableIcon } from 'lucide-react';
 import type { EventExport } from '@/lib/utils/event-export';
+import EventRequestsPage from '@/app/(protected)/event-requests/page';
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type EventsQueryOutput = RouterOutputs['event']['getAll'];
@@ -140,6 +141,25 @@ export default function EventsPage() {
   // Track if we're doing Update & Continue (to prevent closing the form)
   const [isUpdateAndContinue, setIsUpdateAndContinue] = useState(false);
 
+  // Page tab state (events / event-requests)
+  type EventsTabMode = 'events' | 'event-requests';
+  const [activeTab, setActiveTab] = useState<EventsTabMode>(() => {
+    const tab = searchParams.get('tab');
+    return tab === 'event-requests' ? 'event-requests' : 'events';
+  });
+
+  const handleTabChange = (tab: EventsTabMode) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === 'events') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  };
+
   // View toggle state (table / calendar / map)
   type EventsViewMode = 'table' | 'calendar' | 'map';
   const [viewMode, setViewMode] = useState<EventsViewMode>(() => {
@@ -211,7 +231,7 @@ export default function EventsPage() {
   // Sync store with URL
   useUrlSync(filters, {
     keys: ['page', 'limit', 'search', 'selectedStatuses', 'selectedClientIds', 'sortBy', 'sortOrder', 'startDateFrom', 'startDateTo'],
-    preserve: ['view'],
+    preserve: ['view', 'tab'],
   });
 
   // tRPC queries
@@ -597,6 +617,33 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-1 bg-muted rounded-lg p-1 w-fit">
+        <button
+          onClick={() => handleTabChange('events')}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeTab === 'events'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {terminology.event.plural}
+        </button>
+        <button
+          onClick={() => handleTabChange('event-requests')}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeTab === 'event-requests'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Event Requests
+        </button>
+      </div>
+
+      {activeTab === 'event-requests' && <EventRequestsPage />}
+
+      {activeTab === 'events' && <>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -871,6 +918,7 @@ export default function EventsPage() {
           setMessageTarget(null);
         }}
       />
+      </>}
     </div>
   );
 }

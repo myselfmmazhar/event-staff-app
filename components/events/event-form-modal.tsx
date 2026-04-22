@@ -326,7 +326,7 @@ export function EventFormModal({
   // Client map for batch validation
   const clientMap = new Map<string, string>();
   clientsData?.data.forEach((c) => {
-    clientMap.set(c.businessName.toLowerCase(), c.id);
+    clientMap.set((c.businessName ?? '').toLowerCase(), c.id);
   });
 
   // Batch import mutation
@@ -1007,7 +1007,7 @@ export function EventFormModal({
     }
   };
 
-  const clients = clientsData?.data || [];
+  const clients = (clientsData?.data || []).map(c => ({ ...c, businessName: c.businessName ?? '' }));
 
   return (
     <Dialog

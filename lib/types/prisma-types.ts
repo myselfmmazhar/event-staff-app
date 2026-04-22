@@ -105,6 +105,7 @@ export type StaffSelect = Prisma.StaffGetPayload<{
     internalNotes: true;
     companyId: true;
     hasLoginAccess: true;
+    profileCompleted: true;
     userId: true;
     invitationToken: true;
     invitationExpiresAt: true;

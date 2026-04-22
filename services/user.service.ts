@@ -528,6 +528,13 @@ export class UserService {
         lastLoginAt: true,
         createdAt: true,
         updatedAt: true,
+        user_preferences: {
+          select: {
+            hasSeenOnboarding: true,
+            financeTabOrder: true,
+            catalogTabOrder: true,
+          }
+        }
       },
     });
 

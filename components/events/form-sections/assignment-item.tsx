@@ -157,44 +157,42 @@ export function AssignmentItem({
             </div>
 
             {!isProduct && serviceAssignment && onQuickUpdate && (
-              <>
+              <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
                 <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
-                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-                  <Input
-                    type="date"
-                    value={serviceAssignment.startDate || ''}
-                    min={minDate || undefined}
-                    max={maxDate || undefined}
-                    onChange={(e) => handleDateChange('startDate', e.target.value)}
-                    disabled={disabled || !editable}
-                    className="h-8 w-[118px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[128px]"
-                  />
-                  <Input
-                    type="time"
-                    value={serviceAssignment.startTime || ''}
-                    onChange={(e) => handleDateChange('startTime', e.target.value)}
-                    disabled={disabled || !editable}
-                    className="h-8 w-[100px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[108px]"
-                  />
-                  <span className="shrink-0 px-0.5 text-xs font-light text-slate-300">—</span>
-                  <Input
-                    type="date"
-                    value={serviceAssignment.endDate || ''}
-                    min={minDate || undefined}
-                    max={maxDate || undefined}
-                    onChange={(e) => handleDateChange('endDate', e.target.value)}
-                    disabled={disabled || !editable}
-                    className="h-8 w-[118px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[128px]"
-                  />
-                  <Input
-                    type="time"
-                    value={serviceAssignment.endTime || ''}
-                    onChange={(e) => handleDateChange('endTime', e.target.value)}
-                    disabled={disabled || !editable}
-                    className="h-8 w-[100px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[108px]"
-                  />
-                </div>
-              </>
+                <Input
+                  type="date"
+                  value={serviceAssignment.startDate || ''}
+                  min={minDate || undefined}
+                  max={maxDate || undefined}
+                  onChange={(e) => handleDateChange('startDate', e.target.value)}
+                  disabled={disabled || !editable}
+                  className="h-8 w-[118px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[128px]"
+                />
+                <Input
+                  type="time"
+                  value={serviceAssignment.startTime || ''}
+                  onChange={(e) => handleDateChange('startTime', e.target.value)}
+                  disabled={disabled || !editable}
+                  className="h-8 w-[100px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[108px]"
+                />
+                <span className="shrink-0 px-0.5 text-xs font-light text-slate-300">—</span>
+                <Input
+                  type="date"
+                  value={serviceAssignment.endDate || ''}
+                  min={minDate || undefined}
+                  max={maxDate || undefined}
+                  onChange={(e) => handleDateChange('endDate', e.target.value)}
+                  disabled={disabled || !editable}
+                  className="h-8 w-[118px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[128px]"
+                />
+                <Input
+                  type="time"
+                  value={serviceAssignment.endTime || ''}
+                  onChange={(e) => handleDateChange('endTime', e.target.value)}
+                  disabled={disabled || !editable}
+                  className="h-8 w-[100px] rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[11px] focus:bg-white sm:w-[108px]"
+                />
+              </div>
             )}
           </div>
 
@@ -216,47 +214,48 @@ export function AssignmentItem({
                   />
                 </div>
 
-                {/* Separator */}
-                <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
+                {/* Cost, Price, Rate — pushed to the right */}
+                <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+                  <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
 
-                {/* Column 2 & 3: Cost and Price */}
-                {!isProduct && serviceAssignment && onQuickUpdate && (
-                  <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-                    <div className="flex min-w-[220px] items-center gap-2 sm:min-w-[236px]">
-                      <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Cost: $</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={cost ?? 0}
-                        onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
-                        disabled={disabled}
-                        className="h-8 flex-1 rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] text-slate-700 focus:bg-white"
-                      />
-                    </div>
+                  {!isProduct && serviceAssignment && onQuickUpdate && (
+                    <>
+                      <div className="flex min-w-[220px] items-center gap-2 sm:min-w-[236px]">
+                        <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Cost: $</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={cost ?? 0}
+                          onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
+                          disabled={disabled}
+                          className="h-8 flex-1 rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] text-slate-700 focus:bg-white"
+                        />
+                      </div>
 
-                    <span className="shrink-0 px-0.5 text-xs font-light text-slate-300">—</span>
+                      <span className="shrink-0 px-0.5 text-xs font-light text-slate-300">—</span>
 
-                    <div className="flex min-w-[220px] items-center gap-2 sm:min-w-[236px]">
-                      <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Price: $</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={price ?? 0}
-                        onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
-                        disabled={disabled}
-                        className="h-8 flex-1 rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] font-semibold text-slate-900 focus:bg-white"
-                      />
-                    </div>
+                      <div className="flex min-w-[220px] items-center gap-2 sm:min-w-[236px]">
+                        <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">Price: $</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={price ?? 0}
+                          onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
+                          disabled={disabled}
+                          className="h-8 flex-1 rounded-lg border-slate-200 bg-slate-50 px-1.5 text-[12px] font-semibold text-slate-900 focus:bg-white"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Rate label */}
+                  <div className="flex h-8 shrink-0 items-center rounded-lg border border-slate-200/80 bg-slate-50 px-2 sm:px-2.5">
+                    <span className="whitespace-nowrap text-[10px] font-medium text-slate-500 sm:text-[11px]">
+                      {rateLabel}
+                    </span>
                   </div>
-                )}
-
-                {/* Rate label */}
-                <div className="flex h-8 shrink-0 items-center rounded-lg border border-slate-200/80 bg-slate-50 px-2 sm:px-2.5">
-                  <span className="whitespace-nowrap text-[10px] font-medium text-slate-500 sm:text-[11px]">
-                    {rateLabel}
-                  </span>
                 </div>
               </div>
             </div>

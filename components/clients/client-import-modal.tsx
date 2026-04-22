@@ -195,7 +195,7 @@ export function ClientImportModal({ open, onClose, onSuccess }: ClientImportModa
     importMutation.mutate({
       clients: validRows,
       mode: importMode,
-    });
+    } as any);
   };
 
   const validCount = validationResults.filter((r) => r.valid).length;

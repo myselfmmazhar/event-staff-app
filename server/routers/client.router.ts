@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ClientSchema } from "@/lib/schemas/client.schema";
 import { clientBulkImportSchema } from "@/lib/schemas/client-import.schema";
 import { emailService } from "@/services/email.service";
+import { OtpService } from "@/services/otp.service";
 
 /**
  * Client Router - All client-related tRPC procedures
@@ -49,7 +50,7 @@ export const clientRouter = router({
         // Send invitation email
         await emailService.sendClientInvitation(
           accessResult.client.email,
-          accessResult.client.firstName,
+          accessResult.client.firstName ?? '',
           accessResult.invitationToken
         );
 
@@ -73,7 +74,7 @@ export const clientRouter = router({
       if (result.invitationToken) {
         await emailService.sendClientInvitation(
           result.client.email,
-          result.client.firstName,
+          result.client.firstName ?? '',
           result.invitationToken
         );
       }
@@ -111,7 +112,7 @@ export const clientRouter = router({
       // Send invitation email
       await emailService.sendClientInvitation(
         result.client.email,
-        result.client.firstName,
+        result.client.firstName ?? '',
         result.invitationToken
       );
 
@@ -139,7 +140,7 @@ export const clientRouter = router({
       // Send invitation email
       await emailService.sendClientInvitation(
         result.client.email,
-        result.client.firstName,
+        result.client.firstName ?? '',
         result.invitationToken
       );
 
@@ -157,11 +158,53 @@ export const clientRouter = router({
 
   /**
    * Accept client invitation (public - client sets their password)
+   * Creates the account, sends OTP, returns email for redirect.
    */
   acceptInvitation: publicProcedure
     .input(ClientSchema.acceptInvitation)
     .mutation(async ({ ctx, input }) => {
-      return await ctx.clientService.acceptInvitation(input);
+      const result = await ctx.clientService.acceptInvitation(input);
+      const otpService = new OtpService(ctx.prisma);
+      const code = await otpService.generateAndStore(result.userId);
+      await emailService.sendOtpEmail(result.email, result.client.firstName ?? '', code);
+      return { email: result.email };
+    }),
+
+  /**
+   * Verify OTP for client (public - verifies email, enables login)
+   */
+  verifyOtp: publicProcedure
+    .input(z.object({ email: z.string().email(), otp: z.string().length(6) }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: input.email },
+        select: { id: true },
+      });
+      if (!user) {
+        throw new (await import("@trpc/server")).TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+      }
+      const otpService = new OtpService(ctx.prisma);
+      await otpService.verify(user.id, input.otp);
+      return { success: true };
+    }),
+
+  /**
+   * Resend OTP for client (public)
+   */
+  resendOtp: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: input.email },
+        select: { id: true, firstName: true },
+      });
+      if (!user) {
+        throw new (await import("@trpc/server")).TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+      }
+      const otpService = new OtpService(ctx.prisma);
+      const code = await otpService.generateAndStore(user.id);
+      await emailService.sendOtpEmail(input.email, user.firstName, code);
+      return { success: true };
     }),
 
   /**

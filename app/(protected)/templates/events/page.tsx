@@ -63,7 +63,7 @@ interface EventTemplate {
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
-  client: { id: string; businessName: string } | null;
+  client: { id: string; businessName: string | null } | null;
   createdByUser: { id: string; name: string; email: string };
 }
 

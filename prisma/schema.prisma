@@ -155,18 +155,18 @@ model CallTime {
 model Client {
   id                             String           @id @default(uuid()) @db.Uuid
   clientId                       String           @unique
-  businessName                   String
-  firstName                      String
-  lastName                       String
+  businessName                   String?
+  firstName                      String?
+  lastName                       String?
   email                          String
-  cellPhone                      String
+  cellPhone                      String?
   businessPhone                  String?
   details                        String?
   requirements                   String?
   businessAddress                String?
-  city                           String
-  state                          String
-  zipCode                        String
+  city                           String?
+  state                          String?
+  zipCode                        String?
   ccEmail                        String?
   billingFirstName               String?
   billingLastName                String?
@@ -189,6 +189,7 @@ model Client {
   events                         Event[]
   invoices                       Invoice[]
   eventRequests                  EventRequest[]
+  eventUpdateRequests            EventUpdateRequest[]
 
   @@index([clientId])
   @@index([createdBy])
@@ -295,6 +296,7 @@ model Event {
   client               Client?        @relation(fields: [clientId], references: [id])
   createdByUser        User           @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   sourceRequest        EventRequest?  @relation("EventRequestToEvent")
+  updateRequests       EventUpdateRequest[]
 
   @@index([clientId])
   @@index([createdBy])
@@ -414,6 +416,29 @@ model EventRequest {
   @@index([status])
   @@index([createdAt])
   @@map("event_requests")
+}
+
+model EventUpdateRequest {
+  id         String                    @id @default(uuid()) @db.Uuid
+  requestId  String                    @unique
+  eventId    String                    @db.Uuid
+  clientId   String                    @db.Uuid
+  note       String
+  status     EventUpdateRequestStatus  @default(PENDING)
+  adminNote  String?
+  reviewedAt DateTime?                 @db.Timestamp(6)
+  reviewedBy String?
+  createdAt  DateTime                  @default(now()) @db.Timestamp(6)
+
+  event      Event                     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  client     Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  reviewer   User?                     @relation("eventUpdateRequestReviewers", fields: [reviewedBy], references: [id])
+
+  @@index([eventId])
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("event_update_requests")
 }
 
 enum CategoryRequirementType {
@@ -580,6 +605,7 @@ model UserPreference {
   userId           String   @unique
   financeTabOrder  String[] @default([])
   catalogTabOrder  String[] @default([])
+  hasSeenOnboarding Boolean  @default(false)
   createdAt        DateTime @default(now()) @db.Timestamp(6)
   updatedAt        DateTime @updatedAt @db.Timestamp(6)
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -721,6 +747,7 @@ model Staff {
   accountStatus                AccountStatus            @default(PENDING)
   staffType                    StaffType                @default(EMPLOYEE)
   staffRole                    StaffRole                @default(INDIVIDUAL)
+  profileCompleted             Boolean                  @default(false)
   firstName                    String
   lastName                     String
   phone                        String                   @default("")
@@ -846,11 +873,14 @@ model User {
   lastLoginAt                      DateTime?               @db.Timestamp(6)
   invitationToken                  String?                 @unique
   invitationExpiresAt              DateTime?               @db.Timestamp(6)
+  otpCode                          String?
+  otpExpiresAt                     DateTime?               @db.Timestamp(6)
   createdAt                        DateTime                @default(now()) @db.Timestamp(6)
   updatedAt                        DateTime                @updatedAt @db.Timestamp(6)
   accounts                         Account[]
   invitationReviews                CallTimeInvitation[]    @relation("invitation_reviews")
   eventRequestReviews              EventRequest[]          @relation("eventRequestReviewers")
+  eventUpdateRequestReviews        EventUpdateRequest[]    @relation("eventUpdateRequestReviewers")
   clients_clients_createdByTousers Client[]                @relation("clients_createdByTousers")
   clients_clients_userIdTousers    Client?                 @relation("clients_userIdTousers")
   communicationLogs                CommunicationLog[]
@@ -1182,6 +1212,12 @@ enum EventRequestStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum EventUpdateRequestStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
 }
 
 enum RequestMethod {

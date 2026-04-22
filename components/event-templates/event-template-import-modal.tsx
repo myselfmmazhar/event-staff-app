@@ -75,7 +75,7 @@ export function EventTemplateImportModal({
   // Create client map for validation
   const clientMap = new Map<string, string>();
   clients.forEach((c) => {
-    clientMap.set(c.businessName.toLowerCase(), c.id);
+    clientMap.set((c.businessName ?? '').toLowerCase(), c.id);
   });
 
   // Import mutation

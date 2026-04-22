@@ -1,43 +1,80 @@
 'use client';
 
 import { useState } from 'react';
-import { AuthGuard } from '@/components/guards';
+import { AuthGuard, StaffProfileGuard } from '@/components/guards';
+import { useProfileCompletion } from '@/components/guards/staff-profile-guard';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { ProfileCompletionModal } from '@/components/staff/profile-completion-modal';
+import { OnboardingTour } from '@/components/onboarding/onboarding-tour';
+import { trpc } from '@/lib/client/trpc';
+import { UserRole } from '@prisma/client';
+
+function ProtectedLayoutContent({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isProfileIncomplete, isLoading: staffProfileLoading } = useProfileCompletion();
+  
+  const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
+  const hasSeenOnboarding = profile?.user_preferences?.hasSeenOnboarding === true;
+  const isClient = (profile?.role as string) === 'CLIENT' || (profile?.role as any) === UserRole.CLIENT;
+  // For staff: wait for the staff-profile query to settle so isProfileIncomplete is accurate,
+  // then only show the tour after profile completion. For clients: show immediately on first login.
+  const showOnboarding = !profileLoading && !staffProfileLoading && profile && !hasSeenOnboarding && (isClient || !isProfileIncomplete);
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      {/* Blur effect when profile is incomplete */}
+      {isProfileIncomplete && <div className="fixed inset-0 backdrop-blur-sm z-30" />}
+
+      {/* Desktop Sidebar */}
+      <div className={`hidden md:block ${isProfileIncomplete ? 'opacity-50 pointer-events-none' : ''}`}>
+        <Sidebar />
+      </div>
+
+      {/* Mobile Sidebar (Drawer) */}
+      <Sidebar
+        isMobile
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+      />
+
+      {/* Main Content Area */}
+      <div className={`flex flex-1 flex-col overflow-hidden md:ml-64 ${isProfileIncomplete ? 'opacity-50 pointer-events-none' : ''}`}>
+        {/* Header */}
+        <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto bg-muted/30 p-6">
+          {children}
+        </main>
+      </div>
+
+      {/* Profile Completion Modal Overlay */}
+      <ProfileCompletionModal isOpen={isProfileIncomplete} />
+
+      {/* Onboarding Tour Overlay */}
+        <OnboardingTour 
+          isClient={!!isClient} 
+          isOpen={!!showOnboarding}
+        />
+    </div>
+  );
+}
 
 export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden">
-        {/* Desktop Sidebar */}
-        <div className="hidden md:block">
-          <Sidebar />
-        </div>
-
-        {/* Mobile Sidebar (Drawer) */}
-        <Sidebar
-          isMobile
-          isOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-        />
-
-        {/* Main Content Area */}
-        <div className="flex flex-1 flex-col overflow-hidden md:ml-64">
-          {/* Header */}
-          <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
-
-          {/* Page Content */}
-          <main className="flex-1 overflow-y-auto bg-muted/30 p-6">
-            {children}
-          </main>
-        </div>
-      </div>
+      <StaffProfileGuard>
+        <ProtectedLayoutContent>{children}</ProtectedLayoutContent>
+      </StaffProfileGuard>
     </AuthGuard>
   );
 }

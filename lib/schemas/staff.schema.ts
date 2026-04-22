@@ -340,7 +340,7 @@ export class StaffSchema {
 
     /**
      * Accept Staff Invitation Schema
-     * Staff completes their profile and creates password
+     * Staff sets password only; profile is completed separately after OTP verification
      */
     static acceptInvitation = z.object({
         token: z.string().min(1, "Invitation token is required"),
@@ -352,6 +352,13 @@ export class StaffSchema {
                 (password) => passwordValidation.meetsComplexityRequirements(password),
                 { message: FieldErrors.password.complexity }
             ),
+    });
+
+    /**
+     * Complete Staff Profile Schema
+     * Staff fills personal info and address after email OTP verification
+     */
+    static completeProfile = z.object({
         phone: z
             .string()
             .min(1, "Phone number is required")
@@ -556,6 +563,7 @@ export type BulkDisableStaffInput = z.infer<typeof StaffSchema.bulkDisable>;
 export type BulkDeleteStaffInput = z.infer<typeof StaffSchema.bulkDelete>;
 export type InviteStaffInput = z.infer<typeof StaffSchema.invite>;
 export type AcceptStaffInvitationInput = z.infer<typeof StaffSchema.acceptInvitation>;
+export type CompleteStaffProfileInput = z.infer<typeof StaffSchema.completeProfile>;
 export type StaffSelfUpdateInput = z.infer<typeof StaffSchema.selfUpdate>;
 export type StaffDeactivateSelfInput = z.infer<typeof StaffSchema.deactivateSelf>;
 export type ResendStaffInvitationInput = z.infer<typeof StaffSchema.resendInvitation>;

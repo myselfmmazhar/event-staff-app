@@ -275,6 +275,29 @@ export class EmailService {
   }
 
   /**
+   * Send OTP verification email
+   */
+  async sendOtpEmail(
+    email: string,
+    firstName: string,
+    otpCode: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const subject = 'Your verification code';
+    const html = `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <h2 style="color: #111827;">Verify your email</h2>
+        <p>Hi ${firstName},</p>
+        <p>Use the code below to complete your account setup. It expires in 10 minutes.</p>
+        <div style="margin: 32px 0; text-align: center;">
+          <span style="display: inline-block; background: #f3f4f6; border-radius: 8px; padding: 16px 32px; font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #111827;">${otpCode}</span>
+        </div>
+        <p style="color: #6b7280; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
+      </div>
+    `;
+    return this.sendEmail(email, subject, html);
+  }
+
+  /**
    * Send staff login credentials email (for grant login access)
    */
   async sendStaffCredentials(

@@ -20,58 +20,17 @@ import { toast } from '@/components/ui/use-toast';
 import { EyeIcon, EyeOffIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
 import { StaffSchema } from '@/lib/schemas/staff.schema';
-import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BusinessStructure } from '@prisma/client';
-import {
-    StaffDocumentUpload,
-    type StaffDocument,
-} from '@/components/staff/staff-document-upload';
+import { Loader2 } from 'lucide-react';
 
-// Base form schema without refinements (for type inference)
-const baseFormSchema = z.object({
+const formSchema = z.object({
     password: StaffSchema.acceptInvitation.shape.password,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
-    phone: StaffSchema.acceptInvitation.shape.phone,
-    streetAddress: StaffSchema.acceptInvitation.shape.streetAddress,
-    aptSuiteUnit: StaffSchema.acceptInvitation.shape.aptSuiteUnit,
-    city: StaffSchema.acceptInvitation.shape.city,
-    state: StaffSchema.acceptInvitation.shape.state,
-    zipCode: StaffSchema.acceptInvitation.shape.zipCode,
-    country: StaffSchema.acceptInvitation.shape.country,
-    // Tax details (optional W-9)
-    provideTaxDetails: z.boolean(),
-    taxName: z.string().optional(),
-    businessName: z.string().optional(),
-    businessStructure: z.nativeEnum(BusinessStructure),
-    llcClassification: z.string().optional(),
-    taxAddress: z.string().optional(),
-    taxCity: z.string().optional(),
-    taxState: z.string().optional(),
-    taxZip: z.string().optional(),
-    ssn: z.string().optional(),
-    ein: z.string().optional(),
-});
-
-// Form schema with refinements for validation
-const formSchema = baseFormSchema.refine((data) => data.password === data.confirmPassword, {
+}).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ['confirmPassword'],
 });
 
-type FormData = z.infer<typeof baseFormSchema>;
-
-// Business structure display names
-const businessStructureLabels: Record<BusinessStructure, string> = {
-    INDIVIDUAL: 'Individual / Sole Proprietor',
-    LLC: 'LLC',
-    C_CORPORATION: 'C Corporation',
-    S_CORPORATION: 'S Corporation',
-    PARTNERSHIP: 'Partnership',
-    TRUST_ESTATE: 'Trust/Estate',
-    OTHER: 'Other',
-};
+type FormData = z.infer<typeof formSchema>;
 
 function AcceptStaffInvitationContent() {
     const router = useRouter();
@@ -80,150 +39,34 @@ function AcceptStaffInvitationContent() {
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [showTaxSection, setShowTaxSection] = useState(false);
-    const [documents, setDocuments] = useState<StaffDocument[]>([]);
 
-    // Fetch invitation info
     const { data: invitationInfo, isLoading: isLoadingInfo, error: infoError } = trpc.staff.getInvitationInfo.useQuery(
         { token: token || '' },
         { enabled: !!token }
     );
 
-    // Store tax details to submit after account creation
-    const [pendingTaxDetails, setPendingTaxDetails] = useState<{
-        staffId: string;
-        data: FormData;
-    } | null>(null);
-
-    // Tax details mutation (called after successful account creation)
-    const taxDetailsMutation = trpc.staffTaxDetails.upsert.useMutation({
-        onSuccess: () => {
-            toast({
-                message: 'Your account and tax details have been saved successfully! You can now log in.',
-                type: 'success',
-            });
-            router.push('/login');
-        },
-        onError: (error) => {
-            // Account was created but tax details failed
-            toast({
-                message: 'Account created, but failed to save tax details. You can update them after logging in.',
-                type: 'info',
-            });
-            router.push('/login');
-        },
-    });
-
     const acceptMutation = trpc.staff.acceptInvitation.useMutation({
-        onSuccess: (staff, variables) => {
-            // Check if we need to save tax details
-            if (pendingTaxDetails && pendingTaxDetails.data.provideTaxDetails) {
-                const data = pendingTaxDetails.data;
-                taxDetailsMutation.mutate({
-                    staffId: staff.id,
-                    taxFilledBy: 'TALENT' as const,
-                    taxName: data.taxName || undefined,
-                    businessStructure: data.businessStructure,
-                    businessName: data.businessName || undefined,
-                    llcClassification: data.llcClassification || undefined,
-                    taxAddress: data.taxAddress || undefined,
-                    taxCity: data.taxCity || undefined,
-                    taxState: data.taxState || undefined,
-                    taxZip: data.taxZip || undefined,
-                    ssn: data.ssn || undefined,
-                    ein: data.ein || undefined,
-                });
-            } else {
-                toast({
-                    message: 'Your account has been created successfully! You can now log in.',
-                    type: 'success',
-                });
-                router.push('/login');
-            }
+        onSuccess: (data) => {
+            sessionStorage.setItem('otp_email', data.email);
+            sessionStorage.setItem('otp_type', 'staff');
+            router.push(`/verify-otp?email=${encodeURIComponent(data.email)}&type=staff`);
         },
         onError: (error) => {
-            // Extract user-friendly message from tRPC/Zod errors
-            let errorMessage = 'Failed to accept invitation';
-
-            // Check for field-level errors from Zod validation
-            const data = error.data as Record<string, unknown> | undefined;
-            const fieldErrors = data?.fieldErrors as Array<{ message: string }> | undefined;
-            const zodError = data?.zodError as { fieldErrors?: Record<string, string[]> } | undefined;
-
-            if (fieldErrors && Array.isArray(fieldErrors) && fieldErrors.length > 0) {
-                errorMessage = fieldErrors.map((e) => e.message).join(', ');
-            } else if (zodError?.fieldErrors) {
-                // Alternative: extract from zodError.fieldErrors object
-                const messages = Object.values(zodError.fieldErrors).flat();
-                if (messages.length > 0) {
-                    errorMessage = messages.join(', ');
-                }
-            } else if (error.message && !error.message.startsWith('[')) {
-                // Use error.message only if it's not a raw JSON array
-                errorMessage = error.message;
-            }
-
-            toast({
-                message: errorMessage,
-                type: 'error',
-            });
+            toast({ message: error.message || 'Failed to accept invitation', type: 'error' });
         },
     });
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            password: '',
-            confirmPassword: '',
-            phone: '',
-            streetAddress: '',
-            aptSuiteUnit: '',
-            city: '',
-            state: '',
-            zipCode: '',
-            country: 'USA',
-            // Tax details defaults
-            provideTaxDetails: false,
-            taxName: '',
-            businessName: '',
-            businessStructure: BusinessStructure.INDIVIDUAL,
-            llcClassification: '',
-            taxAddress: '',
-            taxCity: '',
-            taxState: '',
-            taxZip: '',
-            ssn: '',
-            ein: '',
-        },
+        defaultValues: { password: '', confirmPassword: '' },
     });
-
-    // Watch tax-related fields
-    const provideTaxDetails = form.watch('provideTaxDetails');
-    const businessStructure = form.watch('businessStructure');
 
     const onSubmit = (data: FormData) => {
         if (!token) return;
-
-        // Store tax details data if provided (will be submitted after account creation)
-        if (data.provideTaxDetails) {
-            setPendingTaxDetails({ staffId: '', data });
-        }
-
-        acceptMutation.mutate({
-            token,
-            password: data.password,
-            phone: data.phone,
-            streetAddress: data.streetAddress,
-            aptSuiteUnit: data.aptSuiteUnit || undefined,
-            city: data.city,
-            state: data.state,
-            zipCode: data.zipCode,
-            country: data.country,
-            ...(invitationInfo?.requiresDocumentUpload && { documents }),
-        });
+        sessionStorage.setItem('otp_password', data.password);
+        acceptMutation.mutate({ token, password: data.password });
     };
 
-    // Handle missing token
     if (!token) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
@@ -235,16 +78,13 @@ function AcceptStaffInvitationContent() {
                         </CardDescription>
                     </CardHeader>
                     <CardFooter>
-                        <Button onClick={() => router.push('/login')} className="w-full">
-                            Go to Login
-                        </Button>
+                        <Button onClick={() => router.push('/login')} className="w-full">Go to Login</Button>
                     </CardFooter>
                 </Card>
             </div>
         );
     }
 
-    // Loading state
     if (isLoadingInfo) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
@@ -256,7 +96,6 @@ function AcceptStaffInvitationContent() {
         );
     }
 
-    // Error or expired invitation
     if (infoError || invitationInfo?.isExpired) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
@@ -272,9 +111,7 @@ function AcceptStaffInvitationContent() {
                         </CardDescription>
                     </CardHeader>
                     <CardFooter>
-                        <Button onClick={() => router.push('/login')} className="w-full">
-                            Go to Login
-                        </Button>
+                        <Button onClick={() => router.push('/login')} className="w-full">Go to Login</Button>
                     </CardFooter>
                 </Card>
             </div>
@@ -283,458 +120,110 @@ function AcceptStaffInvitationContent() {
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-            <div className="w-full max-w-2xl">
-                {/* Logo/Brand Section */}
+            <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg mb-4">
-                        <svg
-                            className="h-8 w-8 text-primary-foreground"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
+                        <svg className="h-8 w-8 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                     </div>
                     <h1 className="text-3xl font-bold text-foreground">
                         Welcome, {invitationInfo?.firstName}!
                     </h1>
                     <p className="text-muted-foreground mt-2">
-                        Complete your profile to finish setting up your account
+                        Set up your password to access your account
                     </p>
                 </div>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Complete Your Profile</CardTitle>
+                        <CardTitle>Create Your Password</CardTitle>
                         <CardDescription>
                             You've been invited to join as {invitationInfo?.staffType?.toLowerCase()}.
-                            Please fill out the information below to create your account.
+                            Create a password to complete your account setup.
                         </CardDescription>
                     </CardHeader>
 
                     <CardContent>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                            {/* Password Section */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-medium border-b pb-2">Create Password</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="password" requiredMark>
-                                            Password
-                                        </Label>
-                                        <div className="relative">
-                                            <Input
-                                                id="password"
-                                                type={showPassword ? 'text' : 'password'}
-                                                placeholder="e.g. MyP@ssw0rd!"
-                                                invalid={!!form.formState.errors.password}
-                                                disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                {...form.register('password')}
-                                                className="pr-10"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                                tabIndex={-1}
-                                            >
-                                                {showPassword ? (
-                                                    <EyeOffIcon className="h-5 w-5" />
-                                                ) : (
-                                                    <EyeIcon className="h-5 w-5" />
-                                                )}
-                                            </button>
-                                        </div>
-                                        {form.formState.errors.password && (
-                                            <p className="text-sm text-destructive mt-1">
-                                                {String(form.formState.errors.password.message)}
-                                            </p>
-                                        )}
-                                    </div>
+                            <div>
+                                <Label htmlFor="email">Email</Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    value={invitationInfo?.email || ''}
+                                    disabled
+                                    className="bg-muted"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">This will be your login email</p>
+                            </div>
 
-                                    <div>
-                                        <Label htmlFor="confirmPassword" requiredMark>
-                                            Confirm Password
-                                        </Label>
-                                        <div className="relative">
-                                            <Input
-                                                id="confirmPassword"
-                                                type={showConfirmPassword ? 'text' : 'password'}
-                                                placeholder="Re-enter your password"
-                                                invalid={!!form.formState.errors.confirmPassword}
-                                                disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                {...form.register('confirmPassword')}
-                                                className="pr-10"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                                tabIndex={-1}
-                                            >
-                                                {showConfirmPassword ? (
-                                                    <EyeOffIcon className="h-5 w-5" />
-                                                ) : (
-                                                    <EyeIcon className="h-5 w-5" />
-                                                )}
-                                            </button>
-                                        </div>
-                                        {form.formState.errors.confirmPassword && (
-                                            <p className="text-sm text-destructive mt-1">
-                                                {String(form.formState.errors.confirmPassword.message)}
-                                            </p>
-                                        )}
+                            <div className="space-y-4">
+                                <div>
+                                    <Label htmlFor="password" requiredMark>Password</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="password"
+                                            type={showPassword ? 'text' : 'password'}
+                                            placeholder="Min 8 characters"
+                                            invalid={!!form.formState.errors.password}
+                                            disabled={acceptMutation.isPending}
+                                            {...form.register('password')}
+                                            className="pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                            tabIndex={-1}
+                                        >
+                                            {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                        </button>
                                     </div>
+                                    {form.formState.errors.password && (
+                                        <p className="text-sm text-destructive mt-1">{String(form.formState.errors.password.message)}</p>
+                                    )}
                                 </div>
+
+                                <div>
+                                    <Label htmlFor="confirmPassword" requiredMark>Confirm Password</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="confirmPassword"
+                                            type={showConfirmPassword ? 'text' : 'password'}
+                                            placeholder="Confirm your password"
+                                            invalid={!!form.formState.errors.confirmPassword}
+                                            disabled={acceptMutation.isPending}
+                                            {...form.register('confirmPassword')}
+                                            className="pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                            tabIndex={-1}
+                                        >
+                                            {showConfirmPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                        </button>
+                                    </div>
+                                    {form.formState.errors.confirmPassword && (
+                                        <p className="text-sm text-destructive mt-1">{String(form.formState.errors.confirmPassword.message)}</p>
+                                    )}
+                                </div>
+
                                 <p className="text-xs text-muted-foreground">
                                     Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
                                 </p>
-                            </div>
-
-                            {/* Personal Info Section */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-medium border-b pb-2">Personal Information</h3>
-                                <div>
-                                    <Label htmlFor="phone" requiredMark>
-                                        Phone Number
-                                    </Label>
-                                    <Input
-                                        id="phone"
-                                        type="tel"
-                                        placeholder="(555) 555-5555"
-                                        invalid={!!form.formState.errors.phone}
-                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                        {...form.register('phone')}
-                                    />
-                                    {form.formState.errors.phone && (
-                                        <p className="text-sm text-destructive mt-1">
-                                            {String(form.formState.errors.phone.message)}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Address Section */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-medium border-b pb-2">Address</h3>
-                                <div>
-                                    <Label htmlFor="streetAddress" requiredMark>
-                                        Street Address
-                                    </Label>
-                                    <Input
-                                        id="streetAddress"
-                                        placeholder="123 Main St"
-                                        invalid={!!form.formState.errors.streetAddress}
-                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                        {...form.register('streetAddress')}
-                                    />
-                                    {form.formState.errors.streetAddress && (
-                                        <p className="text-sm text-destructive mt-1">
-                                            {String(form.formState.errors.streetAddress.message)}
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="aptSuiteUnit">
-                                        Apt/Suite/Unit
-                                    </Label>
-                                    <Input
-                                        id="aptSuiteUnit"
-                                        placeholder="Apt 4B (optional)"
-                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                        {...form.register('aptSuiteUnit')}
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div>
-                                        <Label htmlFor="city" requiredMark>
-                                            City
-                                        </Label>
-                                        <Input
-                                            id="city"
-                                            placeholder="New York"
-                                            invalid={!!form.formState.errors.city}
-                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                            {...form.register('city')}
-                                        />
-                                        {form.formState.errors.city && (
-                                            <p className="text-sm text-destructive mt-1">
-                                                {String(form.formState.errors.city.message)}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="state" requiredMark>
-                                            State
-                                        </Label>
-                                        <Input
-                                            id="state"
-                                            placeholder="NY"
-                                            invalid={!!form.formState.errors.state}
-                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                            {...form.register('state')}
-                                        />
-                                        {form.formState.errors.state && (
-                                            <p className="text-sm text-destructive mt-1">
-                                                {String(form.formState.errors.state.message)}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="zipCode" requiredMark>
-                                            ZIP Code
-                                        </Label>
-                                        <Input
-                                            id="zipCode"
-                                            placeholder="10001"
-                                            invalid={!!form.formState.errors.zipCode}
-                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                            {...form.register('zipCode')}
-                                        />
-                                        {form.formState.errors.zipCode && (
-                                            <p className="text-sm text-destructive mt-1">
-                                                {String(form.formState.errors.zipCode.message)}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="country" requiredMark>
-                                            Country
-                                        </Label>
-                                        <Input
-                                            id="country"
-                                            placeholder="USA"
-                                            invalid={!!form.formState.errors.country}
-                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                            {...form.register('country')}
-                                        />
-                                        {form.formState.errors.country && (
-                                            <p className="text-sm text-destructive mt-1">
-                                                {String(form.formState.errors.country.message)}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Documents (when required by service categories) */}
-                            {invitationInfo?.requiresDocumentUpload && (
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-medium border-b pb-2">Documents</h3>
-                                    {invitationInfo.documentRequirementLabels.length > 0 && (
-                                        <p className="text-sm text-muted-foreground">
-                                            Your assigned services require the following. Upload at least one file
-                                            to continue.
-                                        </p>
-                                    )}
-                                    <ul className="text-sm list-disc list-inside text-muted-foreground space-y-1">
-                                        {invitationInfo.documentRequirementLabels.map((label) => (
-                                            <li key={label}>{label}</li>
-                                        ))}
-                                    </ul>
-                                    <StaffDocumentUpload
-                                        documents={documents}
-                                        onChange={setDocuments}
-                                        disabled={
-                                            form.formState.isSubmitting || acceptMutation.isPending
-                                        }
-                                    />
-                                </div>
-                            )}
-
-                            {/* Tax Details Section (Optional) */}
-                            <div className="space-y-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowTaxSection(!showTaxSection)}
-                                    className="flex items-center justify-between w-full text-lg font-medium border-b pb-2 hover:text-primary transition-colors"
-                                >
-                                    <span>Tax Information (Optional)</span>
-                                    {showTaxSection ? (
-                                        <ChevronUp className="h-5 w-5" />
-                                    ) : (
-                                        <ChevronDown className="h-5 w-5" />
-                                    )}
-                                </button>
-
-                                {showTaxSection && (
-                                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
-                                        <p className="text-sm text-muted-foreground">
-                                            You can provide your tax information now or update it later from your profile.
-                                        </p>
-
-                                        {/* Provide Tax Details Checkbox */}
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="provideTaxDetails"
-                                                checked={provideTaxDetails}
-                                                onChange={(e) => form.setValue('provideTaxDetails', e.target.checked)}
-                                                disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                            />
-                                            <Label htmlFor="provideTaxDetails" className="cursor-pointer">
-                                                I want to provide my tax details now
-                                            </Label>
-                                        </div>
-
-                                        {provideTaxDetails && (
-                                            <div className="space-y-4 mt-4">
-                                                {/* W-9 Line 1: Name */}
-                                                <div>
-                                                    <Label htmlFor="taxName">Name (as shown on your income tax return)</Label>
-                                                    <Input
-                                                        id="taxName"
-                                                        placeholder="Legal name"
-                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                        {...form.register('taxName')}
-                                                    />
-                                                </div>
-
-                                                {/* W-9 Line 2: Business name */}
-                                                <div>
-                                                    <Label htmlFor="businessName">Business name (if different from above)</Label>
-                                                    <Input
-                                                        id="businessName"
-                                                        placeholder="Business name (if applicable)"
-                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                        {...form.register('businessName')}
-                                                    />
-                                                </div>
-
-                                                {/* W-9 Line 3a: Federal tax classification */}
-                                                <div>
-                                                    <Label htmlFor="businessStructure">Federal Tax Classification</Label>
-                                                    <Select
-                                                        value={businessStructure}
-                                                        onValueChange={(value) => form.setValue('businessStructure', value as BusinessStructure)}
-                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                    >
-                                                        <SelectTrigger id="businessStructure">
-                                                            <SelectValue placeholder="Select classification" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {Object.entries(businessStructureLabels).map(([value, label]) => (
-                                                                <SelectItem key={value} value={value}>
-                                                                    {label}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                {/* LLC sub-classification */}
-                                                {businessStructure === BusinessStructure.LLC && (
-                                                    <div>
-                                                        <Label htmlFor="llcClassification">LLC Tax Classification</Label>
-                                                        <Select
-                                                            value={form.watch('llcClassification') || ''}
-                                                            onValueChange={(value) => form.setValue('llcClassification', value)}
-                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                        >
-                                                            <SelectTrigger id="llcClassification">
-                                                                <SelectValue placeholder="Select LLC classification" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="C">C — C Corporation</SelectItem>
-                                                                <SelectItem value="S">S — S Corporation</SelectItem>
-                                                                <SelectItem value="P">P — Partnership</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                )}
-
-                                                {/* W-9 Lines 5-6: Address */}
-                                                <div>
-                                                    <Label htmlFor="taxAddress">Address (number, street, apt/suite)</Label>
-                                                    <Input
-                                                        id="taxAddress"
-                                                        placeholder="Street address"
-                                                        disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                        {...form.register('taxAddress')}
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    <div>
-                                                        <Label htmlFor="taxCity">City</Label>
-                                                        <Input
-                                                            id="taxCity"
-                                                            placeholder="City"
-                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                            {...form.register('taxCity')}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <Label htmlFor="taxState">State</Label>
-                                                        <Input
-                                                            id="taxState"
-                                                            placeholder="State"
-                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                            {...form.register('taxState')}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <Label htmlFor="taxZip">ZIP Code</Label>
-                                                        <Input
-                                                            id="taxZip"
-                                                            placeholder="ZIP"
-                                                            disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                            {...form.register('taxZip')}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* W-9 Part I: Tax Identifiers */}
-                                                <div className="space-y-4 p-3 border border-border/30 bg-accent/5 rounded-lg">
-                                                    <p className="text-sm font-medium">Taxpayer Identification Number (TIN)</p>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div>
-                                                            <Label htmlFor="ssn">Social Security Number</Label>
-                                                            <Input
-                                                                id="ssn"
-                                                                type="password"
-                                                                placeholder="XXX-XX-XXXX"
-                                                                disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                                autoComplete="off"
-                                                                {...form.register('ssn')}
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <Label htmlFor="ein">Employer Identification Number</Label>
-                                                            <Input
-                                                                id="ein"
-                                                                placeholder="XX-XXXXXXX"
-                                                                disabled={form.formState.isSubmitting || acceptMutation.isPending}
-                                                                {...form.register('ein')}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
                             </div>
 
                             <Button
                                 type="submit"
                                 variant="default"
                                 size="lg"
-                                isLoading={form.formState.isSubmitting || acceptMutation.isPending || taxDetailsMutation.isPending}
+                                isLoading={acceptMutation.isPending}
                                 className="w-full"
                             >
-                                {form.formState.isSubmitting || acceptMutation.isPending || taxDetailsMutation.isPending
-                                    ? (taxDetailsMutation.isPending ? 'Saving Tax Details...' : 'Creating Account...')
-                                    : 'Create Account'}
+                                {acceptMutation.isPending ? 'Creating Account...' : 'Create Account'}
                             </Button>
                         </form>
                     </CardContent>
