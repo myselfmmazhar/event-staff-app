@@ -45,6 +45,7 @@ interface ProfileCompletionModalProps {
 
 export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) {
     const router = useRouter();
+    const utils = trpc.useUtils();
     const [showTaxSection, setShowTaxSection] = useState(false);
     const [provideTaxDetails, setProvideTaxDetails] = useState(false);
     const [documents, setDocuments] = useState<StaffDocument[]>([]);
@@ -97,7 +98,13 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                 }
             }
             toast({ message: 'Profile completed successfully!', type: 'success' });
+            
+            // Invalidate queries to refresh profile state and close modal
+            await utils.staff.getMyProfile.invalidate();
+            await utils.profile.getMyProfile.invalidate();
+            
             router.push('/dashboard');
+            router.refresh();
         },
         onError: (error) => {
             toast({ message: error.message || 'Failed to save profile', type: 'error' });

@@ -580,6 +580,7 @@ model UserPreference {
   userId           String   @unique
   financeTabOrder  String[] @default([])
   catalogTabOrder  String[] @default([])
+  hasSeenOnboarding Boolean  @default(false)
   createdAt        DateTime @default(now()) @db.Timestamp(6)
   updatedAt        DateTime @updatedAt @db.Timestamp(6)
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)

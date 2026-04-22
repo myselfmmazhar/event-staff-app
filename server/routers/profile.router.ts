@@ -371,4 +371,21 @@ export const profileRouter = router({
 
       return await userService.findOne(ctx.userId!);
     }),
+
+  /**
+   * Mark onboarding as seen for the current user
+   */
+  markOnboardingAsSeen: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.userId!;
+    
+    // Update or create user preferences
+    return await ctx.prisma.userPreference.upsert({
+      where: { userId },
+      update: { hasSeenOnboarding: true },
+      create: { 
+        userId,
+        hasSeenOnboarding: true 
+      },
+    });
+  }),
 });

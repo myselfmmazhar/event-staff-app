@@ -53,6 +53,13 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
       requiresAdmin: false,
       staffOnly: true,
     },
+    {
+      label: 'Communication Manager',
+      href: '/my-messages?tab=email',
+      icon: ChatBubbleLeftRightIcon,
+      requiresAdmin: false,
+      staffOnly: true,
+    },
     // Client-only items
     {
       label: 'Dashboard',
@@ -72,6 +79,13 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
       label: 'My Profile',
       href: '/profile',
       icon: UserIcon,
+      requiresAdmin: false,
+      clientOnly: true,
+    },
+    {
+      label: 'Communication Manager',
+      href: '/client-portal/messages?tab=email',
+      icon: ChatBubbleLeftRightIcon,
       requiresAdmin: false,
       clientOnly: true,
     },

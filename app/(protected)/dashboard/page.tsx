@@ -98,12 +98,6 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-sm text-muted-foreground">{terminology.staff.singular} Dashboard</span>
             <div className="flex gap-2">
-              <Link href="/communication-manager">
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                  <MessageSquareIcon className="h-3.5 w-3.5" />
-                  Communication
-                </Button>
-              </Link>
               <Link href="/my-schedule">
                 <Button size="sm" className="gap-1.5 text-xs">
                   <CalendarIcon className="h-3.5 w-3.5" />
@@ -207,17 +201,6 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
               </div>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-5">
-              <p className="text-sm font-semibold text-foreground mb-1">Need Help?</p>
-              <p className="text-xs text-muted-foreground mb-4">
-                Reach out to your manager for assignment-related questions.
-              </p>
-              <Link href="/communication-manager" className="block">
-                <Button variant="outline" className="w-full text-sm h-9">
-                  Contact Management
-                </Button>
-              </Link>
-            </div>
           </div>
         </div>
       </div>
@@ -232,6 +215,10 @@ export default function DashboardPage() {
   const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
   const isStaff = profile?.role === UserRole.STAFF;
   const isClient = profile?.role === UserRole.CLIENT;
+
+  useEffect(() => {
+    if (!profileLoading && isClient) router.push('/client-portal');
+  }, [profileLoading, isClient, router]);
 
   useEffect(() => {
     if (!profileLoading && isClient) router.push('/client-portal');
@@ -467,7 +454,6 @@ export default function DashboardPage() {
                   { label: "Talent Manager", href: "/staff" },
                   { label: "Assignment Manager", href: "/assignments" },
                   { label: "Invoices", href: "/invoices" },
-                  { label: "Communication", href: "/communication-manager" },
                 ].map((link) => (
                   <Link
                     key={link.href}

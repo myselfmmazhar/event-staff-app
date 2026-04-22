@@ -20,7 +20,7 @@ function filterNavItems(navItems: NavItemType[], user?: SessionUser): NavItemTyp
     // STAFF users only see Dashboard, My Schedule, and Profile (but not clientOnly items)
     if (user?.role === 'STAFF') {
       if (item.clientOnly) return false;
-      return item.label === 'Dashboard' || item.label === 'My Schedule' || (item.label === 'My Profile' && item.staffOnly);
+      return item.label === 'Dashboard' || item.label === 'My Schedule' || (item.label === 'My Profile' && item.staffOnly) || item.label === 'Communication Manager';
     }
 
     // CLIENT users only see client-specific items

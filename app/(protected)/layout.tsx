@@ -6,6 +6,9 @@ import { useProfileCompletion } from '@/components/guards/staff-profile-guard';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { ProfileCompletionModal } from '@/components/staff/profile-completion-modal';
+import { OnboardingTour } from '@/components/onboarding/onboarding-tour';
+import { trpc } from '@/lib/client/trpc';
+import { UserRole } from '@prisma/client';
 
 function ProtectedLayoutContent({
   children,
@@ -13,7 +16,14 @@ function ProtectedLayoutContent({
   children: React.ReactNode;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isProfileIncomplete } = useProfileCompletion();
+  const { isProfileIncomplete, isLoading: staffProfileLoading } = useProfileCompletion();
+  
+  const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
+  const hasSeenOnboarding = profile?.user_preferences?.hasSeenOnboarding === true;
+  const isClient = (profile?.role as string) === 'CLIENT' || (profile?.role as any) === UserRole.CLIENT;
+  // For staff: wait for the staff-profile query to settle so isProfileIncomplete is accurate,
+  // then only show the tour after profile completion. For clients: show immediately on first login.
+  const showOnboarding = !profileLoading && !staffProfileLoading && profile && !hasSeenOnboarding && (isClient || !isProfileIncomplete);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -45,6 +55,12 @@ function ProtectedLayoutContent({
 
       {/* Profile Completion Modal Overlay */}
       <ProfileCompletionModal isOpen={isProfileIncomplete} />
+
+      {/* Onboarding Tour Overlay */}
+        <OnboardingTour 
+          isClient={!!isClient} 
+          isOpen={!!showOnboarding}
+        />
     </div>
   );
 }
