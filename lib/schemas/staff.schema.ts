@@ -6,6 +6,7 @@ import {
     SkillLevel,
     StaffRating,
     AvailabilityStatus,
+    BusinessStructure,
 } from "@prisma/client";
 import { emailValidation, phoneValidation, passwordValidation } from "@/lib/utils/validation";
 import { FieldErrors } from "@/lib/utils/error-messages";
@@ -356,58 +357,151 @@ export class StaffSchema {
 
     /**
      * Complete Staff Profile Schema
-     * Staff fills personal info and address after email OTP verification
+     * Staff fills personal info, address, and W-9 tax information on first login.
+     * Tax fields are mandatory and persisted atomically with the Staff record.
      */
-    static completeProfile = z.object({
-        phone: z
-            .string()
-            .min(1, "Phone number is required")
-            .refine(
-                (phone) => phoneValidation.isValid(phone),
-                { message: FieldErrors.phone.invalid }
-            )
-            .transform((val) => val.trim()),
-        streetAddress: z
-            .string()
-            .min(1, "Street address is required")
-            .max(300, "Street address must be 300 characters or less")
-            .transform((val) => val.trim()),
-        aptSuiteUnit: z
-            .string()
-            .max(50, "Apt/Suite/Unit must be 50 characters or less")
-            .transform((val) => val?.trim())
-            .optional(),
-        city: z
-            .string()
-            .min(1, "City is required")
-            .max(100, "City must be 100 characters or less")
-            .transform((val) => val.trim()),
-        state: z
-            .string()
-            .min(1, "State is required")
-            .max(50, "State must be 50 characters or less")
-            .transform((val) => val.trim()),
-        zipCode: z
-            .string()
-            .min(1, "ZIP code is required")
-            .max(20, "ZIP code must be 20 characters or less")
-            .transform((val) => val.trim()),
-        country: z
-            .string()
-            .min(1, "Country is required")
-            .max(100, "Country must be 100 characters or less")
-            .transform((val) => val.trim()),
-        documents: z
-            .array(
-                z.object({
-                    name: z.string(),
-                    url: z.string().url(),
-                    type: z.string().optional(),
-                    size: z.number().optional(),
-                })
-            )
-            .optional(),
-    });
+    static completeProfile = z
+        .object({
+            phone: z
+                .string()
+                .min(1, "Phone number is required")
+                .refine(
+                    (phone) => phoneValidation.isValid(phone),
+                    { message: FieldErrors.phone.invalid }
+                )
+                .transform((val) => val.trim()),
+            streetAddress: z
+                .string()
+                .min(1, "Street address is required")
+                .max(300, "Street address must be 300 characters or less")
+                .transform((val) => val.trim()),
+            aptSuiteUnit: z
+                .string()
+                .max(50, "Apt/Suite/Unit must be 50 characters or less")
+                .transform((val) => val?.trim())
+                .optional(),
+            city: z
+                .string()
+                .min(1, "City is required")
+                .max(100, "City must be 100 characters or less")
+                .transform((val) => val.trim()),
+            state: z
+                .string()
+                .min(1, "State is required")
+                .max(50, "State must be 50 characters or less")
+                .transform((val) => val.trim()),
+            zipCode: z
+                .string()
+                .min(1, "ZIP code is required")
+                .max(20, "ZIP code must be 20 characters or less")
+                .transform((val) => val.trim()),
+            country: z
+                .string()
+                .min(1, "Country is required")
+                .max(100, "Country must be 100 characters or less")
+                .transform((val) => val.trim()),
+            documents: z
+                .array(
+                    z.object({
+                        name: z.string(),
+                        url: z.string().url(),
+                        type: z.string().optional(),
+                        size: z.number().optional(),
+                    })
+                )
+                .optional(),
+
+            // W-9 tax information (required on completion)
+            taxName: z
+                .string()
+                .min(1, "Name (as shown on your income tax return) is required")
+                .max(200, "Name must be 200 characters or less")
+                .transform((val) => val.trim()),
+            businessName: z
+                .string()
+                .max(200, "Business name must be 200 characters or less")
+                .transform((val) => val?.trim() ?? "")
+                .optional(),
+            businessStructure: z
+                .nativeEnum(BusinessStructure)
+                .default(BusinessStructure.INDIVIDUAL),
+            llcClassification: z
+                .string()
+                .max(1)
+                .transform((val) => val?.trim() ?? "")
+                .optional(),
+            taxAddress: z
+                .string()
+                .min(1, "Tax address is required")
+                .max(300, "Address must be 300 characters or less")
+                .transform((val) => val.trim()),
+            taxCity: z
+                .string()
+                .min(1, "Tax city is required")
+                .max(100, "City must be 100 characters or less")
+                .transform((val) => val.trim()),
+            taxState: z
+                .string()
+                .min(1, "Tax state is required")
+                .max(50, "State must be 50 characters or less")
+                .transform((val) => val.trim()),
+            taxZip: z
+                .string()
+                .min(1, "Tax ZIP code is required")
+                .max(20, "ZIP code must be 20 characters or less")
+                .transform((val) => val.trim()),
+            ssn: z
+                .string()
+                .max(11, "SSN must be 11 characters or less")
+                .transform((val) => val?.trim() ?? "")
+                .optional(),
+            ein: z
+                .string()
+                .max(10, "EIN must be 10 characters or less")
+                .transform((val) => val?.trim() ?? "")
+                .optional(),
+        })
+        .superRefine((data, ctx) => {
+            const hasSsn = !!data.ssn && data.ssn.length > 0;
+            const hasEin = !!data.ein && data.ein.length > 0;
+
+            if (!hasSsn && !hasEin) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["ssn"],
+                    message:
+                        "Either Social Security Number or Employer Identification Number is required",
+                });
+            }
+
+            if (hasSsn && !/^\d{3}-?\d{2}-?\d{4}$/.test(data.ssn!)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["ssn"],
+                    message: "SSN must be in format XXX-XX-XXXX",
+                });
+            }
+
+            if (hasEin && !/^\d{2}-?\d{7}$/.test(data.ein!)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["ein"],
+                    message: "EIN must be in format XX-XXXXXXX",
+                });
+            }
+
+            if (
+                data.businessStructure === BusinessStructure.LLC &&
+                (!data.llcClassification || data.llcClassification.length === 0)
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["llcClassification"],
+                    message:
+                        "LLC Tax Classification is required when Federal Tax Classification is LLC",
+                });
+            }
+        });
 
     /**
      * Staff Self-Update Schema

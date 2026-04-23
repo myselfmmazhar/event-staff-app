@@ -18,15 +18,30 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
-import { StaffSchema } from '@/lib/schemas/staff.schema';
+import { phoneValidation } from '@/lib/utils/validation';
+import { FieldErrors } from '@/lib/utils/error-messages';
 import { BusinessStructure } from '@prisma/client';
-import { Loader2 } from 'lucide-react';
 import {
     StaffDocumentUpload,
     type StaffDocument,
 } from '@/components/staff/staff-document-upload';
 
-type ProfileFormData = z.infer<typeof StaffSchema.completeProfile>;
+const contactFormSchema = z.object({
+    phone: z
+        .string()
+        .min(1, 'Phone number is required')
+        .refine((phone) => phoneValidation.isValid(phone), {
+            message: FieldErrors.phone.invalid,
+        }),
+    streetAddress: z.string().min(1, 'Street address is required').max(300),
+    aptSuiteUnit: z.string().max(50).optional(),
+    city: z.string().min(1, 'City is required').max(100),
+    state: z.string().min(1, 'State is required').max(50),
+    zipCode: z.string().min(1, 'ZIP code is required').max(20),
+    country: z.string().min(1, 'Country is required').max(100),
+});
+
+type ContactFormData = z.infer<typeof contactFormSchema>;
 
 const businessStructureLabels: Record<BusinessStructure, string> = {
     INDIVIDUAL: 'Individual / Sole Proprietor',
@@ -38,9 +53,26 @@ const businessStructureLabels: Record<BusinessStructure, string> = {
     OTHER: 'Other',
 };
 
+const SSN_PATTERN = /^\d{3}-?\d{2}-?\d{4}$/;
+const EIN_PATTERN = /^\d{2}-?\d{7}$/;
+
+type TaxFieldErrors = Partial<Record<
+    | 'taxName'
+    | 'taxAddress'
+    | 'taxCity'
+    | 'taxState'
+    | 'taxZip'
+    | 'ssn'
+    | 'ein'
+    | 'llcClassification',
+    string
+>>;
+
 export default function CompleteProfilePage() {
     const router = useRouter();
     const [documents, setDocuments] = useState<StaffDocument[]>([]);
+    const [submitAttempted, setSubmitAttempted] = useState(false);
+    const [taxErrors, setTaxErrors] = useState<TaxFieldErrors>({});
     const [taxFields, setTaxFields] = useState<{
         taxName: string;
         businessName: string;
@@ -65,38 +97,18 @@ export default function CompleteProfilePage() {
         ein: '',
     });
 
-    const taxDetailsMutation = trpc.staffTaxDetails.upsert.useMutation();
-
     const completeProfileMutation = trpc.staff.completeProfile.useMutation({
-        onSuccess: async (staff) => {
-            try {
-                await taxDetailsMutation.mutateAsync({
-                    staffId: staff.id,
-                    taxFilledBy: 'TALENT' as const,
-                    taxName: taxFields.taxName || undefined,
-                    businessStructure: taxFields.businessStructure,
-                    businessName: taxFields.businessName || undefined,
-                    llcClassification: taxFields.llcClassification || undefined,
-                    taxAddress: taxFields.taxAddress || undefined,
-                    taxCity: taxFields.taxCity || undefined,
-                    taxState: taxFields.taxState || undefined,
-                    taxZip: taxFields.taxZip || undefined,
-                    ssn: taxFields.ssn || undefined,
-                    ein: taxFields.ein || undefined,
-                });
-                toast({ message: 'Profile completed successfully!', type: 'success' });
-                router.push('/dashboard');
-            } catch {
-                toast({ message: 'Profile saved. Tax details could not be saved — update them from your profile.', type: 'error' });
-            }
+        onSuccess: () => {
+            toast({ message: 'Profile completed successfully!', type: 'success' });
+            router.push('/dashboard');
         },
         onError: (error) => {
             toast({ message: error.message || 'Failed to save profile', type: 'error' });
         },
     });
 
-    const form = useForm<ProfileFormData>({
-        resolver: zodResolver(StaffSchema.completeProfile),
+    const form = useForm<ContactFormData>({
+        resolver: zodResolver(contactFormSchema),
         defaultValues: {
             phone: '',
             streetAddress: '',
@@ -108,27 +120,72 @@ export default function CompleteProfilePage() {
         },
     });
 
-    const isPending = completeProfileMutation.isPending || taxDetailsMutation.isPending;
+    const isPending = completeProfileMutation.isPending;
 
-    const onSubmit = (data: ProfileFormData) => {
-        // Validate required tax fields
-        if (!taxFields.taxName || taxFields.taxName.trim() === '') {
-            toast({ message: 'Name (as shown on your income tax return) is required', type: 'error' });
-            return;
+    const validateTax = (): TaxFieldErrors => {
+        const errors: TaxFieldErrors = {};
+        const ssn = taxFields.ssn.trim();
+        const ein = taxFields.ein.trim();
+
+        if (!taxFields.taxName.trim()) {
+            errors.taxName = 'Name (as shown on your income tax return) is required';
+        }
+        if (!taxFields.taxAddress.trim()) errors.taxAddress = 'Tax address is required';
+        if (!taxFields.taxCity.trim()) errors.taxCity = 'Tax city is required';
+        if (!taxFields.taxState.trim()) errors.taxState = 'Tax state is required';
+        if (!taxFields.taxZip.trim()) errors.taxZip = 'Tax ZIP code is required';
+
+        if (!ssn && !ein) {
+            errors.ssn = 'Either Social Security Number or Employer Identification Number is required';
+        } else {
+            if (ssn && !SSN_PATTERN.test(ssn)) {
+                errors.ssn = 'SSN must be in format XXX-XX-XXXX';
+            }
+            if (ein && !EIN_PATTERN.test(ein)) {
+                errors.ein = 'EIN must be in format XX-XXXXXXX';
+            }
         }
 
-        if (!taxFields.ssn || taxFields.ssn.trim() === '') {
-            if (!taxFields.ein || taxFields.ein.trim() === '') {
-                toast({ message: 'Either Social Security Number or Employer Identification Number is required', type: 'error' });
-                return;
-            }
+        if (
+            taxFields.businessStructure === BusinessStructure.LLC &&
+            !taxFields.llcClassification.trim()
+        ) {
+            errors.llcClassification =
+                'LLC Tax Classification is required when Federal Tax Classification is LLC';
+        }
+
+        return errors;
+    };
+
+    const onSubmit = (data: ContactFormData) => {
+        setSubmitAttempted(true);
+        const errors = validateTax();
+        setTaxErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            const firstError = Object.values(errors)[0];
+            if (firstError) toast({ message: firstError, type: 'error' });
+            return;
         }
 
         completeProfileMutation.mutate({
             ...data,
             documents: documents.length > 0 ? documents : undefined,
+            taxName: taxFields.taxName,
+            businessName: taxFields.businessName || undefined,
+            businessStructure: taxFields.businessStructure,
+            llcClassification: taxFields.llcClassification || undefined,
+            taxAddress: taxFields.taxAddress,
+            taxCity: taxFields.taxCity,
+            taxState: taxFields.taxState,
+            taxZip: taxFields.taxZip,
+            ssn: taxFields.ssn || undefined,
+            ein: taxFields.ein || undefined,
         });
     };
+
+    const showError = (field: keyof TaxFieldErrors) =>
+        submitAttempted && !!taxErrors[field];
 
     return (
         <div className="max-w-2xl mx-auto py-8 px-4">
@@ -228,31 +285,34 @@ export default function CompleteProfilePage() {
                                 </p>
 
                                 <div>
-                                    <Label htmlFor="taxName" className="font-medium">
-                                        Name (as shown on your income tax return) <span className="text-destructive">*</span>
+                                    <Label htmlFor="taxName" requiredMark>
+                                        Name (as shown on your income tax return)
                                     </Label>
-                                    <Input 
-                                        id="taxName" 
-                                        placeholder="Legal name" 
-                                        disabled={isPending} 
-                                        value={taxFields.taxName} 
-                                        onChange={(e) => setTaxFields(p => ({ ...p, taxName: e.target.value }))} 
-                                        className={taxFields.taxName?.trim() === '' ? 'border-destructive' : ''}
+                                    <Input
+                                        id="taxName"
+                                        placeholder="Legal name"
+                                        disabled={isPending}
+                                        value={taxFields.taxName}
+                                        onChange={(e) => setTaxFields(p => ({ ...p, taxName: e.target.value }))}
+                                        invalid={showError('taxName')}
                                     />
+                                    {showError('taxName') && (
+                                        <p className="text-sm text-destructive mt-1">{taxErrors.taxName}</p>
+                                    )}
                                 </div>
                                 <div>
                                     <Label htmlFor="businessName">Business name (if different from above)</Label>
-                                    <Input 
-                                        id="businessName" 
-                                        placeholder="Business name (if applicable)" 
-                                        disabled={isPending} 
-                                        value={taxFields.businessName} 
-                                        onChange={(e) => setTaxFields(p => ({ ...p, businessName: e.target.value }))} 
+                                    <Input
+                                        id="businessName"
+                                        placeholder="Business name (if applicable)"
+                                        disabled={isPending}
+                                        value={taxFields.businessName}
+                                        onChange={(e) => setTaxFields(p => ({ ...p, businessName: e.target.value }))}
                                     />
                                 </div>
                                 <div>
                                     <Label htmlFor="businessStructure" className="font-medium">
-                                        Federal Tax Classification <span className="text-destructive">*</span>
+                                        Federal Tax Classification
                                     </Label>
                                     <Select
                                         value={taxFields.businessStructure}
@@ -271,57 +331,82 @@ export default function CompleteProfilePage() {
                                 </div>
                                 {taxFields.businessStructure === BusinessStructure.LLC && (
                                     <div>
-                                        <Label htmlFor="llcClassification">LLC Tax Classification</Label>
-                                        <Select value={taxFields.llcClassification} onValueChange={(v) => setTaxFields(p => ({ ...p, llcClassification: v }))} disabled={isPending}>
-                                            <SelectTrigger id="llcClassification"><SelectValue placeholder="Select LLC classification" /></SelectTrigger>
+                                        <Label htmlFor="llcClassification" requiredMark>LLC Tax Classification</Label>
+                                        <Select
+                                            value={taxFields.llcClassification}
+                                            onValueChange={(v) => setTaxFields(p => ({ ...p, llcClassification: v }))}
+                                            disabled={isPending}
+                                        >
+                                            <SelectTrigger id="llcClassification" aria-invalid={showError('llcClassification')}>
+                                                <SelectValue placeholder="Select LLC classification" />
+                                            </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="C">C — C Corporation</SelectItem>
                                                 <SelectItem value="S">S — S Corporation</SelectItem>
                                                 <SelectItem value="P">P — Partnership</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                        {showError('llcClassification') && (
+                                            <p className="text-sm text-destructive mt-1">{taxErrors.llcClassification}</p>
+                                        )}
                                     </div>
                                 )}
                                 <div>
-                                    <Label htmlFor="taxAddress">Address (number, street, apt/suite)</Label>
-                                    <Input 
-                                        id="taxAddress" 
-                                        placeholder="Street address" 
-                                        disabled={isPending} 
-                                        value={taxFields.taxAddress} 
-                                        onChange={(e) => setTaxFields(p => ({ ...p, taxAddress: e.target.value }))} 
+                                    <Label htmlFor="taxAddress" requiredMark>Address (number, street, apt/suite)</Label>
+                                    <Input
+                                        id="taxAddress"
+                                        placeholder="Street address"
+                                        disabled={isPending}
+                                        value={taxFields.taxAddress}
+                                        onChange={(e) => setTaxFields(p => ({ ...p, taxAddress: e.target.value }))}
+                                        invalid={showError('taxAddress')}
                                     />
+                                    {showError('taxAddress') && (
+                                        <p className="text-sm text-destructive mt-1">{taxErrors.taxAddress}</p>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <Label htmlFor="taxCity">City</Label>
-                                        <Input 
-                                            id="taxCity" 
-                                            placeholder="City" 
-                                            disabled={isPending} 
-                                            value={taxFields.taxCity} 
-                                            onChange={(e) => setTaxFields(p => ({ ...p, taxCity: e.target.value }))} 
+                                        <Label htmlFor="taxCity" requiredMark>City</Label>
+                                        <Input
+                                            id="taxCity"
+                                            placeholder="City"
+                                            disabled={isPending}
+                                            value={taxFields.taxCity}
+                                            onChange={(e) => setTaxFields(p => ({ ...p, taxCity: e.target.value }))}
+                                            invalid={showError('taxCity')}
                                         />
+                                        {showError('taxCity') && (
+                                            <p className="text-sm text-destructive mt-1">{taxErrors.taxCity}</p>
+                                        )}
                                     </div>
                                     <div>
-                                        <Label htmlFor="taxState">State</Label>
-                                        <Input 
-                                            id="taxState" 
-                                            placeholder="State" 
-                                            disabled={isPending} 
-                                            value={taxFields.taxState} 
-                                            onChange={(e) => setTaxFields(p => ({ ...p, taxState: e.target.value }))} 
+                                        <Label htmlFor="taxState" requiredMark>State</Label>
+                                        <Input
+                                            id="taxState"
+                                            placeholder="State"
+                                            disabled={isPending}
+                                            value={taxFields.taxState}
+                                            onChange={(e) => setTaxFields(p => ({ ...p, taxState: e.target.value }))}
+                                            invalid={showError('taxState')}
                                         />
+                                        {showError('taxState') && (
+                                            <p className="text-sm text-destructive mt-1">{taxErrors.taxState}</p>
+                                        )}
                                     </div>
                                     <div>
-                                        <Label htmlFor="taxZip">ZIP Code</Label>
-                                        <Input 
-                                            id="taxZip" 
-                                            placeholder="ZIP" 
-                                            disabled={isPending} 
-                                            value={taxFields.taxZip} 
-                                            onChange={(e) => setTaxFields(p => ({ ...p, taxZip: e.target.value }))} 
+                                        <Label htmlFor="taxZip" requiredMark>ZIP Code</Label>
+                                        <Input
+                                            id="taxZip"
+                                            placeholder="ZIP"
+                                            disabled={isPending}
+                                            value={taxFields.taxZip}
+                                            onChange={(e) => setTaxFields(p => ({ ...p, taxZip: e.target.value }))}
+                                            invalid={showError('taxZip')}
                                         />
+                                        {showError('taxZip') && (
+                                            <p className="text-sm text-destructive mt-1">{taxErrors.taxZip}</p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="space-y-4 p-3 border border-border/30 bg-accent/5 rounded-lg">
@@ -330,27 +415,33 @@ export default function CompleteProfilePage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <Label htmlFor="ssn">Social Security Number</Label>
-                                            <Input 
-                                                id="ssn" 
-                                                type="password" 
-                                                placeholder="XXX-XX-XXXX" 
-                                                disabled={isPending} 
-                                                autoComplete="off" 
-                                                value={taxFields.ssn} 
-                                                onChange={(e) => setTaxFields(p => ({ ...p, ssn: e.target.value }))} 
-                                                className={(taxFields.ssn?.trim() === '' && taxFields.ein?.trim() === '') ? 'border-destructive' : ''}
+                                            <Input
+                                                id="ssn"
+                                                type="password"
+                                                placeholder="XXX-XX-XXXX"
+                                                disabled={isPending}
+                                                autoComplete="off"
+                                                value={taxFields.ssn}
+                                                onChange={(e) => setTaxFields(p => ({ ...p, ssn: e.target.value }))}
+                                                invalid={showError('ssn')}
                                             />
+                                            {showError('ssn') && (
+                                                <p className="text-sm text-destructive mt-1">{taxErrors.ssn}</p>
+                                            )}
                                         </div>
                                         <div>
                                             <Label htmlFor="ein">Employer Identification Number</Label>
-                                            <Input 
-                                                id="ein" 
-                                                placeholder="XX-XXXXXXX" 
-                                                disabled={isPending} 
-                                                value={taxFields.ein} 
-                                                onChange={(e) => setTaxFields(p => ({ ...p, ein: e.target.value }))} 
-                                                className={(taxFields.ssn?.trim() === '' && taxFields.ein?.trim() === '') ? 'border-destructive' : ''}
+                                            <Input
+                                                id="ein"
+                                                placeholder="XX-XXXXXXX"
+                                                disabled={isPending}
+                                                value={taxFields.ein}
+                                                onChange={(e) => setTaxFields(p => ({ ...p, ein: e.target.value }))}
+                                                invalid={showError('ein')}
                                             />
+                                            {showError('ein') && (
+                                                <p className="text-sm text-destructive mt-1">{taxErrors.ein}</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

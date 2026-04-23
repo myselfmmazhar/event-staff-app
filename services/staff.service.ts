@@ -8,6 +8,7 @@ import {
     StaffRating,
     AvailabilityStatus,
     UserRole,
+    TaxFilledBy,
 } from "@prisma/client";
 import {
     CATEGORY_REQUIREMENT_LABELS,
@@ -622,7 +623,9 @@ export class StaffService {
 
     /**
      * Complete staff profile after OTP verification (first login).
-     * Sets phone, address, optional documents; marks profileCompleted and activates account.
+     * Persists contact/address, optional documents, and the W-9 tax details
+     * in a single transaction so the profile is never marked complete without
+     * its tax record.
      */
     async completeProfile(
         userId: string,
@@ -638,19 +641,58 @@ export class StaffService {
             throw new TRPCError({ code: "BAD_REQUEST", message: "Profile is already complete" });
         }
 
-        const { documents, ...profileData } = data;
-        const documentsPatch = documents !== undefined ? { documents: documents as Prisma.InputJsonValue } : {};
+        const {
+            documents,
+            taxName,
+            businessName,
+            businessStructure,
+            llcClassification,
+            taxAddress,
+            taxCity,
+            taxState,
+            taxZip,
+            ssn,
+            ein,
+            ...profileData
+        } = data;
 
-        return this.prisma.staff.update({
-            where: { id: staff.id },
-            data: {
-                ...profileData,
-                ...documentsPatch,
-                accountStatus: AccountStatus.ACTIVE,
-                profileCompleted: true,
-            },
-            select: this.staffSelect,
-        });
+        const documentsPatch =
+            documents !== undefined ? { documents: documents as Prisma.InputJsonValue } : {};
+
+        const taxPayload = {
+            taxFilledBy: TaxFilledBy.TALENT,
+            taxName,
+            businessName: businessName && businessName.length > 0 ? businessName : null,
+            businessStructure,
+            llcClassification:
+                llcClassification && llcClassification.length > 0 ? llcClassification : null,
+            taxAddress,
+            taxCity,
+            taxState,
+            taxZip,
+            ssn: ssn && ssn.length > 0 ? ssn : null,
+            ein: ein && ein.length > 0 ? ein : null,
+        };
+
+        const [updatedStaff] = await this.prisma.$transaction([
+            this.prisma.staff.update({
+                where: { id: staff.id },
+                data: {
+                    ...profileData,
+                    ...documentsPatch,
+                    accountStatus: AccountStatus.ACTIVE,
+                    profileCompleted: true,
+                },
+                select: this.staffSelect,
+            }),
+            this.prisma.staffTaxDetails.upsert({
+                where: { staffId: staff.id },
+                create: { staffId: staff.id, ...taxPayload },
+                update: taxPayload,
+            }),
+        ]);
+
+        return updatedStaff;
     }
 
     /**
