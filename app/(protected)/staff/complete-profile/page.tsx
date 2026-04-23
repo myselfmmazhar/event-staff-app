@@ -16,12 +16,11 @@ import {
     CardContent,
 } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
 import { StaffSchema } from '@/lib/schemas/staff.schema';
 import { BusinessStructure } from '@prisma/client';
-import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
     StaffDocumentUpload,
     type StaffDocument,
@@ -41,8 +40,6 @@ const businessStructureLabels: Record<BusinessStructure, string> = {
 
 export default function CompleteProfilePage() {
     const router = useRouter();
-    const [showTaxSection, setShowTaxSection] = useState(false);
-    const [provideTaxDetails, setProvideTaxDetails] = useState(false);
     const [documents, setDocuments] = useState<StaffDocument[]>([]);
     const [taxFields, setTaxFields] = useState<{
         taxName: string;
@@ -72,28 +69,26 @@ export default function CompleteProfilePage() {
 
     const completeProfileMutation = trpc.staff.completeProfile.useMutation({
         onSuccess: async (staff) => {
-            if (provideTaxDetails) {
-                try {
-                    await taxDetailsMutation.mutateAsync({
-                        staffId: staff.id,
-                        taxFilledBy: 'TALENT' as const,
-                        taxName: taxFields.taxName || undefined,
-                        businessStructure: taxFields.businessStructure,
-                        businessName: taxFields.businessName || undefined,
-                        llcClassification: taxFields.llcClassification || undefined,
-                        taxAddress: taxFields.taxAddress || undefined,
-                        taxCity: taxFields.taxCity || undefined,
-                        taxState: taxFields.taxState || undefined,
-                        taxZip: taxFields.taxZip || undefined,
-                        ssn: taxFields.ssn || undefined,
-                        ein: taxFields.ein || undefined,
-                    });
-                } catch {
-                    toast({ message: 'Profile saved. Tax details could not be saved — update them from your profile.', type: 'info' });
-                }
+            try {
+                await taxDetailsMutation.mutateAsync({
+                    staffId: staff.id,
+                    taxFilledBy: 'TALENT' as const,
+                    taxName: taxFields.taxName || undefined,
+                    businessStructure: taxFields.businessStructure,
+                    businessName: taxFields.businessName || undefined,
+                    llcClassification: taxFields.llcClassification || undefined,
+                    taxAddress: taxFields.taxAddress || undefined,
+                    taxCity: taxFields.taxCity || undefined,
+                    taxState: taxFields.taxState || undefined,
+                    taxZip: taxFields.taxZip || undefined,
+                    ssn: taxFields.ssn || undefined,
+                    ein: taxFields.ein || undefined,
+                });
+                toast({ message: 'Profile completed successfully!', type: 'success' });
+                router.push('/dashboard');
+            } catch {
+                toast({ message: 'Profile saved. Tax details could not be saved — update them from your profile.', type: 'error' });
             }
-            toast({ message: 'Profile completed successfully!', type: 'success' });
-            router.push('/dashboard');
         },
         onError: (error) => {
             toast({ message: error.message || 'Failed to save profile', type: 'error' });
@@ -116,6 +111,19 @@ export default function CompleteProfilePage() {
     const isPending = completeProfileMutation.isPending || taxDetailsMutation.isPending;
 
     const onSubmit = (data: ProfileFormData) => {
+        // Validate required tax fields
+        if (!taxFields.taxName || taxFields.taxName.trim() === '') {
+            toast({ message: 'Name (as shown on your income tax return) is required', type: 'error' });
+            return;
+        }
+
+        if (!taxFields.ssn || taxFields.ssn.trim() === '') {
+            if (!taxFields.ein || taxFields.ein.trim() === '') {
+                toast({ message: 'Either Social Security Number or Employer Identification Number is required', type: 'error' });
+                return;
+            }
+        }
+
         completeProfileMutation.mutate({
             ...data,
             documents: documents.length > 0 ? documents : undefined,
@@ -212,107 +220,141 @@ export default function CompleteProfilePage() {
 
                         {/* Tax Details */}
                         <div className="space-y-4">
-                            <button
-                                type="button"
-                                onClick={() => setShowTaxSection(!showTaxSection)}
-                                className="flex items-center justify-between w-full text-lg font-medium border-b pb-2 hover:text-primary transition-colors"
-                            >
-                                <span>Tax Information (Optional)</span>
-                                {showTaxSection ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                            </button>
+                            <h3 className="text-lg font-medium border-b pb-2">Tax Information (Required)</h3>
 
-                            {showTaxSection && (
-                                <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
-                                    <p className="text-sm text-muted-foreground">
-                                        You can provide your tax information now or update it later from your profile.
-                                    </p>
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="provideTaxDetails"
-                                            checked={provideTaxDetails}
-                                            onChange={(e) => setProvideTaxDetails(e.target.checked)}
-                                            disabled={isPending}
-                                        />
-                                        <Label htmlFor="provideTaxDetails" className="cursor-pointer">
-                                            I want to provide my tax details now
-                                        </Label>
-                                    </div>
+                            <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                                <p className="text-sm text-muted-foreground">
+                                    Please provide your tax information to complete your profile.
+                                </p>
 
-                                    {provideTaxDetails && (
-                                        <div className="space-y-4 mt-4">
-                                            <div>
-                                                <Label htmlFor="taxName">Name (as shown on your income tax return)</Label>
-                                                <Input id="taxName" placeholder="Legal name" disabled={isPending} value={taxFields.taxName} onChange={(e) => setTaxFields(p => ({ ...p, taxName: e.target.value }))} />
-                                            </div>
-                                            <div>
-                                                <Label htmlFor="businessName">Business name (if different from above)</Label>
-                                                <Input id="businessName" placeholder="Business name (if applicable)" disabled={isPending} value={taxFields.businessName} onChange={(e) => setTaxFields(p => ({ ...p, businessName: e.target.value }))} />
-                                            </div>
-                                            <div>
-                                                <Label htmlFor="businessStructure">Federal Tax Classification</Label>
-                                                <Select
-                                                    value={taxFields.businessStructure}
-                                                    onValueChange={(v) => setTaxFields(p => ({ ...p, businessStructure: v as BusinessStructure }))}
-                                                    disabled={isPending}
-                                                >
-                                                    <SelectTrigger id="businessStructure">
-                                                        <SelectValue placeholder="Select classification" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {Object.entries(businessStructureLabels).map(([value, label]) => (
-                                                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            {taxFields.businessStructure === BusinessStructure.LLC && (
-                                                <div>
-                                                    <Label htmlFor="llcClassification">LLC Tax Classification</Label>
-                                                    <Select value={taxFields.llcClassification} onValueChange={(v) => setTaxFields(p => ({ ...p, llcClassification: v }))} disabled={isPending}>
-                                                        <SelectTrigger id="llcClassification"><SelectValue placeholder="Select LLC classification" /></SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="C">C — C Corporation</SelectItem>
-                                                            <SelectItem value="S">S — S Corporation</SelectItem>
-                                                            <SelectItem value="P">P — Partnership</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
-                                            <div>
-                                                <Label htmlFor="taxAddress">Address (number, street, apt/suite)</Label>
-                                                <Input id="taxAddress" placeholder="Street address" disabled={isPending} value={taxFields.taxAddress} onChange={(e) => setTaxFields(p => ({ ...p, taxAddress: e.target.value }))} />
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <Label htmlFor="taxCity">City</Label>
-                                                    <Input id="taxCity" placeholder="City" disabled={isPending} value={taxFields.taxCity} onChange={(e) => setTaxFields(p => ({ ...p, taxCity: e.target.value }))} />
-                                                </div>
-                                                <div>
-                                                    <Label htmlFor="taxState">State</Label>
-                                                    <Input id="taxState" placeholder="State" disabled={isPending} value={taxFields.taxState} onChange={(e) => setTaxFields(p => ({ ...p, taxState: e.target.value }))} />
-                                                </div>
-                                                <div>
-                                                    <Label htmlFor="taxZip">ZIP Code</Label>
-                                                    <Input id="taxZip" placeholder="ZIP" disabled={isPending} value={taxFields.taxZip} onChange={(e) => setTaxFields(p => ({ ...p, taxZip: e.target.value }))} />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-4 p-3 border border-border/30 bg-accent/5 rounded-lg">
-                                                <p className="text-sm font-medium">Taxpayer Identification Number (TIN)</p>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <Label htmlFor="ssn">Social Security Number</Label>
-                                                        <Input id="ssn" type="password" placeholder="XXX-XX-XXXX" disabled={isPending} autoComplete="off" value={taxFields.ssn} onChange={(e) => setTaxFields(p => ({ ...p, ssn: e.target.value }))} />
-                                                    </div>
-                                                    <div>
-                                                        <Label htmlFor="ein">Employer Identification Number</Label>
-                                                        <Input id="ein" placeholder="XX-XXXXXXX" disabled={isPending} value={taxFields.ein} onChange={(e) => setTaxFields(p => ({ ...p, ein: e.target.value }))} />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                <div>
+                                    <Label htmlFor="taxName" className="font-medium">
+                                        Name (as shown on your income tax return) <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Input 
+                                        id="taxName" 
+                                        placeholder="Legal name" 
+                                        disabled={isPending} 
+                                        value={taxFields.taxName} 
+                                        onChange={(e) => setTaxFields(p => ({ ...p, taxName: e.target.value }))} 
+                                        className={taxFields.taxName?.trim() === '' ? 'border-destructive' : ''}
+                                    />
                                 </div>
-                            )}
+                                <div>
+                                    <Label htmlFor="businessName">Business name (if different from above)</Label>
+                                    <Input 
+                                        id="businessName" 
+                                        placeholder="Business name (if applicable)" 
+                                        disabled={isPending} 
+                                        value={taxFields.businessName} 
+                                        onChange={(e) => setTaxFields(p => ({ ...p, businessName: e.target.value }))} 
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="businessStructure" className="font-medium">
+                                        Federal Tax Classification <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Select
+                                        value={taxFields.businessStructure}
+                                        onValueChange={(v) => setTaxFields(p => ({ ...p, businessStructure: v as BusinessStructure }))}
+                                        disabled={isPending}
+                                    >
+                                        <SelectTrigger id="businessStructure">
+                                            <SelectValue placeholder="Select classification" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Object.entries(businessStructureLabels).map(([value, label]) => (
+                                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {taxFields.businessStructure === BusinessStructure.LLC && (
+                                    <div>
+                                        <Label htmlFor="llcClassification">LLC Tax Classification</Label>
+                                        <Select value={taxFields.llcClassification} onValueChange={(v) => setTaxFields(p => ({ ...p, llcClassification: v }))} disabled={isPending}>
+                                            <SelectTrigger id="llcClassification"><SelectValue placeholder="Select LLC classification" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="C">C — C Corporation</SelectItem>
+                                                <SelectItem value="S">S — S Corporation</SelectItem>
+                                                <SelectItem value="P">P — Partnership</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+                                <div>
+                                    <Label htmlFor="taxAddress">Address (number, street, apt/suite)</Label>
+                                    <Input 
+                                        id="taxAddress" 
+                                        placeholder="Street address" 
+                                        disabled={isPending} 
+                                        value={taxFields.taxAddress} 
+                                        onChange={(e) => setTaxFields(p => ({ ...p, taxAddress: e.target.value }))} 
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <Label htmlFor="taxCity">City</Label>
+                                        <Input 
+                                            id="taxCity" 
+                                            placeholder="City" 
+                                            disabled={isPending} 
+                                            value={taxFields.taxCity} 
+                                            onChange={(e) => setTaxFields(p => ({ ...p, taxCity: e.target.value }))} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="taxState">State</Label>
+                                        <Input 
+                                            id="taxState" 
+                                            placeholder="State" 
+                                            disabled={isPending} 
+                                            value={taxFields.taxState} 
+                                            onChange={(e) => setTaxFields(p => ({ ...p, taxState: e.target.value }))} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="taxZip">ZIP Code</Label>
+                                        <Input 
+                                            id="taxZip" 
+                                            placeholder="ZIP" 
+                                            disabled={isPending} 
+                                            value={taxFields.taxZip} 
+                                            onChange={(e) => setTaxFields(p => ({ ...p, taxZip: e.target.value }))} 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-4 p-3 border border-border/30 bg-accent/5 rounded-lg">
+                                    <p className="text-sm font-medium">Taxpayer Identification Number (TIN) <span className="text-destructive">*</span></p>
+                                    <p className="text-xs text-muted-foreground">Provide at least one of the following:</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label htmlFor="ssn">Social Security Number</Label>
+                                            <Input 
+                                                id="ssn" 
+                                                type="password" 
+                                                placeholder="XXX-XX-XXXX" 
+                                                disabled={isPending} 
+                                                autoComplete="off" 
+                                                value={taxFields.ssn} 
+                                                onChange={(e) => setTaxFields(p => ({ ...p, ssn: e.target.value }))} 
+                                                className={(taxFields.ssn?.trim() === '' && taxFields.ein?.trim() === '') ? 'border-destructive' : ''}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="ein">Employer Identification Number</Label>
+                                            <Input 
+                                                id="ein" 
+                                                placeholder="XX-XXXXXXX" 
+                                                disabled={isPending} 
+                                                value={taxFields.ein} 
+                                                onChange={(e) => setTaxFields(p => ({ ...p, ein: e.target.value }))} 
+                                                className={(taxFields.ssn?.trim() === '' && taxFields.ein?.trim() === '') ? 'border-destructive' : ''}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <Button type="submit" size="lg" className="w-full" isLoading={isPending}>

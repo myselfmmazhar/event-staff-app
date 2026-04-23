@@ -12,7 +12,6 @@ import {
   CalendarIcon,
   ClockIcon,
   MessageSquare as MessageSquareIcon,
-  AlertCircle,
   CheckCircle as CheckCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -34,11 +33,7 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
   const utils = trpc.useUtils();
   const { toast } = useToast();
 
-  const isProfileComplete = (staff: any) => {
-    if (!staff) return true;
-    const criticalFields = ['phone', 'streetAddress', 'city', 'state', 'zipCode', 'dateOfBirth'];
-    return criticalFields.every(field => !!staff[field]);
-  };
+
 
   const respondMutation = trpc.callTime.respondToInvitation.useMutation({
     onSuccess: (result) => {
@@ -83,7 +78,6 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
     );
   }
 
-  const complete = isProfileComplete(staff);
   const pendingOffers = invitations?.pending || [];
   const acceptedOffers = invitations?.accepted || [];
 
@@ -107,23 +101,6 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
             </div>
           </div>
         </div>
-
-        {/* Profile Alert */}
-        {!complete && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-6 py-4 flex items-center justify-between gap-4 dark:bg-amber-900/10 dark:border-amber-900/30">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-              <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
-                Some profile details are missing. Complete your profile to stay active for offers.
-              </p>
-            </div>
-            <Link href="/profile">
-              <Button variant="outline" size="sm" className="text-xs whitespace-nowrap border-amber-300 text-amber-700 hover:bg-amber-100">
-                Update Profile
-              </Button>
-            </Link>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Main */}
