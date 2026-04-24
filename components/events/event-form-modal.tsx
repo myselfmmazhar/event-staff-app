@@ -543,6 +543,20 @@ export function EventFormModal({
     }
   }, [selectedClientId, clientsData, setValue, watch]);
 
+  // Auto-fill venue address from client when client is selected
+  useEffect(() => {
+    if (!selectedClientId || !clientsData?.data) return;
+    const selectedClient = clientsData.data.find(c => c.id === selectedClientId);
+    if (!selectedClient) return;
+    if (selectedClient.businessAddress) {
+      setValue('address', selectedClient.businessAddress);
+      setValue('addressLine2', selectedClient.businessAddressLine2 ?? '');
+      setValue('city', selectedClient.city ?? '');
+      setValue('state', selectedClient.state ?? '');
+      setValue('zipCode', selectedClient.zipCode ?? '');
+    }
+  }, [selectedClientId, clientsData, setValue]);
+
   // Apply template data
   useEffect(() => {
     if (selectedTemplateData && !isEdit) {

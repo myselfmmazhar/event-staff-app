@@ -42,6 +42,7 @@ export type ClientSelect = Prisma.ClientGetPayload<{
     details: true;
     requirements: true;
     businessAddress: true;
+    businessAddressLine2: true;
     city: true;
     state: true;
     zipCode: true;

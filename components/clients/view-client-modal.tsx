@@ -1,16 +1,10 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { EditIcon, MapPinIcon } from '@/components/ui/icons';
+import { CloseIcon, EditIcon, MapPinIcon } from '@/components/ui/icons';
 import type { Client } from '@/lib/types/client';
 
 interface ViewClientModalProps {
@@ -20,16 +14,42 @@ interface ViewClientModalProps {
   onEdit: () => void;
 }
 
-export function ViewClientModal({
-  client,
-  open,
-  onClose,
-  onEdit,
-}: ViewClientModalProps) {
+function Field({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="text-sm font-medium text-slate-900 whitespace-pre-wrap">{value}</p>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-5">
+      <h3 className="mb-4 border-b border-slate-200 pb-2.5 text-sm font-bold uppercase tracking-wide text-slate-600">
+        {title}
+      </h3>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+export function ViewClientModal({ client, open, onClose, onEdit }: ViewClientModalProps) {
   if (!client) return null;
 
-  const hasBillingContact = client.billingFirstName || client.billingLastName || client.billingEmail || client.billingPhone;
+  const hasBillingContact =
+    client.billingFirstName || client.billingLastName || client.billingEmail || client.billingPhone;
   const hasLocations = client.locations && client.locations.length > 0;
+
+  const fullAddress = [
+    client.businessAddress,
+    client.businessAddressLine2,
+    [client.city, client.state].filter(Boolean).join(', '),
+    client.zipCode,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return (
     <Dialog
@@ -37,200 +57,140 @@ export function ViewClientModal({
       onClose={onClose}
       className="mx-4 flex h-[min(94vh,1000px)] w-full max-h-[min(94vh,1000px)] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-card p-0 shadow-xl"
     >
-      <div className="h-full flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Client Details</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0">
+        <div className="flex h-full min-h-0 flex-col bg-white">
 
-        <DialogContent className="flex-1 overflow-y-auto">
-          {/* Client ID */}
-          <div className="mb-6 p-3 bg-muted/30 rounded-md border border-border">
-            <p className="text-sm text-muted-foreground">Client ID</p>
-            <p className="text-base font-medium">{client.clientId}</p>
+          {/* Header */}
+          <div className="shrink-0 border-b border-slate-200 px-6 pb-5 pt-5 sm:px-8">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1 pr-2">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                  {client.businessName}
+                </h2>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-sm text-slate-500">{client.clientId}</span>
+                  <Badge variant={client.hasLoginAccess ? 'success' : 'secondary'} asSpan>
+                    {client.hasLoginAccess ? 'Portal Access' : 'No Access'}
+                  </Badge>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="shrink-0 rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Close"
+              >
+                <CloseIcon className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
-          {/* Row 1: Client Information + Business Address & Billing (side-by-side on lg+) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Client Information */}
-            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Client Information</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Business Name</p>
-                  <p className="text-base">{client.businessName}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">First Name</p>
-                    <p className="text-base">{client.firstName}</p>
+          {/* Body */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+              {/* Left column */}
+              <div className="space-y-6">
+                <Section title="Contact Information">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="First Name" value={client.firstName} />
+                    <Field label="Last Name" value={client.lastName} />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Last Name</p>
-                    <p className="text-base">{client.lastName}</p>
+                  <Field label="Email" value={client.email} />
+                  <Field label="CC Email" value={client.ccEmail} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Cell Phone" value={client.cellPhone} />
+                    <Field label="Business Phone" value={client.businessPhone} />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="text-base">{client.email}</p>
-                  </div>
-                  {client.ccEmail && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">CC Email</p>
-                      <p className="text-base">{client.ccEmail}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Cell Phone</p>
-                    <p className="text-base">{client.cellPhone}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Business Phone</p>
-                    <p className="text-base">{client.businessPhone || '-'}</p>
-                  </div>
-                </div>
-                {client.details && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Details</p>
-                    <p className="text-base whitespace-pre-wrap">{client.details}</p>
-                  </div>
-                )}
-                {client.requirements && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Requirements</p>
-                    <p className="text-base whitespace-pre-wrap">{client.requirements}</p>
-                  </div>
+                </Section>
+
+                {(client.details || client.requirements) && (
+                  <Section title="Notes">
+                    <Field label="Details" value={client.details} />
+                    <Field label="Requirements" value={client.requirements} />
+                  </Section>
                 )}
               </div>
-            </div>
 
-            {/* Business Address + Billing Contact (stacked in right column) */}
-            <div className="space-y-6">
-              {/* Business Address */}
-              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Business Address</h3>
-                <div className="space-y-3">
-                  {client.businessAddress && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Business Address</p>
-                      <p className="text-base">{client.businessAddress}</p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">City</p>
-                      <p className="text-base">{client.city}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">State</p>
-                      <p className="text-base">{client.state}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">ZIP</p>
-                      <p className="text-base">{client.zipCode}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Billing Contact */}
-              {hasBillingContact && (
-                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                  <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Billing Contact</h3>
-                  <div className="space-y-3">
-                    {(client.billingFirstName || client.billingLastName) && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Billing First Name</p>
-                          <p className="text-base">{client.billingFirstName || '-'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Billing Last Name</p>
-                          <p className="text-base">{client.billingLastName || '-'}</p>
-                        </div>
-                      </div>
+              {/* Right column */}
+              <div className="space-y-6">
+                {fullAddress && (
+                  <Section title="Business Address">
+                    <Field label="Street" value={client.businessAddress} />
+                    {client.businessAddressLine2 && (
+                      <Field label="Address Line 2" value={client.businessAddressLine2} />
                     )}
-                    <div className="grid grid-cols-2 gap-4">
-                      {client.billingEmail && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Billing Email</p>
-                          <p className="text-base">{client.billingEmail}</p>
-                        </div>
-                      )}
-                      {client.billingPhone && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Billing Phone</p>
-                          <p className="text-base">{client.billingPhone}</p>
-                        </div>
-                      )}
+                    <div className="grid grid-cols-3 gap-4">
+                      <Field label="City" value={client.city} />
+                      <Field label="State" value={client.state} />
+                      <Field label="ZIP" value={client.zipCode} />
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+                  </Section>
+                )}
 
-          {/* Row 2: Saved Locations + Client Portal Access (side-by-side on lg+) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Saved Locations */}
-            {hasLocations && (
-              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Saved Locations</h3>
-                <div className="space-y-3">
-                  {client.locations!.map((location) => (
-                    <Card key={location.id} className="p-3">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <MapPinIcon className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">{location.venueName}</p>
-                          {location.meetingPoint && (
-                            <p className="text-sm text-muted-foreground">
-                              Meeting Point: {location.meetingPoint}
-                            </p>
-                          )}
-                          <p className="text-sm text-muted-foreground">
-                            {location.venueAddress}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {location.city}, {location.state} {location.zipCode}
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
+                {hasBillingContact && (
+                  <Section title="Billing Contact">
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="First Name" value={client.billingFirstName} />
+                      <Field label="Last Name" value={client.billingLastName} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Email" value={client.billingEmail} />
+                      <Field label="Phone" value={client.billingPhone} />
+                    </div>
+                  </Section>
+                )}
 
-            {/* Client Portal Access */}
-            <div className={`bg-accent/5 border border-border/30 p-5 rounded-lg ${!hasLocations ? 'lg:col-span-1' : ''}`}>
-              <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Client Portal Access</h3>
-              <div className="flex items-center gap-3">
-                <Badge variant={client.hasLoginAccess ? 'default' : 'secondary'}>
-                  {client.hasLoginAccess ? 'Portal Access Enabled' : 'No Portal Access'}
-                </Badge>
-                {client.hasLoginAccess && client.userId && (
-                  <p className="text-sm text-muted-foreground">Client can log in to the portal</p>
+                {hasLocations && (
+                  <Section title="Saved Locations">
+                    <div className="space-y-2">
+                      {client.locations!.map((location) => (
+                        <Card key={location.id} className="p-3">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                              <MapPinIcon className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-slate-900">{location.venueName}</p>
+                              {location.meetingPoint && (
+                                <p className="text-sm text-slate-500">
+                                  Meeting point: {location.meetingPoint}
+                                </p>
+                              )}
+                              <p className="text-sm text-slate-500">{location.venueAddress}</p>
+                              <p className="text-sm text-slate-500">
+                                {location.city}, {location.state} {location.zipCode}
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </Section>
                 )}
               </div>
             </div>
           </div>
-        </DialogContent>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-          <Button onClick={onEdit}>
-            <EditIcon className="h-4 w-4 mr-2" />
-            Edit Client
-          </Button>
-        </DialogFooter>
-      </div>
+          {/* Footer */}
+          <div className="shrink-0 border-t border-slate-200 px-6 py-4 sm:px-8">
+            <div className="flex items-center justify-end gap-3">
+              <Button type="button" variant="outline" onClick={onClose} className="rounded-lg border-slate-200">
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={onEdit}
+                className="rounded-lg bg-slate-900 text-white hover:bg-slate-800"
+              >
+                <EditIcon className="mr-2 h-4 w-4" />
+                Edit Client
+              </Button>
+            </div>
+          </div>
+
+        </div>
+      </DialogContent>
     </Dialog>
   );
 }

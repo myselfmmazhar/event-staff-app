@@ -230,6 +230,14 @@ export default function ClientsPage() {
   const getClientById = (clientId: string): Client | undefined =>
     clients.find((client) => client.id === clientId);
 
+  const handleView = (clientId: string) => {
+    const client = getClientById(clientId);
+    if (client) {
+      setSelectedClient(client);
+      setModals((prev) => ({ ...prev, view: true }));
+    }
+  };
+
   const handleEdit = (clientId: string) => {
     const client = getClientById(clientId);
     if (client) {
@@ -485,6 +493,7 @@ export default function ClientsPage() {
             isLoading={isLoading}
             sortBy={filters.sortBy}
             sortOrder={filters.sortOrder}
+            onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onSort={handleSort}
