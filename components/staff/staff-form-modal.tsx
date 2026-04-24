@@ -1298,14 +1298,14 @@ function StaffFormContent({
                                 type="button"
                                 variant="outline"
                                 onClick={() => {
-                                    pendingSaveActionRef.current = 'update-continue';
-                                    setPendingSaveAction('update-continue');
+                                    pendingSaveActionRef.current = 'close';
+                                    setPendingSaveAction('close');
                                     handleSubmit(handleFormSubmit)();
                                 }}
                                 disabled={isSubmitting || (wizardStep === 'basic' && !canProceedBasic)}
                                 className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
                             >
-                                {isSubmitting && pendingSaveAction === 'update-continue' ? 'Saving...' : 'Save & Update'}
+                                {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : 'Save & Close'}
                             </Button>
                         )}
                         {isEdit && onViewDetails && (
