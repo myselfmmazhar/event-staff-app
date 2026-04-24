@@ -12,6 +12,8 @@ import {
     Calculator,
     FileText,
     PenLine,
+    Eye,
+    EyeOff,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -60,6 +62,8 @@ const STEP_LABELS: Record<WizardStep, string> = {
 };
 
 const contactFormSchema = z.object({
+    firstName: z.string().min(1, 'First name is required').max(50),
+    lastName: z.string().min(1, 'Last name is required').max(50),
     phone: z
         .string()
         .min(1, 'Mobile number is required')
@@ -169,6 +173,8 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactFormSchema),
         defaultValues: {
+            firstName: '',
+            lastName: '',
             phone: '',
             streetAddress: '',
             aptSuiteUnit: '',
@@ -185,6 +191,8 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
         if (!myProfile || prefilled) return;
 
         form.reset({
+            firstName: myProfile.firstName || '',
+            lastName: myProfile.lastName || '',
             phone: myProfile.phone || '',
             streetAddress: myProfile.streetAddress || '',
             aptSuiteUnit: myProfile.aptSuiteUnit || '',
@@ -424,10 +432,6 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
 
     if (!isOpen) return null;
 
-    const fullName =
-        [myProfile?.firstName, myProfile?.lastName].filter(Boolean).join(' ').trim() ||
-        '—';
-
     /* -------------------- render -------------------- */
 
     return (
@@ -482,7 +486,6 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                             <PersonalStep
                                 form={form}
                                 disabled={isSubmitting}
-                                fullName={fullName}
                                 email={myProfile?.email ?? ''}
                             />
                         )}
@@ -494,6 +497,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                 showError={showTaxError}
                                 taxErrors={taxErrors}
                                 disabled={isSubmitting}
+                                contactData={form.getValues()}
                             />
                         )}
 
@@ -516,7 +520,6 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                 taxFields={taxFields}
                                 documents={documents}
                                 requiredTemplates={requiredTemplates}
-                                fullName={fullName}
                                 email={myProfile?.email ?? ''}
                                 signatureDataUrl={signatureDataUrl}
                                 setSignatureDataUrl={setSignatureDataUrl}
@@ -584,12 +587,10 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
 function PersonalStep({
     form,
     disabled,
-    fullName,
     email,
 }: {
     form: ReturnType<typeof useForm<ContactFormData>>;
     disabled: boolean;
-    fullName: string;
     email: string;
 }) {
     return (
@@ -600,15 +601,39 @@ function PersonalStep({
                 be edited.
             </p>
 
-            {/* Identity (read-only) */}
+            {/* Identity */}
             <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
                 <div>
-                    <Label className="text-sm font-bold text-slate-900">Name</Label>
-                    <div className="mt-2 flex h-10 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
-                        {fullName}
-                    </div>
+                    <Label className="text-sm font-bold text-slate-900" htmlFor="firstName" requiredMark>First Name</Label>
+                    <Input
+                        id="firstName"
+                        disabled={disabled}
+                        className="mt-2 rounded-lg border-slate-200"
+                        invalid={!!form.formState.errors.firstName}
+                        {...form.register('firstName')}
+                    />
+                    {form.formState.errors.firstName && (
+                        <p className="mt-1 text-sm text-destructive">
+                            {String(form.formState.errors.firstName.message)}
+                        </p>
+                    )}
                 </div>
                 <div>
+                    <Label className="text-sm font-bold text-slate-900" htmlFor="lastName" requiredMark>Last Name</Label>
+                    <Input
+                        id="lastName"
+                        disabled={disabled}
+                        className="mt-2 rounded-lg border-slate-200"
+                        invalid={!!form.formState.errors.lastName}
+                        {...form.register('lastName')}
+                    />
+                    {form.formState.errors.lastName && (
+                        <p className="mt-1 text-sm text-destructive">
+                            {String(form.formState.errors.lastName.message)}
+                        </p>
+                    )}
+                </div>
+                <div className="md:col-span-2">
                     <Label className="text-sm font-bold text-slate-900">Email</Label>
                     <div className="mt-2 flex h-10 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 truncate">
                         {email || '—'}
@@ -824,13 +849,31 @@ function TaxStep({
     showError,
     taxErrors,
     disabled,
+    contactData,
 }: {
     taxFields: TaxFields;
     setTaxFields: React.Dispatch<React.SetStateAction<TaxFields>>;
     showError: (field: keyof TaxFieldErrors) => boolean;
     taxErrors: TaxFieldErrors;
     disabled: boolean;
+    contactData: ContactFormData;
 }) {
+    const [usePersonalAddress, setUsePersonalAddress] = useState(false);
+    const [ssnVisible, setSsnVisible] = useState(false);
+
+    const handleAutofill = (checked: boolean) => {
+        setUsePersonalAddress(checked);
+        if (checked) {
+            setTaxFields(prev => ({
+                ...prev,
+                taxAddress: [contactData.streetAddress, contactData.aptSuiteUnit].filter(Boolean).join(' '),
+                taxCity: contactData.city,
+                taxState: contactData.state,
+                taxZip: contactData.zipCode,
+            }));
+        }
+    };
+
     return (
         <div className="mx-auto max-w-4xl">
             <h3 className="text-base font-bold text-slate-900">2. Tax Information</h3>
@@ -952,7 +995,41 @@ function TaxStep({
                     </div>
                 )}
 
-                <div>
+                <div className="pt-4 border-t border-slate-100">
+                    <div className="flex items-center space-x-2 pb-4">
+                        <Checkbox
+                            id="autofillAddress"
+                            checked={usePersonalAddress}
+                            disabled={disabled}
+                            onChange={(e) => handleAutofill(e.target.checked)}
+                        />
+                        <label
+                            htmlFor="autofillAddress"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
+                        >
+                            Use address from Personal Information
+                        </label>
+                    </div>
+
+                    {!usePersonalAddress && (
+                        <div className="mb-4">
+                            <AddressAutocomplete
+                                label="Search Address"
+                                placeholder="Type to search..."
+                                disabled={disabled}
+                                onSelect={(data) => {
+                                    setTaxFields((p) => ({
+                                        ...p,
+                                        taxAddress: data.address,
+                                        taxCity: data.city,
+                                        taxState: data.state,
+                                        taxZip: data.zipCode,
+                                    }));
+                                }}
+                            />
+                        </div>
+                    )}
+
                     <Label
                         htmlFor="taxAddress"
                         className="text-sm font-bold text-slate-900"
@@ -964,12 +1041,13 @@ function TaxStep({
                         id="taxAddress"
                         placeholder="Street address"
                         disabled={disabled}
+                        readOnly={usePersonalAddress}
                         value={taxFields.taxAddress}
                         onChange={(e) =>
-                            setTaxFields((p) => ({ ...p, taxAddress: e.target.value }))
+                            !usePersonalAddress && setTaxFields((p) => ({ ...p, taxAddress: e.target.value }))
                         }
                         invalid={showError('taxAddress')}
-                        className="mt-2 rounded-lg border-slate-200"
+                        className={cn('mt-2 rounded-lg border-slate-200', usePersonalAddress && 'bg-slate-50 text-slate-500')}
                     />
                     {showError('taxAddress') && (
                         <p className="mt-1 text-sm text-destructive">{taxErrors.taxAddress}</p>
@@ -989,12 +1067,13 @@ function TaxStep({
                             id="taxCity"
                             placeholder="City"
                             disabled={disabled}
+                            readOnly={usePersonalAddress}
                             value={taxFields.taxCity}
                             onChange={(e) =>
-                                setTaxFields((p) => ({ ...p, taxCity: e.target.value }))
+                                !usePersonalAddress && setTaxFields((p) => ({ ...p, taxCity: e.target.value }))
                             }
                             invalid={showError('taxCity')}
-                            className="mt-2 rounded-lg border-slate-200"
+                            className={cn('mt-2 rounded-lg border-slate-200', usePersonalAddress && 'bg-slate-50 text-slate-500')}
                         />
                         {showError('taxCity') && (
                             <p className="mt-1 text-sm text-destructive">{taxErrors.taxCity}</p>
@@ -1012,12 +1091,13 @@ function TaxStep({
                             id="taxState"
                             placeholder="State"
                             disabled={disabled}
+                            readOnly={usePersonalAddress}
                             value={taxFields.taxState}
                             onChange={(e) =>
-                                setTaxFields((p) => ({ ...p, taxState: e.target.value }))
+                                !usePersonalAddress && setTaxFields((p) => ({ ...p, taxState: e.target.value }))
                             }
                             invalid={showError('taxState')}
-                            className="mt-2 rounded-lg border-slate-200"
+                            className={cn('mt-2 rounded-lg border-slate-200', usePersonalAddress && 'bg-slate-50 text-slate-500')}
                         />
                         {showError('taxState') && (
                             <p className="mt-1 text-sm text-destructive">{taxErrors.taxState}</p>
@@ -1035,12 +1115,13 @@ function TaxStep({
                             id="taxZip"
                             placeholder="ZIP"
                             disabled={disabled}
+                            readOnly={usePersonalAddress}
                             value={taxFields.taxZip}
                             onChange={(e) =>
-                                setTaxFields((p) => ({ ...p, taxZip: e.target.value }))
+                                !usePersonalAddress && setTaxFields((p) => ({ ...p, taxZip: e.target.value }))
                             }
                             invalid={showError('taxZip')}
-                            className="mt-2 rounded-lg border-slate-200"
+                            className={cn('mt-2 rounded-lg border-slate-200', usePersonalAddress && 'bg-slate-50 text-slate-500')}
                         />
                         {showError('taxZip') && (
                             <p className="mt-1 text-sm text-destructive">{taxErrors.taxZip}</p>
@@ -1066,19 +1147,34 @@ function TaxStep({
                             >
                                 Social Security Number
                             </Label>
-                            <Input
-                                id="ssn"
-                                type="password"
-                                placeholder="XXX-XX-XXXX"
-                                disabled={disabled}
-                                autoComplete="off"
-                                value={taxFields.ssn}
-                                onChange={(e) =>
-                                    setTaxFields((p) => ({ ...p, ssn: e.target.value }))
-                                }
-                                invalid={showError('ssn')}
-                                className="mt-2 rounded-lg border-slate-200"
-                            />
+                            <div className="relative mt-2">
+                                <Input
+                                    id="ssn"
+                                    type={ssnVisible ? 'text' : 'password'}
+                                    placeholder="XXX-XX-XXXX"
+                                    disabled={disabled}
+                                    autoComplete="off"
+                                    value={taxFields.ssn}
+                                    onChange={(e) =>
+                                        setTaxFields((p) => ({ ...p, ssn: e.target.value }))
+                                    }
+                                    invalid={showError('ssn')}
+                                    className="rounded-lg border-slate-200 pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    tabIndex={-1}
+                                    onClick={() => setSsnVisible((v) => !v)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    aria-label={ssnVisible ? 'Hide SSN' : 'Show SSN'}
+                                >
+                                    {ssnVisible ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
+                            </div>
                             {showError('ssn') && (
                                 <p className="mt-1 text-sm text-destructive">{taxErrors.ssn}</p>
                             )}
@@ -1251,7 +1347,6 @@ function ReviewStep({
     taxFields,
     documents,
     requiredTemplates,
-    fullName,
     email,
     signatureDataUrl,
     setSignatureDataUrl,
@@ -1262,13 +1357,13 @@ function ReviewStep({
     taxFields: TaxFields;
     documents: StaffDocument[];
     requiredTemplates: Set<ReqTemplateId>;
-    fullName: string;
     email: string;
     signatureDataUrl: string | null;
     setSignatureDataUrl: (v: string | null) => void;
     onJumpTo: (step: WizardStep) => void;
     disabled: boolean;
 }) {
+    const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim() || '—';
     const templateCards = REQ_TEMPLATE_CARDS.filter((c) => requiredTemplates.has(c.id));
 
     return (

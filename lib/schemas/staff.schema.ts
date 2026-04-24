@@ -362,6 +362,16 @@ export class StaffSchema {
      */
     static completeProfile = z
         .object({
+            firstName: z
+                .string()
+                .min(1, "First name is required")
+                .max(50, "First name must be 50 characters or less")
+                .transform((val) => val.trim()),
+            lastName: z
+                .string()
+                .min(1, "Last name is required")
+                .max(50, "Last name must be 50 characters or less")
+                .transform((val) => val.trim()),
             phone: z
                 .string()
                 .min(1, "Phone number is required")

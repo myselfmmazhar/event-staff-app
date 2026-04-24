@@ -748,8 +748,8 @@ function StaffFormContent({
                                 </div>
                             )}
                             <div>
-                                <Label htmlFor="sf-rating" className="text-sm font-bold text-slate-900">Initial Rating</Label>
-                                <p className="mt-1 text-xs text-slate-500 mb-3">Set an initial quality rating if known.</p>
+                                <Label htmlFor="sf-rating" className="text-sm font-bold text-slate-900">Skills Rating</Label>
+                                <p className="mt-1 text-xs text-slate-500 mb-3">Set an initial skills rating if known.</p>
                                 <Controller
                                     name="staffRating"
                                     control={control}
@@ -1040,7 +1040,7 @@ function StaffFormContent({
                                                     {STAFF_FORM_RATING_LABELS[watch('staffRating') as StaffRating]}
                                                 </div>
                                             ) : (
-                                                <span className="text-sm font-bold text-slate-400 italic">No initial rating set</span>
+                                                <span className="text-sm font-bold text-slate-400 italic">No skills rating set</span>
                                             )}
                                         </div>
                                     </div>

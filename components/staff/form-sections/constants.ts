@@ -45,7 +45,7 @@ export const SKILL_LEVEL_OPTIONS = [
   { value: SkillLevel.ADVANCED, label: 'Advanced' },
 ] as const;
 
-/** Display labels for staff initial rating (maps Prisma StaffRating to plain language). */
+/** Display labels for staff Skills Rating (maps Prisma StaffRating to plain language). */
 export const STAFF_FORM_RATING_LABELS: Record<StaffRating, string> = {
   [StaffRating.NA]: 'No rating',
   [StaffRating.A]: 'Advanced',

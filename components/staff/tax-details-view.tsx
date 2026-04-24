@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { BusinessStructure, TaxFilledBy } from '@prisma/client';
-import { ExternalLinkIcon, EditIcon } from 'lucide-react';
+import { EditIcon } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 
 interface TaxDetailsViewProps {
@@ -94,116 +94,111 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
                 </div>
             </div>
 
-            {/* Only show W-9 details if Staff filled it out */}
-            {isStaffFilled && (
-                <>
-                    {/* W-9 Details */}
-                    <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">W-9 Information</h3>
-                        <div className="space-y-3">
-                            {taxDetails.taxName && (
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Name (Line 1)</p>
-                                    <p className="text-base">{taxDetails.taxName}</p>
-                                </div>
-                            )}
-                            {taxDetails.businessName && (
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Business Name (Line 2)</p>
-                                    <p className="text-base">{taxDetails.businessName}</p>
-                                </div>
-                            )}
-                            <div>
-                                <p className="text-sm text-muted-foreground">Federal Tax Classification</p>
-                                <p className="text-base">
-                                    {BUSINESS_STRUCTURE_LABELS[taxDetails.businessStructure] || taxDetails.businessStructure}
-                                    {taxDetails.businessStructure === BusinessStructure.LLC && taxDetails.llcClassification && (
-                                        <span className="text-muted-foreground ml-1">({taxDetails.llcClassification})</span>
-                                    )}
-                                </p>
-                            </div>
-                            {(taxDetails.exemptPayeeCode || taxDetails.fatcaExemptionCode) && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    {taxDetails.exemptPayeeCode && (
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Exempt Payee Code</p>
-                                            <p className="text-base">{taxDetails.exemptPayeeCode}</p>
-                                        </div>
-                                    )}
-                                    {taxDetails.fatcaExemptionCode && (
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">FATCA Exemption Code</p>
-                                            <p className="text-base">{taxDetails.fatcaExemptionCode}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Address */}
-                    {(taxDetails.taxAddress || taxDetails.taxCity) && (
-                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Address</h3>
-                            <div className="space-y-1">
-                                {taxDetails.taxAddress && <p className="text-base">{taxDetails.taxAddress}</p>}
-                                <p className="text-base">
-                                    {[taxDetails.taxCity, taxDetails.taxState, taxDetails.taxZip].filter(Boolean).join(', ')}
-                                </p>
-                            </div>
+            {/* W-9 Details */}
+            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">W-9 Information</h3>
+                <div className="space-y-3">
+                    {taxDetails.taxName && (
+                        <div>
+                            <p className="text-sm text-muted-foreground">Name (Line 1)</p>
+                            <p className="text-base">{taxDetails.taxName}</p>
                         </div>
                     )}
-
-                    {/* Tax Identifiers */}
-                    <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Tax Identifiers</h3>
+                    {taxDetails.businessName && (
+                        <div>
+                            <p className="text-sm text-muted-foreground">Business Name (Line 2)</p>
+                            <p className="text-base">{taxDetails.businessName}</p>
+                        </div>
+                    )}
+                    <div>
+                        <p className="text-sm text-muted-foreground">Federal Tax Classification</p>
+                        <p className="text-base">
+                            {BUSINESS_STRUCTURE_LABELS[taxDetails.businessStructure] || taxDetails.businessStructure}
+                            {taxDetails.businessStructure === BusinessStructure.LLC && taxDetails.llcClassification && (
+                                <span className="text-muted-foreground ml-1">({taxDetails.llcClassification})</span>
+                            )}
+                        </p>
+                    </div>
+                    {(taxDetails.exemptPayeeCode || taxDetails.fatcaExemptionCode) && (
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-sm text-muted-foreground">Social Security Number</p>
-                                <p className="text-base font-mono">
-                                    {maskedSsn || 'Not provided'}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Employer Identification Number</p>
-                                <p className="text-base font-mono">
-                                    {maskedEin || 'Not provided'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Certification */}
-                    {(taxDetails.signatureUrl || taxDetails.certificationDate) && (
-                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Certification</h3>
-                            <div className="space-y-3">
-                                {taxDetails.certificationDate && (
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Certification Date</p>
-                                        <p className="text-base">
-                                            {format(new Date(taxDetails.certificationDate), 'MMM dd, yyyy')}
-                                        </p>
-                                    </div>
-                                )}
-                                {taxDetails.signatureUrl && (
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Signature</p>
-                                        <a
-                                            href={taxDetails.signatureUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center text-primary hover:underline"
-                                        >
-                                            View Signature
-                                            <ExternalLinkIcon className="h-3 w-3 ml-1" />
-                                        </a>
-                                    </div>
-                                )}
-                            </div>
+                            {taxDetails.exemptPayeeCode && (
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Exempt Payee Code</p>
+                                    <p className="text-base">{taxDetails.exemptPayeeCode}</p>
+                                </div>
+                            )}
+                            {taxDetails.fatcaExemptionCode && (
+                                <div>
+                                    <p className="text-sm text-muted-foreground">FATCA Exemption Code</p>
+                                    <p className="text-base">{taxDetails.fatcaExemptionCode}</p>
+                                </div>
+                            )}
                         </div>
                     )}
-                </>
+                </div>
+            </div>
+
+            {/* Address */}
+            {(taxDetails.taxAddress || taxDetails.taxCity) && (
+                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Address</h3>
+                    <div className="space-y-1">
+                        {taxDetails.taxAddress && <p className="text-base">{taxDetails.taxAddress}</p>}
+                        <p className="text-base">
+                            {[taxDetails.taxCity, taxDetails.taxState, taxDetails.taxZip].filter(Boolean).join(', ')}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Tax Identifiers */}
+            {isStaffFilled && (
+                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Tax Identifiers</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Social Security Number</p>
+                            <p className="text-base font-mono">
+                                {maskedSsn || 'Not provided'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Employer Identification Number</p>
+                            <p className="text-base font-mono">
+                                {maskedEin || 'Not provided'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Certification */}
+            {(taxDetails.signatureUrl || taxDetails.certificationDate) && (
+                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Certification</h3>
+                    <div className="space-y-4">
+                        {taxDetails.certificationDate && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Certification Date</p>
+                                <p className="text-base">
+                                    {format(new Date(taxDetails.certificationDate), 'MMM dd, yyyy')}
+                                </p>
+                            </div>
+                        )}
+                        {taxDetails.signatureUrl && (
+                            <div>
+                                <p className="text-sm text-muted-foreground mb-2">Signature</p>
+                                <div className="border border-border rounded-md bg-white p-3 inline-block">
+                                    <img
+                                        src={taxDetails.signatureUrl}
+                                        alt="Staff signature"
+                                        className="max-h-24 max-w-xs object-contain"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
         </div>
     );

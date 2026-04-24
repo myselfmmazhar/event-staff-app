@@ -28,8 +28,11 @@ export function SignaturePad({ value, onChange, disabled, className }: Signature
 
         const dataUrl = sigCanvasRef.current.toDataURL('image/png');
         onChange?.(dataUrl);
-        setIsDrawing(false);
     }, [disabled, onChange]);
+
+    const handleAccept = useCallback(() => {
+        setIsDrawing(false);
+    }, []);
 
     const handleClear = useCallback(() => {
         if (sigCanvasRef.current) {
@@ -96,6 +99,12 @@ export function SignaturePad({ value, onChange, disabled, className }: Signature
             {/* Action buttons */}
             {!disabled && (
                 <div className="flex gap-2">
+                    {isDrawing && value && (
+                        <Button type="button" variant="outline" size="sm" onClick={handleAccept}>
+                            <PenLine className="h-3.5 w-3.5 mr-1.5" />
+                            Accept Signature
+                        </Button>
+                    )}
                     {!isDrawing && (
                         <Button type="button" variant="outline" size="sm" onClick={handleRedraw}>
                             <PenLine className="h-3.5 w-3.5 mr-1.5" />
