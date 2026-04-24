@@ -189,6 +189,8 @@ export class StaffService {
                 // Use dedicated masked endpoints to retrieve them
                 signatureUrl: true,
                 certificationDate: true,
+                policyAcknowledgedAt: true,
+                recordsAcknowledgedAt: true,
                 createdAt: true,
                 updatedAt: true,
             },
@@ -661,6 +663,8 @@ export class StaffService {
             ssn,
             ein,
             signatureUrl,
+            ackPolicy,
+            ackRecords,
             ...profileData
         } = data;
 
@@ -682,6 +686,8 @@ export class StaffService {
             ein: ein && ein.length > 0 ? ein : null,
             signatureUrl: signatureUrl && signatureUrl.length > 0 ? signatureUrl : null,
             certificationDate: signatureUrl && signatureUrl.length > 0 ? new Date() : null,
+            policyAcknowledgedAt: ackPolicy ? new Date() : null,
+            recordsAcknowledgedAt: ackRecords ? new Date() : null,
         };
 
         const [updatedStaff] = await this.prisma.$transaction([

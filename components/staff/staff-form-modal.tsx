@@ -695,7 +695,7 @@ function StaffFormContent({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setExperienceMode('talent')}
+                                    onClick={() => { setExperienceMode('talent'); setValue('serviceIds', [], { shouldDirty: true }); }}
                                     disabled={isSubmitting}
                                     className={cn(
                                         'relative rounded-xl border p-5 text-left transition-all',

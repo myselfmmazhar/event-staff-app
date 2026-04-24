@@ -20,6 +20,7 @@ interface SignaturePadProps {
  */
 export function SignaturePad({ value, onChange, disabled, className }: SignaturePadProps) {
     const [isDrawing, setIsDrawing] = useState(!value);
+    const [pendingDataUrl, setPendingDataUrl] = useState<string | null>(null);
     const sigCanvasRef = useRef<SignatureCanvas>(null);
 
     const handleDrawEnd = useCallback(() => {
@@ -27,17 +28,21 @@ export function SignaturePad({ value, onChange, disabled, className }: Signature
         if (sigCanvasRef.current.isEmpty()) return;
 
         const dataUrl = sigCanvasRef.current.toDataURL('image/png');
-        onChange?.(dataUrl);
-    }, [disabled, onChange]);
+        setPendingDataUrl(dataUrl);
+    }, [disabled]);
 
     const handleAccept = useCallback(() => {
+        if (pendingDataUrl) {
+            onChange?.(pendingDataUrl);
+        }
         setIsDrawing(false);
-    }, []);
+    }, [pendingDataUrl, onChange]);
 
     const handleClear = useCallback(() => {
         if (sigCanvasRef.current) {
             sigCanvasRef.current.clear();
         }
+        setPendingDataUrl(null);
         onChange?.(null);
         setIsDrawing(true);
     }, [onChange]);
@@ -99,7 +104,7 @@ export function SignaturePad({ value, onChange, disabled, className }: Signature
             {/* Action buttons */}
             {!disabled && (
                 <div className="flex gap-2">
-                    {isDrawing && value && (
+                    {isDrawing && pendingDataUrl && (
                         <Button type="button" variant="outline" size="sm" onClick={handleAccept}>
                             <PenLine className="h-3.5 w-3.5 mr-1.5" />
                             Accept Signature
@@ -111,7 +116,7 @@ export function SignaturePad({ value, onChange, disabled, className }: Signature
                             {value ? 'Re-sign' : 'Draw'}
                         </Button>
                     )}
-                    {(value || isDrawing) && (
+                    {(value || pendingDataUrl || isDrawing) && (
                         <Button type="button" variant="outline" size="sm" onClick={handleClear}>
                             <Eraser className="h-3.5 w-3.5 mr-1.5" />
                             Clear

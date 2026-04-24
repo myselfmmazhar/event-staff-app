@@ -14,6 +14,7 @@ import {
     PenLine,
     Eye,
     EyeOff,
+    CheckCircle2,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -427,6 +428,8 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
             ssn: taxFields.ssn || undefined,
             ein: taxFields.ein || undefined,
             signatureUrl,
+            ackPolicy,
+            ackRecords,
         });
     };
 
@@ -525,6 +528,8 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                 setSignatureDataUrl={setSignatureDataUrl}
                                 onJumpTo={jumpTo}
                                 disabled={isSubmitting}
+                                ackPolicy={ackPolicy}
+                                ackRecords={ackRecords}
                             />
                         )}
                     </div>
@@ -537,8 +542,12 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                     <Button
                                         type="button"
                                         onClick={goNext}
-                                        disabled={isSubmitting}
-                                        className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[280px]"
+                                        disabled={
+                                            isSubmitting ||
+                                            (wizardStep === 'requirements' &&
+                                                (documents.length === 0 || !ackPolicy || !ackRecords))
+                                        }
+                                        className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none sm:w-auto sm:min-w-[280px]"
                                     >
                                         Continue
                                     </Button>
@@ -1295,9 +1304,6 @@ function RequirementsStep({
             <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200">
                 <div className="border-b border-slate-200 bg-slate-50/70 px-5 py-3">
                     <p className="text-sm font-bold text-slate-900">Acknowledgments</p>
-                    <p className="text-xs text-slate-500">
-                        These acknowledgments should be completed before final review.
-                    </p>
                 </div>
                 <div className="divide-y divide-slate-100">
                     <label className="flex cursor-pointer items-start gap-3 px-5 py-4">
@@ -1311,9 +1317,6 @@ function RequirementsStep({
                             <p className="text-sm font-bold text-slate-900">
                                 I acknowledge the safety and code of conduct policy.
                             </p>
-                            <p className="text-xs text-slate-500">
-                                Acceptance should be logged with a timestamp.
-                            </p>
                         </div>
                     </label>
                     <label className="flex cursor-pointer items-start gap-3 px-5 py-4">
@@ -1326,9 +1329,6 @@ function RequirementsStep({
                         <div className="min-w-0">
                             <p className="text-sm font-bold text-slate-900">
                                 I understand incomplete records may delay activation and payment.
-                            </p>
-                            <p className="text-xs text-slate-500">
-                                This message should appear before final signoff.
                             </p>
                         </div>
                     </label>
@@ -1352,6 +1352,8 @@ function ReviewStep({
     setSignatureDataUrl,
     onJumpTo,
     disabled,
+    ackPolicy,
+    ackRecords,
 }: {
     contact: ContactFormData;
     taxFields: TaxFields;
@@ -1362,6 +1364,8 @@ function ReviewStep({
     setSignatureDataUrl: (v: string | null) => void;
     onJumpTo: (step: WizardStep) => void;
     disabled: boolean;
+    ackPolicy: boolean;
+    ackRecords: boolean;
 }) {
     const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim() || '—';
     const templateCards = REQ_TEMPLATE_CARDS.filter((c) => requiredTemplates.has(c.id));
@@ -1525,6 +1529,38 @@ function ReviewStep({
                     </div>
                 </div>
             </div>
+
+            {/* Acknowledgments summary */}
+            {(ackPolicy || ackRecords) && (
+                <div className="rounded-3xl border border-green-200 bg-green-50/60 p-6 shadow-sm">
+                    <div className="mb-4 flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 text-green-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                        </div>
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+                            Acknowledgments
+                        </h4>
+                    </div>
+                    <div className="space-y-3">
+                        {ackPolicy && (
+                            <div className="flex items-start gap-2">
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                                <p className="text-sm text-slate-700">
+                                    You have accepted the <span className="font-semibold">safety and code of conduct policy</span>.
+                                </p>
+                            </div>
+                        )}
+                        {ackRecords && (
+                            <div className="flex items-start gap-2">
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                                <p className="text-sm text-slate-700">
+                                    You have acknowledged that <span className="font-semibold">incomplete records may delay activation and payment</span>.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Signature */}
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

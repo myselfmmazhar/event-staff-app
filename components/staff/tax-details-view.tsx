@@ -26,6 +26,8 @@ interface TaxDetailsViewProps {
         accountNumbers: string | null;
         signatureUrl: string | null;
         certificationDate: Date | string | null;
+        policyAcknowledgedAt?: Date | string | null;
+        recordsAcknowledgedAt?: Date | string | null;
         createdAt: Date | string;
         updatedAt: Date | string;
     } | null;
@@ -181,7 +183,7 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
                             <div>
                                 <p className="text-sm text-muted-foreground">Certification Date</p>
                                 <p className="text-base">
-                                    {format(new Date(taxDetails.certificationDate), 'MMM dd, yyyy')}
+                                    {format(new Date(taxDetails.certificationDate), 'MMM dd, yyyy HH:mm')}
                                 </p>
                             </div>
                         )}
@@ -195,6 +197,31 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
                                         className="max-h-24 max-w-xs object-contain"
                                     />
                                 </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Acknowledgments */}
+            {(taxDetails.policyAcknowledgedAt || taxDetails.recordsAcknowledgedAt) && (
+                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Acknowledgments</h3>
+                    <div className="space-y-3">
+                        {taxDetails.policyAcknowledgedAt && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Safety &amp; Code of Conduct Policy</p>
+                                <p className="text-base text-green-700 font-medium">
+                                    Accepted on {format(new Date(taxDetails.policyAcknowledgedAt), 'MMM dd, yyyy HH:mm')}
+                                </p>
+                            </div>
+                        )}
+                        {taxDetails.recordsAcknowledgedAt && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Incomplete Records Notice</p>
+                                <p className="text-base text-green-700 font-medium">
+                                    Accepted on {format(new Date(taxDetails.recordsAcknowledgedAt), 'MMM dd, yyyy HH:mm')}
+                                </p>
                             </div>
                         )}
                     </div>

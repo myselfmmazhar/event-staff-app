@@ -851,7 +851,9 @@ model StaffTaxDetails {
   w4Status           String?
   w4EmployerName     String?
   w4EmployerAddress  String?
-  w4EmploymentDate   DateTime?         @db.Timestamp(6)
+  w4EmploymentDate         DateTime?         @db.Timestamp(6)
+  policyAcknowledgedAt     DateTime?         @db.Timestamp(6)
+  recordsAcknowledgedAt    DateTime?         @db.Timestamp(6)
   staff              Staff             @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId])

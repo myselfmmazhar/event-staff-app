@@ -474,6 +474,8 @@ export class StaffSchema {
                 .string()
                 .url("Signature upload failed")
                 .optional(),
+            ackPolicy: z.boolean().optional(),
+            ackRecords: z.boolean().optional(),
         })
         .superRefine((data, ctx) => {
             const hasSsn = !!data.ssn && data.ssn.length > 0;
