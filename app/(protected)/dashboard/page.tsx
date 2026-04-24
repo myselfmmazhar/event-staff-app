@@ -358,7 +358,7 @@ export default function DashboardPage() {
                     { label: "Disabled", value: staffStats?.disabled ?? 0, color: "text-muted-foreground" },
                     { label: "Employees", value: staffStats?.employees ?? 0, color: "text-foreground" },
                     { label: "Contractors", value: staffStats?.contractors ?? 0, color: "text-foreground" },
-                    { label: "Companies", value: staffStats?.companies ?? 0, color: "text-foreground" },
+                    { label: "Teams", value: staffStats?.companies ?? 0, color: "text-foreground" },
                   ].map((item) => (
                     <div key={item.label} className="bg-muted/40 rounded-lg p-4 border border-border">
                       <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
