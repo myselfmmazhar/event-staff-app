@@ -460,6 +460,10 @@ export class StaffSchema {
                 .max(10, "EIN must be 10 characters or less")
                 .transform((val) => val?.trim() ?? "")
                 .optional(),
+            signatureUrl: z
+                .string()
+                .url("Signature upload failed")
+                .optional(),
         })
         .superRefine((data, ctx) => {
             const hasSsn = !!data.ssn && data.ssn.length > 0;

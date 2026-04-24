@@ -141,6 +141,13 @@ export type StaffSelect = Prisma.StaffGetPayload<{
             isActive: true;
             createdAt: true;
             updatedAt: true;
+            category: {
+              select: {
+                id: true;
+                requirementType: true;
+                requirementTemplateIds: true;
+              };
+            };
           };
         };
       };

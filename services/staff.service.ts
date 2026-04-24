@@ -122,6 +122,13 @@ export class StaffService {
                         isActive: true,
                         createdAt: true,
                         updatedAt: true,
+                        category: {
+                            select: {
+                                id: true,
+                                requirementType: true,
+                                requirementTemplateIds: true,
+                            },
+                        },
                     },
                 },
             },
@@ -653,6 +660,7 @@ export class StaffService {
             taxZip,
             ssn,
             ein,
+            signatureUrl,
             ...profileData
         } = data;
 
@@ -672,6 +680,8 @@ export class StaffService {
             taxZip,
             ssn: ssn && ssn.length > 0 ? ssn : null,
             ein: ein && ein.length > 0 ? ein : null,
+            signatureUrl: signatureUrl && signatureUrl.length > 0 ? signatureUrl : null,
+            certificationDate: signatureUrl && signatureUrl.length > 0 ? new Date() : null,
         };
 
         const [updatedStaff] = await this.prisma.$transaction([
