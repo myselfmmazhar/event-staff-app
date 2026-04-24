@@ -58,10 +58,11 @@ function parseMinWidthPx(minWidth: string) {
 
 function getLockedColumnWidth(columnKey: string) {
   // Keep utility columns compact and consistent across all manager tables.
-  // 48px fits w-4 checkbox (16px) + default px-4 padding (32px); narrower locks caused ellipsis from `truncate` on th/td.
-  if (columnKey === 'select') return 48;
-  // Wide enough for the "Actions" header label without ellipsis (table header uses truncate by default).
-  if (columnKey === 'actions') return 100;
+  if (columnKey === 'select' || columnKey === 'selection') return 36;
+  // Wide enough for the "Actions" dropdown button without ellipsis
+  if (columnKey === 'actions' || columnKey === 'action') return 70;
+  // Status column needs just enough space for badge content
+  if (columnKey === 'status') return 110;
   return null;
 }
 
@@ -128,7 +129,13 @@ export function DataTable<T>({
         initialWidths[col.key] = estimatedFlexibleWidth;
       }
 
-      if (col.key === 'select') {
+      if (
+        col.key === 'select' ||
+        col.key === 'selection' ||
+        col.key === 'actions' ||
+        col.key === 'action' ||
+        col.key === 'status'
+      ) {
         lockedColumns.push(col.key);
       }
     }
@@ -176,8 +183,8 @@ export function DataTable<T>({
       {/* Desktop Table */}
       <div className={mobileCard ? 'hidden lg:block overflow-x-auto' : 'overflow-x-auto'}>
         <div className="min-w-full inline-block">
-          <table 
-            className="w-full table-fixed" 
+          <table
+            className="w-full table-fixed"
             style={{ ...getTableStyle(), minWidth }}
           >
             <thead>
@@ -191,7 +198,7 @@ export function DataTable<T>({
                     className={cn(
                       'relative group transition-colors',
                       col.key === 'actions' || col.key === 'select' || col.key === 'status'
-                        ? 'whitespace-nowrap'
+                        ? 'whitespace-nowrap !px-2'
                         : 'truncate',
                       col.headerClassName || 'text-left py-3 px-4'
                     )}
@@ -206,7 +213,7 @@ export function DataTable<T>({
                         onSort={handleSortClick}
                       />
                     ) : (
-                      <span className="font-semibold text-sm text-foreground">
+                      <span className="font-medium text-sm text-muted-foreground">
                         {col.label}
                       </span>
                     )}
@@ -225,9 +232,8 @@ export function DataTable<T>({
                 return (
                   <Fragment key={rowKey}>
                     <tr
-                      className={`border-b border-border hover:bg-muted/50 transition-colors ${
-                        isExpanded ? 'bg-muted/30' : ''
-                      }`}
+                      className={`border-b border-border hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted/30' : ''
+                        }`}
                     >
                       {expandableContent && (
                         <td className="w-10 py-4 px-2">
@@ -249,7 +255,7 @@ export function DataTable<T>({
                           key={col.key}
                           className={cn(
                             col.key === 'actions' || col.key === 'select' || col.key === 'status'
-                              ? 'whitespace-nowrap'
+                              ? 'whitespace-nowrap !px-2'
                               : 'truncate',
                             col.className || 'py-4 px-4'
                           )}

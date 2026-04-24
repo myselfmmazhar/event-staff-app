@@ -80,6 +80,11 @@ export interface ClientOption {
   id: string;
   businessName: string;
   requirements?: string | null;
+  businessAddress?: string | null;
+  businessAddressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
 }
 
 /**

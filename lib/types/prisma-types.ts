@@ -42,6 +42,7 @@ export type ClientSelect = Prisma.ClientGetPayload<{
     details: true;
     requirements: true;
     businessAddress: true;
+    businessAddressLine2: true;
     city: true;
     state: true;
     zipCode: true;
@@ -141,6 +142,13 @@ export type StaffSelect = Prisma.StaffGetPayload<{
             isActive: true;
             createdAt: true;
             updatedAt: true;
+            category: {
+              select: {
+                id: true;
+                requirementType: true;
+                requirementTemplateIds: true;
+              };
+            };
           };
         };
       };

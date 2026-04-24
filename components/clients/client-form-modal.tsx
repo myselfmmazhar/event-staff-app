@@ -848,13 +848,13 @@ export function ClientFormModal({
                     variant="outline"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleUpdateAndContinue();
+                      handleSaveAndClose();
                       handleSubmit(handleFormSubmit)(e as any);
                     }}
                     disabled={isSubmitting || !canContinue}
                     className="rounded-lg border-slate-200"
                   >
-                    {isSubmitting && pendingSaveAction === 'update-continue' ? 'Saving...' : 'Save & Update'}
+                    {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : 'Save & Close'}
                   </Button>
                 )}
                 {isEdit && onViewDetails && (

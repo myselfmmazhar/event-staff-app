@@ -17,7 +17,7 @@ function ProtectedLayoutContent({
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isProfileIncomplete, isLoading: staffProfileLoading } = useProfileCompletion();
-  
+
   const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
   const hasSeenOnboarding = profile?.user_preferences?.hasSeenOnboarding === true;
   const isClient = (profile?.role as string) === 'CLIENT' || (profile?.role as any) === UserRole.CLIENT;
@@ -25,13 +25,18 @@ function ProtectedLayoutContent({
   // then only show the tour after profile completion. For clients: show immediately on first login.
   const showOnboarding = !profileLoading && !staffProfileLoading && profile && !hasSeenOnboarding && (isClient || !isProfileIncomplete);
 
+  // Block the layout while the staff-profile query is loading OR the profile is incomplete.
+  // staffProfileLoading is only true when the user is staff (query is disabled for non-staff),
+  // so using it here prevents a race window where content is accessible before the query resolves.
+  const shouldBlockLayout = staffProfileLoading || isProfileIncomplete;
+
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Blur effect when profile is incomplete */}
-      {isProfileIncomplete && <div className="fixed inset-0 backdrop-blur-sm z-30" />}
+      {/* Blur effect when profile is incomplete or still loading */}
+      {shouldBlockLayout && <div className="fixed inset-0 backdrop-blur-sm z-30" />}
 
       {/* Desktop Sidebar */}
-      <div className={`hidden md:block ${isProfileIncomplete ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className={`hidden md:block ${shouldBlockLayout ? 'opacity-50 pointer-events-none' : ''}`}>
         <Sidebar />
       </div>
 
@@ -43,7 +48,7 @@ function ProtectedLayoutContent({
       />
 
       {/* Main Content Area */}
-      <div className={`flex flex-1 flex-col overflow-hidden md:ml-64 ${isProfileIncomplete ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className={`flex flex-1 flex-col overflow-hidden md:ml-64 ${shouldBlockLayout ? 'opacity-50 pointer-events-none' : ''}`}>
         {/* Header */}
         <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
 

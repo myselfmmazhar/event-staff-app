@@ -362,6 +362,16 @@ export class StaffSchema {
      */
     static completeProfile = z
         .object({
+            firstName: z
+                .string()
+                .min(1, "First name is required")
+                .max(50, "First name must be 50 characters or less")
+                .transform((val) => val.trim()),
+            lastName: z
+                .string()
+                .min(1, "Last name is required")
+                .max(50, "Last name must be 50 characters or less")
+                .transform((val) => val.trim()),
             phone: z
                 .string()
                 .min(1, "Phone number is required")
@@ -460,6 +470,12 @@ export class StaffSchema {
                 .max(10, "EIN must be 10 characters or less")
                 .transform((val) => val?.trim() ?? "")
                 .optional(),
+            signatureUrl: z
+                .string()
+                .url("Signature upload failed")
+                .optional(),
+            ackPolicy: z.boolean().optional(),
+            ackRecords: z.boolean().optional(),
         })
         .superRefine((data, ctx) => {
             const hasSsn = !!data.ssn && data.ssn.length > 0;

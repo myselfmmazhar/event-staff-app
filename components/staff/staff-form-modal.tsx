@@ -695,7 +695,7 @@ function StaffFormContent({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setExperienceMode('talent')}
+                                    onClick={() => { setExperienceMode('talent'); setValue('serviceIds', [], { shouldDirty: true }); }}
                                     disabled={isSubmitting}
                                     className={cn(
                                         'relative rounded-xl border p-5 text-left transition-all',
@@ -748,8 +748,8 @@ function StaffFormContent({
                                 </div>
                             )}
                             <div>
-                                <Label htmlFor="sf-rating" className="text-sm font-bold text-slate-900">Initial Rating</Label>
-                                <p className="mt-1 text-xs text-slate-500 mb-3">Set an initial quality rating if known.</p>
+                                <Label htmlFor="sf-rating" className="text-sm font-bold text-slate-900">Skills Rating</Label>
+                                <p className="mt-1 text-xs text-slate-500 mb-3">Set an initial skills rating if known.</p>
                                 <Controller
                                     name="staffRating"
                                     control={control}
@@ -1040,7 +1040,7 @@ function StaffFormContent({
                                                     {STAFF_FORM_RATING_LABELS[watch('staffRating') as StaffRating]}
                                                 </div>
                                             ) : (
-                                                <span className="text-sm font-bold text-slate-400 italic">No initial rating set</span>
+                                                <span className="text-sm font-bold text-slate-400 italic">No skills rating set</span>
                                             )}
                                         </div>
                                     </div>
@@ -1298,14 +1298,14 @@ function StaffFormContent({
                                 type="button"
                                 variant="outline"
                                 onClick={() => {
-                                    pendingSaveActionRef.current = 'update-continue';
-                                    setPendingSaveAction('update-continue');
+                                    pendingSaveActionRef.current = 'close';
+                                    setPendingSaveAction('close');
                                     handleSubmit(handleFormSubmit)();
                                 }}
                                 disabled={isSubmitting || (wizardStep === 'basic' && !canProceedBasic)}
                                 className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
                             >
-                                {isSubmitting && pendingSaveAction === 'update-continue' ? 'Saving...' : 'Save & Update'}
+                                {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : 'Save & Close'}
                             </Button>
                         )}
                         {isEdit && onViewDetails && (

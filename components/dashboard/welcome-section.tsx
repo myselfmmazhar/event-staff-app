@@ -49,7 +49,7 @@ export function WelcomeSection({ firstName, lastName, role }: WelcomeSectionProp
           </>
         )}
         <span className="text-muted-foreground/40">·</span>
-        <span>Event &amp; staff management hub</span>
+        <span>Task &amp; Talent Management Platform</span>
       </div>
     </div>
   );

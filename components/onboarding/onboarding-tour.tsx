@@ -4,17 +4,17 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { 
-  CalendarDaysIcon, 
-  UsersIcon, 
-  MessageSquareIcon, 
+import {
+  CalendarDaysIcon,
+  UsersIcon,
+  MessageSquareIcon,
   BriefcaseIcon,
   CheckCircleIcon,
   ChevronRightIcon,
+  ChevronLeftIcon,
   XIcon
 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
-import { UserRole } from '@prisma/client';
 
 interface OnboardingTourProps {
   isClient: boolean;
@@ -45,6 +45,10 @@ export function OnboardingTour({ isClient, isOpen }: OnboardingTourProps) {
     } else {
       handleComplete();
     }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) setCurrentStep(prev => prev - 1);
   };
 
   const getSteps = () => {
@@ -157,13 +161,25 @@ export function OnboardingTour({ isClient, isOpen }: OnboardingTourProps) {
               ))}
             </div>
 
-            <Button 
-              onClick={nextStep} 
-              className="w-full text-base font-semibold py-6 rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all group"
-            >
-              {currentStep === steps.length - 1 ? "Get Started" : "Continue"}
-              <ChevronRightIcon className="w-5 h-5 ml-1 -mr-1 transition-transform group-hover:translate-x-1" />
-            </Button>
+            <div className="flex w-full gap-3">
+              {currentStep > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={prevStep}
+                  className="flex-1 text-base font-semibold py-6 rounded-xl group"
+                >
+                  <ChevronLeftIcon className="w-5 h-5 mr-1 -ml-1 transition-transform group-hover:-translate-x-1" />
+                  Back
+                </Button>
+              )}
+              <Button
+                onClick={nextStep}
+                className="flex-1 text-base font-semibold py-6 rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all group"
+              >
+                {currentStep === steps.length - 1 ? "Get Started" : "Continue"}
+                <ChevronRightIcon className="w-5 h-5 ml-1 -mr-1 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </div>
             
             {currentStep < steps.length - 1 && (
               <button 

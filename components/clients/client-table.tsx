@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EditIcon, TrashIcon } from '@/components/ui/icons';
+import { EditIcon, EyeIcon, TrashIcon } from '@/components/ui/icons';
 import type { ClientTableRow } from '@/lib/types/client';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
@@ -14,6 +14,7 @@ import { ClientExpandedRow } from './client-expanded-row';
 interface ClientTableProps {
   clients: ClientTableRow[];
   isLoading?: boolean;
+  onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onSort: (column: string) => void;
@@ -27,6 +28,7 @@ interface ClientTableProps {
 export function ClientTable({
   clients,
   isLoading,
+  onView,
   onEdit,
   onDelete,
   onSort,
@@ -123,6 +125,11 @@ export function ClientTable({
       className: 'w-10 py-4 px-4',
       render: (client) => {
         const actions: ActionItem[] = [
+          {
+            label: 'View details',
+            icon: <EyeIcon className="h-3.5 w-3.5" />,
+            onClick: () => onView(client.id),
+          },
           {
             label: 'Edit client',
             icon: <EditIcon className="h-3.5 w-3.5" />,
@@ -226,6 +233,15 @@ export function ClientTable({
       </div>
 
       <div className="flex items-center gap-2 pt-2 border-t border-border">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onView(client.id)}
+          className="flex-1"
+        >
+          <EyeIcon className="h-4 w-4 mr-1" />
+          View
+        </Button>
         <Button
           variant="outline"
           size="sm"
