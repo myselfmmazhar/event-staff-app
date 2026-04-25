@@ -160,7 +160,7 @@ export function PendingRequestsList({
                 disabled={isBatchResponding}
               >
                 <XCircleIcon className="h-4 w-4 mr-1" />
-                {selectedIds.size > 1 ? 'Batch Decline' : 'Decline'}
+                {selectedIds.size > 1 ? 'Batch Reject' : 'Reject'}
               </Button>
             </div>
           </div>
@@ -336,7 +336,7 @@ export function PendingRequestsList({
                         disabled={isResponding === invitation.id}
                         className="flex-1 md:flex-none font-bold"
                       >
-                        Decline
+                        Reject
                       </Button>
                     </div>
                   )}
@@ -351,12 +351,12 @@ export function PendingRequestsList({
         open={pendingAction !== null}
         onClose={() => setPendingAction(null)}
         onConfirm={handleConfirmAction}
-        title={pendingAction?.accept ? (pendingAction.ids.length > 1 ? 'Batch Accept Invitations?' : 'Accept Invitation?') : (pendingAction?.ids.length! > 1 ? 'Batch Decline Invitations?' : 'Decline Invitation?')}
-        description={`You are about to ${pendingAction?.accept ? 'accept' : 'decline'} ${pendingAction?.ids.length} invitation(s).`}
+        title={pendingAction?.accept ? (pendingAction.ids.length > 1 ? 'Batch Accept Invitations?' : 'Accept Invitation?') : (pendingAction?.ids.length! > 1 ? 'Batch Reject Invitations?' : 'Reject Invitation?')}
+        description={`You are about to ${pendingAction?.accept ? 'accept' : 'reject'} ${pendingAction?.ids.length} invitation(s).`}
         warningMessage={pendingAction?.accept
           ? (pendingAction.ids.length > 1 ? 'Do you want to accept all selected invitations?' : 'Do you want to accept this invitation?')
-          : (pendingAction?.ids.length! > 1 ? 'Do you want to decline all selected invitations?' : 'Do you want to decline this invitation?')}
-        confirmText={pendingAction?.accept ? (pendingAction.ids.length > 1 ? 'Yes, Batch Accept' : 'Yes, Accept') : (pendingAction?.ids.length! > 1 ? 'Yes, Batch Decline' : 'Yes, Decline')}
+          : (pendingAction?.ids.length! > 1 ? 'Do you want to reject all selected invitations?' : 'Do you want to reject this invitation?')}
+        confirmText={pendingAction?.accept ? (pendingAction.ids.length > 1 ? 'Yes, Batch Accept' : 'Yes, Accept') : (pendingAction?.ids.length! > 1 ? 'Yes, Batch Reject' : 'Yes, Reject')}
         variant={pendingAction?.accept ? 'default' : 'danger'}
         isLoading={!!isResponding || !!isBatchResponding}
       />

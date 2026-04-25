@@ -86,9 +86,11 @@ export class TimeEntryService {
         staffId?: string;
         search?: string;
     }) {
+        // Show assignments as soon as the event is live (not draft/cancelled), not only after "in progress".
+        // Otherwise accepted talent never appears in Time Manager while the event is still PUBLISHED/ASSIGNED.
         const callTimeWhere: any = {
             event: {
-                status: { in: ['IN_PROGRESS', 'COMPLETED'] },
+                status: { in: ['PUBLISHED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'] },
             },
         };
         if (filters?.eventId) {

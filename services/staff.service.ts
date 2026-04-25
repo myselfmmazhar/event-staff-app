@@ -690,25 +690,48 @@ export class StaffService {
             recordsAcknowledgedAt: ackRecords ? new Date() : null,
         };
 
-        const [updatedStaff] = await this.prisma.$transaction([
-            this.prisma.staff.update({
-                where: { id: staff.id },
-                data: {
-                    ...profileData,
-                    ...documentsPatch,
-                    accountStatus: AccountStatus.ACTIVE,
-                    profileCompleted: true,
-                },
-                select: this.staffSelect,
-            }),
-            this.prisma.staffTaxDetails.upsert({
-                where: { staffId: staff.id },
-                create: { staffId: staff.id, ...taxPayload },
-                update: taxPayload,
-            }),
-        ]);
+        try {
+            const updatedStaff = await this.prisma.$transaction(
+                async (tx) => {
+                    const result = await tx.staff.update({
+                        where: { id: staff.id },
+                        data: {
+                            ...profileData,
+                            ...documentsPatch,
+                            accountStatus: AccountStatus.ACTIVE,
+                            profileCompleted: true,
+                        },
+                        select: this.staffSelect,
+                    });
 
-        return updatedStaff;
+                    await tx.staffTaxDetails.upsert({
+                        where: { staffId: staff.id },
+                        create: { staffId: staff.id, ...taxPayload },
+                        update: taxPayload,
+                    });
+
+                    return result;
+                },
+                {
+                    maxWait: 10000,
+                    timeout: 30000,
+                }
+            );
+
+            return updatedStaff;
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2028"
+            ) {
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message:
+                        "Profile update took too long. Please try again.",
+                });
+            }
+            throw error;
+        }
     }
 
     /**

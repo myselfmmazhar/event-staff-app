@@ -10,9 +10,11 @@ import { EstimateTable } from "@/components/estimates/estimate-table";
 import { EstimateSearch } from "@/components/estimates/estimate-search";
 import { Pagination } from "@/components/common/pagination";
 import { EstimateActionModal } from "@/components/estimates/estimate-action-modal";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function EstimatesPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [search, setSearch] = useState("");
@@ -68,6 +70,22 @@ export default function EstimatesPage() {
         onSuccess: () => {
             utils.estimates.getAll.invalidate();
             setIsActionModalOpen(false);
+        },
+    });
+    const updateMutation = trpc.estimates.update.useMutation({
+        onSuccess: () => {
+            utils.estimates.getAll.invalidate();
+            toast({
+                title: "Estimate updated",
+                description: "Action applied successfully.",
+            });
+        },
+        onError: (error) => {
+            toast({
+                title: "Update failed",
+                description: error.message || "Could not update estimate status.",
+                variant: "error",
+            });
         },
     });
 
@@ -136,6 +154,33 @@ export default function EstimatesPage() {
                         });
                         setActionType('delete');
                         setIsActionModalOpen(true);
+                    }}
+                    onReview={(estimate) => {
+                        updateMutation.mutate({
+                            id: estimate.id,
+                            estimateNo: estimate.estimateNo,
+                            clientId: estimate.client.id,
+                            status: "SENT",
+                            estimateDate: new Date(estimate.estimateDate),
+                        });
+                    }}
+                    onApprove={(estimate) => {
+                        updateMutation.mutate({
+                            id: estimate.id,
+                            estimateNo: estimate.estimateNo,
+                            clientId: estimate.client.id,
+                            status: "APPROVED",
+                            estimateDate: new Date(estimate.estimateDate),
+                        });
+                    }}
+                    onReject={(estimate) => {
+                        updateMutation.mutate({
+                            id: estimate.id,
+                            estimateNo: estimate.estimateNo,
+                            clientId: estimate.client.id,
+                            status: "DECLINED",
+                            estimateDate: new Date(estimate.estimateDate),
+                        });
                     }}
                 />
                 {total > 0 && (

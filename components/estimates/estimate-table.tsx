@@ -37,6 +37,9 @@ interface EstimateTableProps {
     onArchive?: (estimate: Estimate) => void;
     onDelete?: (estimate: Estimate) => void;
     onView?: (estimate: Estimate) => void;
+    onReview?: (estimate: Estimate) => void;
+    onApprove?: (estimate: Estimate) => void;
+    onReject?: (estimate: Estimate) => void;
     onSort?: (field: SortableField) => void;
     selectedIds?: Set<string>;
     onSelectionChange?: (ids: Set<string>) => void;
@@ -52,6 +55,9 @@ export function EstimateTable({
     onArchive,
     onDelete,
     onView,
+    onReview,
+    onApprove,
+    onReject,
     onSort,
     selectedIds,
     onSelectionChange,
@@ -153,6 +159,28 @@ export function EstimateTable({
                         label: showArchived ? 'Restore' : 'Archive',
                         icon: showArchived ? <RefreshCwIcon className="h-3.5 w-3.5" /> : <ArchiveBoxIcon className="h-3.5 w-3.5" />,
                         onClick: () => onArchive(estimate),
+                    });
+                }
+
+                if (!showArchived && onReview) {
+                    actions.push({
+                        label: 'Review',
+                        onClick: () => onReview(estimate),
+                    });
+                }
+
+                if (!showArchived && onApprove) {
+                    actions.push({
+                        label: 'Approve',
+                        onClick: () => onApprove(estimate),
+                    });
+                }
+
+                if (!showArchived && onReject) {
+                    actions.push({
+                        label: 'Reject',
+                        onClick: () => onReject(estimate),
+                        variant: 'destructive',
                     });
                 }
 

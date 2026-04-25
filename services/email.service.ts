@@ -354,9 +354,16 @@ export class EmailService {
       privateComments?: string | null;
       internalNotes?: string | null;
       instructions?: string | null;
+      responseToken?: string | null;
     }
   ): Promise<{ success: boolean; error?: string }> {
     const dashboardUrl = `${this.appUrl}/my-schedule`;
+    const acceptUrl = callTimeDetails.responseToken 
+      ? `${this.appUrl}/api/public/invitation/respond?token=${callTimeDetails.responseToken}&action=accept`
+      : dashboardUrl;
+    const rejectUrl = callTimeDetails.responseToken
+      ? `${this.appUrl}/api/public/invitation/respond?token=${callTimeDetails.responseToken}&action=reject`
+      : dashboardUrl;
 
     const formatDate = (date: Date | null) => {
       if (!date || date.getFullYear() === 1970) return 'UBD';
@@ -409,6 +416,8 @@ export class EmailService {
           payRate: `$${callTimeDetails.payRate.toFixed(2)}`,
           payRateType: formatRateType(callTimeDetails.payRateType),
           dashboardUrl,
+          acceptUrl,
+          rejectUrl,
           description: callTimeDetails.description || '',
           requirements: callTimeDetails.requirements || '',
           preEventInstructions: callTimeDetails.preEventInstructions || '',
@@ -418,13 +427,41 @@ export class EmailService {
         }
       );
 
-      return this.sendEmail(email, subject, html);
+      // Ensure call time invitation emails always contain direct accept/reject actions.
+      // This keeps behavior consistent even when a customized template only has a generic CTA.
+      const hasAcceptAction = html.includes(acceptUrl);
+      const hasRejectAction = html.includes(rejectUrl);
+      let finalHtml = html;
+
+      if (!hasAcceptAction || !hasRejectAction) {
+        const actionBlock = `
+<div style="text-align: center; margin: 24px 0;">
+  <a href="${acceptUrl}" style="background-color: #22c55e; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 0 6px 8px 6px;">Accept Offer</a>
+  <a href="${rejectUrl}" style="background-color: #ef4444; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 0 6px 8px 6px;">Reject Offer</a>
+</div>
+<p style="font-size: 13px; color: #6b7280; margin-top: 0;">If the buttons do not work, open your schedule: <a href="${dashboardUrl}" style="color: #4f46e5;">${dashboardUrl}</a></p>`;
+
+        finalHtml = html.includes('</body>')
+          ? html.replace('</body>', `${actionBlock}</body>`)
+          : `${html}${actionBlock}`;
+      }
+
+      return this.sendEmail(email, subject, finalHtml);
     } catch (error) {
       console.error('Error rendering call time invitation template:', error);
+      const fallbackHtml = callTimeDetails.responseToken
+        ? `<p>Hi ${firstName}, you've been invited to work as <strong>${callTimeDetails.positionName}</strong> at <strong>${callTimeDetails.eventTitle}</strong>.</p>
+           <div style="margin: 20px 0;">
+             <a href="${acceptUrl}" style="background-color: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 5px;">Accept Offer</a>
+             <a href="${rejectUrl}" style="background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 5px;">Reject Offer</a>
+           </div>
+           <p style="font-size: 14px; color: #666;">You can also <a href="${dashboardUrl}">view details and respond</a> in the portal.</p>`
+        : `<p>Hi ${firstName}, you've been invited to work as ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}.</p><p><a href="${dashboardUrl}">View & Respond</a></p>`;
+
       return this.sendEmail(
         email,
         `You're invited: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
-        `<p>Hi ${firstName}, you've been invited to work as ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}.</p><p><a href="${dashboardUrl}">View & Respond</a></p>`
+        fallbackHtml
       );
     }
   }

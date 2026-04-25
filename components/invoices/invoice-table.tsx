@@ -37,6 +37,9 @@ interface InvoiceTableProps {
     onArchive?: (invoice: Invoice) => void;
     onDelete?: (invoice: Invoice) => void;
     onView?: (invoice: Invoice) => void;
+    onReview?: (invoice: Invoice) => void;
+    onApprove?: (invoice: Invoice) => void;
+    onReject?: (invoice: Invoice) => void;
     onSort?: (field: SortableField) => void;
     selectedIds?: Set<string>;
     onSelectionChange?: (ids: Set<string>) => void;
@@ -52,6 +55,9 @@ export function InvoiceTable({
     onArchive,
     onDelete,
     onView,
+    onReview,
+    onApprove,
+    onReject,
     onSort,
     selectedIds,
     onSelectionChange,
@@ -152,6 +158,28 @@ export function InvoiceTable({
                         label: showArchived ? 'Restore' : 'Archive',
                         icon: showArchived ? <RefreshCwIcon className="h-3.5 w-3.5" /> : <ArchiveBoxIcon className="h-3.5 w-3.5" />,
                         onClick: () => onArchive(invoice),
+                    });
+                }
+
+                if (!showArchived && onReview) {
+                    actions.push({
+                        label: 'Review',
+                        onClick: () => onReview(invoice),
+                    });
+                }
+
+                if (!showArchived && onApprove) {
+                    actions.push({
+                        label: 'Approve',
+                        onClick: () => onApprove(invoice),
+                    });
+                }
+
+                if (!showArchived && onReject) {
+                    actions.push({
+                        label: 'Reject',
+                        onClick: () => onReject(invoice),
+                        variant: 'destructive',
                     });
                 }
 

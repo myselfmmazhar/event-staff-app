@@ -265,6 +265,106 @@ export const profileRouter = router({
     return { upcoming, completed, total, requests };
   }),
 
+  getMyStaffBills: protectedProcedure.query(async ({ ctx }) => {
+    const staff = await ctx.prisma.staff.findUnique({
+      where: { userId: ctx.userId! },
+      select: { id: true },
+    });
+
+    if (!staff) {
+      return { previous: [], upcoming: [], paid: [] };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const bills = await ctx.prisma.bill.findMany({
+      where: {
+        staffId: staff.id,
+        isArchived: false,
+      },
+      select: {
+        id: true,
+        billNo: true,
+        status: true,
+        billDate: true,
+        dueDate: true,
+        items: {
+          select: { amount: true },
+        },
+      },
+      orderBy: { billDate: "desc" },
+    });
+
+    const withTotal = bills.map((bill) => ({
+      ...bill,
+      total: bill.items.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    }));
+
+    return {
+      previous: withTotal.filter((b) => new Date(b.billDate) < today),
+      upcoming: withTotal.filter((b) => new Date(b.billDate) >= today && b.status !== "PAID"),
+      paid: withTotal.filter((b) => b.status === "PAID"),
+    };
+  }),
+
+  getMyClientFinance: protectedProcedure.query(async ({ ctx }) => {
+    const client = await ctx.prisma.client.findUnique({
+      where: { userId: ctx.userId! },
+      select: { id: true },
+    });
+
+    if (!client) {
+      return { invoices: [], estimates: [] };
+    }
+
+    const [invoices, estimates] = await Promise.all([
+      ctx.prisma.invoice.findMany({
+        where: {
+          clientId: client.id,
+          isArchived: false,
+          status: { not: "DRAFT" },
+        },
+        select: {
+          id: true,
+          invoiceNo: true,
+          status: true,
+          invoiceDate: true,
+          items: { select: { amount: true } },
+        },
+        orderBy: { invoiceDate: "desc" },
+        take: 10,
+      }),
+      ctx.prisma.estimate.findMany({
+        where: {
+          clientId: client.id,
+          isArchived: false,
+          status: { not: "DRAFT" },
+        },
+        select: {
+          id: true,
+          estimateNo: true,
+          status: true,
+          estimateDate: true,
+          items: { select: { amount: true } },
+        },
+        orderBy: { estimateDate: "desc" },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      invoices: invoices.map((inv) => ({
+        ...inv,
+        total: inv.items.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+      })),
+      estimates: estimates.map((est) => ({
+        ...est,
+        total: est.items.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+      })),
+    };
+  }),
+
   /**
    * Update current user's profile
    * Users can update their own firstName, lastName, phone, address, emergencyContact
