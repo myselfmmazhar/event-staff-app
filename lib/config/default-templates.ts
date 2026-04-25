@@ -27,6 +27,8 @@ export const TEMPLATE_VARIABLES = {
     '{{privateNotes}}',
     '{{internalNotes}}',
     '{{assignmentInstructions}}',
+    '{{acceptUrl}}',
+    '{{rejectUrl}}',
   ],
 } as const;
 
@@ -58,6 +60,8 @@ export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{privateNotes}}': 'Private notes/comments for the event',
   '{{internalNotes}}': 'Internal notes (admin-only) for the event',
   '{{assignmentInstructions}}': 'Specific instructions for this assignment',
+  '{{acceptUrl}}': 'Direct URL to accept the offer from email',
+  '{{rejectUrl}}': 'Direct URL to reject the offer from email',
 };
 
 export interface DefaultEmailTemplate {
@@ -160,10 +164,14 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
   <p><strong>Pre-Event Instructions:</strong> {{preEventInstructions}}</p>
 </div>
 
-{{button:View & Respond|{{dashboardUrl}}}}
+<div style="text-align: center; margin: 30px 0;">
+  {{action_button:Accept Offer|{{acceptUrl}}}}
+  {{danger_button:Reject Offer|{{rejectUrl}}}}
+</div>
 
+<p class="note">You can also view more details and respond in your <a href="{{dashboardUrl}}">Talent Portal</a>.</p>
 <p class="note">Please respond as soon as possible. Positions are filled on a first-come, first-served basis.</p>
-<p class="note">If the button doesn't work, copy and paste this link into your browser: {{dashboardUrl}}</p>`,
+<p class="note">If the buttons don't work, copy and paste this link into your browser: {{dashboardUrl}}</p>`,
   },
   {
     type: 'CALL_TIME_CONFIRMATION',
@@ -414,6 +422,8 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
     privateNotes: 'Sample private notes.',
     internalNotes: 'Sample internal notes (admin-only).',
     assignmentInstructions: 'Sample assignment instructions: Wear black uniform.',
+    acceptUrl: 'https://example.com/api/public/invitation/respond?token=sample&action=accept',
+    rejectUrl: 'https://example.com/api/public/invitation/respond?token=sample&action=reject',
   };
 
   switch (type) {

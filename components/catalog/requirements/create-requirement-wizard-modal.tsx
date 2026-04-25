@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CloseIcon } from '@/components/ui/icons';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -33,6 +34,7 @@ import {
 } from '@/lib/requirement-templates';
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 /** Mirrors Prisma `CatalogRequirementExpiration` — defined here so the wizard stays client-safe (no `@prisma/client` in the bundle). */
 const CATALOG_REQUIREMENT_EXPIRATION = [
@@ -98,10 +100,12 @@ export function CreateRequirementWizardModal({
   fixedCategory = null,
   onSaved,
 }: CreateRequirementWizardModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [templateTab, setTemplateTab] = useState<TemplateTab>('all');
   const [selectedTemplate, setSelectedTemplate] = useState<ReqTemplateId | null>(null);
   const [categoryId, setCategoryId] = useState<string>('');
+  const [categoryName, setCategoryName] = useState<string>('');
+  const [categoryDescription, setCategoryDescription] = useState<string>('');
   const [preview, setPreview] = useState<SettingsFormOutput | null>(null);
 
   const { data: activeCategories } = trpc.category.getAllActive.useQuery(undefined, {
@@ -114,6 +118,8 @@ export function CreateRequirementWizardModal({
       handleClose();
     },
   });
+
+  const categoryCreateMutation = trpc.category.create.useMutation();
 
   const visibleTemplateIds = useMemo(() => templateTabFilter(templateTab), [templateTab]);
 
@@ -139,6 +145,8 @@ export function CreateRequirementWizardModal({
     setTemplateTab('all');
     setSelectedTemplate(null);
     setCategoryId(fixedCategory?.id ?? '');
+    setCategoryName('');
+    setCategoryDescription('');
     setPreview(null);
     reset(defaultSettings());
     clearErrors();
@@ -150,17 +158,24 @@ export function CreateRequirementWizardModal({
   };
 
   const effectiveCategoryId = fixedCategory?.id ?? categoryId;
-  const canContinueStep1 = !!selectedTemplate && !!effectiveCategoryId;
+  const isNewCategory = categoryId === 'CREATE_NEW';
+  const canContinueStep1 = !!fixedCategory || (!!categoryId && categoryId !== 'CREATE_NEW') || (isNewCategory && !!categoryName.trim());
+  const canContinueStep2 = !!selectedTemplate;
 
   const goNextFromStep1 = () => {
-    if (!canContinueStep1 || !selectedTemplate) return;
+    if (!canContinueStep1) return;
+    setStep(2);
+  };
+
+  const goNextFromStep2 = () => {
+    if (!canContinueStep2 || !selectedTemplate) return;
     const card = REQ_TEMPLATE_CARDS.find((c) => c.id === selectedTemplate);
     reset({
       ...defaultSettings(),
       name: card?.title ?? selectedTemplate,
     });
     clearErrors();
-    setStep(2);
+    setStep(3);
   };
 
   const onSettingsSubmit = (data: SettingsFormOutput) => {
@@ -170,13 +185,34 @@ export function CreateRequirementWizardModal({
     }
     clearErrors();
     setPreview(data);
-    setStep(3);
+    setStep(4);
   };
 
-  const handleFinalCreate = () => {
-    if (!selectedTemplate || !effectiveCategoryId || !preview) return;
+  const handleFinalCreate = async () => {
+    if (!canContinueStep2 || !selectedTemplate || !preview) return;
+
+    let targetCategoryId = effectiveCategoryId;
+
+    if (isNewCategory) {
+      try {
+        const newCat = await categoryCreateMutation.mutateAsync({
+          name: categoryName.trim(),
+          description: categoryDescription.trim() || null,
+          requirementTemplateIds: [],
+          isRequired: false,
+        });
+        if (newCat) {
+          targetCategoryId = (newCat as any).id;
+        }
+      } catch (err) {
+        return; // Error handled by TRPC/Mutation
+      }
+    }
+
+    if (!targetCategoryId) return;
+
     createMutation.mutate({
-      serviceCategoryId: effectiveCategoryId,
+      serviceCategoryId: targetCategoryId,
       templateId: selectedTemplate,
       name: preview.name,
       instructions: preview.instructions ?? null,
@@ -203,15 +239,16 @@ export function CreateRequirementWizardModal({
         <div className="flex items-center justify-between">
           <div>
             <DialogTitle>
-              {step === 1 && 'Create requirement'}
-              {step === 2 && 'Requirement settings'}
-              {step === 3 && 'Preview & create'}
+              {step === 1 && 'Select category'}
+              {step === 2 && 'Select template'}
+              {step === 3 && 'Requirement settings'}
+              {step === 4 && 'Preview & create'}
             </DialogTitle>
             <p className="text-sm text-muted-foreground mt-1 pr-8">
-              {step === 1 &&
-                'Choose a requirement template, then configure details for the selected category.'}
-              {step === 2 && 'Info & settings for this requirement.'}
-              {step === 3 && 'Review and save this requirement to the catalog.'}
+              {step === 1 && 'Choose an existing category or create a new one.'}
+              {step === 2 && 'Choose a requirement template for the selected category.'}
+              {step === 3 && 'Info & settings for this requirement.'}
+              {step === 4 && 'Review and save this requirement to the catalog.'}
             </p>
           </div>
           <button type="button" onClick={handleClose} className="text-muted-foreground hover:text-foreground">
@@ -219,7 +256,7 @@ export function CreateRequirementWizardModal({
           </button>
         </div>
         <div className="flex gap-6 border-t border-border mt-4 pt-3">
-          {([1, 2, 3] as const).map((n) => (
+          {([1, 2, 3, 4] as const).map((n) => (
             <div
               key={n}
               className={cn(
@@ -227,9 +264,10 @@ export function CreateRequirementWizardModal({
                 step === n ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
               )}
             >
-              {n === 1 && '1. Template'}
-              {n === 2 && '2. Info & settings'}
-              {n === 3 && '3. Preview'}
+              {n === 1 && '1. Category'}
+              {n === 2 && '2. Template'}
+              {n === 3 && '3. Info & settings'}
+              {n === 4 && '4. Preview'}
             </div>
           ))}
         </div>
@@ -239,30 +277,94 @@ export function CreateRequirementWizardModal({
         {step === 1 && (
           <div className="space-y-6">
             {!fixedCategory && (
-              <div>
-                <Label required>Category</Label>
-                <Select value={categoryId || undefined} onValueChange={(v) => setCategoryId(v)}>
-                  <SelectTrigger className="mt-1.5 max-w-md">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(activeCategories ?? []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} ({c.categoryId})
+              <div className="space-y-4">
+                <div>
+                  <Label required>Category</Label>
+                  <Select value={categoryId || undefined} onValueChange={(v) => setCategoryId(v)}>
+                    <SelectTrigger className="mt-1.5 max-w-md">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CREATE_NEW" className="font-semibold text-primary">
+                        + Create New Category
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      {(activeCategories ?? []).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} ({c.categoryId})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {isNewCategory && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5"
+                  >
+                    <h3 className="text-sm font-bold text-primary uppercase tracking-wider">New Category Details</h3>
+                    <div>
+                      <Label htmlFor="new-cat-name" required>Category Name</Label>
+                      <Input
+                        id="new-cat-name"
+                        className="mt-1.5 bg-background"
+                        placeholder="e.g., Security, Catering..."
+                        value={categoryName}
+                        onChange={(e) => setCategoryName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="new-cat-desc">Description (optional)</Label>
+                      <Textarea
+                        id="new-cat-desc"
+                        className="mt-1.5 bg-background"
+                        placeholder="What this category is for..."
+                        value={categoryDescription}
+                        onChange={(e) => setCategoryDescription(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </motion.div>
+                )}
               </div>
             )}
             {fixedCategory && (
-              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
-                <span className="text-muted-foreground">Category: </span>
-                <span className="font-medium">{fixedCategory.name}</span>
-                <span className="text-muted-foreground"> ({fixedCategory.categoryId})</span>
+              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground font-medium uppercase text-[10px] tracking-wider">Selected Category</span>
+                  <Badge variant="outline" className="text-[10px] font-bold">Fixed</Badge>
+                </div>
+                <p className="text-base font-semibold text-slate-900">{fixedCategory.name}</p>
+                <p className="text-xs text-muted-foreground">{fixedCategory.categoryId}</p>
               </div>
             )}
 
+            {!fixedCategory && categoryId && categoryId !== 'CREATE_NEW' && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="rounded-lg border border-border bg-slate-50 px-4 py-3 text-sm space-y-1"
+              >
+                <span className="text-muted-foreground font-medium uppercase text-[10px] tracking-wider block mb-1">Category Details</span>
+                <p className="text-base font-semibold text-slate-900">
+                  {activeCategories?.find(c => c.id === categoryId)?.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {activeCategories?.find(c => c.id === categoryId)?.categoryId}
+                </p>
+                {activeCategories?.find(c => c.id === categoryId)?.description && (
+                  <p className="text-sm text-slate-600 mt-2 italic">
+                    "{activeCategories?.find(c => c.id === categoryId)?.description}"
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-6">
             <div className="flex gap-2 border-b border-border pb-2">
               {(['all', 'standard', 'smart'] as TemplateTab[]).map((tab) => (
                 <button
@@ -292,7 +394,7 @@ export function CreateRequirementWizardModal({
           </div>
         )}
 
-        {step === 2 && selectedTemplate && (
+        {step === 3 && selectedTemplate && (
           <form id="req-settings-form" className="space-y-8" onSubmit={handleSubmit(onSettingsSubmit)}>
             <div className="space-y-4">
               <h3 className="text-sm font-semibold">Requirement information</h3>
@@ -433,7 +535,7 @@ export function CreateRequirementWizardModal({
           </form>
         )}
 
-        {step === 3 && selectedTemplate && settingsValues && (
+        {step === 4 && selectedTemplate && settingsValues && (
           <div className="space-y-4 text-sm">
             <div className="rounded-lg border border-border p-4 space-y-2">
               <p>
@@ -492,11 +594,6 @@ export function CreateRequirementWizardModal({
           Cancel
         </Button>
         {step === 1 && (
-          <Button type="button" variant="ghost" onClick={handleClose}>
-            Skip for now
-          </Button>
-        )}
-        {step === 1 && (
           <Button type="button" onClick={goNextFromStep1} disabled={!canContinueStep1}>
             Continue
           </Button>
@@ -506,25 +603,35 @@ export function CreateRequirementWizardModal({
             <Button type="button" variant="outline" onClick={() => setStep(1)}>
               Back
             </Button>
-            <Button type="submit" form="req-settings-form">
+            <Button type="button" onClick={goNextFromStep2} disabled={!canContinueStep2}>
               Continue
             </Button>
           </>
         )}
         {step === 3 && (
           <>
+            <Button type="button" variant="outline" onClick={() => setStep(2)}>
+              Back
+            </Button>
+            <Button type="submit" form="req-settings-form">
+              Continue
+            </Button>
+          </>
+        )}
+        {step === 4 && (
+          <>
             <Button
               type="button"
               variant="outline"
               onClick={() => {
                 if (preview) reset(preview);
-                setStep(2);
+                setStep(3);
               }}
             >
               Back
             </Button>
-            <Button type="button" onClick={handleFinalCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Saving...' : 'Create requirement'}
+            <Button type="button" onClick={handleFinalCreate} disabled={createMutation.isPending || categoryCreateMutation.isPending}>
+              {createMutation.isPending || categoryCreateMutation.isPending ? 'Saving...' : 'Create requirement'}
             </Button>
           </>
         )}

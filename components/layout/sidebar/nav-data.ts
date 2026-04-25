@@ -128,7 +128,7 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
         },
         {
           label: 'Catalog Manager',
-          href: '/catalog/categories',
+          href: '/catalog/requirements',
           icon: SquaresIcon,
         },
       ],

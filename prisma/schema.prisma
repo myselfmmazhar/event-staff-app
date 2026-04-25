@@ -35,6 +35,7 @@ model CallTimeInvitation {
   confirmedAt          DateTime?                @db.Timestamp(6)
   createdAt            DateTime                 @default(now()) @db.Timestamp(6)
   updatedAt            DateTime                 @updatedAt @db.Timestamp(6)
+  responseToken        String?                  @unique
   internalReviewNotes  String?
   internalReviewRating InternalReviewRating?
   reviewedAt           DateTime?                @db.Timestamp(6)

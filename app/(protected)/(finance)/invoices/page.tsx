@@ -11,9 +11,11 @@ import { InvoiceTable } from "@/components/invoices/invoice-table";
 import { InvoiceSearch } from "@/components/invoices/invoice-search";
 import { Pagination } from "@/components/common/pagination";
 import { InvoiceActionModal } from "@/components/invoices/invoice-action-modal";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function InvoicesPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [search, setSearch] = useState("");
@@ -69,6 +71,22 @@ export default function InvoicesPage() {
         onSuccess: () => {
             utils.invoices.getAll.invalidate();
             setIsActionModalOpen(false);
+        },
+    });
+    const updateMutation = trpc.invoices.update.useMutation({
+        onSuccess: () => {
+            utils.invoices.getAll.invalidate();
+            toast({
+                title: "Invoice updated",
+                description: "Action applied successfully.",
+            });
+        },
+        onError: (error) => {
+            toast({
+                title: "Update failed",
+                description: error.message || "Could not update invoice status.",
+                variant: "error",
+            });
         },
     });
 
@@ -137,6 +155,33 @@ export default function InvoicesPage() {
                         });
                         setActionType('delete');
                         setIsActionModalOpen(true);
+                    }}
+                    onReview={(invoice) => {
+                        updateMutation.mutate({
+                            id: invoice.id,
+                            invoiceNo: invoice.invoiceNo,
+                            clientId: invoice.client.id,
+                            status: "SENT",
+                            invoiceDate: new Date(invoice.invoiceDate),
+                        });
+                    }}
+                    onApprove={(invoice) => {
+                        updateMutation.mutate({
+                            id: invoice.id,
+                            invoiceNo: invoice.invoiceNo,
+                            clientId: invoice.client.id,
+                            status: "PAID",
+                            invoiceDate: new Date(invoice.invoiceDate),
+                        });
+                    }}
+                    onReject={(invoice) => {
+                        updateMutation.mutate({
+                            id: invoice.id,
+                            invoiceNo: invoice.invoiceNo,
+                            clientId: invoice.client.id,
+                            status: "CANCELLED",
+                            invoiceDate: new Date(invoice.invoiceDate),
+                        });
                     }}
                 />
                 {total > 0 && (

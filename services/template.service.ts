@@ -59,6 +59,25 @@ export interface RenderedEmail {
 export class TemplateService {
   constructor(private prisma: PrismaClient) { }
 
+  private normalizeCallTimeInvitationBody(bodyHtml: string): string {
+    // Auto-upgrade legacy single-CTA invitation templates to dual accept/reject actions.
+    const hasAccept = bodyHtml.includes('{{acceptUrl}}');
+    const hasReject = bodyHtml.includes('{{rejectUrl}}');
+    if (hasAccept && hasReject) return bodyHtml;
+
+    const legacyCtaRegex = /\{\{button:[^|]+\|\{\{dashboardUrl\}\}\}\}/;
+    const replacement = `<div style="text-align: center; margin: 30px 0;">
+  {{action_button:Accept Offer|{{acceptUrl}}}}
+  {{danger_button:Reject Offer|{{rejectUrl}}}}
+</div>`;
+
+    if (legacyCtaRegex.test(bodyHtml)) {
+      return bodyHtml.replace(legacyCtaRegex, replacement);
+    }
+
+    return `${bodyHtml}\n\n${replacement}`;
+  }
+
   // ============ EMAIL TEMPLATES ============
 
   /**
@@ -83,12 +102,16 @@ export class TemplateService {
     }
 
     if (customTemplate) {
+      const normalizedBody =
+        type === 'CALL_TIME_INVITATION'
+          ? this.normalizeCallTimeInvitationBody(customTemplate.bodyHtml)
+          : customTemplate.bodyHtml;
       return {
         id: customTemplate.id,
         type: customTemplate.type,
         subject: customTemplate.subject,
         headerTitle: null, // Custom templates can set this via subject
-        bodyHtml: customTemplate.bodyHtml,
+        bodyHtml: normalizedBody,
         isCustomized: customTemplate.isCustomized,
         description: defaultTemplate.description,
         availableVariables: defaultTemplate.availableVariables,
@@ -121,12 +144,16 @@ export class TemplateService {
       const customTemplate = customTemplates.find(t => t.type === defaultTemplate.type);
 
       if (customTemplate) {
+        const normalizedBody =
+          defaultTemplate.type === 'CALL_TIME_INVITATION'
+            ? this.normalizeCallTimeInvitationBody(customTemplate.bodyHtml)
+            : customTemplate.bodyHtml;
         return {
           id: customTemplate.id,
           type: customTemplate.type,
           subject: customTemplate.subject,
           headerTitle: null,
-          bodyHtml: customTemplate.bodyHtml,
+          bodyHtml: normalizedBody,
           isCustomized: customTemplate.isCustomized,
           description: defaultTemplate.description,
           availableVariables: defaultTemplate.availableVariables,
@@ -484,7 +511,9 @@ export class TemplateService {
    */
   private buildEmailHtml(content: string, headerTitle: string, branding: BrandingSettings): string {
     // Process special syntax in content
-    let processedContent = this.processButtonSyntax(content, branding);
+    let processedContent = this.processActionButtonSyntax(content, branding);
+    processedContent = this.processDangerButtonSyntax(processedContent, branding);
+    processedContent = this.processButtonSyntax(processedContent, branding);
     processedContent = this.processSpecialClasses(processedContent, branding);
 
     // Get header background style
@@ -526,7 +555,7 @@ export class TemplateService {
   }
 
   /**
-   * Process {{button:Label|URL}} syntax into styled buttons
+   * Process {{button:Label|URL}} syntax into styled buttons with centered div wrapper
    */
   private processButtonSyntax(content: string, branding: BrandingSettings): string {
     const buttonRegex = /\{\{button:([^|]+)\|([^}]+)\}\}/g;
@@ -538,6 +567,30 @@ export class TemplateService {
           <a href="${url}" style="${buttonStyle} color: white; padding: 14px 28px; text-decoration: none; font-weight: 600; display: inline-block;">${label}</a>
         </div>
       `;
+    });
+  }
+
+  /**
+   * Process {{action_button:Label|URL}} syntax into styled buttons without div wrapper
+   */
+  private processActionButtonSyntax(content: string, branding: BrandingSettings): string {
+    const buttonRegex = /\{\{action_button:([^|]+)\|([^}]+)\}\}/g;
+
+    return content.replace(buttonRegex, (_, label, url) => {
+      const buttonStyle = this.getButtonStyles(branding);
+      return `<a href="${url}" style="${buttonStyle} color: white; padding: 12px 24px; text-decoration: none; font-weight: 600; display: inline-block; margin: 5px;">${label}</a>`;
+    });
+  }
+
+  /**
+   * Process {{danger_button:Label|URL}} syntax into styled red buttons without div wrapper
+   */
+  private processDangerButtonSyntax(content: string, branding: BrandingSettings): string {
+    const buttonRegex = /\{\{danger_button:([^|]+)\|([^}]+)\}\}/g;
+
+    return content.replace(buttonRegex, (_, label, url) => {
+      const borderRadius = branding.buttonBorderRadius;
+      return `<a href="${url}" style="background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: ${borderRadius}; font-weight: 600; display: inline-block; margin: 5px;">${label}</a>`;
     });
   }
 

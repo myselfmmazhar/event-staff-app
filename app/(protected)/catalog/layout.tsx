@@ -38,7 +38,6 @@ type Tab = {
 };
 
 const ALL_TABS: Tab[] = [
-  { id: 'categories', name: 'Categories', href: '/catalog/categories', icon: SquaresIcon },
   { id: 'requirements', name: 'Requirements', href: '/catalog/requirements', icon: ClipboardListIcon },
   { id: 'services', name: 'Services', href: '/catalog/services', icon: WrenchScrewdriverIcon },
   { id: 'products', name: 'Products', href: '/catalog/products', icon: CubeIcon },

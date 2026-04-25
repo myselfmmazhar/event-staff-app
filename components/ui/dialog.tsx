@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useId } from 'react';
+import { useEffect, useRef, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 // Track open dialogs to handle stacking properly
@@ -15,10 +16,12 @@ interface DialogProps {
 }
 
 export function Dialog({ open, onClose, children, className, fullScreen }: DialogProps) {
+  const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const dialogId = useId();
 
   useEffect(() => {
+    setMounted(true);
     if (open) {
       openDialogs.add(dialogId);
     } else {
@@ -55,20 +58,20 @@ export function Dialog({ open, onClose, children, className, fullScreen }: Dialo
     };
   }, [open, onClose, dialogId]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   // Calculate z-index based on dialog stack position
   const stackIndex = Array.from(openDialogs).indexOf(dialogId);
   const zIndex = 50 + (stackIndex * 10);
 
-  return (
+  const dialogContent = (
     <div
-      className="fixed inset-0 flex items-center justify-center"
+      className="fixed inset-0 flex items-center justify-center p-4 sm:p-6"
       style={{ zIndex }}
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
         onClick={(e) => {
           e.stopPropagation();
           onClose();
@@ -80,11 +83,11 @@ export function Dialog({ open, onClose, children, className, fullScreen }: Dialo
         ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          'relative bg-card shadow-xl',
+          'relative bg-card shadow-2xl transition-all duration-200',
           'animate-in fade-in-0 zoom-in-95',
           fullScreen
             ? 'w-screen h-screen max-w-none max-h-none rounded-none flex flex-col'
-            : 'w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto rounded-lg',
+            : 'w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl',
           className
         )}
       >
@@ -92,6 +95,8 @@ export function Dialog({ open, onClose, children, className, fullScreen }: Dialo
       </div>
     </div>
   );
+
+  return createPortal(dialogContent, document.body);
 }
 
 export function DialogHeader({ children, className }: { children: React.ReactNode; className?: string }) {

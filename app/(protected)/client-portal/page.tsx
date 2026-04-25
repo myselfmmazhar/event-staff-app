@@ -13,6 +13,7 @@ export default function ClientPortalDashboard() {
     const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
     const { data: stats, isLoading: statsLoading } = trpc.profile.getMyClientStats.useQuery();
     const { data: events, isLoading: eventsLoading } = trpc.profile.getMyClientEvents.useQuery();
+    const { data: financeData, isLoading: financeLoading } = trpc.profile.getMyClientFinance.useQuery();
 
     const upcomingEvents = events
         ?.filter(e => {
@@ -245,6 +246,31 @@ export default function ClientPortalDashboard() {
                                     </Link>
                                 ))}
                             </div>
+                        </div>
+                        <div className="bg-card border border-border rounded-xl p-5">
+                            <h3 className="text-sm font-semibold text-foreground mb-0.5">Invoices & Estimates</h3>
+                            <p className="text-xs text-muted-foreground mb-4">Approved/rejected finance documents</p>
+                            {financeLoading ? (
+                                <p className="text-sm text-muted-foreground">Loading...</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {(financeData?.invoices || []).slice(0, 4).map((invoice: any) => (
+                                        <div key={invoice.id} className="flex items-center justify-between text-sm border rounded-md px-2 py-1.5">
+                                            <span>{invoice.invoiceNo}</span>
+                                            <span className="text-muted-foreground">{invoice.status}</span>
+                                        </div>
+                                    ))}
+                                    {(financeData?.estimates || []).slice(0, 4).map((estimate: any) => (
+                                        <div key={estimate.id} className="flex items-center justify-between text-sm border rounded-md px-2 py-1.5">
+                                            <span>{estimate.estimateNo}</span>
+                                            <span className="text-muted-foreground">{estimate.status}</span>
+                                        </div>
+                                    ))}
+                                    {!financeData?.invoices?.length && !financeData?.estimates?.length && (
+                                        <p className="text-sm text-muted-foreground">No invoices or estimates yet.</p>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EditIcon, ArchiveBoxIcon, UsersIcon, ChevronDownIcon, ChatBubbleLeftRightIcon } from '@/components/ui/icons';
+import { EditIcon, ArchiveBoxIcon, UsersIcon, ChevronDownIcon, ChatBubbleLeftRightIcon, SearchIcon } from '@/components/ui/icons';
 import { CallTimeInvitationStatus, EventStatus } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
@@ -12,8 +12,9 @@ import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from '@/lib/constants';
 import { formatDateTime, isDateNullOrUBD } from '@/lib/utils/date-formatter';
-import { InvitationSummaryModal } from './invitation-summary-modal';
 import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
+import { FindTalentModal } from '@/components/assignments/find-talent-modal';
+import { InvitationSummaryModal } from './invitation-summary-modal';
 
 interface Event {
   id: string;
@@ -87,6 +88,9 @@ export function EventTable({
 
   // Track which event's invitation summary modal is open
   const [summaryEvent, setSummaryEvent] = useState<Event | null>(null);
+
+  // Track which event's find talent modal is open
+  const [findTalentEvent, setFindTalentEvent] = useState<Event | null>(null);
 
   const toggleRowExpanded = (eventId: string) => {
     setExpandedRows(prev => {
@@ -242,18 +246,9 @@ export function EventTable({
             onClick: () => onMessage(event),
           },
           {
-            label: "Manage Assignments",
-            icon: <UsersIcon className="h-3.5 w-3.5" />,
-            onClick: () => {
-              const { allGroups } = getAssignmentSummary(event);
-              const serviceIds = allGroups
-                .map(g => g.serviceId)
-                .filter(Boolean) as string[];
-              const serviceParam = serviceIds.length > 0
-                ? `&serviceIds=${serviceIds.join(',')}`
-                : '';
-              router.push(`/assignments?eventId=${event.id}${serviceParam}`);
-            },
+            label: "Find Talent",
+            icon: <SearchIcon className="h-3.5 w-3.5" />,
+            onClick: () => setFindTalentEvent(event),
           },
           {
             label: `Archive ${terminology.event.lower}`,
@@ -600,6 +595,13 @@ export function EventTable({
         onClose={() => setSummaryEvent(null)}
         eventTitle={summaryEvent?.title ?? ''}
         serviceGroups={summaryServiceGroups}
+      />
+
+      {/* Find Talent Modal */}
+      <FindTalentModal
+        callTimeIds={findTalentEvent?.callTimes?.map(ct => ct.id) || []}
+        open={!!findTalentEvent}
+        onClose={() => setFindTalentEvent(null)}
       />
     </>
   );

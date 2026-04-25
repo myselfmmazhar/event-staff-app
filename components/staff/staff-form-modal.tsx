@@ -50,6 +50,7 @@ import { cn } from '@/lib/utils';
 import { phoneValidation } from '@/lib/utils/validation';
 import {
     REQ_TEMPLATE_CARDS,
+    REQ_TEMPLATE_IDS,
     type ReqTemplateId,
     computeRequirementTemplatesFromServices,
 } from '@/lib/requirement-templates';
@@ -294,6 +295,13 @@ function StaffFormContent({
         prevServiceKeyRef.current = key;
         setSelectedReqTemplates(computeRequirementTemplatesFromServices(serviceIds, services));
     }, [serviceIds, services, isEdit]);
+
+    /** Only show requirement cards that come from selected services’ categories (not the full catalog). */
+    const visibleReqTemplateIds = useMemo(() => {
+        if (!serviceIds.length) return [] as ReqTemplateId[];
+        const merged = computeRequirementTemplatesFromServices(serviceIds, services);
+        return REQ_TEMPLATE_IDS.filter((id) => merged.has(id));
+    }, [serviceIds, services]);
 
     useEffect(() => {
         if (staff) return;
@@ -797,6 +805,7 @@ function StaffFormContent({
                                     selected={selectedReqTemplates}
                                     onToggle={toggleReqTemplate}
                                     disabled={isSubmitting}
+                                    visibleIds={visibleReqTemplateIds}
                                 />
                             ) : (
                                 <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-20 text-center">

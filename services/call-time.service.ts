@@ -817,6 +817,7 @@ export class CallTimeService {
               isConfirmed: false,
               confirmedAt: null,
               createdAt: new Date(), // Refresh the timestamp
+              responseToken: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
             },
             include: {
               staff: {
@@ -860,6 +861,7 @@ export class CallTimeService {
               callTimeId: ct.id,
               staffId,
               status: 'PENDING',
+              responseToken: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
             },
             include: {
               staff: {
@@ -1326,6 +1328,7 @@ export class CallTimeService {
         declineReason: null,
         isConfirmed: false,
         confirmedAt: null,
+        responseToken: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
       },
       include: {
         staff: { select: { id: true, firstName: true, lastName: true, email: true, userId: true } },
@@ -2522,5 +2525,93 @@ export class CallTimeService {
     }
 
     return { past, current, upcoming };
+  }
+
+  /**
+   * Respond to call time invitation via token (direct email action)
+   */
+  async respondToInvitationByToken(token: string, action: 'accept' | 'reject') {
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { responseToken: token },
+      include: {
+        callTime: {
+          include: {
+            service: true,
+            event: {
+              select: { id: true, title: true, createdBy: true },
+            },
+          },
+        },
+        staff: {
+          select: { id: true, firstName: true, lastName: true, userId: true },
+        },
+      },
+    });
+
+    if (!invitation) {
+      throw new Error('Invalid or expired invitation token');
+    }
+
+    if (invitation.status !== 'PENDING') {
+      return { 
+        status: invitation.status, 
+        alreadyResponded: true,
+        eventTitle: invitation.callTime.event.title,
+        positionName: invitation.callTime.service?.title || 'Staff'
+      };
+    }
+
+    if (action === 'accept') {
+      const { updated, hasAvailableSlot } = await this.runAcceptWithSlotLogicFromInvitation({
+        id: invitation.id,
+        callTimeId: invitation.callTimeId,
+        status: invitation.status,
+        callTime: {
+          id: invitation.callTime.id,
+          eventId: invitation.callTime.eventId,
+          numberOfStaffRequired: invitation.callTime.numberOfStaffRequired,
+          service: invitation.callTime.service,
+          event: invitation.callTime.event,
+        },
+        staff: invitation.staff,
+      });
+      return { 
+        status: updated.status, 
+        isConfirmed: updated.isConfirmed,
+        eventTitle: updated.callTime.event.title,
+        positionName: updated.callTime.service?.title || 'Staff'
+      };
+    } else {
+      const triggerService = getNotificationTriggerService(this.prisma);
+      const staffName = `${invitation.staff.firstName} ${invitation.staff.lastName}`;
+      
+      const updated = await this.prisma.callTimeInvitation.update({
+        where: { id: invitation.id },
+        data: {
+          status: 'DECLINED',
+          respondedAt: new Date(),
+        },
+        include: {
+          callTime: { include: { service: true, event: true } },
+        },
+      });
+
+      await triggerService.onInvitationResponse(
+        invitation.callTime.event.createdBy,
+        {
+          staffName,
+          positionName: invitation.callTime.service?.title || 'Service',
+          eventTitle: invitation.callTime.event.title,
+          eventId: invitation.callTime.event.id,
+          status: 'DECLINED',
+        }
+      );
+
+      return { 
+        status: 'DECLINED',
+        eventTitle: updated.callTime.event.title,
+        positionName: updated.callTime.service?.title || 'Staff'
+      };
+    }
   }
 }

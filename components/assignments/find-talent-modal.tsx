@@ -142,8 +142,8 @@ export function FindTalentModal({
           description: error.message,
           variant: 'error',
         });
+        setPendingOffers(null);
       }
-      setPendingOffers(null);
       setIsConfirmOpen(false);
     },
   });

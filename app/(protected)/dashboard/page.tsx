@@ -24,6 +24,7 @@ import { getEventRoute } from "@/lib/utils/route-helpers";
 function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }) {
   const { terminology } = useTerminology();
   const { data: staff, isLoading: staffLoading } = trpc.staff.getMyProfile.useQuery();
+  const { data: myBills, isLoading: billsLoading } = trpc.profile.getMyStaffBills.useQuery();
   const { data: invitations, isLoading: invitationsLoading } = trpc.callTime.getMyInvitations.useQuery({}, {
     refetchInterval: 30000,
     staleTime: 5000,
@@ -80,6 +81,9 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
 
   const pendingOffers = invitations?.pending || [];
   const acceptedOffers = invitations?.accepted || [];
+  const previousBills = myBills?.previous || [];
+  const upcomingBills = myBills?.upcoming || [];
+  const paidBills = myBills?.paid || [];
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -134,6 +138,56 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
                   </TabsContent>
                   <TabsContent value="accepted" className="px-0 pb-6 focus-visible:outline-none focus-visible:ring-0">
                     <UpcomingEventsList invitations={acceptedOffers as any} />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-xl overflow-hidden mt-6">
+              <div className="px-6 pt-4 pb-2 border-b border-border">
+                <h3 className="text-sm font-semibold text-foreground">Add Bill</h3>
+              </div>
+              <div className="px-6 py-4">
+                <Tabs defaultValue="previous">
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="previous">Previous Bills</TabsTrigger>
+                    <TabsTrigger value="upcoming">Upcoming Bills</TabsTrigger>
+                    <TabsTrigger value="paid">Paid Bills</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="previous">
+                    {billsLoading ? <p className="text-sm text-muted-foreground">Loading...</p> : (
+                      <div className="space-y-2">
+                        {previousBills.length === 0 ? <p className="text-sm text-muted-foreground">No previous bills.</p> : previousBills.map((bill: any) => (
+                          <div key={bill.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+                            <span className="text-sm font-medium">{bill.billNo}</span>
+                            <span className="text-sm text-muted-foreground">${Number(bill.total || 0).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="upcoming">
+                    {billsLoading ? <p className="text-sm text-muted-foreground">Loading...</p> : (
+                      <div className="space-y-2">
+                        {upcomingBills.length === 0 ? <p className="text-sm text-muted-foreground">No upcoming bills.</p> : upcomingBills.map((bill: any) => (
+                          <div key={bill.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+                            <span className="text-sm font-medium">{bill.billNo}</span>
+                            <span className="text-sm text-muted-foreground">${Number(bill.total || 0).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="paid">
+                    {billsLoading ? <p className="text-sm text-muted-foreground">Loading...</p> : (
+                      <div className="space-y-2">
+                        {paidBills.length === 0 ? <p className="text-sm text-muted-foreground">No paid bills.</p> : paidBills.map((bill: any) => (
+                          <div key={bill.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+                            <span className="text-sm font-medium">{bill.billNo}</span>
+                            <span className="text-sm text-muted-foreground">${Number(bill.total || 0).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </TabsContent>
                 </Tabs>
               </div>
