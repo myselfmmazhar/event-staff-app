@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { RateType } from '@prisma/client';
 import {
@@ -77,6 +78,17 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
     return diffDays;
   };
 
+  const isToday = (date: Date | null) => {
+    if (!date) return false;
+    const targetDate = new Date(date);
+    const today = new Date();
+    return (
+      targetDate.getFullYear() === today.getFullYear() &&
+      targetDate.getMonth() === today.getMonth() &&
+      targetDate.getDate() === today.getDate()
+    );
+  };
+
   if (invitations.length === 0) {
     return (
       <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
@@ -101,6 +113,8 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
           new Date(invitation.callTime.endDate).toDateString();
 
         const daysUntil = getDaysUntil(invitation.callTime.startDate);
+        const canStart = isToday(invitation.callTime.startDate);
+        const canEnd = isToday(invitation.callTime.endDate);
 
         return (
           <Card key={invitation.id} className="p-5">
@@ -179,6 +193,15 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
                       {RATE_TYPE_LABELS[invitation.callTime.payRateType].toLowerCase()}
                     </p>
                   </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <Button type="button" size="sm" disabled={!canStart}>
+                    Start
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" disabled={!canEnd}>
+                    End
+                  </Button>
                 </div>
               </div>
             </div>

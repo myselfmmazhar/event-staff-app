@@ -82,15 +82,20 @@ const STEP_LABELS: Record<WizardStep, string> = {
     review: 'Review',
 };
 
-const STAFF_TYPE_CHIPS: { id: string; label: string; value: StaffType }[] = [
-    { id: 'contractor', label: 'Contractor', value: StaffType.CONTRACTOR },
-    { id: 'employee', label: 'Employee', value: StaffType.EMPLOYEE },
+type StaffTypeChip = { id: string; label: string; value: StaffType; role?: StaffRole };
+
+const STAFF_TYPE_CHIPS: StaffTypeChip[] = [
+    { id: 'contractor', label: 'Contractor', value: StaffType.CONTRACTOR, role: StaffRole.INDIVIDUAL },
+    { id: 'employee', label: 'Employee', value: StaffType.EMPLOYEE, role: StaffRole.INDIVIDUAL },
+    { id: 'team', label: 'Team', value: StaffType.TEAM, role: StaffRole.TEAM },
 ];
 
 function defaultTalentChipIdForStaffType(t: StaffType): string {
     switch (t) {
         case StaffType.EMPLOYEE:
             return 'employee';
+        case StaffType.TEAM:
+            return 'team';
         case StaffType.FREELANCE:
             return 'freelancer';
         case StaffType.COMPANY:
@@ -188,6 +193,8 @@ interface StaffFormModalProps {
     onSubmit: (data: CreateStaffInput | Omit<UpdateStaffInput, 'id'>, taxData?: Record<string, unknown>, saveAction?: SaveAction) => void;
     isSubmitting: boolean;
     onViewDetails?: () => void;
+    allowedStaffTypeChipIds?: string[];
+    defaultStaffTypeChipId?: string;
 }
 
 // Inner form component that gets remounted when staff changes
@@ -202,6 +209,8 @@ interface StaffFormContentProps {
     companies: CompanyOption[];
     terminology: { staff: { singular: string; plural: string; lower: string } };
     labels: LabelsConfig;
+    allowedStaffTypeChipIds?: string[];
+    defaultStaffTypeChipId?: string;
 }
 
 function StaffFormContent({
@@ -215,6 +224,8 @@ function StaffFormContent({
     companies,
     terminology,
     labels,
+    allowedStaffTypeChipIds,
+    defaultStaffTypeChipId,
 }: StaffFormContentProps) {
     type ExperienceMode = 'talent' | 'company';
     const isEdit = !!staff;
@@ -224,9 +235,20 @@ function StaffFormContent({
         () => new Set<ReqTemplateId>(['w9'])
     );
     const [createTaxFilledBy, setCreateTaxFilledBy] = useState<TaxFilledBy>(TaxFilledBy.TALENT);
-    const [talentTypeChipId, setTalentTypeChipId] = useState<string>(() =>
-        staff ? defaultTalentChipIdForStaffType(staff.staffType) : 'contractor'
-    );
+    const availableStaffTypeChips = useMemo(() => {
+        if (!allowedStaffTypeChipIds?.length) return STAFF_TYPE_CHIPS;
+        return STAFF_TYPE_CHIPS.filter((chip) => allowedStaffTypeChipIds.includes(chip.id));
+    }, [allowedStaffTypeChipIds]);
+
+    const defaultChipId = useMemo(() => {
+        if (staff) return defaultTalentChipIdForStaffType(staff.staffType);
+        if (defaultStaffTypeChipId && availableStaffTypeChips.some((chip) => chip.id === defaultStaffTypeChipId)) {
+            return defaultStaffTypeChipId;
+        }
+        return availableStaffTypeChips[0]?.id ?? 'contractor';
+    }, [staff, defaultStaffTypeChipId, availableStaffTypeChips]);
+
+    const [talentTypeChipId, setTalentTypeChipId] = useState<string>(defaultChipId);
     const [experienceMode, setExperienceMode] = useState<ExperienceMode>(() =>
         staff?.services?.length ? 'company' : 'talent'
     );
@@ -280,6 +302,16 @@ function StaffFormContent({
     const serviceIds = watch('serviceIds') ?? [];
     const staffType = watch('staffType');
 
+    useEffect(() => {
+        const selectedChip = availableStaffTypeChips.find((chip) => chip.id === talentTypeChipId);
+        if (selectedChip) {
+            setValue('staffType', selectedChip.value, { shouldDirty: true });
+            if (selectedChip.role) {
+                setValue('staffRole', selectedChip.role, { shouldDirty: true });
+            }
+        }
+    }, [availableStaffTypeChips, setValue, talentTypeChipId]);
+
     const prevServiceKeyRef = useRef<string | null>(null);
     useEffect(() => {
         if (!services.length) return;
@@ -304,6 +336,12 @@ function StaffFormContent({
     }, [serviceIds, services]);
 
     useEffect(() => {
+        if (!availableStaffTypeChips.some((chip) => chip.id === talentTypeChipId)) {
+            setTalentTypeChipId(defaultChipId);
+        }
+    }, [availableStaffTypeChips, defaultChipId, talentTypeChipId]);
+
+    useEffect(() => {
         if (staff) return;
         try {
             const raw = sessionStorage.getItem(STAFF_FORM_DRAFT_KEY);
@@ -317,10 +355,14 @@ function StaffFormContent({
             };
             if (parsed.values) {
                 reset(parsed.values as StaffFormInput);
+                const restoredChipId = defaultTalentChipIdForStaffType(
+                    (parsed.values as StaffFormInput).staffType ?? StaffType.CONTRACTOR
+                );
+                const fallbackChipId = availableStaffTypeChips[0]?.id ?? 'contractor';
                 setTalentTypeChipId(
-                    defaultTalentChipIdForStaffType(
-                        (parsed.values as StaffFormInput).staffType ?? StaffType.CONTRACTOR
-                    )
+                    availableStaffTypeChips.some((chip) => chip.id === restoredChipId)
+                        ? restoredChipId
+                        : fallbackChipId
                 );
             }
             if (parsed.teamMembers) setTeamMembers(parsed.teamMembers);
@@ -337,7 +379,7 @@ function StaffFormContent({
             /* ignore */
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps -- draft restore once on mount for new staff
-    }, []);
+    }, [availableStaffTypeChips, reset]);
 
     useEffect(() => {
         if (!isEdit && wizardStep === 'tax' && taxFormRef.current) {
@@ -626,7 +668,7 @@ function StaffFormContent({
                             <div>
                                 <Label className="text-sm font-bold text-slate-900">Talent type</Label>
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    {STAFF_TYPE_CHIPS.map(({ id, label, value }) => {
+                                    {availableStaffTypeChips.map(({ id, label, value }) => {
                                         const selected = talentTypeChipId === id;
                                         return (
                                             <button
@@ -1373,6 +1415,8 @@ export function StaffFormModal({
     onSubmit,
     isSubmitting,
     onViewDetails,
+    allowedStaffTypeChipIds,
+    defaultStaffTypeChipId,
 }: StaffFormModalProps) {
     const { terminology } = useTerminology();
     const { labels } = useLabels();
@@ -1436,6 +1480,8 @@ export function StaffFormModal({
                         companies={companies}
                         terminology={terminology}
                         labels={labels}
+                        allowedStaffTypeChipIds={allowedStaffTypeChipIds}
+                        defaultStaffTypeChipId={defaultStaffTypeChipId}
                     />
                 </DialogContent>
             </Dialog>

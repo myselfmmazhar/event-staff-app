@@ -157,6 +157,7 @@ export function StaffInviteModal({
                                             <SelectItem value={StaffType.COMPANY}>Company</SelectItem>
                                             <SelectItem value={StaffType.CONTRACTOR}>Contractor</SelectItem>
                                             <SelectItem value={StaffType.EMPLOYEE}>Employee</SelectItem>
+                                            <SelectItem value={StaffType.TEAM}>Team</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 )}

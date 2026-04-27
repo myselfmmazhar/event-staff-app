@@ -23,6 +23,7 @@ export const ACCOUNT_STATUS_OPTIONS = [
  */
 export const STAFF_TYPE_OPTIONS = [
   { value: StaffType.EMPLOYEE, label: 'Employee' },
+  { value: StaffType.TEAM, label: 'Team' },
   { value: StaffType.CONTRACTOR, label: 'Contractor' },
   { value: StaffType.FREELANCE, label: 'Freelance' },
   { value: StaffType.COMPANY, label: 'Company' },
@@ -56,13 +57,13 @@ export const STAFF_FORM_RATING_LABELS: Record<StaffRating, string> = {
 
 /**
  * Staff rating options for the staff form modal (values stay enum; labels are user-facing tiers).
+ * Removed StaffRating.D (Developing) as per user request.
  */
 export const STAFF_RATING_OPTIONS = [
   { value: StaffRating.NA, label: STAFF_FORM_RATING_LABELS[StaffRating.NA] },
   { value: StaffRating.C, label: STAFF_FORM_RATING_LABELS[StaffRating.C] },
   { value: StaffRating.B, label: STAFF_FORM_RATING_LABELS[StaffRating.B] },
   { value: StaffRating.A, label: STAFF_FORM_RATING_LABELS[StaffRating.A] },
-  { value: StaffRating.D, label: STAFF_FORM_RATING_LABELS[StaffRating.D] },
 ] as const;
 
 /**

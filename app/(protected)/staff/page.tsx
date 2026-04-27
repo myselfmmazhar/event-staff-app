@@ -1,5 +1,7 @@
 'use client';
 
+import { useSession } from '@/lib/client/auth';
+
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,13 +29,21 @@ import { useSearchParams } from 'next/navigation';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { useStaffPageLabels } from '@/lib/hooks/use-labels';
 import { useStaffFilters } from '@/store/staff-filters.store';
-import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
+import { AccountStatus, StaffType, SkillLevel, StaffRole } from '@prisma/client';
 
 export default function StaffPage() {
     const { terminology } = useTerminology();
     const staffLabels = useStaffPageLabels();
     const { toast } = useToast();
     const searchParams = useSearchParams();
+    const { data: session } = useSession();
+
+    // Fetch current user's staff profile to check for TEAM role
+    const { data: staffProfile } = api.staff.getMyProfile.useQuery(undefined, {
+        enabled: session?.user?.role === 'STAFF',
+    });
+
+    const isTeamUser = session?.user?.role === 'STAFF' && staffProfile?.staffRole === StaffRole.TEAM;
 
     // Zustand store for filters (with localStorage persistence for date filters)
     const {
@@ -469,6 +479,7 @@ export default function StaffPage() {
     const TYPE_LABELS: Record<StaffType, string> = {
         COMPANY: 'Company',
         EMPLOYEE: 'Employee',
+        TEAM: 'Team',
         CONTRACTOR: 'Contractor',
         FREELANCE: 'Freelance',
     };
@@ -694,6 +705,8 @@ export default function StaffPage() {
                 onSubmit={handleFormSubmit}
                 isSubmitting={createMutation.isPending || updateMutation.isPending}
                 onViewDetails={handleViewFromEdit}
+                allowedStaffTypeChipIds={isTeamUser ? ['employee'] : undefined}
+                defaultStaffTypeChipId={isTeamUser ? 'employee' : undefined}
             />
 
             <ViewStaffModal
