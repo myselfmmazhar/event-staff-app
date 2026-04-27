@@ -15,6 +15,7 @@ import { UserRole } from '@prisma/client';
 export default function ProfileSettingsPage() {
     const [formData, setFormData] = useState({
         companyName: '',
+        companyEmail: '',
         companyTagline: '',
         companyPhone: '',
         companyAddress: '',
@@ -28,6 +29,7 @@ export default function ProfileSettingsPage() {
     // Get current user to determine role
     const { data: currentUser } = trpc.profile.getMyProfile.useQuery();
     const isClient = currentUser?.role === UserRole.CLIENT;
+    const isStaff = currentUser?.role === UserRole.STAFF;
 
     // Fetch org company profile (non-client users)
     const { data: orgProfile, isLoading: orgLoading } = trpc.settings.getCompanyProfile.useQuery(
@@ -77,6 +79,7 @@ export default function ProfileSettingsPage() {
         if (isClient && clientProfile) {
             setFormData({
                 companyName: clientProfile.businessName || '',
+                companyEmail: clientProfile.email || '',
                 companyTagline: clientProfile.details || '',
                 companyPhone: clientProfile.businessPhone || '',
                 companyAddress: [
@@ -95,6 +98,7 @@ export default function ProfileSettingsPage() {
         if (!isClient && orgProfile) {
             setFormData({
                 companyName: orgProfile.companyName || '',
+                companyEmail: orgProfile.companyEmail || '',
                 companyTagline: orgProfile.companyTagline || '',
                 companyPhone: orgProfile.companyPhone || '',
                 companyAddress: orgProfile.companyAddress || '',
@@ -148,12 +152,14 @@ export default function ProfileSettingsPage() {
         if (isClient) {
             updateClientMutation.mutate({
                 businessName: formData.companyName || undefined,
+                email: formData.companyEmail || undefined,
                 details: formData.companyTagline || undefined,
                 businessPhone: formData.companyPhone || undefined,
             });
         } else {
             updateOrgMutation.mutate({
                 companyName: formData.companyName || null,
+                companyEmail: formData.companyEmail || null,
                 companyTagline: formData.companyTagline || null,
                 companyPhone: formData.companyPhone || null,
                 companyAddress: formData.companyAddress || null,
@@ -162,6 +168,8 @@ export default function ProfileSettingsPage() {
             });
         }
     };
+
+    const isReadOnly = isStaff;
 
     if (isLoading) {
         return (
@@ -193,16 +201,28 @@ export default function ProfileSettingsPage() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">
-                        {isClient ? 'Business Profile' : 'Profile'}
+                        {isClient ? 'Business Profile' : 'Company Profile'}
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        {isClient ? 'Your business information' : 'Branding and company settings'}
+                        {isClient
+                            ? 'Your business information'
+                            : isReadOnly
+                                ? 'Company information managed by the organization'
+                                : 'Branding and company settings'}
                     </p>
                 </div>
             </div>
 
+            {/* Read-only notice for staff */}
+            {isReadOnly && (
+                <div className="flex items-center gap-2 p-4 rounded-lg bg-muted text-muted-foreground text-sm">
+                    <BriefcaseIcon className="h-4 w-4 shrink-0" />
+                    This company profile is managed by the organization and cannot be edited here.
+                </div>
+            )}
+
             {/* Success/Error Message */}
-            {savedMessage && (
+            {!isReadOnly && savedMessage && (
                 <div
                     className={`flex items-center gap-2 p-4 rounded-lg ${savedMessage === 'success'
                         ? 'bg-green-500/10 text-green-600'
@@ -224,8 +244,8 @@ export default function ProfileSettingsPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Logo Upload Card — only for non-client users */}
-                {!isClient && (
+                {/* Logo Upload Card — only for admin/manager, not staff or client */}
+                {!isClient && !isReadOnly && (
                     <Card className="p-6">
                         <h2 className="text-lg font-semibold mb-4">Company Logo</h2>
                         <div className="flex flex-col sm:flex-row items-start gap-6">
@@ -310,6 +330,8 @@ export default function ProfileSettingsPage() {
                                 value={formData.companyName}
                                 onChange={handleChange}
                                 placeholder={isClient ? 'Your business name' : 'Your company name'}
+                                readOnly={isReadOnly}
+                                className={isReadOnly ? 'bg-muted cursor-default' : ''}
                             />
                         </div>
 
@@ -321,6 +343,22 @@ export default function ProfileSettingsPage() {
                                 value={formData.companyPhone}
                                 onChange={handleChange}
                                 placeholder="+1 (555) 000-0000"
+                                readOnly={isReadOnly}
+                                className={isReadOnly ? 'bg-muted cursor-default' : ''}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="companyEmail">Email Address</Label>
+                            <Input
+                                id="companyEmail"
+                                name="companyEmail"
+                                type="email"
+                                value={formData.companyEmail}
+                                onChange={handleChange}
+                                placeholder="contact@company.com"
+                                readOnly={isReadOnly}
+                                className={isReadOnly ? 'bg-muted cursor-default' : ''}
                             />
                         </div>
 
@@ -334,6 +372,8 @@ export default function ProfileSettingsPage() {
                                 value={formData.companyTagline}
                                 onChange={handleChange}
                                 placeholder={isClient ? 'Additional details about your business' : 'A short description of your company'}
+                                readOnly={isReadOnly}
+                                className={isReadOnly ? 'bg-muted cursor-default' : ''}
                             />
                         </div>
 
@@ -349,7 +389,8 @@ export default function ProfileSettingsPage() {
                                         value={formData.companyAddress}
                                         onChange={handleChange}
                                         placeholder="123 Business Street, Suite 100, City, State 12345"
-                                        className="pl-10 min-h-[80px]"
+                                        className={`pl-10 min-h-[80px]${isReadOnly ? ' bg-muted cursor-default' : ''}`}
+                                        readOnly={isReadOnly}
                                     />
                                 </div>
                             </div>
@@ -363,9 +404,10 @@ export default function ProfileSettingsPage() {
                                     <ClockIcon className="h-4 w-4 text-muted-foreground mr-1" />
                                     <Select
                                         value={formData.companyTimezone}
-                                        onValueChange={(value) => setFormData(prev => ({ ...prev, companyTimezone: value }))}
+                                        onValueChange={(value) => !isReadOnly && setFormData(prev => ({ ...prev, companyTimezone: value }))}
+                                        disabled={isReadOnly}
                                     >
-                                        <SelectTrigger id="companyTimezone" className="flex-1">
+                                        <SelectTrigger id="companyTimezone" className={`flex-1${isReadOnly ? ' bg-muted cursor-default' : ''}`}>
                                             <SelectValue placeholder="Select timezone..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -385,12 +427,14 @@ export default function ProfileSettingsPage() {
                     </div>
                 </Card>
 
-                {/* Save Button */}
-                <div className="flex justify-end">
-                    <Button type="submit" disabled={updateMutation.isPending}>
-                        {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                </div>
+                {/* Save Button — hidden for staff (read-only view) */}
+                {!isReadOnly && (
+                    <div className="flex justify-end">
+                        <Button type="submit" disabled={updateMutation.isPending}>
+                            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                    </div>
+                )}
             </form>
         </div>
     );

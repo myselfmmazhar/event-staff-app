@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { PlusIcon } from 'lucide-react';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { StaffFormModal } from '@/components/staff/staff-form-modal';
+import { AddTeamUnitModal } from '@/components/team/add-team-unit-modal';
+import { TeamUnitsTable } from '@/components/team/team-units-table';
 import { StaffTable, type StaffWithRelations } from '@/components/staff/staff-table';
 // AssignStaffModal removed - using ViewDetails and Message actions instead
 import { StaffSearch } from '@/components/staff/staff-search';
@@ -82,6 +84,7 @@ export default function StaffPage() {
     const [isUpdateAndContinue, setIsUpdateAndContinue] = useState(false);
 
     // Confirmation dialog states
+    const [isAddTeamUnitOpen, setIsAddTeamUnitOpen] = useState(false);
     const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
     const [isDisableConfirmOpen, setIsDisableConfirmOpen] = useState(false);
     const [staffToResend, setStaffToResend] = useState<StaffWithRelations | null>(null);
@@ -547,6 +550,28 @@ export default function StaffPage() {
         });
     }
 
+    if (isTeamUser) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-end">
+                    <Button onClick={() => setIsAddTeamUnitOpen(true)}>
+                        <PlusIcon className="h-4 w-4 mr-2" />
+                        Add Team Unit
+                    </Button>
+                </div>
+
+                <Card className="p-6">
+                    <TeamUnitsTable />
+                </Card>
+
+                <AddTeamUnitModal
+                    open={isAddTeamUnitOpen}
+                    onClose={() => setIsAddTeamUnitOpen(false)}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -608,8 +633,6 @@ export default function StaffPage() {
                         buttonVariant="outline"
                         buttonSize="md"
                     />
-
-                    {/* Add Staff Button */}
                     <Button onClick={handleCreate}>
                         <PlusIcon className="h-4 w-4 mr-2" />
                         {staffLabels.addButton}
@@ -703,8 +726,6 @@ export default function StaffPage() {
                 onSubmit={handleFormSubmit}
                 isSubmitting={createMutation.isPending || updateMutation.isPending}
                 onViewDetails={handleViewFromEdit}
-                allowedStaffTypeChipIds={isTeamUser ? ['employee'] : undefined}
-                defaultStaffTypeChipId={isTeamUser ? 'employee' : undefined}
             />
 
             <ViewStaffModal

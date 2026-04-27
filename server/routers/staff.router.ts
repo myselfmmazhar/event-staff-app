@@ -45,7 +45,7 @@ export const staffRouter = router({
             const settingsService = new SettingsService(ctx.prisma);
 
             // Create the staff record with invitation token
-            const result = await staffService.create(input, ctx.userId!);
+            const result = await staffService.create(input, ctx.userId!, ctx.userRole);
 
             // Get terminology for email
             const terminology = await settingsService.getTerminology();
