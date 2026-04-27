@@ -44,7 +44,7 @@ export function RequirementTemplateCardGrid({
         const Icon = card.Icon;
         const title =
           card.id === 'w9'
-            ? staffType === StaffType.EMPLOYEE
+            ? staffType === StaffType.EMPLOYEE || staffType === StaffType.TEAM
               ? 'Tax form - W-4'
               : 'Tax form - W-9'
             : card.title;

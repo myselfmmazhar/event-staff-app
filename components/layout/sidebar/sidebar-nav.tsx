@@ -7,6 +7,8 @@ import { NavItem } from './nav-item';
 import { getNavItems } from './nav-data';
 import { useSidebarState } from './use-sidebar-state';
 import type { NavItem as NavItemType } from './types';
+import { trpc as api } from '@/lib/client/trpc';
+import { StaffRole } from '@prisma/client';
 
 interface SidebarNavProps {
   user?: SessionUser;
@@ -15,12 +17,24 @@ interface SidebarNavProps {
   sidebarState: ReturnType<typeof useSidebarState>;
 }
 
-function filterNavItems(navItems: NavItemType[], user?: SessionUser): NavItemType[] {
+function filterNavItems(navItems: NavItemType[], user?: SessionUser, staffRole?: StaffRole, staffManagerLabel?: string): NavItemType[] {
   return navItems.filter((item) => {
     // STAFF users only see Dashboard, My Schedule, and Profile (but not clientOnly items)
     if (user?.role === 'STAFF') {
       if (item.clientOnly) return false;
-      return item.label === 'Dashboard' || item.label === 'My Schedule' || (item.label === 'My Profile' && item.staffOnly) || item.label === 'Communication Manager';
+      
+      const isAllowedLabel = item.label === 'Dashboard' || 
+                            item.label === 'My Schedule' || 
+                            (item.label === 'My Profile' && item.staffOnly) || 
+                            item.label === 'Communication Manager';
+      
+      // If staff is a TEAM, they can also see the Staff Manager (Talent)
+      if (staffRole === StaffRole.TEAM) {
+         // Check if this item is the Talent Pod which contains the Staff Manager
+         if (item.label === 'Talent Pod') return true;
+      }
+
+      return isAllowedLabel;
     }
 
     // CLIENT users only see client-specific items
@@ -46,9 +60,17 @@ function filterNavItems(navItems: NavItemType[], user?: SessionUser): NavItemTyp
 
 export function SidebarNav({ user, onMobileClose, isMobile, sidebarState }: SidebarNavProps) {
   const { terminology } = useTerminology();
+  
+  // Fetch staff profile if user is STAFF to check for TEAM role
+  const { data: staffProfile } = api.staff.getMyProfile.useQuery(undefined, {
+    enabled: user?.role === 'STAFF',
+  });
 
   const navItems = useMemo(() => getNavItems(terminology), [terminology]);
-  const visibleNavItems = useMemo(() => filterNavItems(navItems, user), [navItems, user]);
+  const visibleNavItems = useMemo(() => 
+    filterNavItems(navItems, user, staffProfile?.staffRole, `${terminology.staff.singular} Manager`), 
+    [navItems, user, staffProfile?.staffRole, terminology.staff.singular]
+  );
 
   // Separate Settings and Communication Manager from other items (rendered separately by parent)
   const mainItems = visibleNavItems.filter(item =>
@@ -72,9 +94,16 @@ export function SidebarNav({ user, onMobileClose, isMobile, sidebarState }: Side
 
 export function SidebarCommunication({ user, onMobileClose, isMobile, sidebarState }: SidebarNavProps) {
   const { terminology } = useTerminology();
+  
+  const { data: staffProfile } = api.staff.getMyProfile.useQuery(undefined, {
+    enabled: user?.role === 'STAFF',
+  });
 
   const navItems = useMemo(() => getNavItems(terminology), [terminology]);
-  const visibleNavItems = useMemo(() => filterNavItems(navItems, user), [navItems, user]);
+  const visibleNavItems = useMemo(() => 
+    filterNavItems(navItems, user, staffProfile?.staffRole, `${terminology.staff.singular} Manager`), 
+    [navItems, user, staffProfile?.staffRole, terminology.staff.singular]
+  );
 
   const communicationItem = visibleNavItems.find(item => item.label === 'Communication Manager');
 
@@ -95,8 +124,15 @@ export function SidebarCommunication({ user, onMobileClose, isMobile, sidebarSta
 export function SidebarSettings({ user, onMobileClose, isMobile, sidebarState }: SidebarNavProps) {
   const { terminology } = useTerminology();
 
+  const { data: staffProfile } = api.staff.getMyProfile.useQuery(undefined, {
+    enabled: user?.role === 'STAFF',
+  });
+
   const navItems = useMemo(() => getNavItems(terminology), [terminology]);
-  const visibleNavItems = useMemo(() => filterNavItems(navItems, user), [navItems, user]);
+  const visibleNavItems = useMemo(() => 
+    filterNavItems(navItems, user, staffProfile?.staffRole, `${terminology.staff.singular} Manager`), 
+    [navItems, user, staffProfile?.staffRole, terminology.staff.singular]
+  );
 
   const settingsItem = visibleNavItems.find(item => item.label === 'Settings');
 

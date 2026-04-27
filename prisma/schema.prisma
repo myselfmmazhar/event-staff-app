@@ -1319,6 +1319,7 @@ enum StaffRating {
 
 enum StaffType {
   EMPLOYEE
+  TEAM
   CONTRACTOR
   COMPANY
   FREELANCE

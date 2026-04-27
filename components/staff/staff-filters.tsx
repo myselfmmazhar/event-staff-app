@@ -18,6 +18,7 @@ const STAFF_TYPE_OPTIONS: Array<{ value: StaffType; label: string }> = [
     { value: StaffType.COMPANY, label: 'Company' },
     { value: StaffType.CONTRACTOR, label: 'Contractor' },
     { value: StaffType.EMPLOYEE, label: 'Employee' },
+    { value: StaffType.TEAM, label: 'Team' },
 ];
 
 const SKILL_LEVEL_OPTIONS: Array<{ value: SkillLevel; label: string }> = [
