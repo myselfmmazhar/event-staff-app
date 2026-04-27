@@ -87,15 +87,12 @@ type StaffTypeChip = { id: string; label: string; value: StaffType; role?: Staff
 const STAFF_TYPE_CHIPS: StaffTypeChip[] = [
     { id: 'contractor', label: 'Contractor', value: StaffType.CONTRACTOR, role: StaffRole.INDIVIDUAL },
     { id: 'employee', label: 'Employee', value: StaffType.EMPLOYEE, role: StaffRole.INDIVIDUAL },
-    { id: 'team', label: 'Team', value: StaffType.TEAM, role: StaffRole.TEAM },
 ];
 
 function defaultTalentChipIdForStaffType(t: StaffType): string {
     switch (t) {
         case StaffType.EMPLOYEE:
             return 'employee';
-        case StaffType.TEAM:
-            return 'team';
         case StaffType.FREELANCE:
             return 'freelancer';
         case StaffType.COMPANY:
@@ -249,6 +246,7 @@ function StaffFormContent({
     }, [staff, defaultStaffTypeChipId, availableStaffTypeChips]);
 
     const [talentTypeChipId, setTalentTypeChipId] = useState<string>(defaultChipId);
+    const [isTeamRole, setIsTeamRole] = useState<boolean>(() => staff?.staffRole === StaffRole.TEAM);
     const [experienceMode, setExperienceMode] = useState<ExperienceMode>(() =>
         staff?.services?.length ? 'company' : 'talent'
     );
@@ -303,6 +301,10 @@ function StaffFormContent({
     const staffType = watch('staffType');
 
     useEffect(() => {
+        if (isTeamRole) {
+            setValue('staffRole', StaffRole.TEAM, { shouldDirty: true });
+            return;
+        }
         const selectedChip = availableStaffTypeChips.find((chip) => chip.id === talentTypeChipId);
         if (selectedChip) {
             setValue('staffType', selectedChip.value, { shouldDirty: true });
@@ -310,7 +312,7 @@ function StaffFormContent({
                 setValue('staffRole', selectedChip.role, { shouldDirty: true });
             }
         }
-    }, [availableStaffTypeChips, setValue, talentTypeChipId]);
+    }, [availableStaffTypeChips, setValue, talentTypeChipId, isTeamRole]);
 
     const prevServiceKeyRef = useRef<string | null>(null);
     useEffect(() => {
@@ -355,15 +357,19 @@ function StaffFormContent({
             };
             if (parsed.values) {
                 reset(parsed.values as StaffFormInput);
-                const restoredChipId = defaultTalentChipIdForStaffType(
-                    (parsed.values as StaffFormInput).staffType ?? StaffType.CONTRACTOR
-                );
-                const fallbackChipId = availableStaffTypeChips[0]?.id ?? 'contractor';
-                setTalentTypeChipId(
-                    availableStaffTypeChips.some((chip) => chip.id === restoredChipId)
-                        ? restoredChipId
-                        : fallbackChipId
-                );
+                if ((parsed.values as StaffFormInput).staffRole === StaffRole.TEAM) {
+                    setIsTeamRole(true);
+                } else {
+                    const restoredChipId = defaultTalentChipIdForStaffType(
+                        (parsed.values as StaffFormInput).staffType ?? StaffType.CONTRACTOR
+                    );
+                    const fallbackChipId = availableStaffTypeChips[0]?.id ?? 'contractor';
+                    setTalentTypeChipId(
+                        availableStaffTypeChips.some((chip) => chip.id === restoredChipId)
+                            ? restoredChipId
+                            : fallbackChipId
+                    );
+                }
             }
             if (parsed.teamMembers) setTeamMembers(parsed.teamMembers);
             if (parsed.wizardStep && WIZARD_STEPS.includes(parsed.wizardStep)) {
@@ -571,6 +577,78 @@ function StaffFormContent({
                             These are the core fields used to create the record and send an invitation. At least one of
                             email or phone must be valid before you can continue.
                         </p>
+
+                        {/* Individual / Team toggle */}
+                        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <button
+                                type="button"
+                                disabled={isSubmitting}
+                                onClick={() => setIsTeamRole(false)}
+                                className={cn(
+                                    'relative rounded-xl border p-5 text-left transition-all',
+                                    !isTeamRole
+                                        ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
+                                        : 'border-slate-200 hover:border-slate-300'
+                                )}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900">Individual</p>
+                                        <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                            Invite one person who will complete onboarding and fulfill assignments independently.
+                                        </p>
+                                    </div>
+                                    <span
+                                        className={cn(
+                                            'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+                                            !isTeamRole ? 'bg-slate-900' : 'bg-slate-200'
+                                        )}
+                                        aria-hidden
+                                    >
+                                        <span
+                                            className={cn(
+                                                'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
+                                                !isTeamRole ? 'left-5' : 'left-0.5'
+                                            )}
+                                        />
+                                    </span>
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isSubmitting}
+                                onClick={() => setIsTeamRole(true)}
+                                className={cn(
+                                    'relative rounded-xl border p-5 text-left transition-all',
+                                    isTeamRole
+                                        ? 'border-sky-500 shadow-sm ring-2 ring-sky-400/40'
+                                        : 'border-slate-200 hover:border-slate-300'
+                                )}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900">Team</p>
+                                        <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                            Invite a Team Lead who manages multiple Units such as trucks, vehicles, operators, or equipment.
+                                        </p>
+                                    </div>
+                                    <span
+                                        className={cn(
+                                            'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+                                            isTeamRole ? 'bg-slate-900' : 'bg-slate-200'
+                                        )}
+                                        aria-hidden
+                                    >
+                                        <span
+                                            className={cn(
+                                                'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all',
+                                                isTeamRole ? 'left-5' : 'left-0.5'
+                                            )}
+                                        />
+                                    </span>
+                                </div>
+                            </button>
+                        </div>
 
                         <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
                             <div>
