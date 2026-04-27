@@ -65,6 +65,7 @@ export const AVAILABILITY_OPTIONS: Array<{ value: AvailabilityStatus; label: str
 export const STAFF_TYPE_LABELS: Record<StaffType, string> = {
   COMPANY: 'Company',
   EMPLOYEE: 'Employee',
+  TEAM: 'Team',
   CONTRACTOR: 'Contractor',
   FREELANCE: 'Freelance',
 };
@@ -75,6 +76,7 @@ export const STAFF_TYPE_LABELS: Record<StaffType, string> = {
 export const STAFF_TYPE_OPTIONS: Array<{ value: StaffType; label: string }> = [
   { value: 'COMPANY', label: 'Company' },
   { value: 'EMPLOYEE', label: 'Employee' },
+  { value: 'TEAM', label: 'Team' },
   { value: 'CONTRACTOR', label: 'Contractor' },
   { value: 'FREELANCE', label: 'Freelance' },
 ];

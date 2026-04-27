@@ -195,12 +195,14 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
             COMPANY: 'Company',
             CONTRACTOR: 'Contractor',
             EMPLOYEE: 'Employee',
+            TEAM: 'Team',
             FREELANCE: 'Freelance',
         };
         const variants: Record<StaffType, 'default' | 'secondary'> = {
             COMPANY: 'default',
             CONTRACTOR: 'default',
             EMPLOYEE: 'secondary',
+            TEAM: 'secondary',
             FREELANCE: 'default',
         };
         return (
