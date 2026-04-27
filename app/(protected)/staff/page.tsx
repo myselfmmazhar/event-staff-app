@@ -1,7 +1,5 @@
 'use client';
 
-import { useSession } from '@/lib/client/auth';
-
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,14 +34,14 @@ export default function StaffPage() {
     const staffLabels = useStaffPageLabels();
     const { toast } = useToast();
     const searchParams = useSearchParams();
-    const { data: session } = useSession();
+    const { data: profile } = api.profile.getMyProfile.useQuery();
 
     // Fetch current user's staff profile to check for TEAM role
     const { data: staffProfile } = api.staff.getMyProfile.useQuery(undefined, {
-        enabled: session?.user?.role === 'STAFF',
+        enabled: profile?.role === 'STAFF',
     });
 
-    const isTeamUser = session?.user?.role === 'STAFF' && staffProfile?.staffRole === StaffRole.TEAM;
+    const isTeamUser = profile?.role === 'STAFF' && staffProfile?.staffRole === StaffRole.TEAM;
 
     // Zustand store for filters (with localStorage persistence for date filters)
     const {
