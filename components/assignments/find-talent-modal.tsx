@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { inferRouterOutputs } from '@trpc/server';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,13 +10,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { StaffSearchTable } from '@/components/call-times/staff-search-table';
+import { StaffSearchTable, type SearchRow } from '@/components/call-times/staff-search-table';
 import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon, SendIcon, FilterIcon, XIcon, CheckCircleIcon } from '@/components/ui/icons';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
-import { SkillLevel, StaffRating, AvailabilityStatus } from '@prisma/client';
+import { SkillLevel, StaffRating } from '@prisma/client';
 import { formatDateTime } from '@/lib/utils/date-formatter';
 import type { AppRouter } from '@/server/routers/_app';
 
@@ -52,10 +52,19 @@ const RATING_OPTIONS = [
   { value: StaffRating.NA, label: 'N/A' },
 ];
 
-const AVAILABILITY_OPTIONS = [
-  { value: AvailabilityStatus.OPEN_TO_OFFERS, label: 'Available' },
-  { value: AvailabilityStatus.BUSY, label: 'Busy' },
-  { value: AvailabilityStatus.TIME_OFF, label: 'Time Off' },
+const USER_TYPE_OPTIONS = [
+  { value: '', label: 'Any Type' },
+  { value: 'INDIVIDUAL', label: 'Individual' },
+  { value: 'TEAM', label: 'Team' },
+];
+
+const AVAILABLE_UNITS_OPTIONS = [
+  { value: '', label: 'Any Units' },
+  { value: '1', label: '1 unit' },
+  { value: '2', label: '2 units' },
+  { value: '3', label: '3 units' },
+  { value: '4', label: '4 units' },
+  { value: '5', label: '5+ units' },
 ];
 
 export function FindTalentModal({
@@ -66,24 +75,24 @@ export function FindTalentModal({
 }: FindTalentModalProps) {
   const staffTerm = useStaffTerm();
   const { toast } = useToast();
-  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [includeAlreadyInvited, setIncludeAlreadyInvited] = useState(false);
 
   // Filter state
   const [maxDistance, setMaxDistance] = useState<string>('');
   const [skillLevel, setSkillLevel] = useState<SkillLevel | ''>('');
   const [rating, setRating] = useState<StaffRating | ''>('');
-  const [availabilityStatuses, setAvailabilityStatuses] = useState<AvailabilityStatus[]>([]);
+  const [userType, setUserType] = useState<'' | 'INDIVIDUAL' | 'TEAM'>('');
+  const [availableUnits, setAvailableUnits] = useState<string>('');
 
   const utils = trpc.useUtils();
 
-  // Normalize IDs to an array
   const effectiveCallTimeIds = callTimeId ? [callTimeId] : callTimeIds;
   const hasCallTimeIds = effectiveCallTimeIds.length > 0;
 
-  const hasActiveFilters = maxDistance || skillLevel || rating || availabilityStatuses.length > 0;
+  const hasActiveFilters =
+    maxDistance || skillLevel || rating || userType || availableUnits;
 
-  // Fetch call time details
   const callTimesQuery = trpc.callTime.getManyByIds.useQuery(
     { ids: effectiveCallTimeIds },
     { enabled: hasCallTimeIds && open }
@@ -91,7 +100,6 @@ export function FindTalentModal({
   const callTimes: CallTimesByIds | undefined = callTimesQuery.data;
   const isLoading = callTimesQuery.isLoading;
 
-  // Fetch available staff with filters
   const { data: staffData, isLoading: isLoadingStaff } =
     trpc.callTime.searchStaff.useQuery(
       {
@@ -100,25 +108,54 @@ export function FindTalentModal({
         maxDistance: maxDistance ? Number(maxDistance) : undefined,
         skillLevels: skillLevel ? [skillLevel] : undefined,
         ratings: rating ? [rating] : undefined,
-        availabilityStatuses: availabilityStatuses.length > 0 ? availabilityStatuses : undefined,
+        userType: userType || undefined,
+        availableUnits: availableUnits ? Number(availableUnits) : undefined,
       },
       { enabled: hasCallTimeIds && open }
     );
 
+  const rows = useMemo<SearchRow[]>(() => (staffData?.data as SearchRow[]) || [], [staffData]);
+
+  // Split selection by kind
+  const selection = useMemo(() => {
+    const individualStaffIds: string[] = [];
+    const teamSelections: { managerStaffId: string; serviceId: string }[] = [];
+    let teamInviteCount = 0;
+    for (const rowId of selectedRowIds) {
+      const row = rows.find((r) => r.rowId === rowId);
+      if (!row) continue;
+      if (row.kind === 'INDIVIDUAL') {
+        individualStaffIds.push(row.id);
+      } else if (row.serviceId && row.managerStaffId) {
+        teamSelections.push({ managerStaffId: row.managerStaffId, serviceId: row.serviceId });
+        teamInviteCount += row.availableUnits;
+      }
+    }
+    return {
+      individualStaffIds,
+      teamSelections,
+      teamInviteCount,
+      totalSelections: individualStaffIds.length + teamSelections.length,
+    };
+  }, [selectedRowIds, rows]);
+
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [pendingOffers, setPendingOffers] = useState<{ callTimeIds: string[], staffIds: string[] } | null>(null);
+  const [pendingOffers, setPendingOffers] = useState<{
+    callTimeIds: string[];
+    staffIds: string[];
+    teamSelections: { managerStaffId: string; serviceId: string }[];
+  } | null>(null);
   const [isAssignConfirmOpen, setIsAssignConfirmOpen] = useState(false);
-  const [pendingAssign, setPendingAssign] = useState<{ callTimeIds: string[], staffIds: string[] } | null>(null);
+  const [pendingAssign, setPendingAssign] = useState<{ callTimeIds: string[]; staffIds: string[] } | null>(null);
   const [showResendConfirm, setShowResendConfirm] = useState(false);
 
-  // Send offers mutation
   const sendInvitations = trpc.callTime.sendInvitations.useMutation({
     onSuccess: (data) => {
       toast({
         title: showResendConfirm ? 'Invitations re-sent' : 'Offers sent',
         description: `Successfully sent ${data.sent} offer(s) across ${effectiveCallTimeIds.length} assignment(s)`,
       });
-      setSelectedStaffIds([]);
+      setSelectedRowIds([]);
       setPendingOffers(null);
       setIsConfirmOpen(false);
       setShowResendConfirm(false);
@@ -129,19 +166,15 @@ export function FindTalentModal({
       }
     },
     onError: (error) => {
-      // Check for fixed "already invited" message
       if (error.message.includes('already been invited')) {
         setPendingOffers({
           callTimeIds: effectiveCallTimeIds,
-          staffIds: selectedStaffIds,
+          staffIds: selection.individualStaffIds,
+          teamSelections: selection.teamSelections,
         });
         setShowResendConfirm(true);
       } else {
-        toast({
-          title: 'Error',
-          description: error.message,
-          variant: 'error',
-        });
+        toast({ title: 'Error', description: error.message, variant: 'error' });
         setPendingOffers(null);
       }
       setIsConfirmOpen(false);
@@ -165,11 +198,8 @@ export function FindTalentModal({
       } else {
         description = 'No changes were needed.';
       }
-      toast({
-        title: 'Assignment updated',
-        description,
-      });
-      setSelectedStaffIds([]);
+      toast({ title: 'Assignment updated', description });
+      setSelectedRowIds([]);
       setPendingAssign(null);
       setIsAssignConfirmOpen(false);
       if (hasCallTimeIds) {
@@ -179,24 +209,20 @@ export function FindTalentModal({
       }
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'error',
-      });
+      toast({ title: 'Error', description: error.message, variant: 'error' });
       setIsAssignConfirmOpen(false);
       setPendingAssign(null);
     },
   });
 
   const handleSendOffers = () => {
-    if (selectedStaffIds.length === 0 || !hasCallTimeIds) return;
+    if (selection.totalSelections === 0 || !hasCallTimeIds) return;
 
-    // If multiple assignments are selected, show confirmation
     if (effectiveCallTimeIds.length > 1) {
       setPendingOffers({
         callTimeIds: effectiveCallTimeIds,
-        staffIds: selectedStaffIds,
+        staffIds: selection.individualStaffIds,
+        teamSelections: selection.teamSelections,
       });
       setIsConfirmOpen(true);
       return;
@@ -204,32 +230,39 @@ export function FindTalentModal({
 
     sendInvitations.mutate({
       callTimeIds: effectiveCallTimeIds,
-      staffIds: selectedStaffIds,
+      staffIds: selection.individualStaffIds.length > 0 ? selection.individualStaffIds : undefined,
+      teamSelections: selection.teamSelections.length > 0 ? selection.teamSelections : undefined,
     });
   };
 
   const handleConfirmSend = () => {
     if (pendingOffers) {
-      sendInvitations.mutate(pendingOffers);
+      sendInvitations.mutate({
+        callTimeIds: pendingOffers.callTimeIds,
+        staffIds: pendingOffers.staffIds.length > 0 ? pendingOffers.staffIds : undefined,
+        teamSelections: pendingOffers.teamSelections.length > 0 ? pendingOffers.teamSelections : undefined,
+      });
     }
   };
 
   const handleResend = () => {
     if (pendingOffers) {
       sendInvitations.mutate({
-        ...pendingOffers,
+        callTimeIds: pendingOffers.callTimeIds,
+        staffIds: pendingOffers.staffIds.length > 0 ? pendingOffers.staffIds : undefined,
+        teamSelections: pendingOffers.teamSelections.length > 0 ? pendingOffers.teamSelections : undefined,
         resendExisting: true,
       });
     }
   };
 
   const handleAssignAssignment = () => {
-    if (selectedStaffIds.length === 0 || !hasCallTimeIds) return;
+    if (selection.individualStaffIds.length === 0 || !hasCallTimeIds) return;
 
     if (effectiveCallTimeIds.length > 1) {
       setPendingAssign({
         callTimeIds: effectiveCallTimeIds,
-        staffIds: selectedStaffIds,
+        staffIds: selection.individualStaffIds,
       });
       setIsAssignConfirmOpen(true);
       return;
@@ -237,7 +270,7 @@ export function FindTalentModal({
 
     assignInvitations.mutate({
       callTimeIds: effectiveCallTimeIds,
-      staffIds: selectedStaffIds,
+      staffIds: selection.individualStaffIds,
     });
   };
 
@@ -248,7 +281,7 @@ export function FindTalentModal({
   };
 
   const handleClose = () => {
-    setSelectedStaffIds([]);
+    setSelectedRowIds([]);
     setIncludeAlreadyInvited(false);
     setIsAssignConfirmOpen(false);
     setPendingAssign(null);
@@ -260,7 +293,8 @@ export function FindTalentModal({
     setMaxDistance('');
     setSkillLevel('');
     setRating('');
-    setAvailabilityStatuses([]);
+    setUserType('');
+    setAvailableUnits('');
   };
 
   if (isLoading || !callTimes) {
@@ -278,6 +312,15 @@ export function FindTalentModal({
   const totalConfirmed = callTimes.reduce((sum, ct) => sum + ct.confirmedCount, 0);
   const totalRequired = callTimes.reduce((sum, ct) => sum + ct.numberOfStaffRequired, 0);
   const isFilled = totalConfirmed >= totalRequired;
+
+  // Effective number of invitations that will be sent.
+  // Individual: 1 each. Team: capped at remaining slots — UI shows "up to N".
+  const totalInvitesToSend =
+    selection.individualStaffIds.length +
+    Math.min(
+      selection.teamInviteCount,
+      Math.max(0, totalRequired - totalConfirmed - selection.individualStaffIds.length)
+    );
 
   return (
     <Dialog open={open} onClose={handleClose} className="max-w-6xl w-[90vw]">
@@ -333,8 +376,7 @@ export function FindTalentModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {/* Distance Filter */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Distance</label>
                 <select
@@ -348,7 +390,6 @@ export function FindTalentModal({
                 </select>
               </div>
 
-              {/* Skill Level Dropdown */}
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Skill Level</label>
                 <select
@@ -363,7 +404,6 @@ export function FindTalentModal({
                 </select>
               </div>
 
-              {/* Rating Dropdown */}
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Rating</label>
                 <select
@@ -373,6 +413,32 @@ export function FindTalentModal({
                 >
                   <option value="">Any Rating</option>
                   {RATING_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">User Type</label>
+                <select
+                  value={userType}
+                  onChange={(e) => setUserType(e.target.value as '' | 'INDIVIDUAL' | 'TEAM')}
+                  className="w-full text-sm rounded-md border border-input bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {USER_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Available Units</label>
+                <select
+                  value={availableUnits}
+                  onChange={(e) => setAvailableUnits(e.target.value)}
+                  className="w-full text-sm rounded-md border border-input bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {AVAILABLE_UNITS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
@@ -389,38 +455,45 @@ export function FindTalentModal({
                 onChange={(e) => setIncludeAlreadyInvited(e.target.checked)}
                 className="rounded border-input"
               />
-              Include already invited {staffTerm.lowerPlural}
+              Include already invited talents
             </label>
 
-            {selectedStaffIds.length > 0 && (
+            {selection.totalSelections > 0 && (
               <div className="flex flex-wrap items-center gap-2 justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAssignAssignment}
-                  disabled={sendInvitations.isPending || assignInvitations.isPending}
-                >
-                  <CheckCircleIcon className="h-4 w-4 mr-2" />
-                  Assign {selectedStaffIds.length} assignment
-                  {selectedStaffIds.length > 1 ? 's' : ''}
-                </Button>
+                {selection.teamSelections.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    Up to {totalInvitesToSend} invitation{totalInvitesToSend === 1 ? '' : 's'} will be sent
+                  </span>
+                )}
+                {selection.individualStaffIds.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAssignAssignment}
+                    disabled={sendInvitations.isPending || assignInvitations.isPending}
+                  >
+                    <CheckCircleIcon className="h-4 w-4 mr-2" />
+                    Assign {selection.individualStaffIds.length} assignment
+                    {selection.individualStaffIds.length > 1 ? 's' : ''}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   onClick={handleSendOffers}
                   disabled={sendInvitations.isPending || assignInvitations.isPending}
                 >
                   <SendIcon className="h-4 w-4 mr-2" />
-                  Send {selectedStaffIds.length} Offer
-                  {selectedStaffIds.length > 1 ? 's' : ''}
+                  Send {selection.totalSelections} Offer
+                  {selection.totalSelections > 1 ? 's' : ''}
                 </Button>
               </div>
             )}
           </div>
 
           <StaffSearchTable
-            staff={staffData?.data || []}
-            selectedIds={selectedStaffIds}
-            onSelectionChange={setSelectedStaffIds}
+            rows={rows}
+            selectedRowIds={selectedRowIds}
+            onSelectionChange={setSelectedRowIds}
             isLoading={isLoadingStaff}
             showInvitationStatus={includeAlreadyInvited}
           />
@@ -438,7 +511,7 @@ export function FindTalentModal({
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleConfirmSend}
         title="Confirm Batch Offers"
-        description={`You are about to send offers to ${selectedStaffIds.length} ${staffTerm.lowerPlural} for ${effectiveCallTimeIds.length} different assignments.`}
+        description={`You are about to send offers to ${selection.totalSelections} talent(s) for ${effectiveCallTimeIds.length} different assignments.`}
         warningMessage="Are you sure you want to send batch alert confirmation?"
         confirmText="Yes, Send Offers"
         variant="default"
@@ -453,8 +526,8 @@ export function FindTalentModal({
         }}
         onConfirm={handleConfirmAssign}
         title="Confirm assign on behalf"
-        description={`You are about to assign ${selectedStaffIds.length} ${staffTerm.lowerPlural} across ${effectiveCallTimeIds.length} assignments immediately. They will be marked as accepted (no invitation email).`}
-        warningMessage="We will send a call time confirmation or waitlist email only—not an invitation."
+        description={`You are about to assign ${selection.individualStaffIds.length} ${staffTerm.lowerPlural} across ${effectiveCallTimeIds.length} assignments immediately. They will be marked as accepted (no invitation email).`}
+        warningMessage="We will send a call time confirmation or waitlist email only—not an invitation. Team-manager selections cannot be assigned on behalf and will be skipped."
         confirmText="Yes, assign"
         variant="default"
         isLoading={assignInvitations.isPending}
@@ -464,9 +537,9 @@ export function FindTalentModal({
         open={showResendConfirm}
         onClose={() => setShowResendConfirm(false)}
         onConfirm={handleResend}
-        title="Staff Already Invited"
-        description="Some or all of the selected staff have already been invited to these assignments."
-        warningMessage="Do you want to re-send the invitations to these staff members?"
+        title="Talents Already Invited"
+        description="Some or all of the selected talents have already been invited to these assignments."
+        warningMessage="Do you want to re-send the invitations to these talents?"
         confirmText="Yes, Re-send Invitation"
         variant="default"
         isLoading={sendInvitations.isPending}

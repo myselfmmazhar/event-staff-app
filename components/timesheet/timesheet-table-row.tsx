@@ -678,7 +678,9 @@ export function TimesheetTableRow({
                         <td className="px-3 py-4 text-[11px] leading-relaxed min-w-[500px] text-slate-800">
                             <div className="flex flex-col gap-4">
                                 {(() => {
-                                    const billRows = ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
+                                    const mergedCount = ct.mergedRows?.length ?? 1;
+                                    const isMergedTeamRow = mergedCount > 1;
+                                    const billRows = isMergedTeamRow ? [ct] : (ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct]);
 
                                     return billRows.map((row, idx) => {
                                         const rowTe = row.timeEntry;
@@ -688,7 +690,7 @@ export function TimesheetTableRow({
                                         const eventTitle = event?.title || '—';
                                         const staffMeta = `${staffName}${loc ? ` (${loc})` : ''}`;
 
-                                        const actualLine = rowTe?.clockIn 
+                                        const actualLine = rowTe?.clockIn
                                             ? invoiceActualRange(rowTe)
                                             : <span className="text-muted-foreground font-normal">Not clocked</span>;
 
@@ -726,6 +728,11 @@ export function TimesheetTableRow({
                                                         {eventTitle}
                                                     </button>
                                                     <span className="text-slate-700">| {staffMeta}</span>
+                                                    {isMergedTeamRow && (
+                                                        <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 border-emerald-300 text-emerald-700 bg-emerald-50">
+                                                            Qty × {mergedCount}
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                                 <div className="font-semibold text-primary/80">
                                                     {row.service?.title || '—'}
@@ -1070,9 +1077,23 @@ export function TimesheetTableRow({
                                 ) : (
                                     <span className="text-sm font-bold text-foreground">Open shift</span>
                                 )}
-                                <span className="text-[10px] text-muted-foreground uppercase tracking-tight">
-                                    {ct.staff?.email || 'No email provided'}
-                                </span>
+                                {ct.teamUnit ? (
+                                    <span className="text-[10px] text-muted-foreground tracking-tight">
+                                        <span className="font-semibold text-foreground">{ct.teamUnit.unitName}</span>
+                                        <span className="mx-1">·</span>
+                                        <span className="uppercase">{ct.teamUnit.unitId}</span>
+                                        {ct.teamUnit.primaryContact && (
+                                            <>
+                                                <span className="mx-1">·</span>
+                                                <span>{ct.teamUnit.primaryContact}</span>
+                                            </>
+                                        )}
+                                    </span>
+                                ) : (
+                                    <span className="text-[10px] text-muted-foreground uppercase tracking-tight">
+                                        {ct.staff?.email || 'No email provided'}
+                                    </span>
+                                )}
                             </div>
                         </td>
                                 )}

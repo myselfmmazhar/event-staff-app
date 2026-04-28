@@ -40,15 +40,19 @@ model CallTimeInvitation {
   internalReviewRating InternalReviewRating?
   reviewedAt           DateTime?                @db.Timestamp(6)
   reviewedBy           String?
+  invitedAsTeam        Boolean                  @default(false)
+  teamUnitId           String?                  @db.Uuid
   callTime             CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
   reviewer             User?                    @relation("invitation_reviews", fields: [reviewedBy], references: [id])
   staff                Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  teamUnit             TeamUnit?                @relation(fields: [teamUnitId], references: [id])
   timeEntry            TimeEntry?
 
-  @@unique([callTimeId, staffId])
+  @@unique([callTimeId, staffId, teamUnitId])
   @@index([callTimeId])
   @@index([staffId])
   @@index([status])
+  @@index([teamUnitId])
   @@map("call_time_invitations")
 }
 
@@ -882,6 +886,7 @@ model TeamUnit {
   staff          Staff                @relation(fields: [staffId], references: [id], onDelete: Cascade)
   createdByUser  User                 @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   activities     TeamUnitActivity[]
+  invitations    CallTimeInvitation[]
 
   @@index([unitId])
   @@index([staffId])

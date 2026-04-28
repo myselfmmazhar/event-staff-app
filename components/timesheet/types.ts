@@ -70,6 +70,14 @@ export type CallTimeRow = {
         payrollId: string | null;
         hrSystemId: string | null;
     };
+    invitedAsTeam?: boolean;
+    teamUnit?: {
+        id: string;
+        unitId: string;
+        unitName: string;
+        primaryContact: string | null;
+        capacityNotes: string | null;
+    } | null;
     timeEntry?: {
         id: string;
         clockIn: Date | string | null;

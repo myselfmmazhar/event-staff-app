@@ -7,8 +7,13 @@ import { SkillLevel, AvailabilityStatus, StaffRating } from '@prisma/client';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { AlertIcon } from '@/components/ui/icons';
 
-interface Staff {
+export type SearchRowKind = 'INDIVIDUAL' | 'TEAM';
+
+export interface SearchRow {
+  // Common
   id: string;
+  rowId: string;                  // INDIVIDUAL:<staffId> or TEAM:<managerStaffId>:<serviceId>
+  kind: SearchRowKind;
   staffId: string;
   firstName: string;
   lastName: string;
@@ -37,15 +42,20 @@ interface Staff {
   }>;
   userId?: string | null;
   hasLoginAccess?: boolean;
-  services?: Array<{
-    service: { id: string; title: string };
-  }>;
+  services?: Array<{ service: { id: string; title: string } }>;
+
+  // Type-specific
+  totalUnits: number;
+  availableUnits: number;
+  serviceId?: string | null;
+  serviceTitle?: string | null;
+  managerStaffId?: string | null;
 }
 
 interface StaffSearchTableProps {
-  staff: Staff[];
-  selectedIds: string[];
-  onSelectionChange: (ids: string[]) => void;
+  rows: SearchRow[];
+  selectedRowIds: string[];
+  onSelectionChange: (rowIds: string[]) => void;
   isLoading?: boolean;
   showInvitationStatus?: boolean;
 }
@@ -54,12 +64,6 @@ const SKILL_LEVEL_LABELS: Record<SkillLevel, string> = {
   BEGINNER: 'Beginner',
   INTERMEDIATE: 'Intermediate',
   ADVANCED: 'Advanced',
-};
-
-const AVAILABILITY_LABELS: Record<AvailabilityStatus, string> = {
-  OPEN_TO_OFFERS: 'Available',
-  BUSY: 'Busy',
-  TIME_OFF: 'Time Off',
 };
 
 const RATING_LABELS: Record<StaffRating, string> = {
@@ -80,7 +84,6 @@ const RATING_COLORS: Record<StaffRating, string> = {
 
 function getInvitationBadge(status: string | null | undefined, isConfirmed: boolean | null | undefined) {
   if (!status) return null;
-
   switch (status) {
     case 'ACCEPTED':
       if (isConfirmed) {
@@ -101,21 +104,21 @@ function getInvitationBadge(status: string | null | undefined, isConfirmed: bool
 }
 
 export function StaffSearchTable({
-  staff,
-  selectedIds,
+  rows,
+  selectedRowIds,
   onSelectionChange,
   isLoading,
   showInvitationStatus = false,
 }: StaffSearchTableProps) {
   const staffTerm = useStaffTerm();
 
-  // Filter out unregistered staff from selection counts
-  const registeredStaff = staff.filter((s) => s.userId);
-  const allSelected = registeredStaff.length > 0 &&
-    registeredStaff.every((s) => selectedIds.includes(s.id));
-  const someSelected = selectedIds.length > 0 && !allSelected;
+  const isUnregistered = (r: SearchRow) => r.kind === 'INDIVIDUAL' && !r.userId;
+  const isSelectable = (r: SearchRow) => !isUnregistered(r) && r.availableUnits > 0;
+  const selectableRows = rows.filter(isSelectable);
 
-  // Track the indeterminate state of the "select all" checkbox
+  const allSelected = selectableRows.length > 0 &&
+    selectableRows.every((r) => selectedRowIds.includes(r.rowId));
+  const someSelected = selectedRowIds.length > 0 && !allSelected;
   const selectAllRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -128,47 +131,36 @@ export function StaffSearchTable({
     if (allSelected) {
       onSelectionChange([]);
     } else {
-      // Only select registered staff
-      onSelectionChange(registeredStaff.map((s) => s.id));
+      onSelectionChange(selectableRows.map((r) => r.rowId));
     }
   };
 
-  const handleSelectOne = (member: Staff) => {
-    // Don't allow selecting unregistered staff
-    if (!member.userId) return;
-
-    if (selectedIds.includes(member.id)) {
-      onSelectionChange(selectedIds.filter((i) => i !== member.id));
+  const handleSelectOne = (row: SearchRow) => {
+    if (!isSelectable(row)) return;
+    if (selectedRowIds.includes(row.rowId)) {
+      onSelectionChange(selectedRowIds.filter((i) => i !== row.rowId));
     } else {
-      onSelectionChange([...selectedIds, member.id]);
+      onSelectionChange([...selectedRowIds, row.rowId]);
     }
   };
 
   const getLocationBadge = (locationMatch: number) => {
-    if (locationMatch >= 100) {
-      return <Badge variant="default">Same City</Badge>;
-    } else if (locationMatch >= 50) {
-      return <Badge variant="secondary">Same State</Badge>;
-    }
+    if (locationMatch >= 100) return <Badge variant="default">Same City</Badge>;
+    if (locationMatch >= 50) return <Badge variant="secondary">Same State</Badge>;
     return <Badge variant="outline">Other</Badge>;
   };
-
-  const isUnregistered = (member: Staff) => !member.userId;
 
   if (isLoading) {
     return (
       <div className="space-y-2">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="h-16 bg-muted/50 animate-pulse rounded-md"
-          />
+          <div key={i} className="h-16 bg-muted/50 animate-pulse rounded-md" />
         ))}
       </div>
     );
   }
 
-  if (staff.length === 0) {
+  if (rows.length === 0) {
     return (
       <div className="text-center py-8 border border-dashed border-border rounded-lg">
         <p className="text-muted-foreground">
@@ -178,7 +170,7 @@ export function StaffSearchTable({
     );
   }
 
-  const unregisteredCount = staff.filter(isUnregistered).length;
+  const unregisteredCount = rows.filter(isUnregistered).length;
 
   return (
     <div className="space-y-2">
@@ -200,14 +192,15 @@ export function StaffSearchTable({
                   ref={selectAllRef}
                   checked={allSelected}
                   onChange={handleSelectAll}
-                  disabled={registeredStaff.length === 0}
+                  disabled={selectableRows.length === 0}
                 />
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium">{staffTerm.singular}</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">Talent</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
+              <th className="px-4 py-3 text-left text-sm font-medium whitespace-nowrap">Available Units</th>
               <th className="px-4 py-3 text-left text-sm font-medium">Distance</th>
               <th className="px-4 py-3 text-left text-sm font-medium">Skill</th>
               <th className="px-4 py-3 text-left text-sm font-medium">Rating</th>
-              {/* <th className="px-4 py-3 text-left text-sm font-medium">Status</th> */}
               {showInvitationStatus && (
                 <th className="px-4 py-3 text-left text-sm font-medium">Invitation</th>
               )}
@@ -217,96 +210,124 @@ export function StaffSearchTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {staff.map((member) => {
-              const unregistered = isUnregistered(member);
+            {rows.map((row) => {
+              const unregistered = isUnregistered(row);
+              const noUnits = row.availableUnits <= 0;
+              const disabled = unregistered || noUnits;
+              const selected = selectedRowIds.includes(row.rowId);
+
               return (
                 <tr
-                  key={member.id}
+                  key={row.rowId}
                   className={`
-                    ${unregistered
+                    ${disabled
                       ? 'opacity-60 cursor-not-allowed bg-muted/20'
                       : 'hover:bg-muted/30 cursor-pointer'
                     }
-                    ${selectedIds.includes(member.id) && !unregistered ? 'bg-primary/5' : ''}
+                    ${selected && !disabled ? 'bg-primary/5' : ''}
                   `}
-                  onClick={() => handleSelectOne(member)}
-                  title={unregistered ? 'This staff member must complete registration first' : undefined}
+                  onClick={() => handleSelectOne(row)}
+                  title={
+                    unregistered
+                      ? 'This staff member must complete registration first'
+                      : noUnits
+                        ? row.invitationStatus === 'PENDING'
+                          ? 'Invitation already sent — awaiting response'
+                          : 'No available units for this manager + service'
+                        : undefined
+                  }
                 >
                   <td className="px-4 py-3">
                     <Checkbox
-                      checked={selectedIds.includes(member.id)}
-                      onChange={() => handleSelectOne(member)}
+                      checked={selected}
+                      onChange={() => handleSelectOne(row)}
                       onClick={(e) => e.stopPropagation()}
-                      disabled={unregistered}
+                      disabled={disabled}
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div>
-                        <p className="font-medium flex items-center gap-2">
-                          {member.firstName} {member.lastName}
-                          {unregistered && (
-                            <Badge variant="warning" className="text-xs">
-                              Not Registered
-                            </Badge>
-                          )}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {member.staffId}
-                        </p>
-                      </div>
+                    <div>
+                      <p className="font-medium flex items-center gap-2">
+                        {row.kind === 'INDIVIDUAL' ? (
+                          <>
+                            {row.firstName} {row.lastName}
+                            {unregistered && (
+                              <Badge variant="warning" className="text-xs">Not Registered</Badge>
+                            )}
+                          </>
+                        ) : (
+                          <>{row.firstName} {row.lastName}</>
+                        )}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {row.kind === 'INDIVIDUAL' ? (
+                          row.staffId
+                        ) : (
+                          <>
+                            {row.staffId} · Team · {row.totalUnits} {row.totalUnits === 1 ? 'unit' : 'units'}
+                          </>
+                        )}
+                      </p>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    {member.distanceMiles != null ? (
-                      <span className="text-sm font-medium">{member.distanceMiles} mi</span>
+                    {row.kind === 'INDIVIDUAL' ? (
+                      <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">Individual</Badge>
+                    ) : (
+                      <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs">Team</Badge>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {row.kind === 'INDIVIDUAL' ? (
+                      <div>
+                        <Badge variant="outline">1 unit</Badge>
+                        <p className="text-[11px] text-muted-foreground mt-1">Always 1 for individual</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <Badge variant="outline">
+                          {row.availableUnits} {row.availableUnits === 1 ? 'unit' : 'units'}
+                        </Badge>
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          {row.totalUnits} total · {row.availableUnits} currently available
+                        </p>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {row.distanceMiles != null ? (
+                      <span className="text-sm font-medium">{row.distanceMiles} mi</span>
                     ) : (
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="outline">
-                      {SKILL_LEVEL_LABELS[member.skillLevel]}
-                    </Badge>
+                    <Badge variant="outline">{SKILL_LEVEL_LABELS[row.skillLevel]}</Badge>
                   </td>
                   <td className="px-4 py-3">
-                    {member.staffRating && (
-                      <Badge
-                        variant="outline"
-                        className={RATING_COLORS[member.staffRating]}
-                      >
-                        {RATING_LABELS[member.staffRating]}
+                    {row.staffRating && (
+                      <Badge variant="outline" className={RATING_COLORS[row.staffRating]}>
+                        {RATING_LABELS[row.staffRating]}
                       </Badge>
                     )}
                   </td>
-                  {/* <td className="px-4 py-3">
-                    <Badge
-                      variant={
-                        member.availabilityStatus === 'OPEN_TO_OFFERS'
-                          ? 'default'
-                          : 'secondary'
-                      }
-                    >
-                      {AVAILABILITY_LABELS[member.availabilityStatus]}
-                    </Badge>
-                  </td> */}
                   {showInvitationStatus && (
                     <td className="px-4 py-3">
-                      {getInvitationBadge(member.invitationStatus, member.invitationConfirmed)}
+                      {getInvitationBadge(row.invitationStatus, row.invitationConfirmed)}
                     </td>
                   )}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      {getLocationBadge(member.locationMatch)}
+                      {getLocationBadge(row.locationMatch)}
                       <span className="text-sm text-muted-foreground">
-                        {member.city}, {member.state}
+                        {row.city}, {row.state}
                       </span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    {member.hasConflict && member.conflicts && member.conflicts.length > 0 ? (
+                    {row.hasConflict && row.conflicts && row.conflicts.length > 0 ? (
                       <div className="space-y-1 min-w-[180px]">
-                        {member.conflicts.map((c, idx) => (
+                        {row.conflicts.map((c, idx) => (
                           <div key={idx} className="bg-orange-100/30 p-2 rounded border border-orange-200/50 text-xs shadow-sm">
                             <p className="font-bold text-orange-900 truncate mb-1" title={c.eventTitle}>
                               {c.eventTitle}
@@ -333,7 +354,7 @@ export function StaffSearchTable({
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-sm text-muted-foreground truncate max-w-[200px] block">
-                      {member.internalNotes || '—'}
+                      {row.internalNotes || '—'}
                     </span>
                   </td>
                 </tr>

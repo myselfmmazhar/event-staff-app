@@ -153,6 +153,15 @@ export class TimeEntryService {
                                 phone: true,
                             },
                         },
+                        teamUnit: {
+                            select: {
+                                id: true,
+                                unitId: true,
+                                unitName: true,
+                                primaryContact: true,
+                                capacityNotes: true,
+                            },
+                        },
                         timeEntry: true,
                     },
                 },

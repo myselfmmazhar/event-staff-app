@@ -58,7 +58,29 @@ export function ExpandedRowDetail({
                     <div className="space-y-2 pb-3 border-b border-border">
                         <h4 className="font-semibold text-foreground text-xs uppercase tracking-wide">Contact</h4>
                         <div className="space-y-1 text-muted-foreground text-[11px]">
-                            {ct.staff ? (
+                            {ct.teamUnit ? (
+                                <>
+                                    <p>
+                                        Team Unit:{' '}
+                                        <span className="text-foreground font-medium">{ct.teamUnit.unitName}</span>
+                                    </p>
+                                    <p>
+                                        Unit ID:{' '}
+                                        <span className="text-foreground font-medium">{ct.teamUnit.unitId}</span>
+                                    </p>
+                                    <p>
+                                        Primary Contact:{' '}
+                                        <span className="text-foreground font-medium">
+                                            {ct.teamUnit.primaryContact || '—'}
+                                        </span>
+                                    </p>
+                                    {ct.teamUnit.capacityNotes && (
+                                        <p className="text-foreground leading-relaxed">
+                                            {ct.teamUnit.capacityNotes}
+                                        </p>
+                                    )}
+                                </>
+                            ) : ct.staff ? (
                                 <>
                                     <p>
                                         Email: <span className="text-foreground font-medium">{ct.staff.email}</span>

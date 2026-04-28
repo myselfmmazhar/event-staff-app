@@ -69,8 +69,17 @@ export function OpenAssignmentsView() {
     selectedEventStatuses,
   } = useAssignmentsFilters();
 
-  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [includeAlreadyInvited, setIncludeAlreadyInvited] = useState(false);
+
+  // Selection comes from the search table as rowIds (`INDIVIDUAL:<staffId>` or `TEAM:...`).
+  // This view only supports individual selections — strip the prefix to recover staffIds.
+  const selectedStaffIds = selectedRowIds
+    .filter((id) => id.startsWith('INDIVIDUAL:'))
+    .map((id) => id.slice('INDIVIDUAL:'.length));
+  const setSelectedStaffIds = (ids: string[]) => {
+    setSelectedRowIds(ids.map((id) => `INDIVIDUAL:${id}`));
+  };
 
   // Fetch open assignments (needs staff)
   const { data, isLoading } = trpc.callTime.getAll.useQuery({
@@ -357,9 +366,9 @@ export function OpenAssignmentsView() {
 
             <div className="overflow-x-auto">
               <StaffSearchTable
-                staff={staffData?.data || []}
-                selectedIds={selectedStaffIds}
-                onSelectionChange={setSelectedStaffIds}
+                rows={(staffData?.data as any) || []}
+                selectedRowIds={selectedRowIds}
+                onSelectionChange={setSelectedRowIds}
                 isLoading={isLoadingStaff}
               />
             </div>
