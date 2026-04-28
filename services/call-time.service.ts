@@ -473,30 +473,16 @@ export class CallTimeService {
       });
     }
 
-    // Use the first call time for primary context (distance, location match)
     const primaryCallTime = callTimes[0]!;
-
-    // When distance filter is active, we need to fetch more and post-filter
-    const hasDistanceFilter =
-      input.maxDistance &&
-      primaryCallTime.event.latitude &&
-      primaryCallTime.event.longitude;
+    const wantIndividuals = input.userType !== 'TEAM';
+    const wantTeams = input.userType !== 'INDIVIDUAL';
     const page = input.page ?? 1;
     const limit = input.limit ?? 20;
-    const skip = hasDistanceFilter ? 0 : (page - 1) * limit;
-    const take = hasDistanceFilter ? 1000 : limit; // Fetch more for post-query distance filtering
+    const KM_TO_MILES = 0.621371;
+    const eventLat = primaryCallTime.event.latitude as number | null;
+    const eventLng = primaryCallTime.event.longitude as number | null;
 
-    // Build exclusion list: anybody invited to ANY of these call times
-    let excludeStaffIds: string[] = [];
-    if (!input.includeAlreadyInvited) {
-      const allStaffIds = new Set<string>();
-      callTimes.forEach((ct) => {
-        ct.invitations.forEach((inv) => allStaffIds.add(inv.staffId));
-      });
-      excludeStaffIds = Array.from(allStaffIds);
-    }
-
-    // Skill level filter: use highest requirement among all selected
+    // Skill level filter: highest requirement among selected call times
     let skillLevelFilter: SkillLevel[];
     if (input.skillLevels && input.skillLevels.length > 0) {
       skillLevelFilter = input.skillLevels;
@@ -511,56 +497,68 @@ export class CallTimeService {
         .map(([name]) => name);
     }
 
-    // Build staff query
-    const where: Prisma.StaffWhereInput = {
-      // Has at least one of the required services
-      ...(callTimes.some((ct) => ct.serviceId) && {
-        services: {
-          some: {
-            serviceId: {
-              in: callTimes.map((ct) => ct.serviceId).filter(Boolean) as string[],
-            },
-          },
-        },
-      }),
-      // Skill level filter
-      skillLevel: { in: skillLevelFilter },
-      // Active account
-      accountStatus: 'ACTIVE',
-      // Multi-select filters
-      ...(input.ratings && input.ratings.length > 0 && { staffRating: { in: input.ratings } }),
-      ...(input.availabilityStatuses &&
-        input.availabilityStatuses.length > 0 && {
-        availabilityStatus: { in: input.availabilityStatuses },
-      }),
-      // Availability filter (Time Off Check) - based on primary call time
-      ...(primaryCallTime.startDate &&
-        primaryCallTime.endDate &&
-        !input.includeAlreadyInvited
-        ? {
-          NOT: {
-            AND: [
-              { availabilityStatus: 'TIME_OFF' },
-              {
-                OR: [
-                  {
-                    timeOffStart: { lte: primaryCallTime.endDate as Date },
-                    timeOffEnd: { gte: primaryCallTime.startDate as Date },
-                  },
-                ],
-              },
-            ],
-          },
-        }
-        : {}),
-      // Exclude already invited (if requested)
-      ...(excludeStaffIds.length > 0 && {
-        id: { notIn: excludeStaffIds },
-      }),
+    const computeDistance = (lat: number | null, lng: number | null): number | null => {
+      if (eventLat && eventLng && lat && lng) {
+        const km = calculateDistance(eventLat, eventLng, lat, lng);
+        return Math.round(km * KM_TO_MILES * 10) / 10;
+      }
+      return null;
     };
 
-    const [staff, total] = await Promise.all([
-      this.prisma.staff.findMany({
+    // ── INDIVIDUAL ROWS ────────────────────────────────────────────────
+    let individualRows: any[] = [];
+    if (wantIndividuals) {
+      // Build exclusion list: individuals already invited to ANY of these call times
+      let excludeStaffIds: string[] = [];
+      if (!input.includeAlreadyInvited) {
+        const allStaffIds = new Set<string>();
+        callTimes.forEach((ct) => {
+          ct.invitations.forEach((inv) => allStaffIds.add(inv.staffId));
+        });
+        excludeStaffIds = Array.from(allStaffIds);
+      }
+
+      const where: Prisma.StaffWhereInput = {
+        staffRole: 'INDIVIDUAL',
+        ...(callTimes.some((ct) => ct.serviceId) && {
+          services: {
+            some: {
+              serviceId: {
+                in: callTimes.map((ct) => ct.serviceId).filter(Boolean) as string[],
+              },
+            },
+          },
+        }),
+        skillLevel: { in: skillLevelFilter },
+        accountStatus: 'ACTIVE',
+        ...(input.ratings && input.ratings.length > 0 && { staffRating: { in: input.ratings } }),
+        ...(input.availabilityStatuses &&
+          input.availabilityStatuses.length > 0 && {
+          availabilityStatus: { in: input.availabilityStatuses },
+        }),
+        ...(primaryCallTime.startDate &&
+          primaryCallTime.endDate &&
+          !input.includeAlreadyInvited
+          ? {
+            NOT: {
+              AND: [
+                { availabilityStatus: 'TIME_OFF' },
+                {
+                  OR: [
+                    {
+                      timeOffStart: { lte: primaryCallTime.endDate as Date },
+                      timeOffEnd: { gte: primaryCallTime.startDate as Date },
+                    },
+                  ],
+                },
+              ],
+            },
+          }
+          : {}),
+        ...(excludeStaffIds.length > 0 && { id: { notIn: excludeStaffIds } }),
+      };
+
+      const staff = await this.prisma.staff.findMany({
         where,
         select: {
           id: true,
@@ -583,13 +581,10 @@ export class CallTimeService {
           services: {
             include: { service: { select: { id: true, title: true } } },
           },
-          // Fetch call time invitations for invitation status + conflict detection
           callTimeInvitations: {
             where: {
               OR: [
-                // Any of these call times' invitations (for status display)
                 { callTimeId: { in: callTimeIds } },
-                // Overlapping confirmed assignments (for conflict detection)
                 ...(primaryCallTime.startDate && primaryCallTime.endDate
                   ? [
                     {
@@ -627,93 +622,283 @@ export class CallTimeService {
           { skillLevel: 'desc' },
           { lastName: 'asc' },
         ],
-        skip,
-        take,
-      }),
-      this.prisma.staff.count({ where }),
-    ]);
+      });
 
-    // Convert km to miles helper
-    const KM_TO_MILES = 0.621371;
+      individualRows = staff.map((s) => {
+        const distanceMiles = computeDistance(s.latitude, s.longitude);
+        const allInvitations = (s as any).callTimeInvitations || [];
+        const thisInvitation = allInvitations.find((inv: any) =>
+          callTimeIds.includes(inv.callTimeId)
+        ) || null;
+        const conflicts = allInvitations
+          .filter(
+            (inv: any) =>
+              !callTimeIds.includes(inv.callTimeId) &&
+              inv.isConfirmed &&
+              inv.status === 'ACCEPTED'
+          )
+          .map((inv: any) => ({
+            eventTitle: inv.callTime.event.title,
+            startDate: inv.callTime.startDate,
+            endDate: inv.callTime.endDate,
+            startTime: (inv.callTime as any).startTime,
+            endTime: (inv.callTime as any).endTime,
+            city: (inv.callTime.event as any).city,
+            state: (inv.callTime.event as any).state,
+          }));
 
-    // Enrich with distance, location match, and invitation status
-    const eventLat = primaryCallTime.event.latitude as number | null;
-    const eventLng = primaryCallTime.event.longitude as number | null;
-
-    let enrichedStaff = staff.map((s) => {
-      // Calculate distance in miles if both event and staff have coordinates
-      let distanceMiles: number | null = null;
-      if (eventLat && eventLng && s.latitude && s.longitude) {
-        const distanceKm = calculateDistance(eventLat, eventLng, s.latitude, s.longitude);
-        distanceMiles = Math.round(distanceKm * KM_TO_MILES * 10) / 10; // 1 decimal
-      }
-
-      // Extract invitation status and conflicts from callTimeInvitations
-      const allInvitations = (s as any).callTimeInvitations || [];
-
-      // Invitation for ANY of these call times (pick the first one found for status display)
-      const thisInvitation = allInvitations.find((inv: any) =>
-        callTimeIds.includes(inv.callTimeId)
-      ) || null;
-
-      // Conflicts from OTHER overlapping call times (confirmed assignments, excluding current batch)
-      const conflicts = allInvitations
-        .filter(
-          (inv: any) =>
-            !callTimeIds.includes(inv.callTimeId) &&
-            inv.isConfirmed &&
-            inv.status === 'ACCEPTED'
-        )
-        .map((inv: any) => ({
-          eventTitle: inv.callTime.event.title,
-          startDate: inv.callTime.startDate,
-          endDate: inv.callTime.endDate,
-          startTime: (inv.callTime as any).startTime,
-          endTime: (inv.callTime as any).endTime,
-          city: (inv.callTime.event as any).city,
-          state: (inv.callTime.event as any).state,
-        }));
-
-      return {
-        ...s,
-        distanceMiles,
-        locationMatch: this.calculateLocationMatch(s, primaryCallTime.event),
-        invitationStatus: thisInvitation?.status || null,
-        invitationConfirmed: thisInvitation?.isConfirmed || false,
-        hasConflict: conflicts.length > 0,
-        conflicts,
-      };
-    });
-
-    // Apply distance filter (post-query since it's calculated)
-    if (hasDistanceFilter && input.maxDistance) {
-      enrichedStaff = enrichedStaff.filter((s) => {
-        if (s.distanceMiles === null) return true; // Keep staff without coords (show at bottom)
-        return s.distanceMiles <= input.maxDistance!;
+        return {
+          ...s,
+          kind: 'INDIVIDUAL' as const,
+          rowId: `INDIVIDUAL:${s.id}`,
+          serviceId: null,
+          managerStaffId: null,
+          totalUnits: 1,
+          availableUnits: 1,
+          distanceMiles,
+          locationMatch: this.calculateLocationMatch(s, primaryCallTime.event),
+          invitationStatus: thisInvitation?.status || null,
+          invitationConfirmed: thisInvitation?.isConfirmed || false,
+          hasConflict: conflicts.length > 0,
+          conflicts,
+        };
       });
     }
 
-    // Sort: distance first if available, then location match
-    enrichedStaff.sort((a, b) => {
-      // Staff with distance come first, then without
+    // ── TEAM MANAGER ROWS ─────────────────────────────────────────────
+    let teamRows: any[] = [];
+    if (wantTeams) {
+      const taskServiceIds = callTimes
+        .map((ct) => ct.serviceId)
+        .filter(Boolean) as string[];
+
+      if (taskServiceIds.length > 0) {
+        const units = await this.prisma.teamUnit.findMany({
+          where: {
+            status: 'ACTIVE',
+            serviceId: { in: taskServiceIds },
+            staff: { accountStatus: 'ACTIVE', staffRole: 'TEAM' },
+          },
+          select: {
+            id: true,
+            unitId: true,
+            unitName: true,
+            serviceId: true,
+            staffId: true,
+            service: { select: { id: true, title: true } },
+            staff: {
+              select: {
+                id: true,
+                staffId: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                skillLevel: true,
+                availabilityStatus: true,
+                staffRating: true,
+                city: true,
+                state: true,
+                country: true,
+                latitude: true,
+                longitude: true,
+                internalNotes: true,
+                userId: true,
+                hasLoginAccess: true,
+              },
+            },
+          },
+        });
+
+        // Group by (managerStaffId, serviceId)
+        type Group = {
+          managerStaff: typeof units[number]['staff'];
+          service: typeof units[number]['service'];
+          unitIds: string[];
+        };
+        const groups = new Map<string, Group>();
+        for (const u of units) {
+          if (!u.serviceId) continue;
+          const key = `${u.staffId}:${u.serviceId}`;
+          let g = groups.get(key);
+          if (!g) {
+            g = { managerStaff: u.staff, service: u.service, unitIds: [] };
+            groups.set(key, g);
+          }
+          g.unitIds.push(u.id);
+        }
+
+        // Fetch all live invitations for these managers, scoped to relevant services
+        const managerIds = Array.from(
+          new Set(Array.from(groups.values()).map((g) => g.managerStaff.id))
+        );
+        const liveInvitations = managerIds.length > 0
+          ? await this.prisma.callTimeInvitation.findMany({
+            where: {
+              staffId: { in: managerIds },
+              invitedAsTeam: true,
+              status: { notIn: ['CANCELLED', 'DECLINED'] },
+              callTime: { serviceId: { in: taskServiceIds } },
+            },
+            select: {
+              id: true,
+              staffId: true,
+              teamUnitId: true,
+              callTimeId: true,
+              status: true,
+              callTime: {
+                select: {
+                  id: true,
+                  serviceId: true,
+                  endDate: true,
+                  endTime: true,
+                  event: { select: { title: true, city: true, state: true } },
+                  startDate: true,
+                  startTime: true,
+                },
+              },
+              timeEntry: { select: { clockOut: true } },
+            },
+          })
+          : [];
+
+        const now = new Date();
+        const isInvitationActive = (inv: typeof liveInvitations[number]): boolean => {
+          // Cancelled/declined already filtered. If clocked out, the work is done.
+          if (inv.timeEntry?.clockOut) return false;
+          const ct = inv.callTime;
+          if (!ct.endDate) return true; // UBD — still active
+          const end = new Date(ct.endDate);
+          if (ct.endTime) {
+            const [hh, mm] = ct.endTime.split(':').map(Number);
+            end.setHours(hh ?? 23, mm ?? 59, 59, 999);
+          } else {
+            end.setHours(23, 59, 59, 999);
+          }
+          return end.getTime() > now.getTime();
+        };
+
+        teamRows = Array.from(groups.entries()).map(([_, g]) => {
+          const m = g.managerStaff;
+          const totalUnits = g.unitIds.length;
+
+          // Live invitations for this manager+service
+          const live = liveInvitations.filter(
+            (inv) =>
+              inv.staffId === m.id &&
+              inv.callTime.serviceId === g.service?.id &&
+              isInvitationActive(inv)
+          );
+
+          // Bound units: invitation has teamUnitId set
+          const boundUnitIds = new Set(
+            live
+              .filter((inv) => inv.teamUnitId && g.unitIds.includes(inv.teamUnitId))
+              .map((inv) => inv.teamUnitId as string)
+          );
+          // Pending reservations (invitation sent, manager hasn't picked a unit)
+          const reservationCount = live.filter((inv) => !inv.teamUnitId).length;
+
+          const tied = boundUnitIds.size + reservationCount;
+          const availableUnits = Math.max(0, totalUnits - tied);
+
+          // Invitation status for THIS task (any of the manager's invitations for any of these callTimeIds)
+          const thisInv = liveInvitations.find(
+            (inv) => inv.staffId === m.id && callTimeIds.includes(inv.callTimeId)
+          );
+          // hasConflict for team rows: count of bound-unit-tied invitations (just informational; doesn't block selection)
+          const conflicts = live
+            .filter((inv) => !callTimeIds.includes(inv.callTimeId))
+            .map((inv) => ({
+              eventTitle: inv.callTime.event.title,
+              startDate: inv.callTime.startDate,
+              endDate: inv.callTime.endDate,
+              startTime: (inv.callTime as any).startTime,
+              endTime: (inv.callTime as any).endTime,
+              city: (inv.callTime.event as any).city,
+              state: (inv.callTime.event as any).state,
+            }));
+
+          return {
+            id: m.id,
+            staffId: m.staffId,
+            firstName: m.firstName,
+            lastName: m.lastName,
+            email: m.email,
+            phone: m.phone,
+            skillLevel: m.skillLevel,
+            availabilityStatus: m.availabilityStatus,
+            staffRating: m.staffRating,
+            city: m.city,
+            state: m.state,
+            country: m.country,
+            internalNotes: m.internalNotes,
+            userId: m.userId,
+            hasLoginAccess: m.hasLoginAccess,
+            services: g.service ? [{ service: g.service }] : [],
+            kind: 'TEAM' as const,
+            rowId: `TEAM:${m.id}:${g.service?.id ?? ''}`,
+            serviceId: g.service?.id ?? null,
+            serviceTitle: g.service?.title ?? null,
+            managerStaffId: m.id,
+            totalUnits,
+            availableUnits,
+            distanceMiles: computeDistance(m.latitude, m.longitude),
+            locationMatch: this.calculateLocationMatch(m, primaryCallTime.event),
+            invitationStatus: thisInv?.status || null,
+            invitationConfirmed: false,
+            hasConflict: conflicts.length > 0,
+            conflicts,
+          };
+        });
+
+        // Apply rating filter on team-manager rows (manager's own rating)
+        if (input.ratings && input.ratings.length > 0) {
+          teamRows = teamRows.filter((r) =>
+            input.ratings!.includes(r.staffRating)
+          );
+        }
+
+        // Hide team rows where ALL units are tied unless includeAlreadyInvited
+        if (!input.includeAlreadyInvited) {
+          teamRows = teamRows.filter((r) => r.availableUnits > 0);
+        }
+      }
+    }
+
+    // ── COMBINE + FILTER + SORT + PAGINATE ─────────────────────────────
+    let combined = [...individualRows, ...teamRows];
+
+    // Available Units exact-count filter (applies to both kinds)
+    if (input.availableUnits !== undefined) {
+      combined = combined.filter((r) => r.availableUnits === input.availableUnits);
+    }
+
+    // Distance filter (post-query since it's calculated)
+    if (input.maxDistance && eventLat && eventLng) {
+      combined = combined.filter((r) => {
+        if (r.distanceMiles === null) return true;
+        return r.distanceMiles <= input.maxDistance!;
+      });
+    }
+
+    // Sort: distance asc; then locationMatch desc; INDIVIDUAL before TEAM as tiebreaker
+    combined.sort((a, b) => {
       if (a.distanceMiles !== null && b.distanceMiles !== null) {
         return a.distanceMiles - b.distanceMiles;
       }
       if (a.distanceMiles !== null && b.distanceMiles === null) return -1;
       if (a.distanceMiles === null && b.distanceMiles !== null) return 1;
-      // Fall back to location match
-      return b.locationMatch - a.locationMatch;
+      if (b.locationMatch !== a.locationMatch) return b.locationMatch - a.locationMatch;
+      return a.kind === b.kind ? 0 : a.kind === 'INDIVIDUAL' ? -1 : 1;
     });
 
-    // Apply pagination for distance-filtered results
-    const paginatedTotal = hasDistanceFilter ? enrichedStaff.length : total;
-    const paginatedData = hasDistanceFilter
-      ? enrichedStaff.slice((page - 1) * limit, page * limit)
-      : enrichedStaff;
+    const total = combined.length;
+    const paginated = combined.slice((page - 1) * limit, page * limit);
 
     return {
-      data: paginatedData,
-      meta: { total: paginatedTotal, page, limit, totalPages: Math.ceil(paginatedTotal / limit) },
+      data: paginated,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -756,14 +941,51 @@ export class CallTimeService {
 
     const invitations: any[] = [];
     const resendExisting = input.resendExisting ?? false;
+    const staffIds = input.staffIds ?? [];
+    const teamSelections = input.teamSelections ?? [];
 
-    // Loop through each assignment and each staff member
-    for (const ct of callTimes) {
+    const invitationInclude = {
+      staff: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          userId: true,
+        },
+      },
+      callTime: {
+        include: {
+          service: true,
+          event: {
+            select: {
+              id: true,
+              title: true,
+              venueName: true,
+              city: true,
+              state: true,
+              description: true,
+              requirements: true,
+              preEventInstructions: true,
+              privateComments: true,
+            },
+          },
+        },
+      },
+    } as const;
+
+    const newToken = () =>
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15);
+
+    // ── INDIVIDUAL invitations (existing flow) ─────────────────────────
+    for (const ct of staffIds.length > 0 ? callTimes : []) {
       // Get existing invitations for THIS assignment
       const existingInvitations = await this.prisma.callTimeInvitation.findMany({
         where: {
           callTimeId: ct.id,
-          staffId: { in: input.staffIds },
+          staffId: { in: staffIds },
+          invitedAsTeam: false,
         },
         include: {
           staff: {
@@ -797,17 +1019,14 @@ export class CallTimeService {
       });
 
       const existingStaffIds = existingInvitations.map((inv) => inv.staffId);
-      const newStaffIds = input.staffIds.filter(
+      const newStaffIds = staffIds.filter(
         (id) => !existingStaffIds.includes(id)
       );
 
       // Handle existing invitations if re-sending requested
       if (resendExisting) {
         for (const invitation of existingInvitations) {
-          // If already accepted and confirmed, no need to resend
           if (invitation.status === 'ACCEPTED' && invitation.isConfirmed) continue;
-
-          // Update existing to pending for re-invitation
           const updated = await this.prisma.callTimeInvitation.update({
             where: { id: invitation.id },
             data: {
@@ -816,38 +1035,10 @@ export class CallTimeService {
               declineReason: null,
               isConfirmed: false,
               confirmedAt: null,
-              createdAt: new Date(), // Refresh the timestamp
-              responseToken: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+              createdAt: new Date(),
+              responseToken: newToken(),
             },
-            include: {
-              staff: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  userId: true,
-                },
-              },
-              callTime: {
-                include: {
-                  service: true,
-                  event: {
-                    select: {
-                      id: true,
-                      title: true,
-                      venueName: true,
-                      city: true,
-                      state: true,
-                      description: true,
-                      requirements: true,
-                      preEventInstructions: true,
-                      privateComments: true,
-                    },
-                  },
-                },
-              },
-            },
+            include: invitationInclude,
           });
           invitations.push(updated);
         }
@@ -855,58 +1046,118 @@ export class CallTimeService {
 
       // Create new invitations for THIS assignment
       const newInvitations = await Promise.all(
-        newStaffIds.map(async (staffId) => {
-          return this.prisma.callTimeInvitation.create({
+        newStaffIds.map((sid) =>
+          this.prisma.callTimeInvitation.create({
             data: {
               callTimeId: ct.id,
-              staffId,
+              staffId: sid,
               status: 'PENDING',
-              responseToken: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+              responseToken: newToken(),
             },
-            include: {
-              staff: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  userId: true,
-                },
-              },
-              callTime: {
-                include: {
-                  service: true,
-                  event: {
-                    select: {
-                      id: true,
-                      title: true,
-                      venueName: true,
-                      city: true,
-                      state: true,
-                      description: true,
-                      requirements: true,
-                      preEventInstructions: true,
-                      privateComments: true,
-                    },
-                  },
-                },
-              },
-            },
-          });
-        })
+            include: invitationInclude,
+          })
+        )
       );
       invitations.push(...newInvitations);
     }
 
+    // ── TEAM-MANAGER invitations ───────────────────────────────────────
+    if (teamSelections.length > 0) {
+      for (const ct of callTimes) {
+        const sels = teamSelections.filter((ts) => ts.serviceId === ct.serviceId);
+        if (sels.length === 0) continue;
+
+        // Slots already taken on this CallTime by ANY non-cancelled/declined invitation
+        const usedSlots = await this.prisma.callTimeInvitation.count({
+          where: {
+            callTimeId: ct.id,
+            status: { notIn: ['CANCELLED', 'DECLINED'] },
+          },
+        });
+        let remainingSlots = Math.max(0, ct.numberOfStaffRequired - usedSlots);
+
+        for (const sel of sels) {
+          if (remainingSlots <= 0) break;
+
+          const totalUnits = await this.prisma.teamUnit.count({
+            where: {
+              status: 'ACTIVE',
+              serviceId: sel.serviceId,
+              staffId: sel.managerStaffId,
+            },
+          });
+
+          const liveInvs = await this.prisma.callTimeInvitation.findMany({
+            where: {
+              staffId: sel.managerStaffId,
+              invitedAsTeam: true,
+              status: { notIn: ['CANCELLED', 'DECLINED'] },
+              callTime: { serviceId: sel.serviceId },
+            },
+            select: {
+              id: true,
+              teamUnitId: true,
+              callTime: { select: { endDate: true, endTime: true } },
+              timeEntry: { select: { clockOut: true } },
+            },
+          });
+
+          const now = new Date();
+          const isLive = (inv: typeof liveInvs[number]) => {
+            if (inv.timeEntry?.clockOut) return false;
+            if (!inv.callTime.endDate) return true;
+            const end = new Date(inv.callTime.endDate);
+            if (inv.callTime.endTime) {
+              const [hh, mm] = inv.callTime.endTime.split(':').map(Number);
+              end.setHours(hh ?? 23, mm ?? 59, 59, 999);
+            } else {
+              end.setHours(23, 59, 59, 999);
+            }
+            return end.getTime() > now.getTime();
+          };
+          const live = liveInvs.filter(isLive);
+          const boundUnits = new Set(
+            live.filter((i) => i.teamUnitId).map((i) => i.teamUnitId as string)
+          );
+          const reservations = live.filter((i) => !i.teamUnitId).length;
+          const tied = boundUnits.size + reservations;
+          const availableUnits = Math.max(0, totalUnits - tied);
+
+          const n = Math.min(remainingSlots, availableUnits);
+          if (n <= 0) continue;
+
+          for (let i = 0; i < n; i++) {
+            const created = await this.prisma.callTimeInvitation.create({
+              data: {
+                callTimeId: ct.id,
+                staffId: sel.managerStaffId,
+                invitedAsTeam: true,
+                teamUnitId: null,
+                status: 'PENDING',
+                responseToken: newToken(),
+              },
+              include: invitationInclude,
+            });
+            invitations.push(created);
+          }
+          remainingSlots -= n;
+        }
+      }
+    }
+
     if (invitations.length === 0) {
-      // If none sent and we are not resending, specialized message
-      if (!resendExisting) {
+      if (!resendExisting && staffIds.length > 0) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'All selected staff have already been invited to these assignments',
         });
       }
-      
+      if (teamSelections.length > 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'No team-unit slots available for the selected manager(s)',
+        });
+      }
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: 'No staff available for re-invitation (already confirmed)',
@@ -1116,10 +1367,9 @@ export class CallTimeService {
 
     for (const ct of callTimes) {
       for (const staffId of input.staffIds) {
-        let inv = await this.prisma.callTimeInvitation.findUnique({
-          where: {
-            callTimeId_staffId: { callTimeId: ct.id, staffId },
-          },
+        // assign-on-behalf is individual-only; match invitations not tied to any TeamUnit.
+        let inv = await this.prisma.callTimeInvitation.findFirst({
+          where: { callTimeId: ct.id, staffId, teamUnitId: null },
           include: invitationInclude,
         });
 
@@ -2553,11 +2803,24 @@ export class CallTimeService {
     }
 
     if (invitation.status !== 'PENDING') {
-      return { 
-        status: invitation.status, 
+      return {
+        status: invitation.status,
         alreadyResponded: true,
         eventTitle: invitation.callTime.event.title,
-        positionName: invitation.callTime.service?.title || 'Staff'
+        positionName: invitation.callTime.service?.title || 'Staff',
+        isTeamInvitation: invitation.invitedAsTeam,
+        needsUnitSelection: false,
+      };
+    }
+
+    // Team-manager invitation: accept requires picking a TeamUnit, so signal back to caller.
+    if (action === 'accept' && invitation.invitedAsTeam && !invitation.teamUnitId) {
+      return {
+        status: invitation.status,
+        eventTitle: invitation.callTime.event.title,
+        positionName: invitation.callTime.service?.title || 'Staff',
+        isTeamInvitation: true,
+        needsUnitSelection: true,
       };
     }
 
@@ -2575,11 +2838,13 @@ export class CallTimeService {
         },
         staff: invitation.staff,
       });
-      return { 
-        status: updated.status, 
+      return {
+        status: updated.status,
         isConfirmed: updated.isConfirmed,
         eventTitle: updated.callTime.event.title,
-        positionName: updated.callTime.service?.title || 'Staff'
+        positionName: updated.callTime.service?.title || 'Staff',
+        isTeamInvitation: invitation.invitedAsTeam,
+        needsUnitSelection: false,
       };
     } else {
       const triggerService = getNotificationTriggerService(this.prisma);
@@ -2607,11 +2872,230 @@ export class CallTimeService {
         }
       );
 
-      return { 
+      return {
         status: 'DECLINED',
         eventTitle: updated.callTime.event.title,
         positionName: updated.callTime.service?.title || 'Staff'
       };
     }
+  }
+
+  /**
+   * Look up a team-manager invitation by token and list the manager's
+   * eligible TeamUnits (active, matching the call-time's service, currently
+   * available — i.e. not already tied to another live invitation).
+   * Used by the public team-acceptance page (Phase 6).
+   */
+  async getTeamInvitationByToken(token: string) {
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { responseToken: token },
+      include: {
+        callTime: {
+          include: {
+            service: true,
+            event: { select: { id: true, title: true, venueName: true, city: true, state: true } },
+          },
+        },
+        staff: { select: { id: true, firstName: true, lastName: true, staffRole: true } },
+      },
+    });
+
+    if (!invitation) throw new TRPCError({ code: 'NOT_FOUND', message: 'Invalid invitation token' });
+    if (!invitation.invitedAsTeam) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Not a team invitation' });
+    }
+
+    const ct = invitation.callTime;
+    const serviceId = ct.serviceId;
+
+    const allUnits = serviceId
+      ? await this.prisma.teamUnit.findMany({
+        where: {
+          status: 'ACTIVE',
+          serviceId,
+          staffId: invitation.staffId,
+        },
+        select: {
+          id: true,
+          unitId: true,
+          unitName: true,
+          primaryContact: true,
+          capacityNotes: true,
+        },
+      })
+      : [];
+
+    // Compute live invitations to identify which units are currently tied
+    const liveInvs = serviceId
+      ? await this.prisma.callTimeInvitation.findMany({
+        where: {
+          staffId: invitation.staffId,
+          invitedAsTeam: true,
+          status: { notIn: ['CANCELLED', 'DECLINED'] },
+          callTime: { serviceId },
+          // Ignore the current invitation when computing what's tied
+          NOT: { id: invitation.id },
+        },
+        select: {
+          id: true,
+          teamUnitId: true,
+          callTime: { select: { endDate: true, endTime: true } },
+          timeEntry: { select: { clockOut: true } },
+        },
+      })
+      : [];
+
+    const now = new Date();
+    const isLive = (inv: typeof liveInvs[number]) => {
+      if (inv.timeEntry?.clockOut) return false;
+      if (!inv.callTime.endDate) return true;
+      const end = new Date(inv.callTime.endDate);
+      if (inv.callTime.endTime) {
+        const [hh, mm] = inv.callTime.endTime.split(':').map(Number);
+        end.setHours(hh ?? 23, mm ?? 59, 59, 999);
+      } else {
+        end.setHours(23, 59, 59, 999);
+      }
+      return end.getTime() > now.getTime();
+    };
+    const liveBoundUnitIds = new Set(
+      liveInvs.filter(isLive).filter((i) => i.teamUnitId).map((i) => i.teamUnitId as string)
+    );
+
+    const units = allUnits.map((u) => ({
+      ...u,
+      available: !liveBoundUnitIds.has(u.id),
+    }));
+
+    return {
+      invitation: {
+        id: invitation.id,
+        status: invitation.status,
+        isConfirmed: invitation.isConfirmed,
+        teamUnitId: invitation.teamUnitId,
+      },
+      manager: invitation.staff,
+      callTime: {
+        id: ct.id,
+        startDate: ct.startDate,
+        startTime: ct.startTime,
+        endDate: ct.endDate,
+        endTime: ct.endTime,
+        numberOfStaffRequired: ct.numberOfStaffRequired,
+        service: ct.service,
+        event: ct.event,
+      },
+      units,
+    };
+  }
+
+  /**
+   * Manager accepts a team invitation and binds it to a specific TeamUnit.
+   * Validates that the unit belongs to them, matches the service, is ACTIVE,
+   * and is not already tied to another live invitation.
+   */
+  async acceptTeamInvitationByToken(token: string, teamUnitId: string) {
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { responseToken: token },
+      include: {
+        callTime: {
+          include: {
+            service: true,
+            event: { select: { id: true, title: true, createdBy: true } },
+          },
+        },
+        staff: { select: { id: true, firstName: true, lastName: true, userId: true } },
+      },
+    });
+
+    if (!invitation) throw new TRPCError({ code: 'NOT_FOUND', message: 'Invalid invitation token' });
+    if (!invitation.invitedAsTeam) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Not a team invitation' });
+    }
+    if (invitation.status !== 'PENDING') {
+      return {
+        status: invitation.status,
+        alreadyResponded: true,
+        eventTitle: invitation.callTime.event.title,
+        positionName: invitation.callTime.service?.title || 'Staff',
+      };
+    }
+
+    // Validate the chosen unit
+    const unit = await this.prisma.teamUnit.findFirst({
+      where: {
+        id: teamUnitId,
+        status: 'ACTIVE',
+        staffId: invitation.staffId,
+        serviceId: invitation.callTime.serviceId,
+      },
+    });
+    if (!unit) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Selected team unit is not eligible for this assignment',
+      });
+    }
+
+    // Make sure the unit is not already tied to another live invitation
+    const conflict = await this.prisma.callTimeInvitation.findFirst({
+      where: {
+        teamUnitId: unit.id,
+        status: { notIn: ['CANCELLED', 'DECLINED'] },
+        NOT: { id: invitation.id },
+      },
+      select: {
+        id: true,
+        callTime: { select: { endDate: true, endTime: true } },
+        timeEntry: { select: { clockOut: true } },
+      },
+    });
+    if (conflict) {
+      const now = new Date();
+      const end = conflict.callTime.endDate ? new Date(conflict.callTime.endDate) : null;
+      if (end) {
+        if (conflict.callTime.endTime) {
+          const [hh, mm] = conflict.callTime.endTime.split(':').map(Number);
+          end.setHours(hh ?? 23, mm ?? 59, 59, 999);
+        } else {
+          end.setHours(23, 59, 59, 999);
+        }
+      }
+      const stillLive = !conflict.timeEntry?.clockOut && (!end || end.getTime() > now.getTime());
+      if (stillLive) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This team unit is already assigned to another active task',
+        });
+      }
+    }
+
+    // Bind the unit, then run the standard accept-with-slot logic
+    await this.prisma.callTimeInvitation.update({
+      where: { id: invitation.id },
+      data: { teamUnitId: unit.id },
+    });
+
+    const { updated } = await this.runAcceptWithSlotLogicFromInvitation({
+      id: invitation.id,
+      callTimeId: invitation.callTimeId,
+      status: invitation.status,
+      callTime: {
+        id: invitation.callTime.id,
+        eventId: invitation.callTime.eventId,
+        numberOfStaffRequired: invitation.callTime.numberOfStaffRequired,
+        service: invitation.callTime.service,
+        event: invitation.callTime.event,
+      },
+      staff: invitation.staff,
+    });
+
+    return {
+      status: updated.status,
+      isConfirmed: updated.isConfirmed,
+      eventTitle: updated.callTime.event.title,
+      positionName: updated.callTime.service?.title || 'Staff',
+      teamUnitName: unit.unitName,
+    };
   }
 }
