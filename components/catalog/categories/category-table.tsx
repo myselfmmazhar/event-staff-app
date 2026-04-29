@@ -128,14 +128,14 @@ export function CategoryTable({
         </Badge>
       ),
     },
-    {
-      key: 'categoryId',
-      label: 'Category ID',
-      className: 'py-4 px-4 whitespace-nowrap',
-      render: (category) => (
-        <span className="font-mono text-sm text-muted-foreground">{category.categoryId}</span>
-      ),
-    },
+    // {
+    //   key: 'categoryId',
+    //   label: 'Category ID',
+    //   className: 'py-4 px-4 whitespace-nowrap',
+    //   render: (category) => (
+    //     <span className="font-mono text-sm text-muted-foreground">{category.categoryId}</span>
+    //   ),
+    // },
     {
       key: 'requirementType',
       label: 'Collection',
@@ -179,7 +179,7 @@ export function CategoryTable({
       <div key={category.id} className="bg-card rounded-lg border border-border p-4 space-y-3">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <div className="font-mono text-xs text-muted-foreground mb-1">{category.categoryId}</div>
+            {/* <div className="font-mono text-xs text-muted-foreground mb-1">{category.categoryId}</div> */}
             <h3 className="font-semibold text-card-foreground">{category.name}</h3>
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="secondary" size="sm" asSpan>

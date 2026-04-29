@@ -38,6 +38,7 @@ type Tab = {
 };
 
 const ALL_TABS: Tab[] = [
+  // { id: 'collections', name: 'Collections', href: '/catalog/categories', icon: SquaresIcon },
   { id: 'requirements', name: 'Requirements', href: '/catalog/requirements', icon: ClipboardListIcon },
   { id: 'services', name: 'Services', href: '/catalog/services', icon: WrenchScrewdriverIcon },
   { id: 'products', name: 'Products', href: '/catalog/products', icon: CubeIcon },
@@ -141,7 +142,7 @@ export default function CatalogLayout({ children }: { children: React.ReactNode 
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Catalog Manager</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Manage your organization&apos;s catalog including service categories, individual services, product inventory, and operational locations.
+            Manage your organization&apos;s catalog including service collections, individual services, product inventory, and operational locations.
           </p>
         </div>
 

@@ -36,8 +36,10 @@ export type CallTimeRow = {
         eventId: string;
         title: string;
         venueName: string | null;
+        address: string | null;
         city: string | null;
         state: string | null;
+        zipCode: string | null;
         poNumber: string | null;
         startDate: Date | string | null;
         startTime: string | null;

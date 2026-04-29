@@ -62,6 +62,9 @@ export function AssignmentsSection({
     setMounted(true);
   }, []);
 
+  const [pendingServiceSelect, setPendingServiceSelect] = useState<((service: any) => void) | null>(null);
+  const [pendingProductSelect, setPendingProductSelect] = useState<((product: any) => void) | null>(null);
+
   // Service creation mutation
   const createServiceMutation = trpc.service.create.useMutation({
     onSuccess: (data) => {
@@ -72,6 +75,10 @@ export function AssignmentsSection({
       setShowCreateService(false);
       // Invalidate cache so the new service appears in the dropdown
       utils.service.getAll.invalidate();
+      if (pendingServiceSelect) {
+        pendingServiceSelect(data);
+        setPendingServiceSelect(null);
+      }
     },
     onError: (error) => {
       toast({
@@ -92,6 +99,10 @@ export function AssignmentsSection({
       setShowCreateProduct(false);
       // Invalidate cache so the new product appears in the dropdown
       utils.product.getAll.invalidate();
+      if (pendingProductSelect) {
+        pendingProductSelect(data);
+        setPendingProductSelect(null);
+      }
     },
     onError: (error) => {
       toast({
@@ -312,8 +323,14 @@ export function AssignmentsSection({
                 onSave={handleSaveAssignment}
                 onCancel={handleCancelForm}
                 onLiveChange={editingAssignment ? setLivePreviewAssignment : undefined}
-                onCreateService={() => setShowCreateService(true)}
-                onCreateProduct={() => setShowCreateProduct(true)}
+                onCreateService={(onSelect) => {
+                  if (onSelect) setPendingServiceSelect(() => onSelect);
+                  setShowCreateService(true);
+                }}
+                onCreateProduct={(onSelect) => {
+                  if (onSelect) setPendingProductSelect(() => onSelect);
+                  setShowCreateProduct(true);
+                }}
                 minDate={minDate}
                 maxDate={maxDate}
                 eventStartTime={eventStartTime}

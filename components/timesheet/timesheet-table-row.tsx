@@ -74,7 +74,7 @@ function invoiceActualRange(tev: CallTimeRow['timeEntry']) {
 }
 
 function invoiceStaffHeadline(row: CallTimeRow, event: CallTimeRow['event'] | undefined): string {
-    const loc = [event?.city, event?.state].filter(Boolean).join(', ');
+    const loc = [event?.venueName, event?.address, event?.city, event?.state, event?.zipCode].filter(Boolean).join(', ');
     if (row.staff) {
         const name = `${row.staff.firstName} ${row.staff.lastName}`.trim();
         return loc ? `${name} (${loc})` : name;
@@ -203,11 +203,14 @@ export function TimesheetTableRow({
             const parsedShiftPrice = shiftPriceManual !== '' ? parseFloat(shiftPriceManual) : null;
             const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
             const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
+            
+            const finalClockIn = clockIn ? new Date(clockIn).toISOString() : null;
+            const finalClockOut = clockOut ? new Date(clockOut).toISOString() : null;
 
             onSaveTimeEntry(
                 ct.id,
-                clockIn || null,
-                clockOut || null,
+                finalClockIn,
+                finalClockOut,
                 breakMins,
                 parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
                 parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined),
@@ -239,10 +242,13 @@ export function TimesheetTableRow({
             const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
             const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
 
+            const finalClockIn = clockIn ? new Date(clockIn).toISOString() : null;
+            const finalClockOut = clockOut ? new Date(clockOut).toISOString() : null;
+
             onSaveTimeEntry(
                 ct.id,
-                clockIn || null,
-                clockOut || null,
+                finalClockIn,
+                finalClockOut,
                 breakMins,
                 parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
                 parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined),
@@ -278,10 +284,13 @@ export function TimesheetTableRow({
             const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
             const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
 
+            const finalClockIn = clockIn ? new Date(clockIn).toISOString() : null;
+            const finalClockOut = clockOut ? new Date(clockOut).toISOString() : null;
+
             onSaveTimeEntry(
                 ct.id,
-                clockIn || null,
-                clockOut || null,
+                finalClockIn,
+                finalClockOut,
                 breakMins,
                 parsedOtCost !== null && !isNaN(parsedOtCost) ? parsedOtCost : (otCostManual === '' ? null : undefined),
                 parsedOtPrice !== null && !isNaN(parsedOtPrice) ? parsedOtPrice : (otPriceManual === '' ? null : undefined),
@@ -683,10 +692,9 @@ export function TimesheetTableRow({
                                     return billRows.map((row, idx) => {
                                         const rowTe = row.timeEntry;
                                         const event = row.event ?? ct.event;
-                                        const loc = [event?.city, event?.state].filter(Boolean).join(', ');
-                                        const staffName = row.staff ? `${row.staff.firstName} ${row.staff.lastName}`.trim() : 'UNASSIGNED';
+                                        const loc = [event?.venueName, event?.address, event?.city, event?.state, event?.zipCode].filter(Boolean).join(', ');
                                         const eventTitle = event?.title || '—';
-                                        const staffMeta = `${staffName}${loc ? ` (${loc})` : ''}`;
+                                        const staffMeta = loc;
 
                                         const actualLine = rowTe?.clockIn 
                                             ? invoiceActualRange(rowTe)
@@ -725,7 +733,7 @@ export function TimesheetTableRow({
                                                     >
                                                         {eventTitle}
                                                     </button>
-                                                    <span className="text-slate-700">| {staffMeta}</span>
+                                                    {staffMeta && <span className="text-slate-700">| {staffMeta}</span>}
                                                 </div>
                                                 <div className="font-semibold text-primary/80">
                                                     {row.service?.title || '—'}

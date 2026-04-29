@@ -44,10 +44,10 @@ interface AssignmentFormProps {
   onCancel: () => void;
   /** Called on each form change for live preview (optional) */
   onLiveChange?: (assignment: Assignment) => void;
-  /** Opens modal to create new service */
-  onCreateService?: () => void;
-  /** Opens modal to create new product */
-  onCreateProduct?: () => void;
+  /** Opens modal to create new service, with optional callback to auto-select it */
+  onCreateService?: (onSelect?: (service: ServiceItem) => void) => void;
+  /** Opens modal to create new product, with optional callback to auto-select it */
+  onCreateProduct?: (onSelect?: (product: ProductItem) => void) => void;
   /** Min date allowed (e.g. event start date) */
   minDate?: string | null;
   /** Max date allowed (e.g. event end date) */
@@ -610,7 +610,7 @@ export function AssignmentForm({
                           size="sm"
                           className="w-full justify-start gap-2"
                           onClick={() => {
-                            onCreateProduct();
+                            onCreateProduct(handleProductSelect);
                             setProductSelectorOpen(false);
                           }}
                         >
@@ -631,7 +631,7 @@ export function AssignmentForm({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={onCreateProduct}
+                  onClick={() => onCreateProduct(handleProductSelect)}
                   disabled={disabled}
                   className="gap-1"
                 >
@@ -751,7 +751,7 @@ export function AssignmentForm({
                           size="sm"
                           className="w-full justify-start gap-2"
                           onClick={() => {
-                            onCreateService();
+                            onCreateService(handleServiceSelect);
                             setServiceSelectorOpen(false);
                           }}
                         >
@@ -772,7 +772,7 @@ export function AssignmentForm({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={onCreateService}
+                  onClick={() => onCreateService(handleServiceSelect)}
                   disabled={disabled}
                   className="gap-1"
                 >
