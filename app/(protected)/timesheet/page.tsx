@@ -632,6 +632,7 @@ export default function TimeManagerPage() {
                 ...inv.callTime,
                 id: inv.id,
                 staff: inv.staff,
+                teamUnit: inv.teamUnit ?? null,
                 timeEntry: inv.timeEntry,
                 invitations: [inv],
             };
@@ -780,6 +781,7 @@ export default function TimeManagerPage() {
                 ...inv.callTime,
                 id: inv.id,
                 staff: inv.staff,
+                teamUnit: inv.teamUnit ?? null,
                 timeEntry: inv.timeEntry,
                 invitations: [inv],
             };
@@ -818,6 +820,7 @@ export default function TimeManagerPage() {
                 ...inv.callTime,
                 id: inv.id,
                 staff: inv.staff,
+                teamUnit: inv.teamUnit ?? null,
                 timeEntry: inv.timeEntry,
                 invitations: [inv],
             };
@@ -873,6 +876,7 @@ export default function TimeManagerPage() {
                 ...inv.callTime,
                 id: inv.id,
                 staff: inv.staff,
+                teamUnit: inv.teamUnit ?? null,
                 timeEntry: inv.timeEntry,
                 invitations: [inv],
             };
@@ -1533,64 +1537,68 @@ export default function TimeManagerPage() {
                             .filter(g => g.eventId === selectedEventId)
                             .map((group, groupIndex) => (
                                 <div key={group.eventId + (group.staffId ? '_' + group.staffId : '')} className="space-y-4">
-                                    {shouldShowDetailHeaderSection(groupIndex) && (
-                                        <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
-                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                                <div className="flex flex-col gap-2 min-w-0 flex-1">
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={clearTimesheetDrillDown}
-                                                        className="h-8 w-fit -ml-2 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
-                                                    >
-                                                        <ChevronLeftIcon className="h-4 w-4 mr-0.5" />
-                                                        Back to Summary
-                                                    </Button>
-                                                    <div className="flex flex-wrap items-center gap-3">
-                                                        <span className="text-xl font-bold tracking-tight text-foreground">{group.eventTitle}</span>
-                                                        <Badge variant="outline" className="shrink-0 text-xs font-medium">{group.eventDisplayId}</Badge>
-                                                    </div>
-                                                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                                                        <span className="inline-flex text-xs font-medium rounded-md border border-border bg-muted/40 px-2.5 py-1 text-foreground">
-                                                            {subTab === 'bill' ? (
-                                                                group.callTimes[0]?.staff
-                                                                    ? `${group.callTimes[0].staff.firstName} ${group.callTimes[0].staff.lastName}`
-                                                                    : 'No Talent'
-                                                            ) : (group.clientName || 'No Client')}
-                                                        </span>
-                                                        <span className="flex flex-wrap items-center gap-1.5">
-                                                            <span className="text-muted-foreground">Location:</span>
-                                                            <span className="font-medium text-foreground">
-                                                                {group.venueName || '—'}
-                                                                {(group.city || group.state) && (
-                                                                    <span className="font-normal text-muted-foreground">
-                                                                        {' '}
-                                                                        ({[group.city, group.state].filter(Boolean).join(', ')})
+                                    {(shouldShowDetailHeaderSection(groupIndex) || shouldShowDetailSummarySection(groupIndex)) && (
+                                        <div className="sticky top-0 z-30 -mx-6 px-6 -mt-6 pt-6 pb-4 bg-background space-y-4">
+                                            {shouldShowDetailHeaderSection(groupIndex) && (
+                                                <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
+                                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                        <div className="flex flex-col gap-2 min-w-0 flex-1">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={clearTimesheetDrillDown}
+                                                                className="h-8 w-fit -ml-2 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
+                                                            >
+                                                                <ChevronLeftIcon className="h-4 w-4 mr-0.5" />
+                                                                Back to Summary
+                                                            </Button>
+                                                            <div className="flex flex-wrap items-center gap-3">
+                                                                <span className="text-xl font-bold tracking-tight text-foreground">{group.eventTitle}</span>
+                                                                <Badge variant="outline" className="shrink-0 text-xs font-medium">{group.eventDisplayId}</Badge>
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                                                <span className="inline-flex text-xs font-medium rounded-md border border-border bg-muted/40 px-2.5 py-1 text-foreground">
+                                                                    {subTab === 'bill' ? (
+                                                                        group.callTimes[0]?.staff
+                                                                            ? `${group.callTimes[0].staff.firstName} ${group.callTimes[0].staff.lastName}`
+                                                                            : 'No Talent'
+                                                                    ) : (group.clientName || 'No Client')}
+                                                                </span>
+                                                                <span className="flex flex-wrap items-center gap-1.5">
+                                                                    <span className="text-muted-foreground">Location:</span>
+                                                                    <span className="font-medium text-foreground">
+                                                                        {group.venueName || '—'}
+                                                                        {(group.city || group.state) && (
+                                                                            <span className="font-normal text-muted-foreground">
+                                                                                {' '}
+                                                                                ({[group.city, group.state].filter(Boolean).join(', ')})
+                                                                            </span>
+                                                                        )}
                                                                     </span>
-                                                                )}
-                                                            </span>
-                                                        </span>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 shrink-0 sm:pt-1">
+                                                            <CallTimeExportDropdown {...getDetailExportProps(group)} />
+                                                            <Button
+                                                                variant="default"
+                                                                size="sm"
+                                                                className="gap-1.5 h-9 px-4 text-sm font-medium"
+                                                                onClick={() => handleEditEvent(group.eventId)}
+                                                            >
+                                                                <EditIcon className="h-3.5 w-3.5" />
+                                                                Edit Tasks
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 shrink-0 sm:pt-1">
-                                                    <CallTimeExportDropdown {...getDetailExportProps(group)} />
-                                                    <Button
-                                                        variant="default"
-                                                        size="sm"
-                                                        className="gap-1.5 h-9 px-4 text-sm font-medium"
-                                                        onClick={() => handleEditEvent(group.eventId)}
-                                                    >
-                                                        <EditIcon className="h-3.5 w-3.5" />
-                                                        Edit Tasks
-                                                    </Button>
-                                                </div>
-                                            </div>
+                                            )}
+                                            {shouldShowDetailSummarySection(groupIndex) && detailSubTabPills}
+                                            {shouldShowDetailSummarySection(groupIndex) && (
+                                                <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} subTab={subTab} />
+                                            )}
                                         </div>
-                                    )}
-                                    {shouldShowDetailSummarySection(groupIndex) && detailSubTabPills}
-                                    {shouldShowDetailSummarySection(groupIndex) && (
-                                        <TimesheetEventSummaryCards rows={group.callTimes.filter(shouldIncludeRowForSubTab)} subTab={subTab} />
                                     )}
                                     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                                         <div className="border-b border-border bg-muted/15 px-4 py-3">

@@ -3,20 +3,26 @@ import { Button } from '@/components/ui/button';
 import { CalendarIcon } from '@/components/ui/icons';
 import { SKILL_LABELS } from './constants';
 import type { CallTimeRow } from './types';
-import { fmtDateTime, toNumber } from './helpers';
+import { fmtDateTime, fmtClockDateTime, toNumber } from './helpers';
 
 export function ExpandedRowDetail({
     ct,
     onViewEvent,
     colSpan = 17,
     cardStyle = false,
+    subTab = 'all',
 }: {
     ct: CallTimeRow;
     onViewEvent: (id: string) => void;
     colSpan?: number;
     cardStyle?: boolean;
+    subTab?: 'all' | 'bill' | 'invoice' | 'commission';
 }) {
     const revisions = ct.timeEntry?.revisions ?? [];
+    // For invoice/bill flows, hide team-unit details and show only the manager's
+    // contact info (the manager IS the staff on team-based invitations).
+    const hideTeamForFinance = subTab === 'invoice' || subTab === 'bill';
+    const manager = ct.teamUnit?.staff ?? ct.staff ?? null;
 
     return (
         <tr>
@@ -58,28 +64,54 @@ export function ExpandedRowDetail({
                     <div className="space-y-2 pb-3 border-b border-border">
                         <h4 className="font-semibold text-foreground text-xs uppercase tracking-wide">Contact</h4>
                         <div className="space-y-1 text-muted-foreground text-[11px]">
-                            {ct.teamUnit ? (
-                                <>
-                                    <p>
-                                        Team Unit:{' '}
-                                        <span className="text-foreground font-medium">{ct.teamUnit.unitName}</span>
-                                    </p>
-                                    <p>
-                                        Unit ID:{' '}
-                                        <span className="text-foreground font-medium">{ct.teamUnit.unitId}</span>
-                                    </p>
-                                    <p>
-                                        Primary Contact:{' '}
-                                        <span className="text-foreground font-medium">
-                                            {ct.teamUnit.primaryContact || '—'}
-                                        </span>
-                                    </p>
-                                    {ct.teamUnit.capacityNotes && (
-                                        <p className="text-foreground leading-relaxed">
-                                            {ct.teamUnit.capacityNotes}
+                            {hideTeamForFinance && ct.teamUnit ? (
+                                manager ? (
+                                    <>
+                                        <p>
+                                            Name:{' '}
+                                            <span className="text-foreground font-medium">
+                                                {manager.firstName} {manager.lastName}
+                                            </span>
                                         </p>
-                                    )}
-                                </>
+                                        <p>
+                                            Email: <span className="text-foreground font-medium">{manager.email}</span>
+                                        </p>
+                                        <p>
+                                            Phone: <span className="text-foreground font-medium">{manager.phone}</span>
+                                        </p>
+                                        <p className="text-foreground leading-relaxed">
+                                            {manager.streetAddress}
+                                            <br />
+                                            {manager.city}, {manager.state} {manager.zipCode}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="italic">No manager contact info available</p>
+                                )
+                            ) : ct.teamUnit ? (
+                                manager ? (
+                                    <>
+                                        <p>
+                                            Name:{' '}
+                                            <span className="text-foreground font-medium">
+                                                {manager.firstName} {manager.lastName}
+                                            </span>
+                                        </p>
+                                        <p>
+                                            Email: <span className="text-foreground font-medium">{manager.email}</span>
+                                        </p>
+                                        <p>
+                                            Phone: <span className="text-foreground font-medium">{manager.phone}</span>
+                                        </p>
+                                        <p className="text-foreground leading-relaxed">
+                                            {manager.streetAddress}
+                                            <br />
+                                            {manager.city}, {manager.state} {manager.zipCode}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="italic">No manager contact info available</p>
+                                )
                             ) : ct.staff ? (
                                 <>
                                     <p>
@@ -140,13 +172,13 @@ export function ExpandedRowDetail({
                                             <p>
                                                 Clock in:{' '}
                                                 <span className="text-foreground font-medium">
-                                                    {r.clockIn ? fmtDateTime(r.clockIn as any) : '—'}
+                                                    {r.clockIn ? fmtClockDateTime(r.clockIn as any) : '—'}
                                                 </span>
                                             </p>
                                             <p>
                                                 Clock out:{' '}
                                                 <span className="text-foreground font-medium">
-                                                    {r.clockOut ? fmtDateTime(r.clockOut as any) : '—'}
+                                                    {r.clockOut ? fmtClockDateTime(r.clockOut as any) : '—'}
                                                 </span>
                                             </p>
                                             <p>

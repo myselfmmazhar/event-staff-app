@@ -34,6 +34,7 @@ import {
     calcExpenditurePrice,
     getTimeOnly,
     combineDateTime,
+    fmtClockDateTime,
 } from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
@@ -68,9 +69,16 @@ function invoiceScheduledRange(row: CallTimeRow) {
     return formatInvoiceDateTimeRange(schedStart, schedEnd);
 }
 
+/** Actual shift range formatted from UTC components so the user sees what they entered. */
 function invoiceActualRange(tev: CallTimeRow['timeEntry']) {
     if (!tev?.clockIn) return 'No clock';
-    return formatInvoiceDateTimeRange(new Date(tev.clockIn), tev.clockOut ? new Date(tev.clockOut) : null);
+    const left = fmtClockDateTime(tev.clockIn);
+    if (!tev.clockOut) return `${left} - —`;
+    return (
+        <span className="whitespace-nowrap">
+            {left} - {fmtClockDateTime(tev.clockOut)}
+        </span>
+    );
 }
 
 function invoiceStaffHeadline(row: CallTimeRow, event: CallTimeRow['event'] | undefined): string {
@@ -165,6 +173,13 @@ export function TimesheetTableRow({
         setIsMinApp(!!ct.applyMinimum);
     }, [ct.applyMinimum]);
 
+    useEffect(() => {
+        if (!isEditing) {
+            setClockIn(toInputDatetime(te?.clockIn ?? null));
+            setClockOut(toInputDatetime(te?.clockOut ?? null));
+        }
+    }, [isEditing, te?.clockIn, te?.clockOut]);
+
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
     const hasActualShift = !!(te?.clockIn && te?.clockOut);
@@ -204,8 +219,8 @@ export function TimesheetTableRow({
             const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
             const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
 
-            const finalClockIn = clockIn ? new Date(clockIn).toISOString() : null;
-            const finalClockOut = clockOut ? new Date(clockOut).toISOString() : null;
+            const finalClockIn = clockIn ? `${clockIn}:00.000Z` : null;
+            const finalClockOut = clockOut ? `${clockOut}:00.000Z` : null;
 
             onSaveTimeEntry(
                 ct.id,
@@ -242,8 +257,8 @@ export function TimesheetTableRow({
             const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
             const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
 
-            const finalClockIn = clockIn ? new Date(clockIn).toISOString() : null;
-            const finalClockOut = clockOut ? new Date(clockOut).toISOString() : null;
+            const finalClockIn = clockIn ? `${clockIn}:00.000Z` : null;
+            const finalClockOut = clockOut ? `${clockOut}:00.000Z` : null;
 
             onSaveTimeEntry(
                 ct.id,
@@ -284,8 +299,8 @@ export function TimesheetTableRow({
             const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
             const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
 
-            const finalClockIn = clockIn ? new Date(clockIn).toISOString() : null;
-            const finalClockOut = clockOut ? new Date(clockOut).toISOString() : null;
+            const finalClockIn = clockIn ? `${clockIn}:00.000Z` : null;
+            const finalClockOut = clockOut ? `${clockOut}:00.000Z` : null;
 
             onSaveTimeEntry(
                 ct.id,
@@ -1055,40 +1070,44 @@ export function TimesheetTableRow({
                                 {colId === 'talent' && (
                                     <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-talent)` }}>
                                         <div className="flex flex-col gap-0.5">
-                                            {ct.staff ? (
-                                                <TalentContactPopover
-                                                    talent={{
-                                                        firstName: ct.staff.firstName,
-                                                        lastName: ct.staff.lastName,
-                                                        email: ct.staff.email,
-                                                        phone: ct.staff.phone,
-                                                        city: ct.staff.city,
-                                                        state: ct.staff.state,
-                                                        accountStatus: ct.staff.accountStatus,
-                                                        staffRating: ct.staff.staffRating,
-                                                    }}
-                                                    trigger={(
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="text-left text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer transition-colors"
-                                                        >
-                                                            {ct.staff.firstName} {ct.staff.lastName}
-                                                        </button>
-                                                    )}
-                                                />
-                                            ) : (
-                                                <span className="text-sm font-bold text-foreground">Open shift</span>
-                                            )}
+                                            {(() => {
+                                                const talent = ct.staff ?? ct.teamUnit?.staff ?? null;
+                                                if (!talent) {
+                                                    return <span className="text-sm font-bold text-foreground">Open shift</span>;
+                                                }
+                                                return (
+                                                    <TalentContactPopover
+                                                        talent={{
+                                                            firstName: talent.firstName,
+                                                            lastName: talent.lastName,
+                                                            email: talent.email,
+                                                            phone: talent.phone,
+                                                            city: talent.city,
+                                                            state: talent.state,
+                                                            accountStatus: talent.accountStatus,
+                                                            staffRating: talent.staffRating,
+                                                        }}
+                                                        trigger={(
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="text-left text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer transition-colors"
+                                                            >
+                                                                {talent.firstName} {talent.lastName}
+                                                            </button>
+                                                        )}
+                                                    />
+                                                );
+                                            })()}
                                             {ct.teamUnit ? (
                                                 <span className="text-[10px] text-muted-foreground tracking-tight">
                                                     <span className="font-semibold text-foreground">{ct.teamUnit.unitName}</span>
                                                     <span className="mx-1">·</span>
                                                     <span className="uppercase">{ct.teamUnit.unitId}</span>
-                                                    {ct.teamUnit.primaryContact && (
+                                                    {(ct.teamUnit.staff?.email || ct.teamUnit.primaryContact) && (
                                                         <>
                                                             <span className="mx-1">·</span>
-                                                            <span>{ct.teamUnit.primaryContact}</span>
+                                                            <span className="lowercase">{ct.teamUnit.staff?.email || ct.teamUnit.primaryContact}</span>
                                                         </>
                                                     )}
                                                 </span>
@@ -1531,6 +1550,7 @@ export function TimesheetTableRow({
                     onViewEvent={onViewEvent}
                     cardStyle={rowVariant === 'card'}
                     colSpan={2 + colOrder.length}
+                    subTab={subTab}
                 />
             )}
         </>
