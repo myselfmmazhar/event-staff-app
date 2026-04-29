@@ -276,7 +276,7 @@ function CatalogRequirementsContent() {
             )}
           >
             <SquaresIcon className="h-4 w-4" />
-            Categories
+            Collections
           </button>
           <button
             onClick={() => setActiveTab('requirements')}
@@ -290,12 +290,7 @@ function CatalogRequirementsContent() {
           </button>
         </div>
         <div className="pb-2">
-          {activeTab === 'categories' ? (
-            <Button onClick={handleCreateCategory} size="sm" className="rounded-lg shadow-sm">
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Add Category
-            </Button>
-          ) : (
+          {activeTab === 'categories' ? null : (
             <Button onClick={() => setWizardOpen(true)} size="sm" className="rounded-lg shadow-sm">
               <PlusIcon className="h-4 w-4 mr-2" />
               Add Requirement
@@ -358,16 +353,16 @@ function CatalogRequirementsContent() {
                 />
               </div>
               <div>
-                <Label>Category Filter</Label>
+                <Label>Collection Filter</Label>
                 <Select
                   value={categoryFilter || '__all__'}
                   onValueChange={(v) => setCategoryFilter(v === '__all__' ? '' : v)}
                 >
                   <SelectTrigger className="mt-1.5">
-                    <SelectValue placeholder="All categories" />
+                    <SelectValue placeholder="All collections" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">All categories</SelectItem>
+                    <SelectItem value="__all__">All collections</SelectItem>
                     {(activeCategories ?? []).map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
@@ -385,7 +380,7 @@ function CatalogRequirementsContent() {
                 <TableRow>
                   <TableHead>Requirement</TableHead>
                   <TableHead>Template</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>Collection</TableHead>
                   <TableHead>Approvals</TableHead>
                   <TableHead>Talent required</TableHead>
                   <TableHead className="text-right">Actions</TableHead>

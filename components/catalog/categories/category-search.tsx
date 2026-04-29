@@ -15,7 +15,7 @@ export function CategorySearch({ value, onChange }: CategorySearchProps) {
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Search by category name or ID..."
+        placeholder="Search by collection name or ID..."
         className="pl-9"
       />
     </div>

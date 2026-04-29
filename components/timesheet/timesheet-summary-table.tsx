@@ -144,7 +144,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
-                        {eventGroups.map((group) => {
+                        {eventGroups.map((group, groupIndex) => {
                             const firstRow = group.callTimes[0];
                             const event = firstRow?.event;
                             const actions: ActionItem[] = [
@@ -182,7 +182,9 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                             const profit = totalInvoice - totalBill;
 
                             const completedCount = group.callTimes.filter(ct => ct.timeEntry?.clockIn && ct.timeEntry?.clockOut).length;
-                            const isExpanded = expandedRows.has(group.eventId);
+                            const staffKey = firstRow?.staff?.id ?? 'no-staff';
+                            const groupRowKey = `${group.eventId}-${staffKey}-${groupIndex}`;
+                            const isExpanded = expandedRows.has(groupRowKey);
 
                             // Group callTimes by callTimeId to get unique positions
                             const positionMap = new Map<string, { title: string; required: number; talents: Array<{ name: string; isConfirmed: boolean; reviewRating: string | null }> }>();
@@ -211,14 +213,14 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                 .slice(0, 5);
 
                             return (
-                                <Fragment key={group.eventId}>
+                                <Fragment key={groupRowKey}>
                                 <tr
                                     className="hover:bg-slate-50/50 transition-colors group"
                                 >
                                     <td className="w-10 min-w-10 max-w-10 px-2 py-5 text-center align-top">
                                         <button
                                             type="button"
-                                            onClick={(e) => handleToggleExpand(group.eventId, e)}
+                                            onClick={(e) => handleToggleExpand(groupRowKey, e)}
                                             className="inline-flex items-center justify-center h-6 w-6 rounded hover:bg-muted transition-colors"
                                         >
                                             {isExpanded
@@ -319,7 +321,7 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                     </td>
                                 </tr>
                                 {isExpanded && (
-                                    <tr key={`${group.eventId}-expanded`} className="bg-slate-50/70 border-b border-slate-100">
+                                    <tr key={`${groupRowKey}-expanded`} className="bg-slate-50/70 border-b border-slate-100">
                                         <td colSpan={totalCols} className="px-6 py-4">
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                                 {/* Positions & Assigned Talents */}
