@@ -289,22 +289,73 @@ export function fmtDateTime(d: Date | string | null): string {
     }
 }
 
+/**
+ * Extract HH:mm from a clock-in/clock-out instant using UTC components.
+ * Clock times are stored as wall-clock-in-UTC so that what the user typed in the
+ * popover round-trips back unchanged regardless of viewer timezone.
+ */
 export function getTimeOnly(d: Date | string | null): string | null {
     if (!d) return null;
     try {
-        const date = typeof d === 'string' ? parseISO(d) : d;
-        return format(date, 'HH:mm');
+        const date = typeof d === 'string' ? new Date(d) : d;
+        if (isNaN(date.getTime())) return null;
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
     } catch {
         return null;
     }
 }
 
+/**
+ * Format a clock instant as a `yyyy-MM-ddTHH:mm` value for `<input type="datetime-local">`,
+ * reading UTC components so the input shows the same wall-clock time the user originally entered.
+ */
 export function toInputDatetime(d: Date | string | null): string {
     if (!d) return '';
     try {
-        return format(typeof d === 'string' ? parseISO(d) : d, "yyyy-MM-dd'T'HH:mm");
+        const date = typeof d === 'string' ? new Date(d) : d;
+        if (isNaN(date.getTime())) return '';
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
     } catch {
         return '';
+    }
+}
+
+/**
+ * Format a clock instant as `MM/dd/yyyy h:mm AM/PM` from UTC components.
+ */
+export function fmtClockDateTime(d: Date | string | null): string {
+    if (!d) return '—';
+    try {
+        const date = typeof d === 'string' ? new Date(d) : d;
+        if (isNaN(date.getTime())) return '—';
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const month = pad(date.getUTCMonth() + 1);
+        const day = pad(date.getUTCDate());
+        const year = date.getUTCFullYear();
+        const rawHours = date.getUTCHours();
+        const minutes = pad(date.getUTCMinutes());
+        const ampm = rawHours >= 12 ? 'PM' : 'AM';
+        const hour12 = rawHours % 12 || 12;
+        return `${month}/${day}/${year} ${hour12}:${minutes} ${ampm}`;
+    } catch {
+        return '—';
+    }
+}
+
+/**
+ * Format a clock instant as `MM/dd HH:mm` from UTC components (compact 24h variant).
+ */
+export function fmtClockShort(d: Date | string | null): string {
+    if (!d) return '—';
+    try {
+        const date = typeof d === 'string' ? new Date(d) : d;
+        if (isNaN(date.getTime())) return '—';
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${pad(date.getUTCMonth() + 1)}/${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+    } catch {
+        return '—';
     }
 }
 

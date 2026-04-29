@@ -14,7 +14,8 @@ import {
     fmtCurrency,
     calcTotalBill,
     calcTotalInvoice,
-    formatTime
+    formatTime,
+    fmtClockShort,
 } from './helpers';
 import { useTableResize } from '@/hooks/use-table-resize';
 import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
@@ -403,13 +404,8 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                                                 {recentActivity.map((ct) => {
                                                                     const clockIn = ct.timeEntry?.clockIn;
                                                                     const clockOut = ct.timeEntry?.clockOut;
-                                                                    const formatDt = (dt: Date | string | null | undefined) => {
-                                                                        if (!dt) return '—';
-                                                                        try {
-                                                                            const d = typeof dt === 'string' ? parseISO(dt) : dt;
-                                                                            return format(d, 'MM/dd HH:mm');
-                                                                        } catch { return '—'; }
-                                                                    };
+                                                                    const formatDt = (dt: Date | string | null | undefined) =>
+                                                                        dt ? fmtClockShort(dt as any) : '—';
                                                                     return (
                                                                         <div key={ct.id} className="rounded border border-border bg-white px-2.5 py-1.5 text-[11px]">
                                                                             <p className="font-semibold text-foreground">

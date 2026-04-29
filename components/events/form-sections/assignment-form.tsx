@@ -557,7 +557,7 @@ export function AssignmentForm({
                       <ChevronDownIcon className="h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="start">
+                  <PopoverContent className="w-80 p-0 z-[200]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                     <div className="p-2 border-b">
                       <div className="relative">
                         <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -699,7 +699,7 @@ export function AssignmentForm({
                       <ChevronDownIcon className="h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="start">
+                  <PopoverContent className="w-80 p-0 z-[200]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                     <div className="p-2 border-b">
                       <div className="relative">
                         <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

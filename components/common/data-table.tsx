@@ -18,6 +18,10 @@ export interface ColumnDef<T> {
   className?: string;
   headerClassName?: string;
   render: (item: T) => ReactNode;
+  /** If true, column takes remaining space and cannot be resized */
+  noResize?: boolean;
+  /** Override the initial width (px) used by the resize system */
+  initialWidth?: number;
 }
 
 const TAILWIND_WIDTH_REM_MAP: Record<string, number> = {
@@ -116,8 +120,12 @@ export function DataTable<T>({
       columns.length > 0 ? Math.max(140, Math.floor(tableMinWidth / Math.max(columns.length, 1))) : 160;
 
     for (const col of columns) {
+      // noResize columns are excluded from the resize system entirely
+      if (col.noResize) continue;
+
       const lockedWidth = getLockedColumnWidth(col.key);
       const fixedWidth =
+        col.initialWidth ??
         parseFixedWidthPx(col.headerClassName) ??
         parseFixedWidthPx(col.className);
 
@@ -199,10 +207,12 @@ export function DataTable<T>({
                       'relative group transition-colors',
                       col.key === 'actions' || col.key === 'select' || col.key === 'status'
                         ? 'whitespace-nowrap !px-2'
+                        : col.noResize
+                        ? ''
                         : 'truncate',
                       col.headerClassName || 'text-left py-3 px-4'
                     )}
-                    style={{ width: `var(--col-${col.key})` }}
+                    style={col.noResize ? undefined : { width: `var(--col-${col.key})` }}
                   >
                     {col.sortable && sortBy ? (
                       <SortableHeader
@@ -217,7 +227,7 @@ export function DataTable<T>({
                         {col.label}
                       </span>
                     )}
-                    {!derivedResizeConfig.lockedColumns.includes(col.key) && (
+                    {!col.noResize && !derivedResizeConfig.lockedColumns.includes(col.key) && (
                       <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.key, e)} />
                     )}
                   </th>
@@ -256,10 +266,12 @@ export function DataTable<T>({
                           className={cn(
                             col.key === 'actions' || col.key === 'select' || col.key === 'status'
                               ? 'whitespace-nowrap !px-2'
+                              : col.noResize
+                              ? ''
                               : 'truncate',
                             col.className || 'py-4 px-4'
                           )}
-                          style={{ width: `var(--col-${col.key})` }}
+                          style={col.noResize ? undefined : { width: `var(--col-${col.key})` }}
                         >
                           {col.render(item)}
                         </td>
