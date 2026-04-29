@@ -18,16 +18,16 @@ interface SidebarNavProps {
 }
 
 function filterNavItems(navItems: NavItemType[], user?: SessionUser, staffRole?: StaffRole, staffManagerLabel?: string): NavItemType[] {
-  return navItems.filter((item) => {
+  const filtered = navItems.filter((item) => {
     // STAFF users only see Dashboard, My Schedule, and Profile (but not clientOnly items)
     if (user?.role === 'STAFF') {
       if (item.clientOnly) return false;
-      
-      const isAllowedLabel = item.label === 'Dashboard' || 
-                            item.label === 'My Schedule' || 
-                            (item.label === 'My Profile' && item.staffOnly) || 
+
+      const isAllowedLabel = item.label === 'Dashboard' ||
+                            item.label === 'My Schedule' ||
+                            (item.label === 'My Profile' && item.staffOnly) ||
                             item.label === 'Communication Manager';
-      
+
       // If staff is a TEAM, they can also see the Staff Manager (Talent)
       if (staffRole === StaffRole.TEAM) {
          // Check if this item is the Talent Pod which contains the Staff Manager
@@ -56,6 +56,26 @@ function filterNavItems(navItems: NavItemType[], user?: SessionUser, staffRole?:
     const adminRoles = ['ADMIN', 'SUPER_ADMIN'];
     return adminRoles.includes(user.role);
   });
+
+  // For STAFF users with TEAM role, collapse "Talent Pod" into a direct
+  // "Team Unit" link that points at the Talent/Staff Manager route.
+  if (user?.role === 'STAFF' && staffRole === StaffRole.TEAM) {
+    return filtered.map((item) => {
+      if (item.label !== 'Talent Pod') return item;
+      const staffManagerSubItem = item.subItems?.find(
+        (sub) => sub.label === staffManagerLabel
+      );
+      return {
+        ...item,
+        label: 'Team Unit',
+        href: staffManagerSubItem?.href,
+        featureFlag: staffManagerSubItem?.featureFlag,
+        subItems: undefined,
+      };
+    });
+  }
+
+  return filtered;
 }
 
 export function SidebarNav({ user, onMobileClose, isMobile, sidebarState }: SidebarNavProps) {

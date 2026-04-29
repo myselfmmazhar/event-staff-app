@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { StaffSearchTable } from '@/components/call-times/staff-search-table';
+import { StaffSearchTable, type SearchRow } from '@/components/call-times/staff-search-table';
 import { Pagination } from '@/components/common/pagination';
 import { useAssignmentsFilters } from '@/store/assignments-filters.store';
 import { trpc } from '@/lib/client/trpc';
@@ -72,15 +72,6 @@ export function OpenAssignmentsView() {
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [includeAlreadyInvited, setIncludeAlreadyInvited] = useState(false);
 
-  // Selection comes from the search table as rowIds (`INDIVIDUAL:<staffId>` or `TEAM:...`).
-  // This view only supports individual selections — strip the prefix to recover staffIds.
-  const selectedStaffIds = selectedRowIds
-    .filter((id) => id.startsWith('INDIVIDUAL:'))
-    .map((id) => id.slice('INDIVIDUAL:'.length));
-  const setSelectedStaffIds = (ids: string[]) => {
-    setSelectedRowIds(ids.map((id) => `INDIVIDUAL:${id}`));
-  };
-
   // Fetch open assignments (needs staff)
   const { data, isLoading } = trpc.callTime.getAll.useQuery({
     page,
@@ -107,8 +98,34 @@ export function OpenAssignmentsView() {
     }
   );
 
+  const rows = useMemo<SearchRow[]>(() => (staffData?.data as SearchRow[]) || [], [staffData]);
+
+  // Split row selection into individuals and team-manager picks (mirrors find-talent-modal).
+  const selection = useMemo(() => {
+    const individualStaffIds: string[] = [];
+    const teamSelections: { managerStaffId: string; serviceId: string }[] = [];
+    for (const rowId of selectedRowIds) {
+      const row = rows.find((r) => r.rowId === rowId);
+      if (!row) continue;
+      if (row.kind === 'INDIVIDUAL') {
+        individualStaffIds.push(row.id);
+      } else if (row.serviceId && row.managerStaffId) {
+        teamSelections.push({ managerStaffId: row.managerStaffId, serviceId: row.serviceId });
+      }
+    }
+    return {
+      individualStaffIds,
+      teamSelections,
+      totalSelections: individualStaffIds.length + teamSelections.length,
+    };
+  }, [selectedRowIds, rows]);
+
   const [showResendConfirm, setShowResendConfirm] = useState(false);
-  const [resendPayload, setResendPayload] = useState<{ callTimeIds: string[], staffIds: string[] } | null>(null);
+  const [resendPayload, setResendPayload] = useState<{
+    callTimeIds: string[];
+    staffIds: string[];
+    teamSelections: { managerStaffId: string; serviceId: string }[];
+  } | null>(null);
 
   // Send invitations mutation
   const sendInvitations = trpc.callTime.sendInvitations.useMutation({
@@ -117,7 +134,7 @@ export function OpenAssignmentsView() {
         title: showResendConfirm ? 'Invitations re-sent' : 'Offers sent',
         description: `Successfully sent ${result.sent} offer(s)`,
       });
-      setSelectedStaffIds([]);
+      setSelectedRowIds([]);
       setShowResendConfirm(false);
       setResendPayload(null);
       if (selectedAssignmentId) {
@@ -129,7 +146,8 @@ export function OpenAssignmentsView() {
       if (error.message.includes('already been invited')) {
         setResendPayload({
           callTimeIds: [selectedAssignmentId!],
-          staffIds: selectedStaffIds,
+          staffIds: selection.individualStaffIds,
+          teamSelections: selection.teamSelections,
         });
         setShowResendConfirm(true);
       } else {
@@ -163,7 +181,7 @@ export function OpenAssignmentsView() {
         title: 'Assignment updated',
         description,
       });
-      setSelectedStaffIds([]);
+      setSelectedRowIds([]);
       if (selectedAssignmentId) {
         utils.callTime.getAll.invalidate();
         utils.callTime.searchStaff.invalidate({ callTimeIds: [selectedAssignmentId] });
@@ -179,33 +197,36 @@ export function OpenAssignmentsView() {
   });
 
   const handleResend = () => {
-    if (resendPayload) {
-      sendInvitations.mutate({
-        ...resendPayload,
-        resendExisting: true,
-      });
-    }
+    if (!resendPayload) return;
+    sendInvitations.mutate({
+      callTimeIds: resendPayload.callTimeIds,
+      staffIds: resendPayload.staffIds.length > 0 ? resendPayload.staffIds : undefined,
+      teamSelections: resendPayload.teamSelections.length > 0 ? resendPayload.teamSelections : undefined,
+      resendExisting: true,
+    });
   };
 
   const handleSendInvitations = () => {
-    if (selectedStaffIds.length === 0 || !selectedAssignmentId) return;
+    if (selection.totalSelections === 0 || !selectedAssignmentId) return;
     sendInvitations.mutate({
       callTimeIds: [selectedAssignmentId],
-      staffIds: selectedStaffIds,
+      staffIds: selection.individualStaffIds.length > 0 ? selection.individualStaffIds : undefined,
+      teamSelections: selection.teamSelections.length > 0 ? selection.teamSelections : undefined,
     });
   };
 
   const handleAssignOnBehalf = () => {
-    if (selectedStaffIds.length === 0 || !selectedAssignmentId) return;
+    // Assign-on-behalf only supports individuals; team-manager rows are skipped server-side.
+    if (selection.individualStaffIds.length === 0 || !selectedAssignmentId) return;
     assignInvitations.mutate({
       callTimeIds: [selectedAssignmentId],
-      staffIds: selectedStaffIds,
+      staffIds: selection.individualStaffIds,
     });
   };
 
   const handleSelectAssignment = (assignmentId: string) => {
     setSelectedAssignmentId(assignmentId === selectedAssignmentId ? null : assignmentId);
-    setSelectedStaffIds([]);
+    setSelectedRowIds([]);
   };
 
   const openAssignments: AssignmentData[] = (data?.data || []).filter((item) => item.needsStaff === true);
@@ -340,25 +361,27 @@ export function OpenAssignmentsView() {
                 Include already invited {staffTerm.lowerPlural}
               </label>
 
-              {selectedStaffIds.length > 0 && (
+              {selection.totalSelections > 0 && (
                 <div className="flex flex-wrap items-center gap-2 justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAssignOnBehalf}
-                    disabled={sendInvitations.isPending || assignInvitations.isPending}
-                  >
-                    <CheckCircleIcon className="h-4 w-4 mr-2" />
-                    Assign {selectedStaffIds.length} assignment
-                    {selectedStaffIds.length > 1 ? 's' : ''}
-                  </Button>
+                  {selection.individualStaffIds.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAssignOnBehalf}
+                      disabled={sendInvitations.isPending || assignInvitations.isPending}
+                    >
+                      <CheckCircleIcon className="h-4 w-4 mr-2" />
+                      Assign {selection.individualStaffIds.length} assignment
+                      {selection.individualStaffIds.length > 1 ? 's' : ''}
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     onClick={handleSendInvitations}
                     disabled={sendInvitations.isPending || assignInvitations.isPending}
                   >
                     <SendIcon className="h-4 w-4 mr-2" />
-                    Send {selectedStaffIds.length} Offer{selectedStaffIds.length > 1 ? 's' : ''}
+                    Send {selection.totalSelections} Offer{selection.totalSelections > 1 ? 's' : ''}
                   </Button>
                 </div>
               )}
@@ -366,10 +389,11 @@ export function OpenAssignmentsView() {
 
             <div className="overflow-x-auto">
               <StaffSearchTable
-                rows={(staffData?.data as any) || []}
+                rows={rows}
                 selectedRowIds={selectedRowIds}
                 onSelectionChange={setSelectedRowIds}
                 isLoading={isLoadingStaff}
+                showInvitationStatus={includeAlreadyInvited}
               />
             </div>
 
