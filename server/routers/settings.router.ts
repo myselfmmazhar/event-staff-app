@@ -118,6 +118,7 @@ export const settingsRouter = router({
                 companyTagline: z.string().max(500).nullish(),
                 companyWebsite: z.string().url().nullish(),
                 companyPhone: z.string().max(50).nullish(),
+                companyEmail: z.string().email().nullish(),
                 companyAddress: z.string().max(500).nullish(),
                 companyTimezone: z.string().optional(),
             })

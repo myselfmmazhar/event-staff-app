@@ -19,11 +19,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PendingRequestsList, UpcomingEventsList } from "@/components/staff-dashboard";
 import { useToast } from "@/components/ui/use-toast";
 import { getEventRoute } from "@/lib/utils/route-helpers";
-import { StaffFormModal } from "@/components/staff/staff-form-modal";
-import type { CreateStaffInput, UpdateStaffInput } from "@/lib/schemas/staff.schema";
-import type { UpsertStaffTaxDetailsInput } from "@/lib/schemas/staff-tax-details.schema";
+import { TeamLeadDashboard } from "@/components/team/team-lead-dashboard";
 
-function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }) {
+function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?: string }) {
   const { terminology } = useTerminology();
   const { data: staff, isLoading: staffLoading } = trpc.staff.getMyProfile.useQuery();
   const { data: myBills, isLoading: billsLoading } = trpc.profile.getMyStaffBills.useQuery();
@@ -35,10 +33,6 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
   const [respondingTo, setRespondingTo] = useState<string | undefined>();
   const utils = trpc.useUtils();
   const { toast } = useToast();
-  const [isAddTalentOpen, setIsAddTalentOpen] = useState(false);
-
-
-
   const respondMutation = trpc.callTime.respondToInvitation.useMutation({
     onSuccess: (result) => {
       if (result.status === 'ACCEPTED' && result.isConfirmed) {
@@ -65,26 +59,6 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
     },
   });
 
-  const createStaffMutation = trpc.staff.create.useMutation({
-    onSuccess: () => {
-      toast({ title: "Success", description: "Talent created successfully." });
-      setIsAddTalentOpen(false);
-    },
-    onError: (error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const upsertTaxDetailsMutation = trpc.staffTaxDetails.upsert.useMutation({
-    onError: (error) => {
-      toast({
-        title: "Warning",
-        description: `Talent created but failed to save tax details: ${error.message}`,
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleRespond = (invitationId: string, accept: boolean, declineReason?: string) => {
     setRespondingTo(invitationId);
     respondMutation.mutate({ invitationId, accept, declineReason });
@@ -94,27 +68,21 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
     batchRespondMutation.mutate({ invitationIds, accept });
   };
 
-  const handleStaffFormSubmit = (
-    formData: CreateStaffInput | Omit<UpdateStaffInput, "id">,
-    taxData?: Record<string, unknown>
-  ) => {
-    createStaffMutation.mutate(formData as CreateStaffInput, {
-      onSuccess: (newStaff) => {
-        if (taxData && newStaff?.id) {
-          upsertTaxDetailsMutation.mutate({
-            staffId: newStaff.id,
-            ...taxData,
-          } as UpsertStaffTaxDetailsInput);
-        }
-      },
-    });
-  };
-
   if (staffLoading || invitationsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
+    );
+  }
+
+  if (staff?.staffRole === 'TEAM') {
+    return (
+      <TeamLeadDashboard
+        firstName={firstName}
+        lastName={lastName}
+        teamEntityName={staff.teamEntityName}
+      />
     );
   }
 
@@ -235,16 +203,6 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
 
           {/* Sidebar */}
           <div className="lg:col-span-4 space-y-5">
-            <div className="bg-card border border-border rounded-xl p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">Talent</p>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 mb-4">Add a team member from your dashboard.</p>
-              <Button size="sm" onClick={() => setIsAddTalentOpen(true)}>
-                Add Talent
-              </Button>
-            </div>
-
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <p className="text-sm font-semibold text-foreground">Your Schedule</p>
@@ -284,15 +242,6 @@ function StaffDashboard({ firstName }: { firstName?: string; lastName?: string }
           </div>
         </div>
       </div>
-      <StaffFormModal
-        staff={null}
-        open={isAddTalentOpen}
-        onClose={() => setIsAddTalentOpen(false)}
-        onSubmit={handleStaffFormSubmit}
-        isSubmitting={createStaffMutation.isPending || upsertTaxDetailsMutation.isPending}
-        allowedStaffTypeChipIds={["employee"]}
-        defaultStaffTypeChipId="employee"
-      />
     </div>
   );
 }
@@ -352,7 +301,7 @@ export default function DashboardPage() {
   }
 
   if (isStaff) {
-    return <StaffDashboard firstName={profile?.firstName} lastName={profile?.lastName} />;
+    return <StaffDashboard firstName={profile?.firstName} lastName={profile?.lastName ?? undefined} />;
   }
 
 

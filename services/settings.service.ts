@@ -364,6 +364,7 @@ export class SettingsService {
                     companyTagline: true,
                     companyWebsite: true,
                     companyPhone: true,
+                    companyEmail: true,
                     companyAddress: true,
                     companyTimezone: true,
                 },
@@ -375,6 +376,7 @@ export class SettingsService {
                 companyTagline: settings?.companyTagline || null,
                 companyWebsite: settings?.companyWebsite || null,
                 companyPhone: settings?.companyPhone || null,
+                companyEmail: settings?.companyEmail || null,
                 companyAddress: settings?.companyAddress || null,
                 companyTimezone: settings?.companyTimezone || "UTC",
             };
@@ -397,6 +399,7 @@ export class SettingsService {
         companyTagline?: string | null;
         companyWebsite?: string | null;
         companyPhone?: string | null;
+        companyEmail?: string | null;
         companyAddress?: string | null;
         companyTimezone?: string;
     }) {

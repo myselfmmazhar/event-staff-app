@@ -268,6 +268,26 @@ export default function TimeManagerPage() {
             }
         });
 
+        // Within each manager group, merge rows by callTimeId so a manager who provides
+        // multiple team units for the same task appears as a single bill row with qty=N.
+        const mergeByCallTime = (items: CallTimeRow[]): CallTimeRow[] => {
+            const map = new Map<string, CallTimeRow>();
+            items.forEach((ct) => {
+                const k = ct.callTimeId;
+                if (!map.has(k)) {
+                    map.set(k, { ...ct, mergedRows: [ct] });
+                } else {
+                    const existing = map.get(k)!;
+                    if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                        existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                    }
+                    if (!existing.mergedRows) existing.mergedRows = [];
+                    existing.mergedRows.push(ct);
+                }
+            });
+            return Array.from(map.values());
+        };
+
         return Array.from(grouped.entries()).map(([key, group]) => (
             <Fragment key={`bill-talent-${key}`}>
                 <tr className="bg-slate-50/80">
@@ -281,7 +301,7 @@ export default function TimeManagerPage() {
                         </div>
                     </td>
                 </tr>
-                {group.items.map((ct) => (
+                {mergeByCallTime(group.items).map((ct) => (
                     <TimesheetTableRow
                         key={ct.id}
                         ct={ct}
@@ -1509,7 +1529,7 @@ export default function TimeManagerPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {(subTab === 'bill' ? billGroups : eventGroups)
+                        {eventGroups
                             .filter(g => g.eventId === selectedEventId)
                             .map((group, groupIndex) => (
                                 <div key={group.eventId + (group.staffId ? '_' + group.staffId : '')} className="space-y-4">

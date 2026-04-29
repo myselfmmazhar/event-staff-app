@@ -4,14 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { trpc } from '@/lib/client/trpc';
 import { format, isToday, isYesterday } from 'date-fns';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,12 +50,6 @@ type AdminTeamMember = {
     phone?: string | null;
     role: string;
     profilePhoto?: string | null;
-};
-
-const ROLE_LABEL: Record<string, string> = {
-    SUPER_ADMIN: 'Super Admin',
-    ADMIN: 'Admin',
-    MANAGER: 'Manager',
 };
 
 export function PortalCommunicationManager() {
@@ -117,7 +103,17 @@ export function PortalCommunicationManager() {
     };
 
     // Queries
-    const { data: adminTeam, isLoading: isAdminTeamLoading } = trpc.communication.getAdminTeam.useQuery();
+    const { data: companyProfile, isLoading: isCompanyLoading } = trpc.settings.getCompanyProfile.useQuery();
+
+    const companyContact: AdminTeamMember | null = companyProfile?.companyEmail
+        ? {
+            id: 'company',
+            name: companyProfile.companyName || 'Company',
+            email: companyProfile.companyEmail,
+            phone: companyProfile.companyPhone ?? null,
+            role: 'COMPANY',
+        }
+        : null;
 
     const { data: conversations, isLoading: isConversationsLoading } = trpc.communication.getPortalConversations.useQuery(
         { type: activeTab === 'email' ? 'EMAIL' : 'MESSAGE' },
@@ -309,14 +305,27 @@ export function PortalCommunicationManager() {
         }
     };
 
-    const handleComposeAdminSelect = (adminId: string) => {
-        setSelectedComposeAdminId(adminId);
-        const admin = adminTeam?.find(a => a.id === adminId);
-        if (!admin) return;
+    const handleComposeAdminSelect = (_adminId: string) => {
+        if (!companyContact) return;
+        setSelectedComposeAdminId(companyContact.id);
         if (composeType === 'EMAIL') {
-            setEmailForm(prev => ({ ...prev, to: admin.email }));
+            setEmailForm(prev => ({ ...prev, to: companyContact.email }));
         } else {
-            setMessageForm(prev => ({ ...prev, to: admin.phone ?? '' }));
+            setMessageForm(prev => ({ ...prev, to: companyContact.phone ?? '' }));
+        }
+    };
+
+    // Auto-fill company contact when compose modal opens
+    const openCompose = (type: 'EMAIL' | 'MESSAGE') => {
+        setComposeType(type);
+        setIsComposeOpen(true);
+        if (companyContact) {
+            setSelectedComposeAdminId(companyContact.id);
+            if (type === 'EMAIL') {
+                setEmailForm(prev => ({ ...prev, to: companyContact.email }));
+            } else {
+                setMessageForm(prev => ({ ...prev, to: companyContact.phone ?? '' }));
+            }
         }
     };
 
@@ -599,7 +608,7 @@ export function PortalCommunicationManager() {
                                         size="sm"
                                         variant="ghost"
                                         className="h-7 px-2 text-[10px] font-bold uppercase gap-1"
-                                        onClick={() => { setComposeType(activeTab === 'email' ? 'EMAIL' : 'MESSAGE'); setIsComposeOpen(true); }}
+                                        onClick={() => openCompose(activeTab === 'email' ? 'EMAIL' : 'MESSAGE')}
                                     >
                                         <Plus className="h-3 w-3" /> New
                                     </Button>
@@ -743,7 +752,7 @@ export function PortalCommunicationManager() {
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-lg leading-tight">{selectedAdminContact.name ?? selectedAdminContact.email}</h3>
-                                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{ROLE_LABEL[selectedAdminContact.role] ?? selectedAdminContact.role}</span>
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Company Contact</span>
                                             </div>
                                         </div>
                                     </div>
@@ -754,10 +763,10 @@ export function PortalCommunicationManager() {
                                     <div className="w-64 border-r bg-card overflow-y-auto p-4 hidden lg:block">
                                         <div className="space-y-4">
                                             <div>
-                                                <Label className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">Role</Label>
+                                                <Label className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">Contact Type</Label>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <Shield className="h-3 w-3 text-primary" />
-                                                    <span className="text-xs font-semibold">{ROLE_LABEL[selectedAdminContact.role] ?? selectedAdminContact.role}</span>
+                                                    <span className="text-xs font-semibold">Company Contact</span>
                                                 </div>
                                             </div>
                                             <div>
@@ -827,94 +836,65 @@ export function PortalCommunicationManager() {
                                 </div>
                             </div>
                         ) : (
-                            // Admin Team List
+                            // Company Contact
                             <div className="flex-1 flex flex-col overflow-hidden">
-                                <div className="h-20 bg-card border-b flex items-center px-6 justify-between shrink-0 shadow-sm z-10">
+                                <div className="h-20 bg-card border-b flex items-center px-6 shrink-0 shadow-sm z-10">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-primary/10 text-primary">
                                             <Shield className="h-5 w-5" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <h3 className="font-bold text-lg leading-tight">Admin Team</h3>
+                                            <h3 className="font-bold text-lg leading-tight">Company Contact</h3>
                                             <p className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider mt-1">
-                                                {adminTeam?.length || 0} Members Available
+                                                Official contact for this organisation
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="relative group">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                                        <Input
-                                            placeholder="Search team..."
-                                            className="h-10 pl-10 w-64 bg-muted/30 border-none focus-visible:ring-1"
-                                            value={search}
-                                            onChange={e => setSearch(e.target.value)}
-                                        />
-                                    </div>
                                 </div>
 
-                                <div className="flex-1 overflow-auto bg-card">
-                                    <Table>
-                                        <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
-                                            <TableRow className="hover:bg-transparent border-b-2">
-                                                <TableHead className="font-bold pl-6">Name</TableHead>
-                                                <TableHead className="font-bold">Role</TableHead>
-                                                <TableHead className="font-bold">Email</TableHead>
-                                                <TableHead className="font-bold">Phone</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {isAdminTeamLoading ? (
-                                                Array(5).fill(0).map((_, i) => (
-                                                    <TableRow key={i}>
-                                                        <TableCell colSpan={4} className="h-16">
-                                                            <div className="h-8 bg-muted/40 animate-pulse rounded-md w-full" />
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))
-                                            ) : (adminTeam?.filter(a =>
-                                                !search || a.name?.toLowerCase().includes(search.toLowerCase()) || a.email.toLowerCase().includes(search.toLowerCase())
-                                            ).length ?? 0) === 0 ? (
-                                                <TableRow>
-                                                    <TableCell colSpan={4} className="h-60 text-center">
-                                                        <div className="flex flex-col items-center gap-4 py-10">
-                                                            <Users className="h-12 w-12 text-muted-foreground/20" />
-                                                            <p className="font-bold text-lg">No team members found</p>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ) : (
-                                                adminTeam?.filter(a =>
-                                                    !search || a.name?.toLowerCase().includes(search.toLowerCase()) || a.email.toLowerCase().includes(search.toLowerCase())
-                                                ).map((member) => (
-                                                    <TableRow
-                                                        key={member.id}
-                                                        className="cursor-pointer hover:bg-muted/30 transition-colors border-b last:border-0 group"
-                                                        onClick={() => {
-                                                            setSelectedAdminContact(member);
-                                                            setIsDetailView(true);
-                                                            setContactActionTab('EMAIL');
-                                                        }}
-                                                    >
-                                                        <TableCell className="pl-6">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold shadow-sm">
-                                                                    {getInitials(member.name)}
-                                                                </div>
-                                                                <span className="font-bold text-sm tracking-tight">{member.name ?? '—'}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary font-bold text-[10px] py-1">
-                                                                {ROLE_LABEL[member.role] ?? member.role}
-                                                            </Badge>
-                                                        </TableCell>
-                                                        <TableCell className="text-sm text-muted-foreground">{member.email}</TableCell>
-                                                        <TableCell className="text-sm font-medium">{member.phone ?? '—'}</TableCell>
-                                                    </TableRow>
-                                                ))
-                                            )}
-                                        </TableBody>
-                                    </Table>
+                                <div className="flex-1 overflow-auto bg-card p-6">
+                                    {isCompanyLoading ? (
+                                        <div className="h-24 bg-muted/40 animate-pulse rounded-xl w-full max-w-md" />
+                                    ) : !companyContact ? (
+                                        <div className="flex flex-col items-center gap-4 py-20 opacity-40">
+                                            <Users className="h-12 w-12 text-muted-foreground/20" />
+                                            <p className="font-bold text-lg">No company contact set up yet</p>
+                                            <p className="text-sm text-muted-foreground">The organisation has not added a company email or phone number yet.</p>
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="max-w-md border rounded-xl p-5 bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+                                            onClick={() => {
+                                                setSelectedAdminContact(companyContact);
+                                                setIsDetailView(true);
+                                                setContactActionTab('EMAIL');
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold shadow-sm shrink-0 text-lg">
+                                                    {getInitials(companyContact.name)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-base tracking-tight">{companyContact.name}</p>
+                                                    <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary font-bold text-[10px] py-0.5 mt-1">
+                                                        Company
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 space-y-2 border-t pt-4">
+                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                    <Mail className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                                    <span className="truncate">{companyContact.email}</span>
+                                                </div>
+                                                {companyContact.phone && (
+                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                        <Phone className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                                        <span>{companyContact.phone}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -953,24 +933,22 @@ export function PortalCommunicationManager() {
                     </DialogHeader>
                     <form onSubmit={handleComposeSubmit}>
                         <div className="p-8 space-y-6 bg-card">
-                            {/* Admin Team Recipient Select */}
+                            {/* Company Recipient */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Recipient (Admin Team)</Label>
-                                <Select value={selectedComposeAdminId} onValueChange={handleComposeAdminSelect}>
-                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-border/50 focus:ring-1">
-                                        <SelectValue placeholder="Select a team member..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {adminTeam?.map(a => (
-                                            <SelectItem key={a.id} value={a.id}>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold">{a.name ?? a.email}</span>
-                                                    <span className="text-[10px] text-muted-foreground uppercase">{ROLE_LABEL[a.role] ?? a.role}</span>
-                                                </div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Recipient</Label>
+                                <div className="h-12 pl-4 rounded-xl bg-muted/20 border border-border/50 flex items-center gap-3">
+                                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                                        {getInitials(companyContact?.name)}
+                                    </div>
+                                    <span className="text-sm font-semibold text-foreground">
+                                        {companyContact?.name || 'Company'}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground truncate">
+                                        {composeType === 'EMAIL'
+                                            ? (companyContact?.email || 'No company email set')
+                                            : (companyContact?.phone || 'No company phone set')}
+                                    </span>
+                                </div>
                             </div>
 
                             {composeType === 'EMAIL' ? (
@@ -1046,7 +1024,7 @@ export function PortalCommunicationManager() {
                             <Button type="button" variant="ghost" className="h-12 px-6 font-bold text-muted-foreground hover:bg-muted/50 rounded-xl" onClick={() => setIsComposeOpen(false)}>Discard</Button>
                             <Button
                                 type="submit"
-                                disabled={sendEmailMutation.isPending || sendMessageMutation.isPending || !selectedComposeAdminId}
+                                disabled={sendEmailMutation.isPending || sendMessageMutation.isPending || !companyContact}
                                 className="h-12 px-8 font-black rounded-xl gap-2 shadow-xl shadow-primary/20 hover:scale-[1.03] transition-all"
                             >
                                 {(sendEmailMutation.isPending || sendMessageMutation.isPending) ? (

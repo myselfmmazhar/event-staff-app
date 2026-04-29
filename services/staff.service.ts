@@ -294,7 +294,8 @@ export class StaffService {
      */
     async create(
         data: CreateStaffInput,
-        createdByUserId: string
+        createdByUserId: string,
+        callerRole?: string | null
     ): Promise<{ staff: StaffSelect; invitations: Array<{ email: string; firstName: string; token: string }> }> {
         // Extract serviceIds and teamMembers from data - these should not be passed to Prisma directly
         // teamMembers is for COMPANY type staff and would be processed separately if needed
@@ -318,10 +319,13 @@ export class StaffService {
             const rules = await this.getCategoryRulesForServiceIds(serviceIds);
             const docList =
                 (documents as Array<{ name: string; url: string }> | null | undefined) ?? null;
-            this.assertCategoryRequirementsMet(rules, {
-                documents: docList,
-                allowMissingTaxSignature: true,
-            });
+            const isAdmin = callerRole === UserRole.ADMIN || callerRole === UserRole.SUPER_ADMIN;
+            if (!isAdmin) {
+                this.assertCategoryRequirementsMet(rules, {
+                    documents: docList,
+                    allowMissingTaxSignature: true,
+                });
+            }
 
             const staff = await this.prisma.staff.create({
                 data: {

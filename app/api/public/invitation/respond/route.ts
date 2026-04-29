@@ -15,8 +15,13 @@ export async function GET(request: NextRequest) {
     const service = new CallTimeService(prisma);
     const result = await service.respondToInvitationByToken(token, action as 'accept' | 'reject');
 
-    // Redirect to a public results page or return a simple HTML response
-    // For now, let's redirect to a public page we'll create
+    // Team-manager invitations require picking a TeamUnit before accepting.
+    if (result.needsUnitSelection) {
+      const teamUrl = new URL('/invitation/team-respond', request.url);
+      teamUrl.searchParams.set('token', token);
+      return NextResponse.redirect(teamUrl);
+    }
+
     const url = new URL('/invitation/result', request.url);
     url.searchParams.set('status', result.status);
     url.searchParams.set('event', result.eventTitle);

@@ -23,7 +23,6 @@ export const ACCOUNT_STATUS_OPTIONS = [
  */
 export const STAFF_TYPE_OPTIONS = [
   { value: StaffType.EMPLOYEE, label: 'Employee' },
-  { value: StaffType.TEAM, label: 'Team' },
   { value: StaffType.CONTRACTOR, label: 'Contractor' },
   { value: StaffType.FREELANCE, label: 'Freelance' },
   { value: StaffType.COMPANY, label: 'Company' },

@@ -40,15 +40,19 @@ model CallTimeInvitation {
   internalReviewRating InternalReviewRating?
   reviewedAt           DateTime?                @db.Timestamp(6)
   reviewedBy           String?
+  invitedAsTeam        Boolean                  @default(false)
+  teamUnitId           String?                  @db.Uuid
   callTime             CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
   reviewer             User?                    @relation("invitation_reviews", fields: [reviewedBy], references: [id])
   staff                Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  teamUnit             TeamUnit?                @relation(fields: [teamUnitId], references: [id])
   timeEntry            TimeEntry?
 
-  @@unique([callTimeId, staffId])
+  @@unique([callTimeId, staffId, teamUnitId])
   @@index([callTimeId])
   @@index([staffId])
   @@index([status])
+  @@index([teamUnitId])
   @@map("call_time_invitations")
 }
 
@@ -530,6 +534,7 @@ model Service {
   category              ServiceCategory?         @relation(fields: [categoryId], references: [id])
   createdByUser         User                     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   staff                 StaffServiceAssignment[]
+  teamUnits             TeamUnit[]
 
   @@index([serviceId])
   @@index([title])
@@ -653,6 +658,7 @@ model OrganizationSettings {
   globalLabels      Json     @default("{}")
   pageLabels        Json     @default("{}")
   companyAddress    String?
+  companyEmail      String?
   companyLogoUrl    String?
   companyName       String?
   companyPhone      String?
@@ -801,6 +807,7 @@ model Staff {
   taxDetails                   StaffTaxDetails?
   timeEntries                  TimeEntry[]
   bills                        Bill[]
+  teamUnits                    TeamUnit[]
 
   @@index([accountStatus])
   @@index([availabilityStatus])
@@ -861,6 +868,49 @@ model StaffTaxDetails {
   @@map("staff_tax_details")
 }
 
+model TeamUnit {
+  id             String               @id @default(uuid()) @db.Uuid
+  unitId         String               @unique
+  unitName       String
+  primaryContact String?
+  serviceId      String?              @db.Uuid
+  status         TeamUnitStatus       @default(ACTIVE)
+  availability   TeamUnitAvailability @default(AVAILABLE)
+  capacityNotes  String?
+  internalNotes  String?
+  staffId        String               @db.Uuid
+  createdBy      String
+  createdAt      DateTime             @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime             @updatedAt @db.Timestamp(6)
+  service        Service?             @relation(fields: [serviceId], references: [id])
+  staff          Staff                @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdByUser  User                 @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  activities     TeamUnitActivity[]
+  invitations    CallTimeInvitation[]
+
+  @@index([unitId])
+  @@index([staffId])
+  @@index([createdBy])
+  @@index([status])
+  @@map("team_units")
+}
+
+model TeamUnitActivity {
+  id          String    @id @default(uuid()) @db.Uuid
+  teamUnitId  String    @db.Uuid
+  action      String
+  note        String?
+  performedBy String
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  teamUnit    TeamUnit  @relation(fields: [teamUnitId], references: [id], onDelete: Cascade)
+  performer   User      @relation("team_unit_activities_performed", fields: [performedBy], references: [id], onDelete: Cascade)
+
+  @@index([teamUnitId])
+  @@index([performedBy])
+  @@index([createdAt])
+  @@map("team_unit_activities")
+}
+
 model User {
   id                               String                  @id
   email                            String                  @unique
@@ -905,6 +955,8 @@ model User {
   staff_staff_userIdTousers        Staff?                  @relation("staff_userIdTousers")
   timeEntriesCreated               TimeEntry[]             @relation("time_entries_created")
   timeEntryRevisionsEdited         TimeEntryRevision[]     @relation("time_entry_revisions_edited_by")
+  teamUnitsCreated                 TeamUnit[]
+  teamUnitActivities               TeamUnitActivity[] @relation("team_unit_activities_performed")
 
   @@map("users")
 }
@@ -1374,4 +1426,16 @@ enum InvoiceStatus {
 enum DiscountType {
   AMOUNT
   PERCENT
+}
+
+enum TeamUnitStatus {
+  ACTIVE
+  PENDING_REVIEW
+  ARCHIVED
+}
+
+enum TeamUnitAvailability {
+  AVAILABLE
+  LIMITED
+  NOT_AVAILABLE
 }

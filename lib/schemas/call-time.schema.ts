@@ -224,17 +224,35 @@ export class CallTimeSchema {
 
   /**
    * Send Invitations Schema
+   *
+   * `staffIds` covers individual-staff selections (one invitation per staff).
+   * `teamSelections` covers Team-Manager selections — each entry triggers up to
+   * `min(remainingSlots, availableUnits)` invitations addressed to the manager.
    */
-  static sendInvitations = z.object({
-    callTimeIds: z.array(z.string().uuid(FieldErrors.callTimeId)).min(1),
-    staffIds: z
-      .array(z.string().uuid(FieldErrors.staffId))
-      .min(1, 'At least one staff member is required'),
-    resendExisting: z.boolean().default(false).optional(),
-  });
+  static sendInvitations = z
+    .object({
+      callTimeIds: z.array(z.string().uuid(FieldErrors.callTimeId)).min(1),
+      staffIds: z.array(z.string().uuid(FieldErrors.staffId)).optional(),
+      teamSelections: z
+        .array(
+          z.object({
+            managerStaffId: z.string().uuid(FieldErrors.staffId),
+            serviceId: z.string().uuid(FieldErrors.serviceId),
+          })
+        )
+        .optional(),
+      resendExisting: z.boolean().default(false).optional(),
+    })
+    .refine(
+      (data) =>
+        (data.staffIds?.length ?? 0) > 0 ||
+        (data.teamSelections?.length ?? 0) > 0,
+      { message: 'At least one staff member or team manager is required', path: ['staffIds'] }
+    );
 
   /**
    * Assign on behalf — accept immediately (no invitation email); confirmation/waitlist email only.
+   * Team selections are not supported for assign-on-behalf since unit allocation requires the manager.
    */
   static assignInvitations = z.object({
     callTimeIds: z.array(z.string().uuid(FieldErrors.callTimeId)).min(1),
@@ -286,6 +304,11 @@ export class CallTimeSchema {
     skillLevels: z.array(z.nativeEnum(SkillLevel)).optional(),
     ratings: z.array(z.nativeEnum(StaffRating)).optional(),
     availabilityStatuses: z.array(z.nativeEnum(AvailabilityStatus)).optional(),
+    // INDIVIDUAL = staff with staffRole INDIVIDUAL
+    // TEAM      = Team Manager rows aggregated by (manager, service) over their TeamUnits
+    userType: z.enum(['INDIVIDUAL', 'TEAM']).optional(),
+    // Exact-count filter for team rows. Ignored for individual rows.
+    availableUnits: z.number().int().min(1).optional(),
     page: z.number().int().min(1).default(1).optional(),
     limit: z.number().int().min(1).max(100).default(20).optional(),
   });

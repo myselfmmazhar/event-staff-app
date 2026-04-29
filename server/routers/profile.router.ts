@@ -397,6 +397,7 @@ export const profileRouter = router({
         businessName: z.string().min(1, "Business name is required").max(200).optional(),
         firstName: z.string().min(1, "First name is required").max(50).optional(),
         lastName: z.string().min(1, "Last name is required").max(50).optional(),
+        email: z.string().email("Invalid email address").optional(),
         cellPhone: z.string().optional(),
         businessPhone: z.string().optional(),
         details: z.string().max(5000).optional(),
