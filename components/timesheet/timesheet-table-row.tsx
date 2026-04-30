@@ -81,13 +81,25 @@ function invoiceActualRange(tev: CallTimeRow['timeEntry']) {
     );
 }
 
+function getScheduledRangeStr(row: CallTimeRow) {
+    const start = combineDateTime(row.startDate, row.startTime);
+    const end = combineDateTime(row.endDate ?? row.startDate, row.endTime);
+    if (!start) return '';
+    const s = format(start, 'MM/dd/yyyy h:mm a');
+    if (!end) return s;
+    return `${s} - ${format(end, 'MM/dd/yyyy h:mm a')}`;
+}
+
+function getActualRangeStr(te: CallTimeRow['timeEntry']) {
+    if (!te?.clockIn) return '';
+    const s = fmtClockDateTime(te.clockIn);
+    if (!te.clockOut) return s;
+    return `${s} - ${fmtClockDateTime(te.clockOut)}`;
+}
+
 function invoiceStaffHeadline(row: CallTimeRow, event: CallTimeRow['event'] | undefined): string {
     const loc = [event?.venueName, event?.address, event?.city, event?.state, event?.zipCode].filter(Boolean).join(', ');
-    if (row.staff) {
-        const name = `${row.staff.firstName} ${row.staff.lastName}`.trim();
-        return loc ? `${name} (${loc})` : name;
-    }
-    return loc ? `Open shift (${loc})` : 'Open shift';
+    return loc ? `(${loc})` : '';
 }
 
 function ServiceBadge({ service }: { service: { title: string } | null | undefined }) {
@@ -407,11 +419,20 @@ export function TimesheetTableRow({
                                     <td className="px-3 py-4 text-[11px] leading-relaxed text-slate-600 min-w-[500px]">
                                         <div className="flex flex-col gap-3">
                                             {(() => {
-                                                const invoiceRows =
-                                                    ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
-                                                const isSoloInvoiceRow = invoiceRows.length === 1;
+                                                const rawInvoiceRows = ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
+                                                 
+                                                const invoiceGroups: { row: CallTimeRow; count: number }[] = [];
+                                                rawInvoiceRows.forEach(r => {
+                                                    const key = `${r.service?.title}-${getScheduledRangeStr(r)}-${getActualRangeStr(r.timeEntry)}`;
+                                                    const existing = invoiceGroups.find(g => `${g.row.service?.title}-${getScheduledRangeStr(g.row)}-${getActualRangeStr(g.row.timeEntry)}` === key);
+                                                    if (existing) {
+                                                        existing.count++;
+                                                    } else {
+                                                        invoiceGroups.push({ row: r, count: 1 });
+                                                    }
+                                                });
 
-                                                return invoiceRows.map((row, idx) => {
+                                                return invoiceGroups.map(({ row, count }, idx) => {
                                                     const rowTe = row.timeEntry;
                                                     const rowSchedHrs = calcScheduledHours(row);
                                                     const rowClockHrs = calcClockedHours(rowTe);
@@ -422,15 +443,19 @@ export function TimesheetTableRow({
                                                                 {invoiceActualRange(rowTe)}
                                                             </div>
                                                             <div className="text-muted-foreground font-medium text-[10px]">
-                                                                ({rowClockHrs.toFixed(2)} hrs)
+                                                                ({rowClockHrs.toFixed(2)} hrs) {count > 1 ? `(x${count})` : ''}
                                                             </div>
-                                                            {isSoloInvoiceRow && isEdited && (
+                                                            {invoiceGroups.length === 1 && count === 1 && isEdited && (
                                                                 <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1 py-0 leading-none font-medium w-fit">
                                                                     Edited
                                                                 </Badge>
                                                             )}
                                                         </div>
                                                     );
+
+                                                    const schedStr = getScheduledRangeStr(row);
+                                                    const actualStr = getActualRangeStr(rowTe);
+                                                    const isSameShift = schedStr && actualStr && schedStr === actualStr;
 
                                                     return (
                                                         <div
@@ -460,63 +485,42 @@ export function TimesheetTableRow({
                                                                 )}
                                                                 {invoiceStaffHeadline(row, row.event ?? ct.event)}
                                                             </div>
-                                                            <div className="text-slate-800">{row.service?.title || ct.service?.title || '—'}</div>
-                                                            <div
-                                                                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={includeSchedule}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onChange={(e) =>
-                                                                                onShiftModeChange?.(ct.id, {
-                                                                                    includeSchedule: e.target.checked,
-                                                                                    includeActual,
-                                                                                    includeName,
-                                                                                    includeNotes,
-                                                                                })
-                                                                            }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                            title="Include scheduled shift in totals"
-                                                                            aria-label="Include scheduled shift"
-                                                                        />
-                                                                    </label>
-                                                                )}
-                                                                <span className="font-medium text-slate-600">Schedule:</span>
-                                                                <span className="text-slate-800">
-                                                                    {invoiceScheduledRange(row)}
-                                                                    <span className="text-muted-foreground font-normal">
-                                                                        {' '}
-                                                                        ({rowSchedHrs.toFixed(2)} hrs)
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-0.5">
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-start pt-0.5">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={includeActual}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onChange={(e) =>
-                                                                                onShiftModeChange?.(ct.id, {
-                                                                                    includeSchedule,
-                                                                                    includeActual: e.target.checked,
-                                                                                    includeName,
-                                                                                    includeNotes,
-                                                                                })
-                                                                            }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                            title="Include actual shift in totals"
-                                                                            aria-label="Include actual shift"
-                                                                        />
-                                                                    </label>
-                                                                )}
-                                                                <span className="font-medium text-slate-600 shrink-0 pt-0.5">Actual:</span>
-                                                                {isSoloInvoiceRow ? (
+                                                            
+                                                            {isSameShift ? (
+                                                                <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-0.5">
+                                                                    {idx === 0 && (
+                                                                        <div className="flex gap-1 items-center mr-1" onClick={e => e.stopPropagation()}>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeSchedule}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule: e.target.checked,
+                                                                                        includeActual,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                title="Schedule"
+                                                                            />
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeActual}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule,
+                                                                                        includeActual: e.target.checked,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                title="Actual"
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                    <span className="font-medium text-slate-600 shrink-0 pt-0.5">Shift:</span>
                                                                     <div onClick={(e) => e.stopPropagation()} className="min-w-0">
                                                                         <Popover open={isEditing} onOpenChange={setIsEditing}>
                                                                             <PopoverTrigger asChild>
@@ -567,10 +571,121 @@ export function TimesheetTableRow({
                                                                             )}
                                                                         </Popover>
                                                                     </div>
-                                                                ) : (
-                                                                    actualLine
-                                                                )}
-                                                            </div>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div
+                                                                        className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        {idx === 0 && (
+                                                                            <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={includeSchedule}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    onChange={(e) =>
+                                                                                        onShiftModeChange?.(ct.id, {
+                                                                                            includeSchedule: e.target.checked,
+                                                                                            includeActual,
+                                                                                            includeName,
+                                                                                            includeNotes,
+                                                                                        })
+                                                                                    }
+                                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                    title="Include scheduled shift in totals"
+                                                                                    aria-label="Include scheduled shift"
+                                                                                />
+                                                                            </label>
+                                                                        )}
+                                                                        <span className="font-medium text-slate-600">Schedule:</span>
+                                                                        <span className="text-slate-800">
+                                                                            {invoiceScheduledRange(row)}
+                                                                            <span className="text-muted-foreground font-normal">
+                                                                                {' '}
+                                                                                ({rowSchedHrs.toFixed(2)} hrs)
+                                                                            </span>
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-0.5">
+                                                                        {idx === 0 && (
+                                                                            <label className="inline-flex shrink-0 cursor-pointer items-start pt-0.5">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={includeActual}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    onChange={(e) =>
+                                                                                        onShiftModeChange?.(ct.id, {
+                                                                                            includeSchedule,
+                                                                                            includeActual: e.target.checked,
+                                                                                            includeName,
+                                                                                            includeNotes,
+                                                                                        })
+                                                                                    }
+                                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                    title="Include actual shift in totals"
+                                                                                    aria-label="Include actual shift"
+                                                                                />
+                                                                            </label>
+                                                                        )}
+                                                                        <span className="font-medium text-slate-600 shrink-0 pt-0.5">Actual:</span>
+                                                                        {invoiceGroups.length === 1 && count === 1 ? (
+                                                                            <div onClick={(e) => e.stopPropagation()} className="min-w-0">
+                                                                                <Popover open={isEditing} onOpenChange={setIsEditing}>
+                                                                                    <PopoverTrigger asChild>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            disabled={!ct.staff}
+                                                                                            className={`text-left rounded px-0.5 -mx-0.5 ${ct.staff ? 'cursor-pointer hover:bg-slate-50' : 'opacity-60 cursor-not-allowed'}`}
+                                                                                            onClick={(e) => !ct.staff && e.stopPropagation()}
+                                                                                        >
+                                                                                            {actualLine}
+                                                                                        </button>
+                                                                                    </PopoverTrigger>
+                                                                                    {ct.staff && (
+                                                                                        <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                                                                            <div className="space-y-3">
+                                                                                                <Label className="text-xs font-bold uppercase tracking-tight text-foreground">Edit actual shift</Label>
+                                                                                                <div className="space-y-2">
+                                                                                                    <div className="space-y-1">
+                                                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">Clock In</span>
+                                                                                                        <Input
+                                                                                                            type="datetime-local"
+                                                                                                            value={clockIn}
+                                                                                                            onChange={(e) => setClockIn(e.target.value)}
+                                                                                                            className="h-8 text-xs"
+                                                                                                        />
+                                                                                                    </div>
+                                                                                                    <div className="space-y-1">
+                                                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">Clock Out</span>
+                                                                                                        <Input
+                                                                                                            type="datetime-local"
+                                                                                                            value={clockOut}
+                                                                                                            onChange={(e) => setClockOut(e.target.value)}
+                                                                                                            className="h-8 text-xs"
+                                                                                                        />
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                                <div className="flex justify-between items-center pt-2 border-t">
+                                                                                                    <div className="text-[10px] font-bold text-slate-500">
+                                                                                                        Net: {hoursClocked.toFixed(2)} hrs
+                                                                                                    </div>
+                                                                                                    <div className="flex gap-2">
+                                                                                                        <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="h-7 text-[10px]">Cancel</Button>
+                                                                                                        <Button size="sm" onClick={handleSave} className="h-7 text-[10px]">Save</Button>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </PopoverContent>
+                                                                                    )}
+                                                                                </Popover>
+                                                                            </div>
+                                                                        ) : (
+                                                                            actualLine
+                                                                        )}
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     );
                                                 });
@@ -704,9 +819,20 @@ export function TimesheetTableRow({
                                             {(() => {
                                                 const mergedCount = ct.mergedRows?.length ?? 1;
                                                 const isMergedTeamRow = mergedCount > 1;
-                                                const billRows = isMergedTeamRow ? [ct] : (ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct]);
+                                                const rawBillRows = isMergedTeamRow ? [ct] : (ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct]);
+                                                 
+                                                const billGroups: { row: CallTimeRow; count: number }[] = [];
+                                                rawBillRows.forEach(r => {
+                                                    const key = `${r.service?.id}-${getScheduledRangeStr(r)}-${getActualRangeStr(r.timeEntry)}`;
+                                                    const existing = billGroups.find(g => `${g.row.service?.id}-${getScheduledRangeStr(g.row)}-${getActualRangeStr(g.row.timeEntry)}` === key);
+                                                    if (existing) {
+                                                        existing.count++;
+                                                    } else {
+                                                        billGroups.push({ row: r, count: 1 });
+                                                    }
+                                                });
 
-                                                return billRows.map((row, idx) => {
+                                                return billGroups.map(({ row, count }, idx) => {
                                                     const rowTe = row.timeEntry;
                                                     const event = row.event ?? ct.event;
                                                     const loc = [event?.venueName, event?.address, event?.city, event?.state, event?.zipCode].filter(Boolean).join(', ');
@@ -716,6 +842,10 @@ export function TimesheetTableRow({
                                                     const actualLine = rowTe?.clockIn
                                                         ? invoiceActualRange(rowTe)
                                                         : <span className="text-muted-foreground font-normal">Not clocked</span>;
+
+                                                    const schedStr = getScheduledRangeStr(row);
+                                                    const actualStr = getActualRangeStr(rowTe);
+                                                    const isSameShift = schedStr && actualStr && schedStr === actualStr;
 
                                                     return (
                                                         <div key={row.id || idx} className={`flex flex-col gap-0.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}>
@@ -752,63 +882,105 @@ export function TimesheetTableRow({
                                                                 </button>
                                                                 {staffMeta && <span className="text-slate-700">| {staffMeta}</span>}
                                                             </div>
-                                                            <div className="font-semibold text-primary/80">
-                                                                {row.service?.title || '—'}
-                                                            </div>
-                                                            <div
-                                                                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={includeSchedule}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onChange={(e) =>
-                                                                                onShiftModeChange?.(ct.id, {
-                                                                                    includeSchedule: e.target.checked,
-                                                                                    includeActual,
-                                                                                    includeName,
-                                                                                    includeNotes,
-                                                                                })
-                                                                            }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                            title="Include scheduled shift in totals"
-                                                                            aria-label="Include scheduled shift"
-                                                                        />
-                                                                    </label>
-                                                                )}
-                                                                <span className="font-medium text-slate-500">Schedule:</span>
-                                                                <span>{invoiceScheduledRange(row)}</span>
-                                                            </div>
-                                                            <div
-                                                                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={includeActual}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onChange={(e) =>
-                                                                                onShiftModeChange?.(ct.id, {
-                                                                                    includeSchedule,
-                                                                                    includeActual: e.target.checked,
-                                                                                    includeName,
-                                                                                    includeNotes,
-                                                                                })
-                                                                            }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                            title="Include actual shift in totals"
-                                                                            aria-label="Include actual shift"
-                                                                        />
-                                                                    </label>
-                                                                )}
-                                                                <span className="font-medium text-slate-500">Actual:</span>
-                                                                <span>{actualLine}</span>
-                                                            </div>
+
+                                                            {isSameShift ? (
+                                                                <div
+                                                                    className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    {idx === 0 && (
+                                                                        <div className="flex gap-1 items-center mr-1" onClick={e => e.stopPropagation()}>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeSchedule}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule: e.target.checked,
+                                                                                        includeActual,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                title="Schedule"
+                                                                            />
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeActual}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule,
+                                                                                        includeActual: e.target.checked,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                title="Actual"
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                    <span className="font-medium text-slate-500">Shift:</span>
+                                                                    <span>{actualLine}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div
+                                                                        className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        {idx === 0 && (
+                                                                            <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={includeSchedule}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    onChange={(e) =>
+                                                                                        onShiftModeChange?.(ct.id, {
+                                                                                            includeSchedule: e.target.checked,
+                                                                                            includeActual,
+                                                                                            includeName,
+                                                                                            includeNotes,
+                                                                                        })
+                                                                                    }
+                                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                    title="Include scheduled shift in totals"
+                                                                                    aria-label="Include scheduled shift"
+                                                                                />
+                                                                            </label>
+                                                                        )}
+                                                                        <span className="font-medium text-slate-500">Schedule:</span>
+                                                                        <span>{invoiceScheduledRange(row)}</span>
+                                                                    </div>
+                                                                    <div
+                                                                        className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        {idx === 0 && (
+                                                                            <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={includeActual}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    onChange={(e) =>
+                                                                                        onShiftModeChange?.(ct.id, {
+                                                                                            includeSchedule,
+                                                                                            includeActual: e.target.checked,
+                                                                                            includeName,
+                                                                                            includeNotes,
+                                                                                        })
+                                                                                    }
+                                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                    title="Include actual shift in totals"
+                                                                                    aria-label="Include actual shift"
+                                                                                />
+                                                                            </label>
+                                                                        )}
+                                                                        <span className="font-medium text-slate-500">Actual:</span>
+                                                                        <span>{actualLine}</span>
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     );
                                                 });

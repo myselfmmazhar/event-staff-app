@@ -238,6 +238,7 @@ export class CallTimeSchema {
           z.object({
             managerStaffId: z.string().uuid(FieldErrors.staffId),
             serviceId: z.string().uuid(FieldErrors.serviceId),
+            units: z.number().int().min(1).optional(),
           })
         )
         .optional(),
@@ -254,12 +255,24 @@ export class CallTimeSchema {
    * Assign on behalf — accept immediately (no invitation email); confirmation/waitlist email only.
    * Team selections are not supported for assign-on-behalf since unit allocation requires the manager.
    */
-  static assignInvitations = z.object({
-    callTimeIds: z.array(z.string().uuid(FieldErrors.callTimeId)).min(1),
-    staffIds: z
-      .array(z.string().uuid(FieldErrors.staffId))
-      .min(1, 'At least one staff member is required'),
-  });
+  static assignInvitations = z
+    .object({
+      callTimeIds: z.array(z.string().uuid(FieldErrors.callTimeId)).min(1),
+      staffIds: z.array(z.string().uuid(FieldErrors.staffId)).optional(),
+      teamSelections: z
+        .array(
+          z.object({
+            managerStaffId: z.string().uuid(FieldErrors.staffId),
+            serviceId: z.string().uuid(FieldErrors.serviceId),
+            units: z.number().int().min(1).optional(),
+          })
+        )
+        .optional(),
+    })
+    .refine(
+      (data) => (data.staffIds?.length ?? 0) > 0 || (data.teamSelections?.length ?? 0) > 0,
+      { message: 'At least one staff member or team manager is required', path: ['staffIds'] }
+    );
 
   /**
    * Respond to Invitation Schema (for staff)

@@ -130,7 +130,7 @@ function ResetPasswordFormContent() {
             Tripod
           </h1>
           <p className="text-muted-foreground mt-2">
-            {companyProfile?.companyTagline || 'Staff Management Platform'}
+            {companyProfile?.companyTagline || 'Task & Talent Management Platform'}
           </p>
         </div>
 
@@ -139,7 +139,7 @@ function ResetPasswordFormContent() {
           <CardHeader>
             <CardTitle>Reset Password</CardTitle>
             <CardDescription>
-              {isSuccess 
+              {isSuccess
                 ? 'Your password has been reset successfully.'
                 : 'Enter your new password below.'}
             </CardDescription>
@@ -280,7 +280,7 @@ function ResetPasswordFormContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center p-8 mt-20"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"/></div>}>
+    <Suspense fallback={<div className="flex justify-center p-8 mt-20"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>}>
       <ResetPasswordFormContent />
     </Suspense>
   );

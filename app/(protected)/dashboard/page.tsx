@@ -16,7 +16,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PendingRequestsList, UpcomingEventsList } from "@/components/staff-dashboard";
+import { PendingRequestsList, UpcomingEventsList, StaffCalendar } from "@/components/staff-dashboard";
 import { useToast } from "@/components/ui/use-toast";
 import { getEventRoute } from "@/lib/utils/route-helpers";
 import { TeamLeadDashboard } from "@/components/team/team-lead-dashboard";
@@ -31,8 +31,22 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
     refetchOnWindowFocus: true,
   });
   const [respondingTo, setRespondingTo] = useState<string | undefined>();
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+
   const utils = trpc.useUtils();
   const { toast } = useToast();
+
+  const handleViewEvent = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setIsViewOpen(true);
+  };
+
+  const handleCloseView = () => {
+    setIsViewOpen(false);
+    setSelectedEventId(null);
+  };
+
   const respondMutation = trpc.callTime.respondToInvitation.useMutation({
     onSuccess: (result) => {
       if (result.status === 'ACCEPTED' && result.isConfirmed) {
@@ -132,6 +146,10 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
                         <CheckCircleIcon className="h-3.5 w-3.5" />
                         Accepted
                       </TabsTrigger>
+                      <TabsTrigger value="calendar" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md px-4">
+                        <CalendarIcon className="h-3.5 w-3.5" />
+                        Calendar
+                      </TabsTrigger>
                     </TabsList>
                   </div>
                   <TabsContent value="pending" className="px-0 pb-6 focus-visible:outline-none focus-visible:ring-0">
@@ -145,6 +163,9 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
                   </TabsContent>
                   <TabsContent value="accepted" className="px-0 pb-6 focus-visible:outline-none focus-visible:ring-0">
                     <UpcomingEventsList invitations={acceptedOffers as any} />
+                  </TabsContent>
+                  <TabsContent value="calendar" className="px-0 pb-6 focus-visible:outline-none focus-visible:ring-0">
+                    <StaffCalendar onEventClick={handleViewEvent} />
                   </TabsContent>
                 </Tabs>
               </div>
@@ -242,6 +263,11 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
           </div>
         </div>
       </div>
+      <ViewEventModal
+        eventId={selectedEventId}
+        open={isViewOpen}
+        onClose={handleCloseView}
+      />
     </div>
   );
 }

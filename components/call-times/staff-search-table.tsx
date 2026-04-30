@@ -55,7 +55,9 @@ export interface SearchRow {
 interface StaffSearchTableProps {
   rows: SearchRow[];
   selectedRowIds: string[];
+  selectionCounts?: Record<string, number>;
   onSelectionChange: (rowIds: string[]) => void;
+  onCountChange?: (rowId: string, count: number) => void;
   isLoading?: boolean;
   showInvitationStatus?: boolean;
 }
@@ -106,7 +108,9 @@ function getInvitationBadge(status: string | null | undefined, isConfirmed: bool
 export function StaffSearchTable({
   rows,
   selectedRowIds,
+  selectionCounts = {},
   onSelectionChange,
+  onCountChange,
   isLoading,
   showInvitationStatus = false,
 }: StaffSearchTableProps) {
@@ -183,9 +187,9 @@ export function StaffSearchTable({
         </div>
       )}
 
-      <div className="border rounded-lg overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-muted/50">
+      <div className="border rounded-lg overflow-auto max-h-[600px] relative">
+        <table className="w-full border-collapse">
+          <thead className="bg-muted/50 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
             <tr>
               <th className="w-12 px-4 py-3 text-left">
                 <Checkbox
@@ -284,13 +288,38 @@ export function StaffSearchTable({
                         <p className="text-[11px] text-muted-foreground mt-1">Always 1 for individual</p>
                       </div>
                     ) : (
-                      <div>
-                        <Badge variant="outline">
-                          {row.availableUnits} {row.availableUnits === 1 ? 'unit' : 'units'}
-                        </Badge>
-                        <p className="text-[11px] text-muted-foreground mt-1">
-                          {row.totalUnits} total · {row.availableUnits} currently available
-                        </p>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">
+                            {row.availableUnits} {row.availableUnits === 1 ? 'unit' : 'units'} available
+                          </Badge>
+                        </div>
+                        {selected && onCountChange && (
+                          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                            <label className="text-[10px] font-bold text-primary uppercase tracking-wider">Offers to send</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min={1}
+                                max={row.availableUnits}
+                                value={selectionCounts[row.rowId] ?? row.availableUnits}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value);
+                                  if (!isNaN(val)) {
+                                    onCountChange(row.rowId, Math.min(row.availableUnits, Math.max(1, val)));
+                                  }
+                                }}
+                                className="w-16 h-8 px-2 py-1 text-sm border rounded bg-background focus:ring-1 focus:ring-primary outline-none transition-all"
+                              />
+                              <span className="text-xs text-muted-foreground">/ {row.availableUnits}</span>
+                            </div>
+                          </div>
+                        )}
+                        {!selected && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {row.totalUnits} total · {row.availableUnits} currently available
+                          </p>
+                        )}
                       </div>
                     )}
                   </td>
