@@ -1123,7 +1123,7 @@ export class CallTimeService {
           const tied = boundUnits.size + reservations;
           const availableUnits = Math.max(0, totalUnits - tied);
 
-          const n = Math.min(remainingSlots, availableUnits);
+          const n = Math.min(remainingSlots, availableUnits, sel.units ?? availableUnits);
           if (n <= 0) continue;
 
           for (let i = 0; i < n; i++) {
@@ -1294,9 +1294,6 @@ export class CallTimeService {
     return { updated, hasAvailableSlot };
   }
 
-  /**
-   * Organizer assigns staff immediately: invitation accepted on their behalf, confirmation (or waitlist) email only.
-   */
   async assignInvitationsOnBehalf(
     input: AssignInvitationsInput,
     userId: string,
@@ -1344,30 +1341,15 @@ export class CallTimeService {
 
     const results: Array<{
       outcome: 'confirmed' | 'waitlisted' | 'already_assigned';
-      invitation: {
-        staff: { email: string; firstName: string; lastName: string; userId: string | null };
-        callTime: {
-          startDate: Date | null;
-          startTime: string | null;
-          instructions: string | null;
-          service: { title: string | null } | null;
-          event: {
-            title: string;
-            venueName: string | null;
-            city: string | null;
-            state: string | null;
-            description: string | null;
-            requirements: string | null;
-            preEventInstructions: string | null;
-            privateComments: string | null;
-          };
-        };
-      };
+      invitation: any;
     }> = [];
 
+    const individualStaffIds = input.staffIds || [];
+    const teamSelections = input.teamSelections || [];
+
     for (const ct of callTimes) {
-      for (const staffId of input.staffIds) {
-        // assign-on-behalf is individual-only; match invitations not tied to any TeamUnit.
+      // 1. Individual Staff
+      for (const staffId of individualStaffIds) {
         let inv = await this.prisma.callTimeInvitation.findFirst({
           where: { callTimeId: ct.id, staffId, teamUnitId: null },
           include: invitationInclude,
@@ -1385,19 +1367,7 @@ export class CallTimeService {
         } else if (inv.status === 'ACCEPTED' && inv.isConfirmed) {
           results.push({ outcome: 'already_assigned', invitation: inv });
           continue;
-        } else if (inv.status === 'DECLINED' || inv.status === 'CANCELLED') {
-          inv = await this.prisma.callTimeInvitation.update({
-            where: { id: inv.id },
-            data: {
-              status: 'PENDING',
-              respondedAt: null,
-              declineReason: null,
-              isConfirmed: false,
-              confirmedAt: null,
-            },
-            include: invitationInclude,
-          });
-        } else if (inv.status !== 'PENDING' && inv.status !== 'WAITLISTED') {
+        } else if (inv.status === 'DECLINED' || inv.status === 'CANCELLED' || (inv.status !== 'PENDING' && inv.status !== 'WAITLISTED')) {
           inv = await this.prisma.callTimeInvitation.update({
             where: { id: inv.id },
             data: {
@@ -1411,24 +1381,90 @@ export class CallTimeService {
           });
         }
 
-        const { updated, hasAvailableSlot } = await this.runAcceptWithSlotLogicFromInvitation({
-          id: inv.id,
-          callTimeId: inv.callTimeId,
-          status: inv.status,
-          callTime: {
-            id: inv.callTime.id,
-            eventId: inv.callTime.eventId,
-            numberOfStaffRequired: inv.callTime.numberOfStaffRequired,
-            service: inv.callTime.service,
-            event: inv.callTime.event,
-          },
-          staff: inv.staff,
-        });
-
+        const { updated, hasAvailableSlot } = await this.runAcceptWithSlotLogicFromInvitation(inv as any);
         results.push({
           outcome: hasAvailableSlot ? 'confirmed' : 'waitlisted',
           invitation: updated,
         });
+      }
+
+      // 2. Team Selections
+      const sels = teamSelections.filter((ts) => ts.serviceId === ct.serviceId);
+      if (sels.length > 0) {
+        const usedSlots = await this.prisma.callTimeInvitation.count({
+          where: {
+            callTimeId: ct.id,
+            status: { notIn: ['CANCELLED', 'DECLINED'] },
+          },
+        });
+        let remainingSlots = Math.max(0, ct.numberOfStaffRequired - usedSlots);
+
+        for (const sel of sels) {
+          if (remainingSlots <= 0) break;
+
+          const totalUnits = await this.prisma.teamUnit.count({
+            where: {
+              status: 'ACTIVE',
+              serviceId: sel.serviceId,
+              staffId: sel.managerStaffId,
+            },
+          });
+
+          const liveInvs = await this.prisma.callTimeInvitation.findMany({
+            where: {
+              staffId: sel.managerStaffId,
+              invitedAsTeam: true,
+              status: { notIn: ['CANCELLED', 'DECLINED'] },
+              callTime: { serviceId: sel.serviceId },
+            },
+            select: {
+              id: true,
+              teamUnitId: true,
+              callTime: { select: { endDate: true, endTime: true } },
+              timeEntry: { select: { clockOut: true } },
+            },
+          });
+
+          const now = new Date();
+          const isLive = (inv: any) => {
+            if (inv.timeEntry?.clockOut) return false;
+            if (!inv.callTime.endDate) return true;
+            const end = new Date(inv.callTime.endDate);
+            if (inv.callTime.endTime) {
+              const [hh, mm] = inv.callTime.endTime.split(':').map(Number);
+              end.setHours(hh ?? 23, mm ?? 59, 59, 999);
+            } else {
+              end.setHours(23, 59, 59, 999);
+            }
+            return end.getTime() > now.getTime();
+          };
+          const live = liveInvs.filter(isLive);
+          const boundUnits = new Set(live.filter((i) => i.teamUnitId).map((i) => i.teamUnitId as string));
+          const reservations = live.filter((i) => !i.teamUnitId).length;
+          const availableUnits = Math.max(0, totalUnits - (boundUnits.size + reservations));
+
+          const n = Math.min(remainingSlots, availableUnits, sel.units ?? availableUnits);
+          if (n <= 0) continue;
+
+          for (let i = 0; i < n; i++) {
+            const created = await this.prisma.callTimeInvitation.create({
+              data: {
+                callTimeId: ct.id,
+                staffId: sel.managerStaffId,
+                invitedAsTeam: true,
+                status: 'PENDING',
+              },
+              include: invitationInclude,
+            });
+
+            const { updated, hasAvailableSlot } = await this.runAcceptWithSlotLogicFromInvitation(created as any);
+            results.push({
+              outcome: hasAvailableSlot ? 'confirmed' : 'waitlisted',
+              invitation: updated,
+            });
+          }
+          remainingSlots -= n;
+        }
       }
     }
 
@@ -1481,19 +1517,7 @@ export class CallTimeService {
     }
 
     if (input.accept) {
-      const { updated } = await this.runAcceptWithSlotLogicFromInvitation({
-        id: invitation.id,
-        callTimeId: invitation.callTimeId,
-        status: invitation.status,
-        callTime: {
-          id: invitation.callTime.id,
-          eventId: invitation.callTime.eventId,
-          numberOfStaffRequired: invitation.callTime.numberOfStaffRequired,
-          service: invitation.callTime.service,
-          event: invitation.callTime.event,
-        },
-        staff: invitation.staff,
-      });
+      const { updated } = await this.runAcceptWithSlotLogicFromInvitation(invitation as any);
       return updated;
     } else {
       const triggerService = getNotificationTriggerService(this.prisma);
