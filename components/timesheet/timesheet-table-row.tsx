@@ -806,7 +806,7 @@ export function TimesheetTableRow({
                             <Fragment key={colId}>
                                 {colId === 'category' && (
                                     <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
-                                        <select className="text-[10px] p-1 bg-muted/40 border-none rounded focus:ring-1 focus:ring-primary/20 font-medium text-slate-600 cursor-pointer">
+                                        <select className="text-[10px] px-2 py-1.5 bg-muted/40 border border-border/60 rounded-md focus:ring-1 focus:ring-primary/30 focus:outline-none font-semibold text-foreground cursor-pointer hover:bg-muted/60 transition-colors">
                                             <option>Labor</option>
                                             <option>Travel</option>
                                             <option>Bonus</option>
@@ -848,10 +848,11 @@ export function TimesheetTableRow({
                                                     const isSameShift = schedStr && actualStr && schedStr === actualStr;
 
                                                     return (
-                                                        <div key={row.id || idx} className={`flex flex-col gap-0.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}>
-                                                            <div className="flex items-center gap-2 font-bold text-[12px]">
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                                        <div key={row.id || idx} className={`flex flex-col gap-2 ${idx > 0 ? 'pt-3 border-t border-border/50' : ''}`}>
+                                                            {/* Event title + location */}
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    {idx === 0 && (
                                                                         <input
                                                                             type="checkbox"
                                                                             checked={includeName}
@@ -864,32 +865,32 @@ export function TimesheetTableRow({
                                                                                     includeNotes,
                                                                                 })
                                                                             }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary shrink-0"
                                                                             title="Include group name in description"
-                                                                            aria-label="Include group name"
                                                                         />
-                                                                    </label>
+                                                                    )}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            if (event?.id) onViewEvent(event.id);
+                                                                        }}
+                                                                        className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-left font-semibold text-[12px] leading-snug"
+                                                                    >
+                                                                        {eventTitle}
+                                                                    </button>
+                                                                </div>
+                                                                {staffMeta && (
+                                                                    <span className="ml-5 text-[10px] text-muted-foreground leading-snug">{staffMeta}</span>
                                                                 )}
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (event?.id) onViewEvent(event.id);
-                                                                    }}
-                                                                    className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-left"
-                                                                >
-                                                                    {eventTitle}
-                                                                </button>
-                                                                {staffMeta && <span className="text-slate-700">| {staffMeta}</span>}
                                                             </div>
 
+                                                            {/* Shift rows */}
+                                                            <div className="ml-1 flex flex-col gap-1 border-l-2 border-border/40 pl-2.5 py-0.5" onClick={(e) => e.stopPropagation()}>
                                                             {isSameShift ? (
-                                                                <div
-                                                                    className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
+                                                                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                                                                     {idx === 0 && (
-                                                                        <div className="flex gap-1 items-center mr-1" onClick={e => e.stopPropagation()}>
+                                                                        <div className="flex gap-1 items-center shrink-0">
                                                                             <input
                                                                                 type="checkbox"
                                                                                 checked={includeSchedule}
@@ -920,97 +921,83 @@ export function TimesheetTableRow({
                                                                             />
                                                                         </div>
                                                                     )}
-                                                                    <span className="font-medium text-slate-500">Shift:</span>
-                                                                    <span>{actualLine}</span>
+                                                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Shift:</span>
+                                                                    <span className="text-slate-700">{actualLine}</span>
                                                                 </div>
                                                             ) : (
                                                                 <>
-                                                                    <div
-                                                                        className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                    >
+                                                                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                                                                         {idx === 0 && (
-                                                                            <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                                                <input
-                                                                                    type="checkbox"
-                                                                                    checked={includeSchedule}
-                                                                                    onClick={(e) => e.stopPropagation()}
-                                                                                    onChange={(e) =>
-                                                                                        onShiftModeChange?.(ct.id, {
-                                                                                            includeSchedule: e.target.checked,
-                                                                                            includeActual,
-                                                                                            includeName,
-                                                                                            includeNotes,
-                                                                                        })
-                                                                                    }
-                                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                                    title="Include scheduled shift in totals"
-                                                                                    aria-label="Include scheduled shift"
-                                                                                />
-                                                                            </label>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeSchedule}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule: e.target.checked,
+                                                                                        includeActual,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary shrink-0"
+                                                                                title="Include scheduled shift"
+                                                                            />
                                                                         )}
-                                                                        <span className="font-medium text-slate-500">Schedule:</span>
-                                                                        <span>{invoiceScheduledRange(row)}</span>
+                                                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Schedule:</span>
+                                                                        <span className="text-slate-700">{invoiceScheduledRange(row)}</span>
                                                                     </div>
-                                                                    <div
-                                                                        className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                    >
+                                                                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                                                                         {idx === 0 && (
-                                                                            <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                                                <input
-                                                                                    type="checkbox"
-                                                                                    checked={includeActual}
-                                                                                    onClick={(e) => e.stopPropagation()}
-                                                                                    onChange={(e) =>
-                                                                                        onShiftModeChange?.(ct.id, {
-                                                                                            includeSchedule,
-                                                                                            includeActual: e.target.checked,
-                                                                                            includeName,
-                                                                                            includeNotes,
-                                                                                        })
-                                                                                    }
-                                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                                    title="Include actual shift in totals"
-                                                                                    aria-label="Include actual shift"
-                                                                                />
-                                                                            </label>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeActual}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule,
+                                                                                        includeActual: e.target.checked,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary shrink-0"
+                                                                                title="Include actual shift"
+                                                                            />
                                                                         )}
-                                                                        <span className="font-medium text-slate-500">Actual:</span>
-                                                                        <span>{actualLine}</span>
+                                                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Actual:</span>
+                                                                        <span className="text-slate-700">{actualLine}</span>
                                                                     </div>
                                                                 </>
                                                             )}
+                                                            </div>
                                                         </div>
                                                     );
                                                 });
                                             })()}
 
                                             {/* Notes Section */}
-                                            <div className="flex flex-col pt-2 border-t border-slate-100">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={includeNotes}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            onChange={(e) =>
-                                                                onShiftModeChange?.(ct.id, {
-                                                                    includeSchedule,
-                                                                    includeActual,
-                                                                    includeName,
-                                                                    includeNotes: e.target.checked,
-                                                                })
-                                                            }
-                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                            title="Include notes in description"
-                                                            aria-label="Include notes"
-                                                        />
-                                                    </label>
-                                                    <span className="font-bold text-[9px] text-slate-400 uppercase tracking-widest">Notes</span>
+                                            <div className="flex flex-col gap-1 pt-2 border-t border-border/40">
+                                                <div className="flex items-center gap-1.5">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={includeNotes}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onChange={(e) =>
+                                                            onShiftModeChange?.(ct.id, {
+                                                                includeSchedule,
+                                                                includeActual,
+                                                                includeName,
+                                                                includeNotes: e.target.checked,
+                                                            })
+                                                        }
+                                                        className="h-3.5 w-3.5 rounded border-border accent-primary shrink-0"
+                                                        title="Include notes in description"
+                                                    />
+                                                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Notes</span>
                                                 </div>
                                                 {isEditingNotes ? (
-                                                    <div onClick={e => e.stopPropagation()}>
+                                                    <div onClick={e => e.stopPropagation()} className="ml-5">
                                                         <textarea
                                                             value={localNotes}
                                                             onChange={e => setLocalNotes(e.target.value)}
@@ -1034,10 +1021,10 @@ export function TimesheetTableRow({
                                                     </div>
                                                 ) : (
                                                     <div
-                                                        className="group relative cursor-pointer hover:bg-slate-50 p-1.5 rounded transition-all font-medium text-slate-600 italic text-[11px]"
+                                                        className="ml-5 cursor-pointer hover:bg-muted/50 px-2 py-1.5 rounded-md transition-all text-[11px] text-muted-foreground"
                                                         onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
                                                     >
-                                                        <p className="line-clamp-3 not-italic">{localNotes || 'Click to add notes...'}</p>
+                                                        <p className="line-clamp-3">{localNotes || 'Click to add notes...'}</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -1045,10 +1032,10 @@ export function TimesheetTableRow({
                                     </td>
                                 )}
                                 {colId === 'bill' && (
-                                    <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px]">
+                                    <td className="px-3 py-2.5 text-right tabular-nums text-[13px]">
                                         <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
                                             <PopoverTrigger asChild>
-                                                <div className="cursor-pointer hover:bg-red-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
+                                                <div className="cursor-pointer inline-flex items-center justify-end gap-1 hover:bg-red-50 transition-colors px-2 py-1 rounded-md font-bold text-red-600" onClick={e => e.stopPropagation()}>
                                                     {fmtCurrency(totalBill)}
                                                 </div>
                                             </PopoverTrigger>
@@ -1078,8 +1065,10 @@ export function TimesheetTableRow({
                                     </td>
                                 )}
                                 {colId === 'netIncome' && (
-                                    <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums text-[13px]">
-                                        {fmtCurrency(totalInvoice - totalBill)}
+                                    <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums text-[13px] pr-4">
+                                        <span className="inline-flex items-center justify-end px-2 py-1 rounded-md bg-emerald-50/60">
+                                            {fmtCurrency(totalInvoice - totalBill)}
+                                        </span>
                                     </td>
                                 )}
                                 {colId === 'status' && (

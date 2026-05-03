@@ -83,6 +83,13 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
       clientOnly: true,
     },
     {
+      label: 'My Invoices',
+      href: '/client-portal/invoices',
+      icon: DocumentTextIcon,
+      requiresAdmin: false,
+      clientOnly: true,
+    },
+    {
       label: 'Communication Manager',
       href: '/client-portal/messages?tab=email',
       icon: ChatBubbleLeftRightIcon,
