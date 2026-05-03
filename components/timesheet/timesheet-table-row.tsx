@@ -1399,7 +1399,7 @@ export function TimesheetTableRow({
                                     <td className="truncate px-3 py-2.5 text-center" style={{ width: `var(--col-variance)` }}>
                                         <div className="flex flex-col items-center gap-0.5">
                                             {(() => {
-                                                const diff = hoursScheduled - hoursClocked;
+                                                const diff = hoursClocked - hoursScheduled;
                                                 if (Math.abs(diff) < 0.1) {
                                                     return (
                                                         <span className="text-[11px] font-bold text-foreground tabular-nums">0.00 hrs</span>

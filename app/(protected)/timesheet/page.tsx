@@ -591,7 +591,7 @@ export default function TimeManagerPage() {
                 if (detailVariance !== 'all') {
                     const hs = calcScheduledHours(ct);
                     const hc = calcClockedHours(ct.timeEntry);
-                    const d = hs - hc;
+                    const d = hc - hs;
                     if (detailVariance === 'zero' && Math.abs(d) >= 0.1) return false;
                     if (detailVariance === 'positive' && d <= 0.1) return false;
                     if (detailVariance === 'negative' && d >= -0.1) return false;
