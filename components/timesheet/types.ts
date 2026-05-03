@@ -79,6 +79,20 @@ export type CallTimeRow = {
         unitName: string;
         primaryContact: string | null;
         capacityNotes: string | null;
+        staff?: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            email: string;
+            phone: string;
+            accountStatus: string;
+            staffRating: string;
+            skillLevel: string;
+            streetAddress: string;
+            city: string;
+            state: string;
+            zipCode: string;
+        } | null;
     } | null;
     timeEntry?: {
         id: string;

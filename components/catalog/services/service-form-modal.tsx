@@ -25,6 +25,8 @@ import {
   COST_UNIT_TYPE_OPTIONS,
 } from '@/lib/constants/enums';
 import { trpc } from '@/lib/client/trpc';
+import { CATEGORY_REQUIREMENT_LABELS } from '@/lib/category-requirements';
+import { formatRequirementTemplatesShort, normalizeReqTemplateIds } from '@/lib/requirement-templates';
 
 // Form schema - uses null for optional enum fields, similar to staff form
 const formSchema = z.object({
@@ -197,6 +199,8 @@ export function ServiceFormModal({
   const rateTypeLabel = COST_UNIT_TYPE_OPTIONS.find((opt) => opt.value === costUnitType)?.label || 'Value';
 
   const { data: categoriesData } = trpc.category.getAllActive.useQuery();
+  const selectedCategoryId = watch('categoryId');
+  const selectedCategory = categoriesData?.find((c) => c.id === selectedCategoryId) ?? null;
 
   return (
     <Dialog
@@ -250,7 +254,7 @@ export function ServiceFormModal({
             </div>
 
             <div className="sm:col-span-3">
-              <Label htmlFor="categoryId">Category</Label>
+              <Label htmlFor="categoryId">Collection</Label>
               <Controller
                 name="categoryId"
                 control={control}
@@ -274,6 +278,24 @@ export function ServiceFormModal({
                   </Select>
                 )}
               />
+              {selectedCategory && (() => {
+                const ids = normalizeReqTemplateIds(selectedCategory.requirementTemplateIds ?? []);
+                const requirementLabel = ids.length > 0
+                  ? formatRequirementTemplatesShort(ids)
+                  : CATEGORY_REQUIREMENT_LABELS[selectedCategory.requirementType as keyof typeof CATEGORY_REQUIREMENT_LABELS];
+                return (
+                  <div className="mt-2 p-3 bg-muted/30 rounded-md border border-border flex items-center gap-6">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Collection</p>
+                      <p className="text-sm font-medium">{selectedCategory.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Requirement</p>
+                      <p className="text-sm font-medium">{requirementLabel ?? '—'}</p>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="sm:col-span-3">

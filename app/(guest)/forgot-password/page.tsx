@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
             Tripod
           </h1>
           <p className="text-muted-foreground mt-2">
-            {companyProfile?.companyTagline || 'Staff Management Platform'}
+            {companyProfile?.companyTagline || 'Task & Talent Management Platform'}
           </p>
         </div>
 

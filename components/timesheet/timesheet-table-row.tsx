@@ -34,6 +34,7 @@ import {
     calcExpenditurePrice,
     getTimeOnly,
     combineDateTime,
+    fmtClockDateTime,
 } from './helpers';
 import { ExpandedRowDetail } from './expanded-row-detail';
 import type { CallTimeRow } from './types';
@@ -68,18 +69,37 @@ function invoiceScheduledRange(row: CallTimeRow) {
     return formatInvoiceDateTimeRange(schedStart, schedEnd);
 }
 
+/** Actual shift range formatted from UTC components so the user sees what they entered. */
 function invoiceActualRange(tev: CallTimeRow['timeEntry']) {
     if (!tev?.clockIn) return 'No clock';
-    return formatInvoiceDateTimeRange(new Date(tev.clockIn), tev.clockOut ? new Date(tev.clockOut) : null);
+    const left = fmtClockDateTime(tev.clockIn);
+    if (!tev.clockOut) return `${left} - —`;
+    return (
+        <span className="whitespace-nowrap">
+            {left} - {fmtClockDateTime(tev.clockOut)}
+        </span>
+    );
+}
+
+function getScheduledRangeStr(row: CallTimeRow) {
+    const start = combineDateTime(row.startDate, row.startTime);
+    const end = combineDateTime(row.endDate ?? row.startDate, row.endTime);
+    if (!start) return '';
+    const s = format(start, 'MM/dd/yyyy h:mm a');
+    if (!end) return s;
+    return `${s} - ${format(end, 'MM/dd/yyyy h:mm a')}`;
+}
+
+function getActualRangeStr(te: CallTimeRow['timeEntry']) {
+    if (!te?.clockIn) return '';
+    const s = fmtClockDateTime(te.clockIn);
+    if (!te.clockOut) return s;
+    return `${s} - ${fmtClockDateTime(te.clockOut)}`;
 }
 
 function invoiceStaffHeadline(row: CallTimeRow, event: CallTimeRow['event'] | undefined): string {
     const loc = [event?.venueName, event?.address, event?.city, event?.state, event?.zipCode].filter(Boolean).join(', ');
-    if (row.staff) {
-        const name = `${row.staff.firstName} ${row.staff.lastName}`.trim();
-        return loc ? `${name} (${loc})` : name;
-    }
-    return loc ? `Open shift (${loc})` : 'Open shift';
+    return loc ? `(${loc})` : '';
 }
 
 function ServiceBadge({ service }: { service: { title: string } | null | undefined }) {
@@ -165,6 +185,13 @@ export function TimesheetTableRow({
         setIsMinApp(!!ct.applyMinimum);
     }, [ct.applyMinimum]);
 
+    useEffect(() => {
+        if (!isEditing) {
+            setClockIn(toInputDatetime(te?.clockIn ?? null));
+            setClockOut(toInputDatetime(te?.clockOut ?? null));
+        }
+    }, [isEditing, te?.clockIn, te?.clockOut]);
+
     const hoursScheduled = calcScheduledHours(ct);
     const hoursClocked = calcClockedHours(te);
     const hasActualShift = !!(te?.clockIn && te?.clockOut);
@@ -204,8 +231,8 @@ export function TimesheetTableRow({
             const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
             const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
 
-            const finalClockIn = clockIn ? new Date(clockIn).toISOString() : null;
-            const finalClockOut = clockOut ? new Date(clockOut).toISOString() : null;
+            const finalClockIn = clockIn ? `${clockIn}:00.000Z` : null;
+            const finalClockOut = clockOut ? `${clockOut}:00.000Z` : null;
 
             onSaveTimeEntry(
                 ct.id,
@@ -242,8 +269,8 @@ export function TimesheetTableRow({
             const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
             const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
 
-            const finalClockIn = clockIn ? new Date(clockIn).toISOString() : null;
-            const finalClockOut = clockOut ? new Date(clockOut).toISOString() : null;
+            const finalClockIn = clockIn ? `${clockIn}:00.000Z` : null;
+            const finalClockOut = clockOut ? `${clockOut}:00.000Z` : null;
 
             onSaveTimeEntry(
                 ct.id,
@@ -284,8 +311,8 @@ export function TimesheetTableRow({
             const parsedTravelCost = travelCostManual !== '' ? parseFloat(travelCostManual) : null;
             const parsedTravelPrice = travelPriceManual !== '' ? parseFloat(travelPriceManual) : null;
 
-            const finalClockIn = clockIn ? new Date(clockIn).toISOString() : null;
-            const finalClockOut = clockOut ? new Date(clockOut).toISOString() : null;
+            const finalClockIn = clockIn ? `${clockIn}:00.000Z` : null;
+            const finalClockOut = clockOut ? `${clockOut}:00.000Z` : null;
 
             onSaveTimeEntry(
                 ct.id,
@@ -392,11 +419,20 @@ export function TimesheetTableRow({
                                     <td className="px-3 py-4 text-[11px] leading-relaxed text-slate-600 min-w-[500px]">
                                         <div className="flex flex-col gap-3">
                                             {(() => {
-                                                const invoiceRows =
-                                                    ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
-                                                const isSoloInvoiceRow = invoiceRows.length === 1;
+                                                const rawInvoiceRows = ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct];
+                                                 
+                                                const invoiceGroups: { row: CallTimeRow; count: number }[] = [];
+                                                rawInvoiceRows.forEach(r => {
+                                                    const key = `${r.service?.title}-${getScheduledRangeStr(r)}-${getActualRangeStr(r.timeEntry)}`;
+                                                    const existing = invoiceGroups.find(g => `${g.row.service?.title}-${getScheduledRangeStr(g.row)}-${getActualRangeStr(g.row.timeEntry)}` === key);
+                                                    if (existing) {
+                                                        existing.count++;
+                                                    } else {
+                                                        invoiceGroups.push({ row: r, count: 1 });
+                                                    }
+                                                });
 
-                                                return invoiceRows.map((row, idx) => {
+                                                return invoiceGroups.map(({ row, count }, idx) => {
                                                     const rowTe = row.timeEntry;
                                                     const rowSchedHrs = calcScheduledHours(row);
                                                     const rowClockHrs = calcClockedHours(rowTe);
@@ -407,15 +443,19 @@ export function TimesheetTableRow({
                                                                 {invoiceActualRange(rowTe)}
                                                             </div>
                                                             <div className="text-muted-foreground font-medium text-[10px]">
-                                                                ({rowClockHrs.toFixed(2)} hrs)
+                                                                ({rowClockHrs.toFixed(2)} hrs) {count > 1 ? `(x${count})` : ''}
                                                             </div>
-                                                            {isSoloInvoiceRow && isEdited && (
+                                                            {invoiceGroups.length === 1 && count === 1 && isEdited && (
                                                                 <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1 py-0 leading-none font-medium w-fit">
                                                                     Edited
                                                                 </Badge>
                                                             )}
                                                         </div>
                                                     );
+
+                                                    const schedStr = getScheduledRangeStr(row);
+                                                    const actualStr = getActualRangeStr(rowTe);
+                                                    const isSameShift = schedStr && actualStr && schedStr === actualStr;
 
                                                     return (
                                                         <div
@@ -445,63 +485,42 @@ export function TimesheetTableRow({
                                                                 )}
                                                                 {invoiceStaffHeadline(row, row.event ?? ct.event)}
                                                             </div>
-                                                            <div className="text-slate-800">{row.service?.title || ct.service?.title || '—'}</div>
-                                                            <div
-                                                                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={includeSchedule}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onChange={(e) =>
-                                                                                onShiftModeChange?.(ct.id, {
-                                                                                    includeSchedule: e.target.checked,
-                                                                                    includeActual,
-                                                                                    includeName,
-                                                                                    includeNotes,
-                                                                                })
-                                                                            }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                            title="Include scheduled shift in totals"
-                                                                            aria-label="Include scheduled shift"
-                                                                        />
-                                                                    </label>
-                                                                )}
-                                                                <span className="font-medium text-slate-600">Schedule:</span>
-                                                                <span className="text-slate-800">
-                                                                    {invoiceScheduledRange(row)}
-                                                                    <span className="text-muted-foreground font-normal">
-                                                                        {' '}
-                                                                        ({rowSchedHrs.toFixed(2)} hrs)
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-0.5">
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-start pt-0.5">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={includeActual}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onChange={(e) =>
-                                                                                onShiftModeChange?.(ct.id, {
-                                                                                    includeSchedule,
-                                                                                    includeActual: e.target.checked,
-                                                                                    includeName,
-                                                                                    includeNotes,
-                                                                                })
-                                                                            }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                            title="Include actual shift in totals"
-                                                                            aria-label="Include actual shift"
-                                                                        />
-                                                                    </label>
-                                                                )}
-                                                                <span className="font-medium text-slate-600 shrink-0 pt-0.5">Actual:</span>
-                                                                {isSoloInvoiceRow ? (
+                                                            
+                                                            {isSameShift ? (
+                                                                <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-0.5">
+                                                                    {idx === 0 && (
+                                                                        <div className="flex gap-1 items-center mr-1" onClick={e => e.stopPropagation()}>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeSchedule}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule: e.target.checked,
+                                                                                        includeActual,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                title="Schedule"
+                                                                            />
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeActual}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule,
+                                                                                        includeActual: e.target.checked,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                title="Actual"
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                    <span className="font-medium text-slate-600 shrink-0 pt-0.5">Shift:</span>
                                                                     <div onClick={(e) => e.stopPropagation()} className="min-w-0">
                                                                         <Popover open={isEditing} onOpenChange={setIsEditing}>
                                                                             <PopoverTrigger asChild>
@@ -552,10 +571,121 @@ export function TimesheetTableRow({
                                                                             )}
                                                                         </Popover>
                                                                     </div>
-                                                                ) : (
-                                                                    actualLine
-                                                                )}
-                                                            </div>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div
+                                                                        className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        {idx === 0 && (
+                                                                            <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={includeSchedule}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    onChange={(e) =>
+                                                                                        onShiftModeChange?.(ct.id, {
+                                                                                            includeSchedule: e.target.checked,
+                                                                                            includeActual,
+                                                                                            includeName,
+                                                                                            includeNotes,
+                                                                                        })
+                                                                                    }
+                                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                    title="Include scheduled shift in totals"
+                                                                                    aria-label="Include scheduled shift"
+                                                                                />
+                                                                            </label>
+                                                                        )}
+                                                                        <span className="font-medium text-slate-600">Schedule:</span>
+                                                                        <span className="text-slate-800">
+                                                                            {invoiceScheduledRange(row)}
+                                                                            <span className="text-muted-foreground font-normal">
+                                                                                {' '}
+                                                                                ({rowSchedHrs.toFixed(2)} hrs)
+                                                                            </span>
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-0.5">
+                                                                        {idx === 0 && (
+                                                                            <label className="inline-flex shrink-0 cursor-pointer items-start pt-0.5">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={includeActual}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    onChange={(e) =>
+                                                                                        onShiftModeChange?.(ct.id, {
+                                                                                            includeSchedule,
+                                                                                            includeActual: e.target.checked,
+                                                                                            includeName,
+                                                                                            includeNotes,
+                                                                                        })
+                                                                                    }
+                                                                                    className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                    title="Include actual shift in totals"
+                                                                                    aria-label="Include actual shift"
+                                                                                />
+                                                                            </label>
+                                                                        )}
+                                                                        <span className="font-medium text-slate-600 shrink-0 pt-0.5">Actual:</span>
+                                                                        {invoiceGroups.length === 1 && count === 1 ? (
+                                                                            <div onClick={(e) => e.stopPropagation()} className="min-w-0">
+                                                                                <Popover open={isEditing} onOpenChange={setIsEditing}>
+                                                                                    <PopoverTrigger asChild>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            disabled={!ct.staff}
+                                                                                            className={`text-left rounded px-0.5 -mx-0.5 ${ct.staff ? 'cursor-pointer hover:bg-slate-50' : 'opacity-60 cursor-not-allowed'}`}
+                                                                                            onClick={(e) => !ct.staff && e.stopPropagation()}
+                                                                                        >
+                                                                                            {actualLine}
+                                                                                        </button>
+                                                                                    </PopoverTrigger>
+                                                                                    {ct.staff && (
+                                                                                        <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                                                                            <div className="space-y-3">
+                                                                                                <Label className="text-xs font-bold uppercase tracking-tight text-foreground">Edit actual shift</Label>
+                                                                                                <div className="space-y-2">
+                                                                                                    <div className="space-y-1">
+                                                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">Clock In</span>
+                                                                                                        <Input
+                                                                                                            type="datetime-local"
+                                                                                                            value={clockIn}
+                                                                                                            onChange={(e) => setClockIn(e.target.value)}
+                                                                                                            className="h-8 text-xs"
+                                                                                                        />
+                                                                                                    </div>
+                                                                                                    <div className="space-y-1">
+                                                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">Clock Out</span>
+                                                                                                        <Input
+                                                                                                            type="datetime-local"
+                                                                                                            value={clockOut}
+                                                                                                            onChange={(e) => setClockOut(e.target.value)}
+                                                                                                            className="h-8 text-xs"
+                                                                                                        />
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                                <div className="flex justify-between items-center pt-2 border-t">
+                                                                                                    <div className="text-[10px] font-bold text-slate-500">
+                                                                                                        Net: {hoursClocked.toFixed(2)} hrs
+                                                                                                    </div>
+                                                                                                    <div className="flex gap-2">
+                                                                                                        <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="h-7 text-[10px]">Cancel</Button>
+                                                                                                        <Button size="sm" onClick={handleSave} className="h-7 text-[10px]">Save</Button>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </PopoverContent>
+                                                                                    )}
+                                                                                </Popover>
+                                                                            </div>
+                                                                        ) : (
+                                                                            actualLine
+                                                                        )}
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     );
                                                 });
@@ -676,7 +806,7 @@ export function TimesheetTableRow({
                             <Fragment key={colId}>
                                 {colId === 'category' && (
                                     <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
-                                        <select className="text-[10px] p-1 bg-muted/40 border-none rounded focus:ring-1 focus:ring-primary/20 font-medium text-slate-600 cursor-pointer">
+                                        <select className="text-[10px] px-2 py-1.5 bg-muted/40 border border-border/60 rounded-md focus:ring-1 focus:ring-primary/30 focus:outline-none font-semibold text-foreground cursor-pointer hover:bg-muted/60 transition-colors">
                                             <option>Labor</option>
                                             <option>Travel</option>
                                             <option>Bonus</option>
@@ -689,9 +819,20 @@ export function TimesheetTableRow({
                                             {(() => {
                                                 const mergedCount = ct.mergedRows?.length ?? 1;
                                                 const isMergedTeamRow = mergedCount > 1;
-                                                const billRows = isMergedTeamRow ? [ct] : (ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct]);
+                                                const rawBillRows = isMergedTeamRow ? [ct] : (ct.mergedRows && ct.mergedRows.length > 0 ? ct.mergedRows : [ct]);
+                                                 
+                                                const billGroups: { row: CallTimeRow; count: number }[] = [];
+                                                rawBillRows.forEach(r => {
+                                                    const key = `${r.service?.id}-${getScheduledRangeStr(r)}-${getActualRangeStr(r.timeEntry)}`;
+                                                    const existing = billGroups.find(g => `${g.row.service?.id}-${getScheduledRangeStr(g.row)}-${getActualRangeStr(g.row.timeEntry)}` === key);
+                                                    if (existing) {
+                                                        existing.count++;
+                                                    } else {
+                                                        billGroups.push({ row: r, count: 1 });
+                                                    }
+                                                });
 
-                                                return billRows.map((row, idx) => {
+                                                return billGroups.map(({ row, count }, idx) => {
                                                     const rowTe = row.timeEntry;
                                                     const event = row.event ?? ct.event;
                                                     const loc = [event?.venueName, event?.address, event?.city, event?.state, event?.zipCode].filter(Boolean).join(', ');
@@ -702,11 +843,16 @@ export function TimesheetTableRow({
                                                         ? invoiceActualRange(rowTe)
                                                         : <span className="text-muted-foreground font-normal">Not clocked</span>;
 
+                                                    const schedStr = getScheduledRangeStr(row);
+                                                    const actualStr = getActualRangeStr(rowTe);
+                                                    const isSameShift = schedStr && actualStr && schedStr === actualStr;
+
                                                     return (
-                                                        <div key={row.id || idx} className={`flex flex-col gap-0.5 ${idx > 0 ? 'pt-4 border-t border-border/60' : ''}`}>
-                                                            <div className="flex items-center gap-2 font-bold text-[12px]">
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
+                                                        <div key={row.id || idx} className={`flex flex-col gap-2 ${idx > 0 ? 'pt-3 border-t border-border/50' : ''}`}>
+                                                            {/* Event title + location */}
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    {idx === 0 && (
                                                                         <input
                                                                             type="checkbox"
                                                                             checked={includeName}
@@ -719,80 +865,111 @@ export function TimesheetTableRow({
                                                                                     includeNotes,
                                                                                 })
                                                                             }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary shrink-0"
                                                                             title="Include group name in description"
-                                                                            aria-label="Include group name"
                                                                         />
-                                                                    </label>
+                                                                    )}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            if (event?.id) onViewEvent(event.id);
+                                                                        }}
+                                                                        className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-left font-semibold text-[12px] leading-snug"
+                                                                    >
+                                                                        {eventTitle}
+                                                                    </button>
+                                                                </div>
+                                                                {staffMeta && (
+                                                                    <span className="ml-5 text-[10px] text-muted-foreground leading-snug">{staffMeta}</span>
                                                                 )}
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (event?.id) onViewEvent(event.id);
-                                                                    }}
-                                                                    className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-left"
-                                                                >
-                                                                    {eventTitle}
-                                                                </button>
-                                                                {staffMeta && <span className="text-slate-700">| {staffMeta}</span>}
                                                             </div>
-                                                            <div className="font-semibold text-primary/80">
-                                                                {row.service?.title || '—'}
-                                                            </div>
-                                                            <div
-                                                                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={includeSchedule}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onChange={(e) =>
-                                                                                onShiftModeChange?.(ct.id, {
-                                                                                    includeSchedule: e.target.checked,
-                                                                                    includeActual,
-                                                                                    includeName,
-                                                                                    includeNotes,
-                                                                                })
-                                                                            }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                            title="Include scheduled shift in totals"
-                                                                            aria-label="Include scheduled shift"
-                                                                        />
-                                                                    </label>
-                                                                )}
-                                                                <span className="font-medium text-slate-500">Schedule:</span>
-                                                                <span>{invoiceScheduledRange(row)}</span>
-                                                            </div>
-                                                            <div
-                                                                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                {idx === 0 && (
-                                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={includeActual}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onChange={(e) =>
-                                                                                onShiftModeChange?.(ct.id, {
-                                                                                    includeSchedule,
-                                                                                    includeActual: e.target.checked,
-                                                                                    includeName,
-                                                                                    includeNotes,
-                                                                                })
-                                                                            }
-                                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                                            title="Include actual shift in totals"
-                                                                            aria-label="Include actual shift"
-                                                                        />
-                                                                    </label>
-                                                                )}
-                                                                <span className="font-medium text-slate-500">Actual:</span>
-                                                                <span>{actualLine}</span>
+
+                                                            {/* Shift rows */}
+                                                            <div className="ml-1 flex flex-col gap-1 border-l-2 border-border/40 pl-2.5 py-0.5" onClick={(e) => e.stopPropagation()}>
+                                                            {isSameShift ? (
+                                                                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                                                    {idx === 0 && (
+                                                                        <div className="flex gap-1 items-center shrink-0">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeSchedule}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule: e.target.checked,
+                                                                                        includeActual,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                title="Schedule"
+                                                                            />
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeActual}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule,
+                                                                                        includeActual: e.target.checked,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                                                                title="Actual"
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Shift:</span>
+                                                                    <span className="text-slate-700">{actualLine}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                                                        {idx === 0 && (
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeSchedule}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule: e.target.checked,
+                                                                                        includeActual,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary shrink-0"
+                                                                                title="Include scheduled shift"
+                                                                            />
+                                                                        )}
+                                                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Schedule:</span>
+                                                                        <span className="text-slate-700">{invoiceScheduledRange(row)}</span>
+                                                                    </div>
+                                                                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                                                        {idx === 0 && (
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={includeActual}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                onChange={(e) =>
+                                                                                    onShiftModeChange?.(ct.id, {
+                                                                                        includeSchedule,
+                                                                                        includeActual: e.target.checked,
+                                                                                        includeName,
+                                                                                        includeNotes,
+                                                                                    })
+                                                                                }
+                                                                                className="h-3.5 w-3.5 rounded border-border accent-primary shrink-0"
+                                                                                title="Include actual shift"
+                                                                            />
+                                                                        )}
+                                                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Actual:</span>
+                                                                        <span className="text-slate-700">{actualLine}</span>
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                             </div>
                                                         </div>
                                                     );
@@ -800,30 +977,27 @@ export function TimesheetTableRow({
                                             })()}
 
                                             {/* Notes Section */}
-                                            <div className="flex flex-col pt-2 border-t border-slate-100">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-0">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={includeNotes}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            onChange={(e) =>
-                                                                onShiftModeChange?.(ct.id, {
-                                                                    includeSchedule,
-                                                                    includeActual,
-                                                                    includeName,
-                                                                    includeNotes: e.target.checked,
-                                                                })
-                                                            }
-                                                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                                            title="Include notes in description"
-                                                            aria-label="Include notes"
-                                                        />
-                                                    </label>
-                                                    <span className="font-bold text-[9px] text-slate-400 uppercase tracking-widest">Notes</span>
+                                            <div className="flex flex-col gap-1 pt-2 border-t border-border/40">
+                                                <div className="flex items-center gap-1.5">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={includeNotes}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onChange={(e) =>
+                                                            onShiftModeChange?.(ct.id, {
+                                                                includeSchedule,
+                                                                includeActual,
+                                                                includeName,
+                                                                includeNotes: e.target.checked,
+                                                            })
+                                                        }
+                                                        className="h-3.5 w-3.5 rounded border-border accent-primary shrink-0"
+                                                        title="Include notes in description"
+                                                    />
+                                                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Notes</span>
                                                 </div>
                                                 {isEditingNotes ? (
-                                                    <div onClick={e => e.stopPropagation()}>
+                                                    <div onClick={e => e.stopPropagation()} className="ml-5">
                                                         <textarea
                                                             value={localNotes}
                                                             onChange={e => setLocalNotes(e.target.value)}
@@ -847,10 +1021,10 @@ export function TimesheetTableRow({
                                                     </div>
                                                 ) : (
                                                     <div
-                                                        className="group relative cursor-pointer hover:bg-slate-50 p-1.5 rounded transition-all font-medium text-slate-600 italic text-[11px]"
+                                                        className="ml-5 cursor-pointer hover:bg-muted/50 px-2 py-1.5 rounded-md transition-all text-[11px] text-muted-foreground"
                                                         onClick={(e) => { e.stopPropagation(); setIsEditingNotes(true); }}
                                                     >
-                                                        <p className="line-clamp-3 not-italic">{localNotes || 'Click to add notes...'}</p>
+                                                        <p className="line-clamp-3">{localNotes || 'Click to add notes...'}</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -858,10 +1032,10 @@ export function TimesheetTableRow({
                                     </td>
                                 )}
                                 {colId === 'bill' && (
-                                    <td className="px-3 py-2.5 text-right font-extrabold text-red-600 tabular-nums text-[13px]">
+                                    <td className="px-3 py-2.5 text-right tabular-nums text-[13px]">
                                         <Popover open={isEditingOtCost} onOpenChange={setIsEditingOtCost}>
                                             <PopoverTrigger asChild>
-                                                <div className="cursor-pointer hover:bg-red-50 transition-colors p-1 rounded" onClick={e => e.stopPropagation()}>
+                                                <div className="cursor-pointer inline-flex items-center justify-end gap-1 hover:bg-red-50 transition-colors px-2 py-1 rounded-md font-bold text-red-600" onClick={e => e.stopPropagation()}>
                                                     {fmtCurrency(totalBill)}
                                                 </div>
                                             </PopoverTrigger>
@@ -891,8 +1065,10 @@ export function TimesheetTableRow({
                                     </td>
                                 )}
                                 {colId === 'netIncome' && (
-                                    <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums text-[13px]">
-                                        {fmtCurrency(totalInvoice - totalBill)}
+                                    <td className="px-3 py-2.5 text-right font-bold text-emerald-600 tabular-nums text-[13px] pr-4">
+                                        <span className="inline-flex items-center justify-end px-2 py-1 rounded-md bg-emerald-50/60">
+                                            {fmtCurrency(totalInvoice - totalBill)}
+                                        </span>
                                     </td>
                                 )}
                                 {colId === 'status' && (
@@ -1055,40 +1231,44 @@ export function TimesheetTableRow({
                                 {colId === 'talent' && (
                                     <td className="px-3 py-2.5 truncate" style={{ width: `var(--col-talent)` }}>
                                         <div className="flex flex-col gap-0.5">
-                                            {ct.staff ? (
-                                                <TalentContactPopover
-                                                    talent={{
-                                                        firstName: ct.staff.firstName,
-                                                        lastName: ct.staff.lastName,
-                                                        email: ct.staff.email,
-                                                        phone: ct.staff.phone,
-                                                        city: ct.staff.city,
-                                                        state: ct.staff.state,
-                                                        accountStatus: ct.staff.accountStatus,
-                                                        staffRating: ct.staff.staffRating,
-                                                    }}
-                                                    trigger={(
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="text-left text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer transition-colors"
-                                                        >
-                                                            {ct.staff.firstName} {ct.staff.lastName}
-                                                        </button>
-                                                    )}
-                                                />
-                                            ) : (
-                                                <span className="text-sm font-bold text-foreground">Open shift</span>
-                                            )}
+                                            {(() => {
+                                                const talent = ct.staff ?? ct.teamUnit?.staff ?? null;
+                                                if (!talent) {
+                                                    return <span className="text-sm font-bold text-foreground">Open shift</span>;
+                                                }
+                                                return (
+                                                    <TalentContactPopover
+                                                        talent={{
+                                                            firstName: talent.firstName,
+                                                            lastName: talent.lastName,
+                                                            email: talent.email,
+                                                            phone: talent.phone,
+                                                            city: talent.city,
+                                                            state: talent.state,
+                                                            accountStatus: talent.accountStatus,
+                                                            staffRating: talent.staffRating,
+                                                        }}
+                                                        trigger={(
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="text-left text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer transition-colors"
+                                                            >
+                                                                {talent.firstName} {talent.lastName}
+                                                            </button>
+                                                        )}
+                                                    />
+                                                );
+                                            })()}
                                             {ct.teamUnit ? (
                                                 <span className="text-[10px] text-muted-foreground tracking-tight">
                                                     <span className="font-semibold text-foreground">{ct.teamUnit.unitName}</span>
                                                     <span className="mx-1">·</span>
                                                     <span className="uppercase">{ct.teamUnit.unitId}</span>
-                                                    {ct.teamUnit.primaryContact && (
+                                                    {(ct.teamUnit.staff?.email || ct.teamUnit.primaryContact) && (
                                                         <>
                                                             <span className="mx-1">·</span>
-                                                            <span>{ct.teamUnit.primaryContact}</span>
+                                                            <span className="lowercase">{ct.teamUnit.staff?.email || ct.teamUnit.primaryContact}</span>
                                                         </>
                                                     )}
                                                 </span>
@@ -1219,7 +1399,7 @@ export function TimesheetTableRow({
                                     <td className="truncate px-3 py-2.5 text-center" style={{ width: `var(--col-variance)` }}>
                                         <div className="flex flex-col items-center gap-0.5">
                                             {(() => {
-                                                const diff = hoursScheduled - hoursClocked;
+                                                const diff = hoursClocked - hoursScheduled;
                                                 if (Math.abs(diff) < 0.1) {
                                                     return (
                                                         <span className="text-[11px] font-bold text-foreground tabular-nums">0.00 hrs</span>
@@ -1531,6 +1711,7 @@ export function TimesheetTableRow({
                     onViewEvent={onViewEvent}
                     cardStyle={rowVariant === 'card'}
                     colSpan={2 + colOrder.length}
+                    subTab={subTab}
                 />
             )}
         </>

@@ -6,9 +6,7 @@ const reqTemplateIdSchema = z.enum(REQ_TEMPLATE_IDS);
 /** String literals match Prisma `CatalogRequirementExpiration` (avoid `z.nativeEnum` + `@prisma/client` in API bundles where the enum object can be undefined). */
 const CATALOG_REQUIREMENT_EXPIRATION = [
   'NEVER',
-  'FROM_YEAR_START',
-  'FROM_COMPLETION',
-  'BEFORE_YEAR_END',
+  'CUSTOM_DATE',
 ] as const;
 
 const expirationSchema = z.enum(CATALOG_REQUIREMENT_EXPIRATION);
@@ -33,6 +31,7 @@ export const CatalogRequirementSchema = {
       allowImage: z.boolean().default(true),
       allowOther: z.boolean().default(false),
       expirationType: expirationSchema.default('NEVER'),
+      expirationDate: z.coerce.date().optional().nullable(),
       allowEarlyRenewal: z.boolean().default(false),
       requiresApproval: z.boolean().default(false),
       isTalentRequired: z.boolean().default(false),
@@ -43,6 +42,13 @@ export const CatalogRequirementSchema = {
           code: z.ZodIssueCode.custom,
           message: 'Select at least one accepted file format',
           path: ['allowPdf'],
+        });
+      }
+      if (data.expirationType === 'CUSTOM_DATE' && !data.expirationDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Please select an expiration date',
+          path: ['expirationDate'],
         });
       }
     }),

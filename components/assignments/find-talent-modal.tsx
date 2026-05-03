@@ -76,6 +76,7 @@ export function FindTalentModal({
   const staffTerm = useStaffTerm();
   const { toast } = useToast();
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [selectionCounts, setSelectionCounts] = useState<Record<string, number>>({});
   const [includeAlreadyInvited, setIncludeAlreadyInvited] = useState(false);
 
   // Filter state
@@ -119,7 +120,7 @@ export function FindTalentModal({
   // Split selection by kind
   const selection = useMemo(() => {
     const individualStaffIds: string[] = [];
-    const teamSelections: { managerStaffId: string; serviceId: string }[] = [];
+    const teamSelections: { managerStaffId: string; serviceId: string; units?: number }[] = [];
     let teamInviteCount = 0;
     for (const rowId of selectedRowIds) {
       const row = rows.find((r) => r.rowId === rowId);
@@ -127,8 +128,13 @@ export function FindTalentModal({
       if (row.kind === 'INDIVIDUAL') {
         individualStaffIds.push(row.id);
       } else if (row.serviceId && row.managerStaffId) {
-        teamSelections.push({ managerStaffId: row.managerStaffId, serviceId: row.serviceId });
-        teamInviteCount += row.availableUnits;
+        const units = selectionCounts[rowId] ?? row.availableUnits;
+        teamSelections.push({
+          managerStaffId: row.managerStaffId,
+          serviceId: row.serviceId,
+          units,
+        });
+        teamInviteCount += units;
       }
     }
     return {
@@ -137,7 +143,7 @@ export function FindTalentModal({
       teamInviteCount,
       totalSelections: individualStaffIds.length + teamSelections.length,
     };
-  }, [selectedRowIds, rows]);
+  }, [selectedRowIds, rows, selectionCounts]);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingOffers, setPendingOffers] = useState<{
@@ -257,20 +263,22 @@ export function FindTalentModal({
   };
 
   const handleAssignAssignment = () => {
-    if (selection.individualStaffIds.length === 0 || !hasCallTimeIds) return;
+    if (selection.totalSelections === 0 || !hasCallTimeIds) return;
 
     if (effectiveCallTimeIds.length > 1) {
       setPendingAssign({
         callTimeIds: effectiveCallTimeIds,
         staffIds: selection.individualStaffIds,
-      });
+        teamSelections: selection.teamSelections,
+      } as any);
       setIsAssignConfirmOpen(true);
       return;
     }
 
     assignInvitations.mutate({
       callTimeIds: effectiveCallTimeIds,
-      staffIds: selection.individualStaffIds,
+      staffIds: selection.individualStaffIds.length > 0 ? selection.individualStaffIds : undefined,
+      teamSelections: selection.teamSelections.length > 0 ? selection.teamSelections : undefined,
     });
   };
 
@@ -282,11 +290,27 @@ export function FindTalentModal({
 
   const handleClose = () => {
     setSelectedRowIds([]);
+    setSelectionCounts({});
     setIncludeAlreadyInvited(false);
     setIsAssignConfirmOpen(false);
     setPendingAssign(null);
     clearFilters();
     onClose();
+  };
+
+  const handleSelectionChange = (newIds: string[]) => {
+    setSelectedRowIds(newIds);
+    setSelectionCounts((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((id) => {
+        if (!newIds.includes(id)) delete next[id];
+      });
+      return next;
+    });
+  };
+
+  const handleCountChange = (rowId: string, count: number) => {
+    setSelectionCounts((prev) => ({ ...prev, [rowId]: count }));
   };
 
   const clearFilters = () => {
@@ -323,7 +347,7 @@ export function FindTalentModal({
     );
 
   return (
-    <Dialog open={open} onClose={handleClose} className="max-w-6xl w-[90vw]">
+    <Dialog open={open} onClose={handleClose} className="max-w-7xl w-[95vw]">
       <DialogHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -355,7 +379,7 @@ export function FindTalentModal({
         </div>
       </DialogHeader>
 
-      <DialogContent className="max-h-[calc(100vh-200px)] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-hidden">
         <div className="space-y-4">
           {/* Filters Bar */}
           <div className="bg-muted/30 border border-border/50 rounded-lg p-3 space-y-3">
@@ -465,7 +489,7 @@ export function FindTalentModal({
                     Up to {totalInvitesToSend} invitation{totalInvitesToSend === 1 ? '' : 's'} will be sent
                   </span>
                 )}
-                {selection.individualStaffIds.length > 0 && (
+                {selection.totalSelections > 0 && (
                   <Button
                     type="button"
                     variant="outline"
@@ -473,8 +497,8 @@ export function FindTalentModal({
                     disabled={sendInvitations.isPending || assignInvitations.isPending}
                   >
                     <CheckCircleIcon className="h-4 w-4 mr-2" />
-                    Assign {selection.individualStaffIds.length} assignment
-                    {selection.individualStaffIds.length > 1 ? 's' : ''}
+                    Assign {selection.totalSelections} assignment
+                    {selection.totalSelections > 1 ? 's' : ''}
                   </Button>
                 )}
                 <Button
@@ -493,7 +517,9 @@ export function FindTalentModal({
           <StaffSearchTable
             rows={rows}
             selectedRowIds={selectedRowIds}
-            onSelectionChange={setSelectedRowIds}
+            selectionCounts={selectionCounts}
+            onSelectionChange={handleSelectionChange}
+            onCountChange={handleCountChange}
             isLoading={isLoadingStaff}
             showInvitationStatus={includeAlreadyInvited}
           />
@@ -526,8 +552,8 @@ export function FindTalentModal({
         }}
         onConfirm={handleConfirmAssign}
         title="Confirm assign on behalf"
-        description={`You are about to assign ${selection.individualStaffIds.length} ${staffTerm.lowerPlural} across ${effectiveCallTimeIds.length} assignments immediately. They will be marked as accepted (no invitation email).`}
-        warningMessage="We will send a call time confirmation or waitlist email only—not an invitation. Team-manager selections cannot be assigned on behalf and will be skipped."
+        description={`You are about to assign ${selection.totalSelections} talent(s) across ${effectiveCallTimeIds.length} assignments immediately. They will be marked as accepted (no invitation email).`}
+        warningMessage="We will send a call time confirmation or waitlist email only—not an invitation. This will include individual and team assignments."
         confirmText="Yes, assign"
         variant="default"
         isLoading={assignInvitations.isPending}

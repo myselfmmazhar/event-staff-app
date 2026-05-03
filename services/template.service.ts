@@ -418,6 +418,16 @@ export class TemplateService {
     const template = await this.getEmailTemplate(type);
     const branding = await this.getBrandingSettings();
 
+    // Inject company name from org settings unless the caller already provided it
+    if (!variables.companyName) {
+      const orgSettings = await this.prisma.organizationSettings.findFirst({
+        select: { companyName: true },
+      });
+      if (orgSettings?.companyName) {
+        variables = { ...variables, companyName: orgSettings.companyName };
+      }
+    }
+
     // Replace variables in subject and body
     const subject = this.replaceVariables(template.subject, variables);
     const bodyContent = this.replaceVariables(template.bodyHtml, variables);
@@ -444,6 +454,14 @@ export class TemplateService {
     const template = await this.getEmailTemplate(type);
     const branding = await this.getBrandingSettings();
     const sampleVars = getSampleVariables(type);
+
+    // Use real company name in preview if available
+    const orgSettings = await this.prisma.organizationSettings.findFirst({
+      select: { companyName: true },
+    });
+    if (orgSettings?.companyName) {
+      sampleVars.companyName = orgSettings.companyName;
+    }
 
     const subject = customSubject ?? template.subject;
     const bodyContent = customBodyHtml ?? template.bodyHtml;

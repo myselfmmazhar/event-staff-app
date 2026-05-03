@@ -142,6 +142,7 @@ export default function ServicesPage() {
     expenditureAmountType: service.expenditureAmountType ?? null,
     isActive: service.isActive,
     createdAt: service.createdAt,
+    category: service.category ?? null,
   }));
 
   // Get selected services for bulk delete modal display

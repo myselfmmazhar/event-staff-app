@@ -276,7 +276,7 @@ function CatalogRequirementsContent() {
             )}
           >
             <SquaresIcon className="h-4 w-4" />
-            Collections
+            Requirement
           </button>
           <button
             onClick={() => setActiveTab('requirements')}
@@ -290,12 +290,10 @@ function CatalogRequirementsContent() {
           </button>
         </div>
         <div className="pb-2">
-          {activeTab === 'categories' ? null : (
-            <Button onClick={() => setWizardOpen(true)} size="sm" className="rounded-lg shadow-sm">
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Add Requirement
-            </Button>
-          )}
+          <Button onClick={() => setWizardOpen(true)} size="sm" className="rounded-lg shadow-sm">
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Requirement
+          </Button>
         </div>
       </div>
 
@@ -401,7 +399,7 @@ function CatalogRequirementsContent() {
                 )}
                 {(reqData?.data ?? []).map((row: any) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell>{row.name}</TableCell>
                     <TableCell>
                       {REQ_TEMPLATE_CARDS.find((c) => c.id === row.templateId)?.title ?? row.templateId}
                     </TableCell>

@@ -223,9 +223,9 @@ type EventModalTab = EventFormTab | 'batch';
 const EVENT_FORM_TABS: { id: EventFormTab; label: string }[] = [
   { id: 'basic', label: 'Basic Info' },
   { id: 'venue', label: 'Venue' },
-  { id: 'staff', label: 'Staff & Rates' },
-  { id: 'instructions', label: 'Instructions' },
   { id: 'documents', label: 'Documents' },
+  { id: 'staff', label: 'Staff & Rates' },
+  { id: 'instructions', label: 'Internal' },
 ];
 
 const EVENT_FIELD_TO_TAB: Record<string, EventFormTab> = {
@@ -486,7 +486,7 @@ export function EventFormModal({
   }, [backendErrors, setError]);
 
   // Wizard step logic
-  const EVENT_STEP_IDS = ['basic', 'venue', 'staff', 'instructions', 'documents'] as const;
+  const EVENT_STEP_IDS = ['basic', 'venue', 'documents', 'staff', 'instructions'] as const;
   const eventTitle = watch('title');
   const eventVenueName = watch('venueName');
   const eventAddress = watch('address');
@@ -496,7 +496,7 @@ export function EventFormModal({
 
   const formStepIndex = EVENT_STEP_IDS.indexOf(activeTab as typeof EVENT_STEP_IDS[number]);
   const isFormTab = formStepIndex >= 0;
-  const isLastFormStep = activeTab === 'documents';
+  const isLastFormStep = activeTab === 'instructions';
 
   const canContinueBasic = Boolean(eventTitle?.trim());
   const canContinueVenue =

@@ -79,8 +79,8 @@ export function CategoryTable({
                 aria-label="Select all"
               />
             ),
-            headerClassName: 'w-12 py-3 px-4 text-left',
-            className: 'w-12 py-4 px-4',
+            headerClassName: 'w-10 py-3 px-3 text-left',
+            className: 'w-10 py-4 px-3',
             render: (category: CategoryTableRow) => (
               <Checkbox
                 checked={selectedIds.has(category.id)}
@@ -95,8 +95,8 @@ export function CategoryTable({
     {
       key: 'actions',
       label: 'Actions',
-      headerClassName: 'text-left py-3 px-4 w-10',
-      className: 'w-10 py-4 px-4',
+      headerClassName: 'text-left py-3 px-3 w-10',
+      className: 'w-10 py-4 px-3',
       render: (category) => {
         const actions: ActionItem[] = [
           {
@@ -121,24 +121,25 @@ export function CategoryTable({
     {
       key: 'status',
       label: 'Status',
-      className: 'py-4 px-4 whitespace-nowrap',
+      headerClassName: 'py-3 px-3 whitespace-nowrap text-center w-24',
+      className: 'py-4 px-3 whitespace-nowrap text-center w-24',
       render: (category) => (
         <Badge variant={category.isActive ? 'success' : 'secondary'} asSpan>
           {category.isActive ? 'Active' : 'Inactive'}
         </Badge>
       ),
     },
-    // {
-    //   key: 'categoryId',
-    //   label: 'Category ID',
-    //   className: 'py-4 px-4 whitespace-nowrap',
-    //   render: (category) => (
-    //     <span className="font-mono text-sm text-muted-foreground">{category.categoryId}</span>
-    //   ),
-    // },
+    {
+      key: 'name',
+      label: 'Name',
+      sortable: true,
+      initialWidth: 180,
+      className: 'py-4 px-4',
+      render: (category) => <span className="text-foreground">{category.name}</span>,
+    },
     {
       key: 'requirementType',
-      label: 'Collection',
+      label: 'Requirement',
       className: 'py-4 px-4 text-sm max-w-md',
       render: (category) => {
         const ids = normalizeReqTemplateIds(category.requirementTemplateIds ?? []);
@@ -150,26 +151,10 @@ export function CategoryTable({
       },
     },
     {
-      key: 'talentRequired',
-      label: 'Talent required',
-      className: 'py-4 px-4 whitespace-nowrap',
-      render: (category) => (
-        <Badge variant={category.isRequired ? 'primary' : 'secondary'} asSpan>
-          {category.isRequired ? 'Yes' : 'No'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'name',
-      label: 'Name',
-      sortable: true,
-      className: 'py-4 px-4',
-      render: (category) => <span className="font-medium text-foreground">{category.name}</span>,
-    },
-    {
       key: 'description',
       label: 'Description',
-      className: 'py-4 px-4 text-sm text-muted-foreground max-w-xs truncate',
+      noResize: true,
+      className: 'py-4 px-4 text-sm text-muted-foreground truncate',
       render: (category) => category.description ?? '-',
     },
   ];
