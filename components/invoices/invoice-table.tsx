@@ -225,7 +225,14 @@ export function InvoiceTable({
             label: "Invoice No",
             sortable: true,
             className: "py-4 px-4 font-medium",
-            render: (invoice) => invoice.invoiceNo,
+            render: (invoice) => (
+                <span
+                    className={onEdit ? "cursor-pointer text-primary hover:underline" : ""}
+                    onClick={onEdit ? () => onEdit(invoice) : undefined}
+                >
+                    {invoice.invoiceNo}
+                </span>
+            ),
         },
         {
             key: "client",
