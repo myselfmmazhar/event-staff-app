@@ -24,7 +24,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeftIcon, CheckIcon, CloseIcon, EditIcon, MoreVerticalIcon, CheckCircleIcon } from '@/components/ui/icons';
+import { ChevronLeftIcon, CheckIcon, CloseIcon, EditIcon, MoreVerticalIcon, CheckCircleIcon, UserIcon } from '@/components/ui/icons';
 import type { SortField, SortOrder, StaffingFilter, EventGroup, CallTimeRow, TimesheetTab, ClientGroup, TalentGroup } from '@/components/timesheet/types';
 import { TalentContactPopover } from '@/components/timesheet/talent-contact-popover';
 import { calcTotalBill, calcTotalInvoice, toNumber, calcScheduledHours, calcClockedHours, formatDate } from '@/components/timesheet/helpers';
@@ -290,14 +290,19 @@ export default function TimeManagerPage() {
 
         return Array.from(grouped.entries()).map(([key, group]) => (
             <Fragment key={`bill-talent-${key}`}>
-                <tr className="bg-slate-50/80">
-                    <td colSpan={20} className="px-3 py-2">
-                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                            <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Talent:</span>
-                            <span className="text-base font-semibold text-slate-900">{group.talentName}</span>
-                            {group.talentEmail && (
-                                <span className="text-sm font-medium text-slate-500">{group.talentEmail}</span>
-                            )}
+                <tr>
+                    <td colSpan={20} className="px-3 pt-3 pb-1">
+                        <div className="flex items-center gap-2.5 border-l-2 border-primary/50 pl-3 bg-primary/5 rounded-r-lg py-2 pr-3">
+                            <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/15 text-primary shrink-0">
+                                <UserIcon className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Talent</span>
+                                <span className="text-sm font-semibold text-foreground">{group.talentName}</span>
+                                {group.talentEmail && (
+                                    <span className="text-xs text-muted-foreground">{group.talentEmail}</span>
+                                )}
+                            </div>
                         </div>
                     </td>
                 </tr>
@@ -586,7 +591,7 @@ export default function TimeManagerPage() {
                 if (detailVariance !== 'all') {
                     const hs = calcScheduledHours(ct);
                     const hc = calcClockedHours(ct.timeEntry);
-                    const d = hs - hc;
+                    const d = hc - hs;
                     if (detailVariance === 'zero' && Math.abs(d) >= 0.1) return false;
                     if (detailVariance === 'positive' && d <= 0.1) return false;
                     if (detailVariance === 'negative' && d >= -0.1) return false;

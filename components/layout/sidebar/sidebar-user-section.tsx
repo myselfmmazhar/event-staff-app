@@ -37,6 +37,8 @@ interface SidebarUserSectionProps {
   isMobile?: boolean;
 }
 
+const ADMIN_ONLY_LINKS = ['/profile/company', '/profile/team', '/profile/reports', '/profile/billing'];
+
 export function SidebarUserSection({
   user,
   isExpanded,
@@ -46,13 +48,15 @@ export function SidebarUserSection({
 }: SidebarUserSectionProps) {
   const pathname = usePathname();
 
+  const isAdminUser = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+
   const profileLinks = [
     { href: '/profile', label: 'My Profile', icon: UserIcon },
     { href: '/profile/company', label: 'Company Profile', icon: BuildingOfficeIcon },
     { href: '/profile/team', label: 'Team', icon: UsersIcon },
     { href: '/profile/reports', label: 'Reports', icon: ChartBarIcon, comingSoon: true },
     { href: '/profile/billing', label: 'Billing', icon: CreditCardIcon, comingSoon: true },
-  ];
+  ].filter(({ href }) => isAdminUser || !ADMIN_ONLY_LINKS.includes(href));
 
   return (
     <div className="px-3 py-2">

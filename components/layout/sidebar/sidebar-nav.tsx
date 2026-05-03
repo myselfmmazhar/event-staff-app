@@ -25,7 +25,6 @@ function filterNavItems(navItems: NavItemType[], user?: SessionUser, staffRole?:
 
       const isAllowedLabel = item.label === 'Dashboard' ||
                             item.label === 'My Schedule' ||
-                            (item.label === 'My Profile' && item.staffOnly) ||
                             item.label === 'Communication Manager';
 
       // If staff is a TEAM, they can also see the Staff Manager (Talent)
