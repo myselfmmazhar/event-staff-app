@@ -457,9 +457,7 @@ enum CategoryRequirementType {
 
 enum CatalogRequirementExpiration {
   NEVER
-  FROM_YEAR_START
-  FROM_COMPLETION
-  BEFORE_YEAR_END
+  CUSTOM_DATE
 }
 
 model CatalogRequirement {
@@ -472,6 +470,7 @@ model CatalogRequirement {
   allowImage         Boolean                      @default(true)
   allowOther         Boolean                      @default(false)
   expirationType     CatalogRequirementExpiration @default(NEVER)
+  expirationDate     DateTime?                    @db.Date
   allowEarlyRenewal  Boolean                      @default(false)
   requiresApproval   Boolean                      @default(false)
   isTalentRequired   Boolean                      @default(false)

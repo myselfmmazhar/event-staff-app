@@ -4,7 +4,7 @@ import type { EmailTemplateType, SmsTemplateType } from '@prisma/client';
  * Template variable definitions by category
  */
 export const TEMPLATE_VARIABLES = {
-  common: ['{{firstName}}', '{{email}}'],
+  common: ['{{firstName}}', '{{email}}', '{{companyName}}'],
   staff: ['{{staffTermLabel}}', '{{inviteUrl}}'],
   client: ['{{inviteUrl}}'],
   credentials: ['{{tempPassword}}', '{{loginUrl}}'],
@@ -38,6 +38,7 @@ export const TEMPLATE_VARIABLES = {
 export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{firstName}}': 'Recipient\'s first name',
   '{{email}}': 'Recipient\'s email address',
+  '{{companyName}}': 'Company name from company profile',
   '{{staffTermLabel}}': 'Organization\'s term for staff (e.g., Staff, Talent)',
   '{{inviteUrl}}': 'URL to accept the invitation',
   '{{loginUrl}}': 'URL to the login page',
@@ -401,6 +402,7 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
     firstName: 'John',
     email: 'john.doe@example.com',
     staffTermLabel: 'Staff',
+    companyName: 'Acme Events Co.',
   };
 
   const callTimeCommon = {

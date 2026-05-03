@@ -29,6 +29,12 @@ export class ServiceService {
     expenditurePrice: true,
     isActive: true,
     categoryId: true,
+    category: {
+      select: {
+        requirementTemplateIds: true,
+        requirementType: true,
+      },
+    },
     createdBy: true,
     createdAt: true,
     updatedAt: true,

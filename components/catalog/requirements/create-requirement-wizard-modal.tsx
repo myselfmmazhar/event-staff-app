@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -27,8 +27,11 @@ import { RequirementTemplateCardGrid } from '@/components/common/requirement-tem
 import {
   REQ_TEMPLATE_CARDS,
   isTalentSubmissionTemplateId,
+  formatRequirementTemplatesShort,
+  normalizeReqTemplateIds,
   type ReqTemplateId,
 } from '@/lib/requirement-templates';
+import { CATEGORY_REQUIREMENT_LABELS } from '@/lib/category-requirements';
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -36,30 +39,39 @@ import { motion } from 'framer-motion';
 /** Mirrors Prisma `CatalogRequirementExpiration` — defined here so the wizard stays client-safe (no `@prisma/client` in the bundle). */
 const CATALOG_REQUIREMENT_EXPIRATION = [
   'NEVER',
-  'FROM_YEAR_START',
-  'FROM_COMPLETION',
-  'BEFORE_YEAR_END',
+  'CUSTOM_DATE',
 ] as const;
 
 type CatalogRequirementExpirationValue = (typeof CATALOG_REQUIREMENT_EXPIRATION)[number];
 
 const expirationTypeSchema = z.enum(CATALOG_REQUIREMENT_EXPIRATION);
 
-const settingsSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(200).transform((v) => v.trim()),
-  instructions: z
-    .string()
-    .max(5000)
-    .optional()
-    .transform((v) => (v?.trim() ? v.trim() : undefined)),
-  allowPdf: z.boolean(),
-  allowImage: z.boolean(),
-  allowOther: z.boolean(),
-  expirationType: expirationTypeSchema,
-  allowEarlyRenewal: z.boolean(),
-  requiresApproval: z.boolean(),
-  isTalentRequired: z.boolean(),
-});
+const settingsSchema = z
+  .object({
+    name: z.string().min(1, 'Name is required').max(200).transform((v) => v.trim()),
+    instructions: z
+      .string()
+      .max(5000)
+      .optional()
+      .transform((v) => (v?.trim() ? v.trim() : undefined)),
+    allowPdf: z.boolean(),
+    allowImage: z.boolean(),
+    allowOther: z.boolean(),
+    expirationType: expirationTypeSchema,
+    expirationDate: z.string().optional(),
+    allowEarlyRenewal: z.boolean(),
+    requiresApproval: z.boolean(),
+    isTalentRequired: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.expirationType === 'CUSTOM_DATE' && !data.expirationDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please select an expiration date',
+        path: ['expirationDate'],
+      });
+    }
+  });
 
 type SettingsFormInput = z.input<typeof settingsSchema>;
 type SettingsFormOutput = z.infer<typeof settingsSchema>;
@@ -86,6 +98,7 @@ const defaultSettings = (): SettingsFormInput => ({
   allowImage: true,
   allowOther: false,
   expirationType: 'NEVER',
+  expirationDate: undefined,
   allowEarlyRenewal: false,
   requiresApproval: false,
   isTalentRequired: false,
@@ -113,6 +126,7 @@ export function CreateRequirementWizardModal({
   const [categoryName, setCategoryName] = useState<string>('');
   const [categoryDescription, setCategoryDescription] = useState<string>('');
   const [preview, setPreview] = useState<SettingsFormOutput | null>(null);
+  const saveActionRef = useRef<'close' | 'new'>('close');
 
   const { data: activeCategories } = trpc.category.getAllActive.useQuery(undefined, {
     enabled: open && !fixedCategory,
@@ -121,7 +135,15 @@ export function CreateRequirementWizardModal({
   const createMutation = trpc.catalogRequirement.create.useMutation({
     onSuccess: () => {
       onSaved?.();
-      handleClose();
+      if (saveActionRef.current === 'new') {
+        saveActionRef.current = 'close';
+        // Stay open — go back to step 2 with the same category, template, and pre-filled settings
+        if (preview) reset(preview);
+        setPreview(null);
+        setStep(2);
+      } else {
+        handleClose();
+      }
     },
   });
 
@@ -165,6 +187,18 @@ export function CreateRequirementWizardModal({
 
   const effectiveCategoryId = fixedCategory?.id ?? categoryId;
   const isNewCategory = categoryId === 'CREATE_NEW';
+
+  const selectedCategory = !fixedCategory && categoryId && categoryId !== 'CREATE_NEW'
+    ? activeCategories?.find((c) => c.id === categoryId)
+    : undefined;
+  const selectedCategoryReqIds = normalizeReqTemplateIds(
+    (selectedCategory?.requirementTemplateIds as string[] | undefined) ?? []
+  );
+  const selectedCategoryReqLabel = selectedCategoryReqIds.length > 0
+    ? formatRequirementTemplatesShort(selectedCategoryReqIds)
+    : selectedCategory?.requirementType
+      ? CATEGORY_REQUIREMENT_LABELS[selectedCategory.requirementType as keyof typeof CATEGORY_REQUIREMENT_LABELS]
+      : null;
   const canContinueStep1 =
     (!!fixedCategory ||
       (!!categoryId && categoryId !== 'CREATE_NEW') ||
@@ -192,8 +226,9 @@ export function CreateRequirementWizardModal({
     setStep(3);
   };
 
-  const handleFinalCreate = async () => {
+  const handleFinalCreate = async (action: 'close' | 'new' = 'close') => {
     if (!canContinueStep1 || !selectedTemplate || !preview) return;
+    saveActionRef.current = action;
 
     let targetCategoryId = effectiveCategoryId;
 
@@ -224,6 +259,9 @@ export function CreateRequirementWizardModal({
       allowImage: isUploadTemplate ? preview.allowImage : true,
       allowOther: isUploadTemplate ? preview.allowOther : false,
       expirationType: preview.expirationType,
+      expirationDate: preview.expirationType === 'CUSTOM_DATE' && preview.expirationDate
+        ? new Date(preview.expirationDate)
+        : null,
       allowEarlyRenewal: preview.allowEarlyRenewal,
       requiresApproval: preview.requiresApproval,
       isTalentRequired: isTalentSubmissionTemplateId(selectedTemplate) ? preview.isTalentRequired : false,
@@ -373,22 +411,23 @@ export function CreateRequirementWizardModal({
                 </div>
               )}
 
-              {!fixedCategory && categoryId && categoryId !== 'CREATE_NEW' && (
+              {selectedCategory && (
                 <motion.div
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   className="rounded-lg border border-border bg-slate-50 px-4 py-3 text-sm space-y-1"
                 >
                   <span className="text-muted-foreground font-medium uppercase text-[10px] tracking-wider block mb-1">Collection Details</span>
-                  <p className="text-base font-semibold text-slate-900">
-                    {activeCategories?.find((c) => c.id === categoryId)?.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {activeCategories?.find((c) => c.id === categoryId)?.categoryId}
-                  </p>
-                  {activeCategories?.find((c) => c.id === categoryId)?.description && (
+                  <p className="text-base font-semibold text-slate-900">{selectedCategory.name}</p>
+                  <p className="text-xs text-muted-foreground">{selectedCategory.categoryId}</p>
+                  {selectedCategoryReqLabel && (
+                    <p className="text-xs text-slate-600">
+                      <span className="text-muted-foreground">Requirement: </span>{selectedCategoryReqLabel}
+                    </p>
+                  )}
+                  {selectedCategory.description && (
                     <p className="text-sm text-slate-600 mt-2 italic">
-                      "{activeCategories?.find((c) => c.id === categoryId)?.description}"
+                      &ldquo;{selectedCategory.description}&rdquo;
                     </p>
                   )}
                 </motion.div>
@@ -487,7 +526,10 @@ export function CreateRequirementWizardModal({
               <h3 className="text-sm font-semibold">Expiration</h3>
               <RadioGroup
                 value={watch('expirationType')}
-                onValueChange={(v) => setValue('expirationType', v as CatalogRequirementExpirationValue)}
+                onValueChange={(v) => {
+                  setValue('expirationType', v as CatalogRequirementExpirationValue);
+                  if (v !== 'CUSTOM_DATE') setValue('expirationDate', undefined);
+                }}
                 className="space-y-2"
               >
                 <label className="flex items-start gap-2 text-sm cursor-pointer">
@@ -495,18 +537,23 @@ export function CreateRequirementWizardModal({
                   <span>Never expires</span>
                 </label>
                 <label className="flex items-start gap-2 text-sm cursor-pointer">
-                  <RadioGroupItem value="FROM_YEAR_START" id="exp-ys" />
-                  <span>Fixed period from year start</span>
-                </label>
-                <label className="flex items-start gap-2 text-sm cursor-pointer">
-                  <RadioGroupItem value="FROM_COMPLETION" id="exp-fc" />
-                  <span>Fixed period from completion</span>
-                </label>
-                <label className="flex items-start gap-2 text-sm cursor-pointer">
-                  <RadioGroupItem value="BEFORE_YEAR_END" id="exp-ye" />
-                  <span>Fixed period before year end</span>
+                  <RadioGroupItem value="CUSTOM_DATE" id="exp-custom" />
+                  <span>Expires on a specific date</span>
                 </label>
               </RadioGroup>
+              {watch('expirationType') === 'CUSTOM_DATE' && (
+                <div className="pl-6 space-y-1">
+                  <Input
+                    type="date"
+                    value={watch('expirationDate') ?? ''}
+                    onChange={(e) => setValue('expirationDate', e.target.value || undefined)}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                  {errors.expirationDate && (
+                    <p className="text-sm text-destructive">{errors.expirationDate.message}</p>
+                  )}
+                </div>
+              )}
               <label className="flex items-start gap-3 rounded-md border border-border p-3 bg-muted/20 mt-4">
                 <Checkbox
                   checked={watch('allowEarlyRenewal')}
@@ -596,7 +643,11 @@ export function CreateRequirementWizardModal({
               )}
               <p>
                 <span className="text-muted-foreground">Expiration: </span>
-                {settingsValues.expirationType.replaceAll('_', ' ')}
+                {settingsValues.expirationType === 'NEVER'
+                  ? 'Never expires'
+                  : settingsValues.expirationDate
+                    ? `Expires on ${new Date(settingsValues.expirationDate).toLocaleDateString()}`
+                    : 'Custom date'}
               </p>
               <p>
                 <span className="text-muted-foreground">Approvals: </span>
@@ -639,11 +690,11 @@ export function CreateRequirementWizardModal({
             {step === 3 && (
               <Button
                 type="button"
-                onClick={handleFinalCreate}
+                onClick={() => handleFinalCreate('close')}
                 disabled={isSaving}
                 className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[280px]"
               >
-                {isSaving ? 'Saving...' : 'Create Requirement'}
+                {isSaving && saveActionRef.current === 'close' ? 'Saving...' : 'Create Requirement'}
               </Button>
             )}
           </div>
@@ -663,6 +714,15 @@ export function CreateRequirementWizardModal({
                 Back
               </Button>
             )}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => handleFinalCreate('new')}
+              disabled={step !== 3 || !preview || isSaving}
+              className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white border-none px-5 text-xs font-bold shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isSaving && saveActionRef.current === 'new' ? 'Saving...' : 'Save & New'}
+            </Button>
             <Button
               type="button"
               variant="outline"
