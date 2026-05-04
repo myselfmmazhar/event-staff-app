@@ -54,6 +54,13 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
       staffOnly: true,
     },
     {
+      label: 'Bills',
+      href: '/bills',
+      icon: CurrencyDollarIcon,
+      requiresAdmin: false,
+      staffOnly: true,
+    },
+    {
       label: 'Communication Manager',
       href: '/my-messages?tab=email',
       icon: ChatBubbleLeftRightIcon,
@@ -83,7 +90,7 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
       clientOnly: true,
     },
     {
-      label: 'My Invoices',
+      label: 'Invoices',
       href: '/client-portal/invoices',
       icon: DocumentTextIcon,
       requiresAdmin: false,
