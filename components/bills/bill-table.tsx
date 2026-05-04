@@ -40,6 +40,7 @@ interface BillTableProps {
     selectedIds?: Set<string>;
     onSelectionChange?: (ids: Set<string>) => void;
     showArchived?: boolean;
+    emptyDescription?: string;
 }
 
 export function BillTable({
@@ -55,6 +56,7 @@ export function BillTable({
     selectedIds,
     onSelectionChange,
     showArchived = false,
+    emptyDescription = "Create your first bill to get started",
 }: BillTableProps) {
     const router = useRouter();
 
@@ -244,30 +246,36 @@ export function BillTable({
                 </div>
             </div>
             <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <Button variant="outline" size="sm" onClick={() => onEdit?.(bill)} className="flex-1">
-                    <EditIcon className="h-4 w-4 mr-1" /> Edit
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => onView?.(bill)} className="flex-1">
-                    <EyeIcon className="h-4 w-4 mr-1" /> View
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onArchive?.(bill)}
-                    className={`flex-1 ${showArchived ? "text-blue-600 hover:bg-blue-50" : "text-blue-600 hover:text-blue-700 hover:bg-blue-50"}`}
-                >
-                    {showArchived ? (
-                        <RefreshCwIcon className="h-4 w-4 mr-1" />
-                    ) : (
-                        <ArchiveBoxIcon className="h-4 w-4 mr-1" />
-                    )}
-                    {showArchived ? "Restore" : "Archive"}
-                </Button>
-                {showArchived && (
+                {onEdit && (
+                    <Button variant="outline" size="sm" onClick={() => onEdit(bill)} className="flex-1">
+                        <EditIcon className="h-4 w-4 mr-1" /> Edit
+                    </Button>
+                )}
+                {onView && (
+                    <Button variant="outline" size="sm" onClick={() => onView(bill)} className="flex-1">
+                        <EyeIcon className="h-4 w-4 mr-1" /> View
+                    </Button>
+                )}
+                {onArchive && (
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onDelete?.(bill)}
+                        onClick={() => onArchive(bill)}
+                        className={`flex-1 ${showArchived ? "text-blue-600 hover:bg-blue-50" : "text-blue-600 hover:text-blue-700 hover:bg-blue-50"}`}
+                    >
+                        {showArchived ? (
+                            <RefreshCwIcon className="h-4 w-4 mr-1" />
+                        ) : (
+                            <ArchiveBoxIcon className="h-4 w-4 mr-1" />
+                        )}
+                        {showArchived ? "Restore" : "Archive"}
+                    </Button>
+                )}
+                {showArchived && onDelete && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDelete(bill)}
                         className="flex-1 text-destructive hover:bg-destructive/10"
                     >
                         <TrashIcon className="h-4 w-4 mr-1" /> Delete
@@ -287,7 +295,7 @@ export function BillTable({
             sortOrder={sortOrder}
             onSort={(field) => onSort?.(field as SortableField)}
             emptyMessage="No bills found"
-            emptyDescription="Create your first bill to get started"
+            emptyDescription={emptyDescription}
             mobileCard={renderMobileCard}
             getRowKey={(bill) => bill.id}
         />

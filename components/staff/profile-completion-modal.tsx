@@ -15,6 +15,7 @@ import {
     Eye,
     EyeOff,
     CheckCircle2,
+    Briefcase,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ import {
     StaffDocumentUpload,
     type StaffDocument,
 } from '@/components/staff/staff-document-upload';
+import { ServiceSelectionTable } from '@/components/staff/form-sections/service-selection-table';
 import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import {
     REQ_TEMPLATE_CARDS,
@@ -53,11 +55,12 @@ import {
 /* Constants & schema                                                 */
 /* ------------------------------------------------------------------ */
 
-const WIZARD_STEPS = ['personal', 'tax', 'requirements', 'review'] as const;
-type WizardStep = (typeof WIZARD_STEPS)[number];
+const ALL_WIZARD_STEPS = ['personal', 'services', 'tax', 'requirements', 'review'] as const;
+type WizardStep = (typeof ALL_WIZARD_STEPS)[number];
 
 const STEP_LABELS: Record<WizardStep, string> = {
     personal: 'Personal Information',
+    services: 'Services',
     tax: 'Tax Information',
     requirements: 'Requirements & Documents',
     review: 'Review & Sign',
@@ -152,10 +155,24 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
         enabled: isOpen,
     });
 
+    // Whether admin left service selection to the talent (no admin-assigned services)
+    const showServicesStep = !(myProfile?.services?.length);
+
+    const activeSteps = useMemo(
+        () => ALL_WIZARD_STEPS.filter((s) => s !== 'services' || showServicesStep),
+        [showServicesStep]
+    );
+
     // Wizard state
     const [wizardStep, setWizardStep] = useState<WizardStep>('personal');
-    const stepIndex = WIZARD_STEPS.indexOf(wizardStep);
+    const stepIndex = activeSteps.indexOf(wizardStep);
     const isLastStep = wizardStep === 'review';
+
+    // Step — services (talent-selected when admin chose Talent mode)
+    const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+    const { data: availableServices = [] } = trpc.staff.getServices.useQuery(undefined, {
+        enabled: isOpen,
+    });
 
     // Step 2 — tax fields kept in local state so we can run the SSN/EIN cross-field check
     const [taxFields, setTaxFields] = useState<TaxFields>(emptyTaxFields);
@@ -228,18 +245,25 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
         setPrefilled(true);
     }, [myProfile, prefilled, form]);
 
-    // Requirement cards derived from assigned services (same logic as admin wizard)
+    // Requirement cards derived from services — admin-assigned when available, otherwise talent-selected
     const requiredTemplates = useMemo<Set<ReqTemplateId>>(() => {
-        if (!myProfile?.services?.length) {
-            return new Set<ReqTemplateId>(['w9']);
+        if (myProfile?.services?.length) {
+            const serviceIds = myProfile.services.map((s) => s.serviceId);
+            const services: ServiceForReqMerge[] = myProfile.services.map((s) => ({
+                id: s.serviceId,
+                category: s.service.category ?? null,
+            }));
+            return computeRequirementTemplatesFromServices(serviceIds, services);
         }
-        const serviceIds = myProfile.services.map((s) => s.serviceId);
-        const services: ServiceForReqMerge[] = myProfile.services.map((s) => ({
-            id: s.serviceId,
-            category: s.service.category ?? null,
-        }));
-        return computeRequirementTemplatesFromServices(serviceIds, services);
-    }, [myProfile]);
+        if (selectedServiceIds.length) {
+            const services: ServiceForReqMerge[] = selectedServiceIds.map((id) => {
+                const svc = availableServices.find((s) => s.id === id);
+                return { id, category: svc?.category ?? null };
+            });
+            return computeRequirementTemplatesFromServices(selectedServiceIds, services);
+        }
+        return new Set<ReqTemplateId>(['w9']);
+    }, [myProfile, selectedServiceIds, availableServices]);
 
     /** One document upload required per active card (excludes W-9 / e-signature, which have their own steps). */
     const requiredDocumentCount = useMemo(
@@ -344,12 +368,12 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
             }
         }
 
-        const next = WIZARD_STEPS[stepIndex + 1];
+        const next = activeSteps[stepIndex + 1];
         if (next) setWizardStep(next);
     };
 
     const goBack = () => {
-        const prev = WIZARD_STEPS[stepIndex - 1];
+        const prev = activeSteps[stepIndex - 1];
         if (prev) setWizardStep(prev);
     };
 
@@ -428,6 +452,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
         completeProfileMutation.mutate({
             ...contactData,
             documents: documents.length > 0 ? documents : undefined,
+            serviceIds: showServicesStep && selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
             taxName: taxFields.taxName,
             businessName: taxFields.businessName || undefined,
             businessStructure: taxFields.businessStructure,
@@ -469,7 +494,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                         </div>
 
                         <div className="mt-6 flex gap-1 overflow-x-auto border-t border-slate-200/90 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                            {WIZARD_STEPS.map((step) => {
+                            {activeSteps.map((step) => {
                                 const active = wizardStep === step;
                                 return (
                                     <button
@@ -501,6 +526,15 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                 form={form}
                                 disabled={isSubmitting}
                                 email={myProfile?.email ?? ''}
+                            />
+                        )}
+
+                        {wizardStep === 'services' && (
+                            <ServicesStep
+                                services={availableServices}
+                                selectedServiceIds={selectedServiceIds}
+                                onChange={setSelectedServiceIds}
+                                disabled={isSubmitting}
                             />
                         )}
 
@@ -542,6 +576,13 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                 disabled={isSubmitting}
                                 ackPolicy={ackPolicy}
                                 ackRecords={ackRecords}
+                                selectedServices={
+                                    showServicesStep
+                                        ? selectedServiceIds
+                                              .map((id) => availableServices.find((s) => s.id === id))
+                                              .filter((s): s is { id: string; title: string } => !!s)
+                                        : []
+                                }
                             />
                         )}
                     </div>
@@ -1355,6 +1396,38 @@ function RequirementsStep({
 }
 
 /* ------------------------------------------------------------------ */
+/* Step 2 — Services (shown only when admin chose Talent mode)        */
+/* ------------------------------------------------------------------ */
+
+function ServicesStep({
+    services,
+    selectedServiceIds,
+    onChange,
+    disabled,
+}: {
+    services: { id: string; title: string }[];
+    selectedServiceIds: string[];
+    onChange: (ids: string[]) => void;
+    disabled: boolean;
+}) {
+    return (
+        <div className="mx-auto max-w-4xl">
+            <h3 className="text-base font-bold text-slate-900">Services</h3>
+            <p className="mt-1 text-xs text-slate-500 mb-6">
+                Select the service types you offer. This is optional — you can update it later from
+                your profile.
+            </p>
+            <ServiceSelectionTable
+                services={services}
+                value={selectedServiceIds}
+                onChange={onChange}
+                disabled={disabled}
+            />
+        </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
 /* Step 4 — Review & Sign                                             */
 /* ------------------------------------------------------------------ */
 
@@ -1370,6 +1443,7 @@ function ReviewStep({
     disabled,
     ackPolicy,
     ackRecords,
+    selectedServices,
 }: {
     contact: ContactFormData;
     taxFields: TaxFields;
@@ -1382,6 +1456,7 @@ function ReviewStep({
     disabled: boolean;
     ackPolicy: boolean;
     ackRecords: boolean;
+    selectedServices: { id: string; title: string }[];
 }) {
     const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim() || '—';
     const templateCards = REQ_TEMPLATE_CARDS.filter((c) => requiredTemplates.has(c.id));
@@ -1474,6 +1549,41 @@ function ReviewStep({
                         }
                     />
                 </ReviewCard>
+
+                {/* Services (talent-selected) */}
+                {selectedServices.length > 0 && (
+                    <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-300 hover:shadow-xl hover:shadow-slate-100/50 md:col-span-2">
+                        <div className="mb-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                                    <Briefcase className="h-4 w-4" />
+                                </div>
+                                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+                                    Services
+                                </h4>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                onClick={() => onJumpTo('services')}
+                            >
+                                Edit
+                            </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {selectedServices.map((svc) => (
+                                <span
+                                    key={svc.id}
+                                    className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm font-medium text-slate-900 shadow-sm"
+                                >
+                                    {svc.title}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Onboarding packet */}
                 <div className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-300 hover:shadow-xl hover:shadow-slate-100/50 md:col-span-2">
