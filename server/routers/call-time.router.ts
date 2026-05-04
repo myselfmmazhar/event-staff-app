@@ -149,6 +149,7 @@ export const callTimeRouter = router({
               privateComments: (invitation.callTime.event as any).privateComments,
               instructions: invitation.callTime.instructions,
               responseToken: invitation.responseToken,
+              invitationId: invitation.id,
             }
           );
         } catch (error) {
@@ -351,6 +352,7 @@ export const callTimeRouter = router({
             payRate: Number(invitation.callTime.payRate),
             payRateType: invitation.callTime.payRateType,
             responseToken: invitation.responseToken,
+            invitationId: invitation.id,
           }
         );
       } catch (error) {

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   PendingRequestsList,
@@ -21,9 +22,18 @@ type ActiveCategory = 'pending' | 'upcoming' | 'history';
 export default function MySchedulePage() {
   const { toast } = useToast();
   const eventTerm = useEventTerm();
+  const searchParams = useSearchParams();
+  const highlightedInvitationId = searchParams.get('invitation') ?? undefined;
   const [respondingTo, setRespondingTo] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [activeCategory, setActiveCategory] = useState<ActiveCategory>('pending');
+
+  useEffect(() => {
+    if (highlightedInvitationId) {
+      setActiveCategory('pending');
+      setViewMode('table');
+    }
+  }, [highlightedInvitationId]);
 
   const utils = trpc.useUtils();
 
@@ -240,6 +250,7 @@ export default function MySchedulePage() {
               onBatchRespond={handleBatchRespond}
               isResponding={respondingTo}
               isBatchResponding={batchRespondMutation.isPending}
+              highlightedId={highlightedInvitationId}
             />
           )}
 

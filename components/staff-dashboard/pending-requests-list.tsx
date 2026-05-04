@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -44,6 +44,7 @@ interface PendingRequestsListProps {
   onBatchRespond?: (invitationIds: string[], accept: boolean) => void;
   isResponding?: string;
   isBatchResponding?: boolean;
+  highlightedId?: string;
 }
 
 export function PendingRequestsList({
@@ -52,11 +53,19 @@ export function PendingRequestsList({
   onBatchRespond,
   isResponding,
   isBatchResponding,
+  highlightedId,
 }: PendingRequestsListProps) {
   const eventTerm = useEventTerm();
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<{ ids: string[], accept: boolean } | null>(null);
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (highlightedId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightedId, invitations]);
 
   const formatDate = (date: Date | null) => {
     if (!date) return 'UBD';
@@ -194,12 +203,14 @@ export function PendingRequestsList({
 
         const isClosed = invitation.callTime.confirmedCount >= invitation.callTime.numberOfStaffRequired;
 
+        const isHighlighted = invitation.id === highlightedId;
+
         return (
+          <div key={invitation.id} ref={isHighlighted ? highlightRef : null}>
           <Card
-            key={invitation.id}
             className={cn(
               "p-5 transition-all duration-200 border-2",
-              isSelected ? "border-primary bg-primary/[0.02]" : "border-border shadow-sm hover:border-border/80",
+              isHighlighted ? "border-blue-500 ring-2 ring-blue-300 dark:ring-blue-700 shadow-md" : isSelected ? "border-primary bg-primary/[0.02]" : "border-border shadow-sm hover:border-border/80",
               isClosed ? "opacity-90 bg-muted/20" : ""
             )}
           >
@@ -344,6 +355,7 @@ export function PendingRequestsList({
               </div>
             </div>
           </Card>
+          </div>
         );
       })}
 

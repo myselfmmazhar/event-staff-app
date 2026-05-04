@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,8 @@ import { trpc } from '@/lib/client/trpc';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl');
   const [showPassword, setShowPassword] = useState(false);
 
   // Fetch company profile for branding
@@ -40,10 +42,12 @@ export default function LoginPage() {
 
   const onSubmit = async (data: SignInInput) => {
     try {
+      const redirectTo = callbackUrl ? decodeURIComponent(callbackUrl) : '/dashboard';
+
       const result = await signIn.email({
         email: data.email,
         password: data.password,
-        callbackURL: '/dashboard',
+        callbackURL: redirectTo,
       });
 
       if (result.error) {
@@ -56,11 +60,11 @@ export default function LoginPage() {
 
       // Success
       toast({
-        message: 'Welcome back! Redirecting to dashboard...',
+        message: 'Welcome back! Redirecting...',
         type: 'success',
       });
 
-      router.push('/dashboard');
+      router.push(redirectTo);
     } catch (error) {
       console.error('Sign in error:', error);
       toast({

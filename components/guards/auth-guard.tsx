@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "@/lib/client/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 interface AuthGuardProps {
@@ -11,12 +11,16 @@ interface AuthGuardProps {
 export function AuthGuard({ children }: AuthGuardProps) {
   const { data: session, isPending } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!isPending && !session) {
-      router.push("/login");
+      const search = searchParams.toString();
+      const callbackUrl = encodeURIComponent(search ? `${pathname}?${search}` : pathname);
+      router.push(`/login?callbackUrl=${callbackUrl}`);
     }
-  }, [session, isPending, router]);
+  }, [session, isPending, router, pathname, searchParams]);
 
   // Show loading state while checking authentication
   if (isPending) {
