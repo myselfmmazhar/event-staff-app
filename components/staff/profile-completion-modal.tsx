@@ -324,9 +324,13 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                 return;
             }
         } else if (wizardStep === 'requirements') {
-            if (documents.length === 0) {
+            if (documents.length < requiredDocumentCount) {
+                const missing = requiredDocumentCount - documents.length;
                 toast({
-                    message: 'Please upload at least one document to continue.',
+                    message:
+                        requiredDocumentCount === 1
+                            ? 'Please upload a document for the active requirement to continue.'
+                            : `Please upload ${requiredDocumentCount} documents (one for each active requirement). ${missing} more needed.`,
                     type: 'error',
                 });
                 return;
@@ -401,7 +405,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
             setWizardStep('tax');
             return;
         }
-        if (documents.length === 0 || !ackPolicy || !ackRecords) {
+        if (documents.length < requiredDocumentCount || !ackPolicy || !ackRecords) {
             setWizardStep('requirements');
             return;
         }
@@ -514,6 +518,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                         {wizardStep === 'requirements' && (
                             <RequirementsStep
                                 requiredTemplates={requiredTemplates}
+                                requiredDocumentCount={requiredDocumentCount}
                                 documents={documents}
                                 setDocuments={setDocuments}
                                 ackPolicy={ackPolicy}
@@ -552,7 +557,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                         disabled={
                                             isSubmitting ||
                                             (wizardStep === 'requirements' &&
-                                                (documents.length === 0 || !ackPolicy || !ackRecords))
+                                                (documents.length < requiredDocumentCount || !ackPolicy || !ackRecords))
                                         }
                                         className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none sm:w-auto sm:min-w-[280px]"
                                     >
@@ -1230,6 +1235,7 @@ function TaxStep({
 
 function RequirementsStep({
     requiredTemplates,
+    requiredDocumentCount,
     documents,
     setDocuments,
     ackPolicy,
@@ -1239,6 +1245,7 @@ function RequirementsStep({
     disabled,
 }: {
     requiredTemplates: Set<ReqTemplateId>;
+    requiredDocumentCount: number;
     documents: StaffDocument[];
     setDocuments: (docs: StaffDocument[]) => void;
     ackPolicy: boolean;
@@ -1296,7 +1303,9 @@ function RequirementsStep({
                     Document Uploads
                 </h4>
                 <p className="mt-1 text-xs text-slate-500">
-                    Upload at least one supporting document to continue.
+                    {requiredDocumentCount > 0
+                        ? `Upload ${requiredDocumentCount} document${requiredDocumentCount > 1 ? 's' : ''} — one for each active requirement above. ${documents.length} of ${requiredDocumentCount} uploaded.`
+                        : 'Upload any supporting documents your admin has requested.'}
                 </p>
                 <div className="mt-4">
                     <StaffDocumentUpload
