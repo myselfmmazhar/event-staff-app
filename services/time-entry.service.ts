@@ -178,7 +178,36 @@ export class TimeEntryService {
                                 },
                             },
                         },
-                        timeEntry: true,
+                        timeEntry: {
+                            include: {
+                                revisions: {
+                                    orderBy: { editedAt: 'desc' },
+                                    select: {
+                                        id: true,
+                                        clockIn: true,
+                                        clockOut: true,
+                                        breakMinutes: true,
+                                        overtimeCost: true,
+                                        overtimePrice: true,
+                                        shiftCost: true,
+                                        shiftPrice: true,
+                                        travelCost: true,
+                                        travelPrice: true,
+                                        notes: true,
+                                        editedBy: true,
+                                        editedAt: true,
+                                    },
+                                },
+                            },
+                        },
+                        shiftSessions: {
+                            orderBy: { clockIn: 'asc' },
+                            select: {
+                                id: true,
+                                clockIn: true,
+                                clockOut: true,
+                            },
+                        },
                     },
                 },
             },
@@ -599,6 +628,194 @@ export class TimeEntryService {
         }
 
         return { count: invoiceCount };
+    }
+
+    /**
+     * Generate Bills from selected invitations.
+     * Groups by Talent (staffId) and creates one Draft Bill per talent using their payRate.
+     */
+    async generateBills(
+        invitationIds: string[],
+        userId: string,
+        shiftSelections?: Array<{ invitationId: string; includeSchedule: boolean; includeActual: boolean; includeName?: boolean; includeNotes?: boolean }>
+    ) {
+        const selectionMap = new Map(
+            (shiftSelections ?? []).map((s) => [s.invitationId, { includeSchedule: s.includeSchedule, includeActual: s.includeActual, includeName: s.includeName ?? true, includeNotes: s.includeNotes ?? true }])
+        );
+        const invitations = await (this.prisma as any).callTimeInvitation.findMany({
+            where: {
+                id: { in: invitationIds },
+                status: 'ACCEPTED',
+                callTime: {
+                    event: { status: { in: ['IN_PROGRESS', 'COMPLETED'] } },
+                },
+                OR: [
+                    { internalReviewRating: null },
+                    { internalReviewRating: 'MET_EXPECTATIONS' },
+                    { internalReviewRating: 'NEEDS_IMPROVEMENT' },
+                ],
+            },
+            include: {
+                staff: { select: { id: true, firstName: true, lastName: true } },
+                callTime: {
+                    include: {
+                        service: { select: { title: true } },
+                        event: { select: { id: true, title: true } },
+                    },
+                },
+                timeEntry: true,
+            },
+        });
+
+        if (invitations.length === 0) return { count: 0 };
+
+        // Group by talent
+        const byStaff = new Map<string, any[]>();
+        invitations.forEach((inv: any) => {
+            const sid = inv.staffId;
+            if (!sid) return;
+            if (!byStaff.has(sid)) byStaff.set(sid, []);
+            byStaff.get(sid)!.push(inv);
+        });
+
+        let billCount = 0;
+        for (const [staffId, group] of byStaff.entries()) {
+            const billNo = `BL-${Math.floor(Date.now() / 1000)}-${Math.floor(Math.random() * 1000)}`;
+
+            const items = group.map((inv: any) => {
+                const mode = selectionMap.get(inv.id) ?? { includeSchedule: true, includeActual: true, includeName: true, includeNotes: true };
+                const includeSchedule = mode.includeSchedule;
+                const includeActual = mode.includeActual;
+                if (!includeSchedule && !includeActual) {
+                    return [];
+                }
+
+                let hours = 1;
+                if (inv.callTime.startDate && inv.callTime.startTime && inv.callTime.endTime) {
+                    const start = new Date(inv.callTime.startDate);
+                    const [sh, sm] = inv.callTime.startTime.split(':').map(Number);
+                    start.setHours(sh ?? 0, sm ?? 0, 0, 0);
+
+                    const end = new Date(inv.callTime.endDate || inv.callTime.startDate);
+                    const [eh, em] = inv.callTime.endTime.split(':').map(Number);
+                    end.setHours(eh ?? 0, em ?? 0, 0, 0);
+
+                    if (end > start) {
+                        const diffMs = end.getTime() - start.getTime();
+                        hours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
+                    }
+                }
+
+                const rate = Number(inv.callTime.payRate) || 0;
+                const isPerHour = inv.callTime.payRateType === 'PER_HOUR';
+
+                let scheduledStart = null;
+                let scheduledEnd = null;
+                if (inv.callTime.startDate && inv.callTime.startTime) {
+                    scheduledStart = new Date(inv.callTime.startDate);
+                    const [sh, sm] = inv.callTime.startTime.split(':').map(Number);
+                    scheduledStart.setHours(sh ?? 0, sm ?? 0, 0, 0);
+
+                    scheduledEnd = new Date(inv.callTime.endDate || inv.callTime.startDate);
+                    const [eh, em] = inv.callTime.endTime?.split(':').map(Number) || [0, 0];
+                    scheduledEnd.setHours(eh ?? 0, em ?? 0, 0, 0);
+                }
+
+                let actualHours = 0;
+                if (inv.timeEntry?.clockIn && inv.timeEntry?.clockOut) {
+                    const diffMs = new Date(inv.timeEntry.clockOut).getTime() - new Date(inv.timeEntry.clockIn).getTime();
+                    const breakMs = (inv.timeEntry.breakMinutes || 0) * 60 * 1000;
+                    actualHours = Math.max(0, Math.round(((diffMs - breakMs) / (1000 * 60 * 60)) * 100) / 100);
+                }
+
+                const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString();
+                const fmtTime = (d: Date | string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                const schedStartStr = scheduledStart ? `${fmtDate(scheduledStart)} ${fmtTime(scheduledStart)}` : '—';
+                const schedEndStr = scheduledEnd ? `${fmtDate(scheduledEnd)} ${fmtTime(scheduledEnd)}` : '—';
+                const scheduleShiftDetail = `Scheduled: ${schedStartStr} - ${schedEndStr} (${hours} hrs)`;
+
+                let actualShiftDetails = 'Actual: Not clocked';
+                if (inv.timeEntry?.clockIn) {
+                    const clockInStr = `${fmtDate(inv.timeEntry.clockIn)} ${fmtTime(inv.timeEntry.clockIn)}`;
+                    const clockOutStr = inv.timeEntry.clockOut
+                        ? `${fmtDate(inv.timeEntry.clockOut)} ${fmtTime(inv.timeEntry.clockOut)}`
+                        : 'No out';
+                    actualShiftDetails = `Actual: ${clockInStr} - ${clockOutStr} (${actualHours} hrs)`;
+                }
+
+                const selectedHours = includeSchedule
+                    ? hours
+                    : includeActual
+                        ? actualHours
+                        : 0;
+                const baseQuantity = isPerHour ? selectedHours : 1;
+                const otHours = Math.max(0, actualHours - hours);
+
+                const itemsList = [];
+
+                const eventLine = ` - ${inv.callTime.event?.title || 'Event'}`;
+                const baseDescription = `${inv.callTime.service?.title || 'Staff'}${mode.includeName ? eventLine : ''}`;
+
+                itemsList.push({
+                    description: baseDescription,
+                    quantity: baseQuantity,
+                    price: rate,
+                    amount: baseQuantity * rate,
+                    serviceId: inv.callTime.serviceId,
+                    date: inv.callTime.startDate,
+                    scheduledStart,
+                    scheduledEnd,
+                    scheduledHours: hours,
+                    actualStart: inv.timeEntry?.clockIn,
+                    actualEnd: inv.timeEntry?.clockOut,
+                    actualHours,
+                    scheduleShiftDetail: includeSchedule ? scheduleShiftDetail : '',
+                    actualShiftDetails: includeActual ? actualShiftDetails : '',
+                    internalNotes: mode.includeNotes ? (inv.timeEntry?.notes || "") : ""
+                });
+
+                if (otHours > 0) {
+                    itemsList.push({
+                        description: `Overtime - ${baseDescription}`,
+                        quantity: otHours,
+                        price: rate,
+                        amount: otHours * rate,
+                        serviceId: inv.callTime.serviceId,
+                        date: inv.callTime.startDate,
+                        scheduledStart,
+                        scheduledEnd,
+                        scheduledHours: hours,
+                        actualStart: inv.timeEntry?.clockIn,
+                        actualEnd: inv.timeEntry?.clockOut,
+                        actualHours,
+                        scheduleShiftDetail,
+                        actualShiftDetails: `Overtime: ${otHours.toFixed(2)} hours`,
+                        internalNotes: `Overtime worked beyond scheduled ${hours} hours`
+                    });
+                }
+
+                return itemsList;
+            }).flat();
+
+            if (items.length === 0) continue;
+
+            await (this.prisma as any).bill.create({
+                data: {
+                    billNo,
+                    staffId,
+                    status: 'DRAFT',
+                    billDate: new Date(),
+                    createdBy: userId,
+                    items: {
+                        create: items,
+                    },
+                },
+            });
+            billCount++;
+        }
+
+        return { count: billCount };
     }
 
     /**

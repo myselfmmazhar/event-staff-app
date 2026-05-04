@@ -122,6 +122,11 @@ export type CallTimeRow = {
             editedAt: Date | string;
         }>;
     } | null;
+    shiftSessions?: Array<{
+        id: string;
+        clockIn: Date | string;
+        clockOut: Date | string | null;
+    }>;
     mergedRows?: CallTimeRow[];
 };
 

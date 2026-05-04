@@ -2,10 +2,19 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 
 export function Breadcrumbs() {
+  return (
+    <Suspense fallback={null}>
+      <BreadcrumbsContent />
+    </Suspense>
+  );
+}
+
+function BreadcrumbsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { terminology } = useTerminology();

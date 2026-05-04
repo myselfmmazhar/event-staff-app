@@ -6,6 +6,16 @@ type UseTableResizeOptions = {
   lockedColumns?: string[];
 };
 
+export type ColumnDragState = {
+  columnKey: string;
+  width: number;
+  clientX: number;
+  clientY: number;
+} | null;
+
+const MIN_COLUMN_WIDTH = 24;
+const AUTO_FIT_PADDING = 24;
+
 function areWidthsEqual(a: Record<string, number>, b: Record<string, number>) {
   const aKeys = Object.keys(a);
   const bKeys = Object.keys(b);
@@ -57,6 +67,8 @@ export function useTableResize(
     return applyLockedWidths(initialWidths);
   });
 
+  const [dragState, setDragState] = useState<ColumnDragState>(null);
+  const tableRef = useRef<HTMLTableElement | null>(null);
   const resizingColumn = useRef<string | null>(null);
   const startX = useRef<number>(0);
   const startWidth = useRef<number>(0);
@@ -73,7 +85,7 @@ export function useTableResize(
 
     resizingColumn.current = columnKey;
     startX.current = e.pageX;
-    
+
     // Find the th element to get current width if not set
     const th = (e.target as HTMLElement).closest('th');
     if (th) {
@@ -81,6 +93,13 @@ export function useTableResize(
     } else {
       startWidth.current = columnWidths[columnKey] || 150;
     }
+
+    setDragState({
+      columnKey,
+      width: startWidth.current,
+      clientX: e.clientX,
+      clientY: e.clientY,
+    });
 
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -90,12 +109,20 @@ export function useTableResize(
     if (!resizingColumn.current) return;
 
     const deltaX = e.pageX - startX.current;
-    const newWidth = Math.max(50, startWidth.current + deltaX);
+    const newWidth = Math.max(MIN_COLUMN_WIDTH, startWidth.current + deltaX);
+    const columnKey = resizingColumn.current;
 
     setColumnWidths((prev) => applyLockedWidths({
       ...prev,
-      [resizingColumn.current!]: newWidth,
+      [columnKey]: newWidth,
     }));
+
+    setDragState({
+      columnKey,
+      width: newWidth,
+      clientX: e.clientX,
+      clientY: e.clientY,
+    });
   }, [applyLockedWidths]);
 
   useEffect(() => {
@@ -106,10 +133,36 @@ export function useTableResize(
   }, [initialWidths, applyLockedWidths]);
 
   const onMouseUp = useCallback(() => {
+    if (!resizingColumn.current) return;
     resizingColumn.current = null;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
+    setDragState(null);
   }, []);
+
+  const autoFitColumn = useCallback(
+    (columnKey: string) => {
+      if (lockedColumns.has(columnKey)) return;
+      const root = tableRef.current;
+      if (!root) return;
+
+      const cells = root.querySelectorAll<HTMLElement>(`[data-col-key="${columnKey}"]`);
+      if (cells.length === 0) return;
+
+      let maxWidth = 0;
+      cells.forEach((cell) => {
+        // scrollWidth on a truncated cell reports the natural content width
+        const naturalWidth = cell.scrollWidth;
+        if (naturalWidth > maxWidth) maxWidth = naturalWidth;
+      });
+
+      if (maxWidth === 0) return;
+      const newWidth = Math.max(MIN_COLUMN_WIDTH, maxWidth + AUTO_FIT_PADDING);
+
+      setColumnWidths((prev) => applyLockedWidths({ ...prev, [columnKey]: newWidth }));
+    },
+    [applyLockedWidths, lockedColumns]
+  );
 
   const getTableStyle = useCallback(() => {
     const style: Record<string, string> = {};
@@ -128,5 +181,12 @@ export function useTableResize(
     };
   }, [onMouseMove, onMouseUp]);
 
-  return { columnWidths, onMouseDown, getTableStyle };
+  return {
+    columnWidths,
+    onMouseDown,
+    getTableStyle,
+    autoFitColumn,
+    dragState,
+    tableRef,
+  };
 }

@@ -18,6 +18,8 @@ export interface RequirementTemplateCardGridProps {
   onSingleChange?: (id: ReqTemplateId | null) => void;
   /** When set, only these template ids are shown (order preserved from REQ_TEMPLATE_CARDS). */
   visibleIds?: readonly ReqTemplateId[];
+  /** Render as non-interactive display: cards keep their selected styling but cannot be toggled. */
+  readOnly?: boolean;
 }
 
 export function RequirementTemplateCardGrid({
@@ -30,6 +32,7 @@ export function RequirementTemplateCardGrid({
   singleSelected = null,
   onSingleChange,
   visibleIds,
+  readOnly = false,
 }: RequirementTemplateCardGridProps) {
   const visibleSet = visibleIds?.length ? new Set(visibleIds) : null;
   const cards = REQ_TEMPLATE_CARDS.filter((c) => !visibleSet || visibleSet.has(c.id));
@@ -48,30 +51,21 @@ export function RequirementTemplateCardGrid({
               ? 'Tax form - W-4'
               : 'Tax form - W-9'
             : card.title;
-        return (
-          <button
-            key={card.id}
-            type="button"
-            onClick={() => {
-              if (selectionMode === 'single' && onSingleChange) {
-                onSingleChange(singleSelected === card.id ? null : card.id);
-              } else {
-                onToggle(card.id);
-              }
-            }}
-            disabled={disabled}
-            className={cn(
-              'flex flex-col rounded-xl border p-4 text-left transition-shadow',
-              staffAppearance ? 'bg-white' : 'bg-card',
-              isSelected
-                ? staffAppearance
-                  ? 'border-slate-900 shadow-sm ring-1 ring-slate-900/10'
-                  : 'border-foreground shadow-sm ring-1 ring-foreground/10'
-                : staffAppearance
-                  ? 'border-slate-200 hover:border-slate-300'
-                  : 'border-border hover:border-muted-foreground/30'
-            )}
-          >
+        const cardClassName = cn(
+          'flex flex-col rounded-xl border p-4 text-left transition-shadow',
+          staffAppearance ? 'bg-white' : 'bg-card',
+          isSelected
+            ? staffAppearance
+              ? 'border-slate-900 shadow-sm ring-1 ring-slate-900/10'
+              : 'border-foreground shadow-sm ring-1 ring-foreground/10'
+            : staffAppearance
+              ? 'border-slate-200 hover:border-slate-300'
+              : 'border-border hover:border-muted-foreground/30',
+          readOnly && 'cursor-default'
+        );
+
+        const cardBody = (
+          <>
             <div className="flex items-start justify-between gap-2">
               <span
                 className={cn(
@@ -120,6 +114,32 @@ export function RequirementTemplateCardGrid({
             >
               {card.footer}
             </p>
+          </>
+        );
+
+        if (readOnly) {
+          return (
+            <div key={card.id} className={cardClassName} aria-disabled>
+              {cardBody}
+            </div>
+          );
+        }
+
+        return (
+          <button
+            key={card.id}
+            type="button"
+            onClick={() => {
+              if (selectionMode === 'single' && onSingleChange) {
+                onSingleChange(singleSelected === card.id ? null : card.id);
+              } else {
+                onToggle(card.id);
+              }
+            }}
+            disabled={disabled}
+            className={cardClassName}
+          >
+            {cardBody}
           </button>
         );
       })}

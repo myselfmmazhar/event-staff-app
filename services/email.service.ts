@@ -355,14 +355,18 @@ export class EmailService {
       internalNotes?: string | null;
       instructions?: string | null;
       responseToken?: string | null;
+      invitationId?: string | null;
     }
   ): Promise<{ success: boolean; error?: string }> {
     const dashboardUrl = `${this.appUrl}/my-schedule`;
-    const acceptUrl = callTimeDetails.responseToken 
+    const acceptUrl = callTimeDetails.responseToken
       ? `${this.appUrl}/api/public/invitation/respond?token=${callTimeDetails.responseToken}&action=accept`
       : dashboardUrl;
     const rejectUrl = callTimeDetails.responseToken
       ? `${this.appUrl}/api/public/invitation/respond?token=${callTimeDetails.responseToken}&action=reject`
+      : dashboardUrl;
+    const detailsUrl = callTimeDetails.invitationId
+      ? `${this.appUrl}/my-schedule?invitation=${callTimeDetails.invitationId}`
       : dashboardUrl;
 
     const formatDate = (date: Date | null) => {
@@ -418,6 +422,7 @@ export class EmailService {
           dashboardUrl,
           acceptUrl,
           rejectUrl,
+          detailsUrl,
           description: callTimeDetails.description || '',
           requirements: callTimeDetails.requirements || '',
           preEventInstructions: callTimeDetails.preEventInstructions || '',
@@ -438,6 +443,7 @@ export class EmailService {
 <div style="text-align: center; margin: 24px 0;">
   <a href="${acceptUrl}" style="background-color: #22c55e; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 0 6px 8px 6px;">Accept Offer</a>
   <a href="${rejectUrl}" style="background-color: #ef4444; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 0 6px 8px 6px;">Reject Offer</a>
+  <a href="${detailsUrl}" style="background-color: #6b7280; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 0 6px 8px 6px;">View More Details</a>
 </div>
 <p style="font-size: 13px; color: #6b7280; margin-top: 0;">If the buttons do not work, open your schedule: <a href="${dashboardUrl}" style="color: #4f46e5;">${dashboardUrl}</a></p>`;
 

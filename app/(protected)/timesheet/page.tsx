@@ -132,6 +132,18 @@ export default function TimeManagerPage() {
         onError: (e) => toast({ title: 'Error generating invoices', description: e.message, variant: 'error' }),
     });
 
+    const generateBillsMutation = trpc.timeEntry.generateBills.useMutation({
+        onSuccess: (res) => {
+            toast({
+                title: 'Success',
+                description: `Generated ${res.count} draft bill(s). Check the Bills module.`
+            });
+            setSelectedRows(new Set());
+            router.push('/bills');
+        },
+        onError: (e) => toast({ title: 'Error generating bills', description: e.message, variant: 'error' }),
+    });
+
     const reviewInvitationMutation = trpc.timeEntry.reviewInvitation.useMutation({
         onSuccess: () => {
             utils.timeEntry.getTimeManagerRows.invalidate();
@@ -396,10 +408,15 @@ export default function TimeManagerPage() {
 
     const handleGenerateBills = () => {
         if (selectedRows.size === 0) return;
-        const hasAtLeastOneShiftSelected = Array.from(selectedRows).some((id) => {
-            const mode = getShiftMode(id);
-            return mode.includeSchedule || mode.includeActual;
-        });
+        const invitationIds = Array.from(selectedRows);
+        const shiftSelections = invitationIds.map((invitationId) => ({
+            invitationId,
+            includeSchedule: getShiftMode(invitationId).includeSchedule,
+            includeActual: getShiftMode(invitationId).includeActual,
+            includeName: getShiftMode(invitationId).includeName,
+            includeNotes: getShiftMode(invitationId).includeNotes,
+        }));
+        const hasAtLeastOneShiftSelected = shiftSelections.some((s) => s.includeSchedule || s.includeActual);
         if (!hasAtLeastOneShiftSelected) {
             toast({
                 title: 'Select schedule or actual',
@@ -408,12 +425,7 @@ export default function TimeManagerPage() {
             });
             return;
         }
-        toast({
-            title: 'Success',
-            description: `Generated ${selectedRows.size} draft bill(s). Check the Finance Manager.`
-        });
-        setSelectedRows(new Set());
-        router.push('/finance/bills');
+        generateBillsMutation.mutate({ invitationIds, shiftSelections } as any);
     };
 
     const handleApprove = (id: string) => {

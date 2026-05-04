@@ -37,7 +37,7 @@ interface SidebarUserSectionProps {
   isMobile?: boolean;
 }
 
-const ADMIN_ONLY_LINKS = ['/profile/company', '/profile/team', '/profile/reports', '/profile/billing'];
+const ADMIN_ONLY_LINKS = ['/profile/company', '/profile/team', '/profile/reports'];
 
 export function SidebarUserSection({
   user,
@@ -55,7 +55,7 @@ export function SidebarUserSection({
     { href: '/profile/company', label: 'Company Profile', icon: BuildingOfficeIcon },
     { href: '/profile/team', label: 'Team', icon: UsersIcon },
     { href: '/profile/reports', label: 'Reports', icon: ChartBarIcon, comingSoon: true },
-    { href: '/profile/billing', label: 'Billing', icon: CreditCardIcon, comingSoon: true },
+    { href: '/profile/billing', label: 'Billing', icon: CreditCardIcon },
   ].filter(({ href }) => isAdminUser || !ADMIN_ONLY_LINKS.includes(href));
 
   return (
