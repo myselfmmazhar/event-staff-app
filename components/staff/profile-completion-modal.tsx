@@ -44,6 +44,7 @@ import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import {
     REQ_TEMPLATE_CARDS,
     computeRequirementTemplatesFromServices,
+    countDocumentTemplates,
     type ReqTemplateId,
     type ServiceForReqMerge,
 } from '@/lib/requirement-templates';
@@ -239,6 +240,12 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
         }));
         return computeRequirementTemplatesFromServices(serviceIds, services);
     }, [myProfile]);
+
+    /** One document upload required per active card (excludes W-9 / e-signature, which have their own steps). */
+    const requiredDocumentCount = useMemo(
+        () => countDocumentTemplates(requiredTemplates),
+        [requiredTemplates]
+    );
 
     /* -------------------- mutation -------------------- */
 
