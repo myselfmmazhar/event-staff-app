@@ -1820,10 +1820,8 @@ export class CallTimeService {
     });
 
     if (!staff) {
-      return { pending: [], accepted: [], past: [], declined: [] };
+      return { pending: [], inProgress: [], accepted: [], past: [], declined: [] };
     }
-
-    const now = new Date();
 
     const invitations = await this.prisma.callTimeInvitation.findMany({
       where: {
@@ -1853,6 +1851,9 @@ export class CallTimeService {
             },
           },
         },
+        shiftSessions: {
+          orderBy: { clockIn: 'asc' },
+        },
       },
       orderBy: { callTime: { startDate: 'asc' } },
     });
@@ -1866,19 +1867,33 @@ export class CallTimeService {
       }
     }));
 
-    // Use start of today for date comparison to include today's events
+    // Use start/end of today for date comparison
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
 
     // Categorize invitations
     // Show all pending invitations regardless of date (to avoid timezone issues hiding today's events)
     const pending = enrichedInvitations.filter((inv) => inv.status === 'PENDING');
-    const accepted = enrichedInvitations.filter(
-      (inv) =>
-        inv.status === 'ACCEPTED' &&
-        inv.isConfirmed &&
-        (!inv.callTime.startDate || new Date(inv.callTime.startDate) >= startOfToday)
-    );
+
+    // In Progress: accepted + confirmed AND today is between startDate and endDate (inclusive).
+    // Multi-day shifts appear here every day they're active.
+    const inProgress = enrichedInvitations.filter((inv) => {
+      if (inv.status !== 'ACCEPTED' || !inv.isConfirmed) return false;
+      const start = inv.callTime.startDate ? new Date(inv.callTime.startDate) : null;
+      const end = inv.callTime.endDate ? new Date(inv.callTime.endDate) : start;
+      if (!start) return false;
+      return start <= endOfToday && (!end || end >= startOfToday);
+    });
+
+    // Upcoming: accepted + confirmed, starts strictly after today
+    const accepted = enrichedInvitations.filter((inv) => {
+      if (inv.status !== 'ACCEPTED' || !inv.isConfirmed) return false;
+      if (!inv.callTime.startDate) return true;
+      return new Date(inv.callTime.startDate) > endOfToday;
+    });
+
     const past = enrichedInvitations.filter(
       (inv) =>
         inv.status === 'ACCEPTED' &&
@@ -1888,7 +1903,169 @@ export class CallTimeService {
     );
     const declined = enrichedInvitations.filter((inv) => inv.status === 'DECLINED');
 
-    return { pending, accepted, past, declined };
+    return { pending, inProgress, accepted, past, declined };
+  }
+
+  /**
+   * Recompute TimeEntry from the talent's ShiftSession[] for this invitation.
+   * Sessions are the source of truth: clockIn = MIN(session.clockIn),
+   * clockOut = MAX(session.clockOut) when all sessions are closed,
+   * breakMinutes = total span minus actual worked minutes (gaps between sessions).
+   *
+   * Skipped if the admin has manually edited the entry (revisions exist) — the
+   * admin override wins from that point on.
+   */
+  private async syncTimeEntryFromSessions(
+    invitationId: string,
+    staffId: string,
+    callTimeId: string,
+    actorUserId: string
+  ) {
+    const sessions = await this.prisma.shiftSession.findMany({
+      where: { invitationId },
+      orderBy: { clockIn: 'asc' },
+      select: { clockIn: true, clockOut: true },
+    });
+
+    if (sessions.length === 0) return;
+
+    const existing = await this.prisma.timeEntry.findUnique({
+      where: { invitationId },
+      include: { revisions: { select: { id: true }, take: 1 } },
+    });
+
+    // Admin override: do not overwrite once admin has edited
+    if (existing && existing.revisions.length > 0) return;
+
+    const firstClockIn = sessions[0]!.clockIn;
+    const closedSessions = sessions.filter((s) => s.clockOut !== null);
+    const allClosed = closedSessions.length === sessions.length;
+    const lastClockOut = allClosed && closedSessions.length > 0
+      ? closedSessions[closedSessions.length - 1]!.clockOut
+      : null;
+
+    let breakMinutes = 0;
+    if (allClosed && lastClockOut) {
+      const totalSpanMs = lastClockOut.getTime() - firstClockIn.getTime();
+      const workedMs = closedSessions.reduce(
+        (acc, s) => acc + (s.clockOut!.getTime() - s.clockIn.getTime()),
+        0
+      );
+      breakMinutes = Math.max(0, Math.round((totalSpanMs - workedMs) / 60000));
+    }
+
+    if (existing) {
+      await this.prisma.timeEntry.update({
+        where: { id: existing.id },
+        data: {
+          clockIn: firstClockIn,
+          clockOut: lastClockOut,
+          breakMinutes,
+        },
+      });
+    } else {
+      await this.prisma.timeEntry.create({
+        data: {
+          invitationId,
+          staffId,
+          callTimeId,
+          clockIn: firstClockIn,
+          clockOut: lastClockOut,
+          breakMinutes,
+          createdBy: actorUserId,
+        },
+      });
+    }
+  }
+
+  /**
+   * Start a shift — opens a new ShiftSession (clockIn = now).
+   * Allowed only for the staff member who owns the invitation, and only if
+   * there is no currently open session for that invitation.
+   * Also syncs the aggregated state into TimeEntry so the Time Manager sees it.
+   */
+  async startShift(invitationId: string, userId: string) {
+    const staff = await this.prisma.staff.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!staff) {
+      throw new Error('Staff record not found for current user');
+    }
+
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { id: invitationId },
+      select: { id: true, staffId: true, callTimeId: true, status: true, isConfirmed: true },
+    });
+    if (!invitation || invitation.staffId !== staff.id) {
+      throw new Error('Invitation not found');
+    }
+    if (invitation.status !== 'ACCEPTED' || !invitation.isConfirmed) {
+      throw new Error('Cannot start a shift that is not accepted and confirmed');
+    }
+
+    const openSession = await this.prisma.shiftSession.findFirst({
+      where: { invitationId, clockOut: null },
+      select: { id: true },
+    });
+    if (openSession) {
+      throw new Error('You already have an active session for this shift. End it before starting a new one.');
+    }
+
+    const session = await this.prisma.shiftSession.create({
+      data: {
+        invitationId,
+        staffId: staff.id,
+        callTimeId: invitation.callTimeId,
+        clockIn: new Date(),
+      },
+    });
+
+    await this.syncTimeEntryFromSessions(
+      invitationId,
+      staff.id,
+      invitation.callTimeId,
+      userId
+    );
+
+    return session;
+  }
+
+  /**
+   * End a shift — closes the currently open ShiftSession (clockOut = now).
+   * Also syncs the aggregated state into TimeEntry.
+   */
+  async endShift(invitationId: string, userId: string) {
+    const staff = await this.prisma.staff.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!staff) {
+      throw new Error('Staff record not found for current user');
+    }
+
+    const openSession = await this.prisma.shiftSession.findFirst({
+      where: { invitationId, staffId: staff.id, clockOut: null },
+      orderBy: { clockIn: 'desc' },
+      select: { id: true, callTimeId: true },
+    });
+    if (!openSession) {
+      throw new Error('No active session to end. Click Start first.');
+    }
+
+    const updated = await this.prisma.shiftSession.update({
+      where: { id: openSession.id },
+      data: { clockOut: new Date() },
+    });
+
+    await this.syncTimeEntryFromSessions(
+      invitationId,
+      staff.id,
+      openSession.callTimeId,
+      userId
+    );
+
+    return updated;
   }
 
   /**

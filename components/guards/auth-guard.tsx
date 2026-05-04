@@ -2,13 +2,13 @@
 
 import { useSession } from "@/lib/client/auth";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 
 interface AuthGuardProps {
   children: React.ReactNode;
 }
 
-export function AuthGuard({ children }: AuthGuardProps) {
+function AuthRedirect() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -22,7 +22,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [session, isPending, router, pathname, searchParams]);
 
-  // Show loading state while checking authentication
+  return null;
+}
+
+export function AuthGuard({ children }: AuthGuardProps) {
+  const { data: session, isPending } = useSession();
+
   if (isPending) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -31,9 +36,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // Don't render children if not authenticated
   if (!session) {
-    return null;
+    return (
+      <Suspense fallback={null}>
+        <AuthRedirect />
+      </Suspense>
+    );
   }
 
   return <>{children}</>;

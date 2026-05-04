@@ -151,11 +151,25 @@ export function DataTable<T>({
     return { initialWidths, lockedColumns };
   }, [columns, minWidth]);
 
-  const { columnWidths, onMouseDown, getTableStyle } = useTableResize(
+  const { columnWidths, onMouseDown, getTableStyle, autoFitColumn, dragState, tableRef } = useTableResize(
     tableId,
     derivedResizeConfig.initialWidths,
     { lockedColumns: derivedResizeConfig.lockedColumns }
   );
+
+  const hasNoResizeColumn = useMemo(() => columns.some((c) => c.noResize), [columns]);
+
+  const explicitTableWidth = useMemo(() => {
+    if (hasNoResizeColumn) return null;
+    let total = 0;
+    for (const col of columns) {
+      const width =
+        columnWidths[col.key] ?? derivedResizeConfig.initialWidths[col.key] ?? 0;
+      total += width;
+    }
+    if (expandableContent) total += 40;
+    return total;
+  }, [columns, columnWidths, derivedResizeConfig.initialWidths, expandableContent, hasNoResizeColumn]);
   const tableLabels = useTableLabels();
   // Use provided emptyMessage or fallback to global label
   const noDataMessage = emptyMessage ?? tableLabels.noData;
@@ -188,12 +202,28 @@ export function DataTable<T>({
 
   return (
     <>
+      {dragState && (
+        <div
+          className="pointer-events-none fixed z-50 px-2 py-1 text-xs font-medium text-white bg-foreground rounded shadow-md"
+          style={{
+            left: dragState.clientX + 12,
+            top: dragState.clientY + 12,
+          }}
+        >
+          {Math.round(dragState.width)} px
+        </div>
+      )}
       {/* Desktop Table */}
-      <div className={mobileCard ? 'hidden lg:block overflow-x-auto' : 'overflow-x-auto'}>
+      <div className={mobileCard ? 'hidden lg:block overflow-x-auto relative' : 'overflow-x-auto relative'}>
         <div className="min-w-full inline-block">
           <table
-            className="w-full table-fixed"
-            style={{ ...getTableStyle(), minWidth }}
+            ref={tableRef}
+            className={cn('table-fixed', hasNoResizeColumn && 'w-full')}
+            style={
+              explicitTableWidth !== null
+                ? { ...getTableStyle(), width: `${explicitTableWidth}px` }
+                : { ...getTableStyle(), minWidth }
+            }
           >
             <thead>
               <tr className="border-b border-border">
@@ -203,6 +233,7 @@ export function DataTable<T>({
                 {columns.map((col) => (
                   <th
                     key={col.key}
+                    data-col-key={col.key}
                     className={cn(
                       'relative group transition-colors',
                       col.key === 'actions' || col.key === 'select' || col.key === 'status'
@@ -228,7 +259,10 @@ export function DataTable<T>({
                       </span>
                     )}
                     {!col.noResize && !derivedResizeConfig.lockedColumns.includes(col.key) && (
-                      <TableColumnResizeHandle onMouseDown={(e) => onMouseDown(col.key, e)} />
+                      <TableColumnResizeHandle
+                        onMouseDown={(e) => onMouseDown(col.key, e)}
+                        onDoubleClick={() => autoFitColumn(col.key)}
+                      />
                     )}
                   </th>
                 ))}
@@ -263,6 +297,7 @@ export function DataTable<T>({
                       {columns.map((col) => (
                         <td
                           key={col.key}
+                          data-col-key={col.key}
                           className={cn(
                             col.key === 'actions' || col.key === 'select' || col.key === 'status'
                               ? 'whitespace-nowrap !px-2'

@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import {
   CalendarDaysIcon,
   UsersIcon,
-  MessageSquareIcon,
   BriefcaseIcon,
   CheckCircleIcon,
   ChevronRightIcon,
@@ -53,57 +52,59 @@ export function OnboardingTour({ isClient, isOpen }: OnboardingTourProps) {
 
   const getSteps = () => {
     if (isClient) {
+      const subtitle = "Plan, assign, and manage your tasks with full visibility — from staffing to final billing.";
       return [
         {
-          title: "Welcome to your Dashboard",
-          description: "Get a comprehensive overview of your upcoming events and their staffing status at a glance.",
-          icon: <CalendarDaysIcon className="w-10 h-10 text-blue-600" />,
-          color: "bg-blue-500/10"
-        },
-        {
-          title: "Requesting Talent",
-          description: "Learn how to effortlessly request staff for your events and track assignment progress in real-time.",
-          icon: <UsersIcon className="w-10 h-10 text-green-600" />,
-          color: "bg-green-500/10"
-        },
-        {
-          title: "Event Management",
-          description: "Access detailed event information, point of contact details, and specific venue instructions.",
-          icon: <BriefcaseIcon className="w-10 h-10 text-purple-600" />,
-          color: "bg-purple-500/10"
-        },
-        {
-          title: "Seamless Communication",
-          description: "Stay in touch with management and staff through our integrated messaging system.",
-          icon: <MessageSquareIcon className="w-10 h-10 text-amber-600" />,
-          color: "bg-amber-500/10"
-        }
-      ];
-    } else {
-      return [
-        {
-          title: "Welcome to Talent Portal",
-          description: "See your upcoming assignments and discover new job offers immediately upon logging in.",
+          title: "Submit Requests",
+          subtitle,
+          heading: "Welcome to Your Dashboard",
+          description: "Easily submit task and assignment requests for your staffing needs.",
           icon: <BriefcaseIcon className="w-10 h-10 text-blue-600" />,
           color: "bg-blue-500/10"
         },
         {
-          title: "Accepting Offers",
-          description: "Review comprehensive event details and quickly accept invitations for new shifts.",
-          icon: <CheckCircleIcon className="w-10 h-10 text-green-600" />,
+          title: "Track Coverage",
+          subtitle,
+          heading: "Welcome to Your Dashboard",
+          description: "Monitor assignment progress and staffing status in real time.",
+          icon: <UsersIcon className="w-10 h-10 text-green-600" />,
           color: "bg-green-500/10"
         },
         {
-          title: "Your Schedule",
-          description: "View your full schedule, track your upcoming shift times, and manage your availability.",
+          title: "Manage Events & Finances",
+          subtitle,
+          heading: "Welcome to Your Dashboard",
+          description: "View task details, schedules, estimates, and invoices in one place.",
           icon: <CalendarDaysIcon className="w-10 h-10 text-purple-600" />,
           color: "bg-purple-500/10"
+        }
+      ];
+    } else {
+      const subtitle = "View assignments, manage your schedule, and track your work — all in one place.";
+      return [
+        {
+          title: "Find & Accept Assignments",
+          subtitle,
+          heading: "Welcome to the Talent Portal",
+          description: "Review available assignments and quickly accept opportunities that match your schedule.",
+          icon: <BriefcaseIcon className="w-10 h-10 text-blue-600" />,
+          color: "bg-blue-500/10"
         },
         {
-          title: "Profile Completion",
-          description: "Keep your profile and credentials updated to receive the most relevant and lucrative job opportunities.",
-          icon: <UsersIcon className="w-10 h-10 text-amber-600" />,
-          color: "bg-amber-500/10"
+          title: "Manage Your Schedule",
+          subtitle,
+          heading: "Welcome to the Talent Portal",
+          description: "View upcoming assignments, track shift times, and stay organized.",
+          icon: <CalendarDaysIcon className="w-10 h-10 text-green-600" />,
+          color: "bg-green-500/10"
+        },
+        {
+          title: "Track Work & Payments",
+          subtitle,
+          heading: "Welcome to the Talent Portal",
+          description: "Monitor completed assignments and stay updated on payment status.",
+          icon: <CheckCircleIcon className="w-10 h-10 text-purple-600" />,
+          color: "bg-purple-500/10"
         }
       ];
     }
@@ -143,7 +144,9 @@ export function OnboardingTour({ isClient, isOpen }: OnboardingTourProps) {
              </div>
              
              <div className="text-center space-y-3 relative z-10">
+               <p className="text-sm font-semibold text-primary uppercase tracking-widest">{steps?.[currentStep]?.heading || ''}</p>
                <h2 className="text-2xl font-bold tracking-tight text-foreground">{steps?.[currentStep]?.title || ''}</h2>
+               <p className="text-xs text-muted-foreground/70 leading-relaxed">{steps?.[currentStep]?.subtitle || ''}</p>
                <p className="text-muted-foreground leading-relaxed">
                  {steps?.[currentStep]?.description || ''}
                </p>

@@ -478,4 +478,28 @@ export const callTimeRouter = router({
       const service = new CallTimeService(ctx.prisma);
       return await service.getStaffAssignmentHistory(input, ctx.userId!);
     }),
+
+  /**
+   * Start a shift (talent clocks in)
+   * Opens a new ShiftSession with clockIn = now.
+   * Requires: Authentication (staff member who owns the invitation)
+   */
+  startShift: protectedProcedure
+    .input(CallTimeSchema.cancelInvitation)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.startShift(input.invitationId, ctx.userId!);
+    }),
+
+  /**
+   * End a shift (talent clocks out)
+   * Closes the active ShiftSession with clockOut = now.
+   * Requires: Authentication (staff member who owns the invitation)
+   */
+  endShift: protectedProcedure
+    .input(CallTimeSchema.cancelInvitation)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.endShift(input.invitationId, ctx.userId!);
+    }),
 });

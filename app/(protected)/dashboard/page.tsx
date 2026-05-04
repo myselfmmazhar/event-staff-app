@@ -101,7 +101,10 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
   }
 
   const pendingOffers = invitations?.pending || [];
-  const acceptedOffers = invitations?.accepted || [];
+  const acceptedOffers = [
+    ...(invitations?.inProgress ?? []),
+    ...(invitations?.accepted ?? []),
+  ];
   const previousBills = myBills?.previous || [];
   const upcomingBills = myBills?.upcoming || [];
   const paidBills = myBills?.paid || [];

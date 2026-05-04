@@ -16,7 +16,7 @@ import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, type ComponentProps } from 'react';
+import { Suspense, useState, useEffect, type ComponentProps } from 'react';
 import type { InviteUserInput, UpdateUserInput } from '@/lib/schemas/user.schema';
 import {
   useUsersFilters,
@@ -89,7 +89,7 @@ function parseDateParam(value: string | null): string {
   return value ?? '';
 }
 
-export default function UsersPage() {
+function UsersPageContent() {
   const searchParams = useSearchParams();
 
   // Use filters store
@@ -588,5 +588,13 @@ export default function UsersPage() {
         )}
       </ConfirmModal>
     </div>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={null}>
+      <UsersPageContent />
+    </Suspense>
   );
 }

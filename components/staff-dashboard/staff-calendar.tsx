@@ -59,6 +59,7 @@ export function StaffCalendar({ onEventClick }: StaffCalendarProps) {
 
     const allInvs = [
       ...invitations.accepted,
+      ...(invitations.inProgress ?? []),
       ...invitations.pending,
       ...invitations.past
     ];

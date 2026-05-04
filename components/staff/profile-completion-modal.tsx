@@ -580,7 +580,8 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                     showServicesStep
                                         ? selectedServiceIds
                                               .map((id) => availableServices.find((s) => s.id === id))
-                                              .filter((s): s is { id: string; title: string } => !!s)
+                                              .filter((s): s is NonNullable<typeof s> => !!s)
+                                              .map((s) => ({ id: s.id, title: s.title }))
                                         : []
                                 }
                             />
