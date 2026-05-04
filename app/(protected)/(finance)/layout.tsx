@@ -81,7 +81,20 @@ function SortableTab({ tab, isActive }: { tab: Tab; isActive: boolean }) {
 
 export default function FinanceLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [tabs, setTabs] = useState<Tab[]>(ALL_TABS);
+  const { data: profile } = api.profile.getMyProfile.useQuery();
+  const role = profile?.role;
+
+  const filteredAllTabs = ALL_TABS.filter((tab) => {
+    if (role === 'STAFF') {
+      return tab.id === 'bills';
+    }
+    if (role === 'CLIENT') {
+      return tab.id === 'invoices';
+    }
+    return true;
+  });
+
+  const [tabs, setTabs] = useState<Tab[]>(filteredAllTabs);
 
   const { data: prefs } = api.userPreference.getTabOrders.useQuery();
   const saveOrder = api.userPreference.saveFinanceTabOrder.useMutation();
@@ -89,13 +102,15 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (prefs?.financeTabOrder?.length) {
       const ordered = prefs.financeTabOrder
-        .map((id) => ALL_TABS.find((t) => t.id === id))
+        .map((id) => filteredAllTabs.find((t) => t.id === id))
         .filter(Boolean) as Tab[];
       // append any tabs missing from saved order (future-proofing)
-      const missing = ALL_TABS.filter((t) => !prefs.financeTabOrder.includes(t.id));
+      const missing = filteredAllTabs.filter((t) => !prefs.financeTabOrder.includes(t.id));
       setTabs([...ordered, ...missing]);
+    } else {
+      setTabs(filteredAllTabs);
     }
-  }, [prefs]);
+  }, [prefs, role]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
