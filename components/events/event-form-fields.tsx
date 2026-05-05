@@ -178,14 +178,6 @@ export function EventFormFields({
   if (activeTab === 'instructions') {
     return (
       <>
-        <PreEventSection
-          register={register}
-          control={control}
-          errors={errors}
-          watch={watch}
-          setValue={setValue}
-          disabled={disabled}
-        />
         <PrivateNotesSection
           register={register}
           control={control}
@@ -193,7 +185,6 @@ export function EventFormFields({
           watch={watch}
           setValue={setValue}
           disabled={disabled}
-          className={divider}
         />
         <RequestInfoSection
           register={register}

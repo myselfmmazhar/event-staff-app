@@ -100,6 +100,27 @@ export const timeEntryRouter = router({
         }),
 
     /**
+     * Generate bills for selected assignments (one Draft Bill per talent).
+     */
+    generateBills: managerProcedure
+        .input(z.object({
+            invitationIds: z.array(z.string().uuid()),
+            shiftSelections: z
+                .array(z.object({
+                    invitationId: z.string().uuid(),
+                    includeSchedule: z.boolean(),
+                    includeActual: z.boolean(),
+                    includeName: z.boolean().optional(),
+                    includeNotes: z.boolean().optional(),
+                }))
+                .optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const service = new TimeEntryService(ctx.prisma);
+            return await service.generateBills(input.invitationIds, ctx.userId as string, input.shiftSelections);
+        }),
+
+    /**
      * Approve / reject an invitation for invoicing/time manager.
      * Uses CallTimeInvitation.internalReviewRating as the persisted decision.
      */

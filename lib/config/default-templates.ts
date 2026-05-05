@@ -4,7 +4,7 @@ import type { EmailTemplateType, SmsTemplateType } from '@prisma/client';
  * Template variable definitions by category
  */
 export const TEMPLATE_VARIABLES = {
-  common: ['{{firstName}}', '{{email}}'],
+  common: ['{{firstName}}', '{{email}}', '{{companyName}}'],
   staff: ['{{staffTermLabel}}', '{{inviteUrl}}'],
   client: ['{{inviteUrl}}'],
   credentials: ['{{tempPassword}}', '{{loginUrl}}'],
@@ -29,6 +29,7 @@ export const TEMPLATE_VARIABLES = {
     '{{assignmentInstructions}}',
     '{{acceptUrl}}',
     '{{rejectUrl}}',
+    '{{detailsUrl}}',
   ],
 } as const;
 
@@ -38,6 +39,7 @@ export const TEMPLATE_VARIABLES = {
 export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{firstName}}': 'Recipient\'s first name',
   '{{email}}': 'Recipient\'s email address',
+  '{{companyName}}': 'Company name from company profile',
   '{{staffTermLabel}}': 'Organization\'s term for staff (e.g., Staff, Talent)',
   '{{inviteUrl}}': 'URL to accept the invitation',
   '{{loginUrl}}': 'URL to the login page',
@@ -62,6 +64,7 @@ export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{assignmentInstructions}}': 'Specific instructions for this assignment',
   '{{acceptUrl}}': 'Direct URL to accept the offer from email',
   '{{rejectUrl}}': 'Direct URL to reject the offer from email',
+  '{{detailsUrl}}': 'URL to view the full invitation details in the talent portal',
 };
 
 export interface DefaultEmailTemplate {
@@ -167,6 +170,7 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
 <div style="text-align: center; margin: 30px 0;">
   {{action_button:Accept Offer|{{acceptUrl}}}}
   {{danger_button:Reject Offer|{{rejectUrl}}}}
+  <a href="{{detailsUrl}}" style="background-color: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 5px;">View More Details</a>
 </div>
 
 <p class="note">You can also view more details and respond in your <a href="{{dashboardUrl}}">Talent Portal</a>.</p>
@@ -401,6 +405,7 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
     firstName: 'John',
     email: 'john.doe@example.com',
     staffTermLabel: 'Staff',
+    companyName: 'Acme Events Co.',
   };
 
   const callTimeCommon = {

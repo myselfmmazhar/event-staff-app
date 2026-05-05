@@ -656,6 +656,7 @@ export class StaffService {
 
         const {
             documents,
+            serviceIds,
             taxName,
             businessName,
             businessStructure,
@@ -713,6 +714,13 @@ export class StaffService {
                         create: { staffId: staff.id, ...taxPayload },
                         update: taxPayload,
                     });
+
+                    if (serviceIds && serviceIds.length > 0) {
+                        await tx.staffServiceAssignment.createMany({
+                            data: serviceIds.map((serviceId) => ({ staffId: staff.id, serviceId })),
+                            skipDuplicates: true,
+                        });
+                    }
 
                     return result;
                 },

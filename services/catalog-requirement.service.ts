@@ -97,6 +97,7 @@ export class CatalogRequirementService {
           allowImage: data.allowImage,
           allowOther: data.allowOther,
           expirationType: data.expirationType,
+          expirationDate: data.expirationType === 'CUSTOM_DATE' ? (data.expirationDate ?? null) : null,
           allowEarlyRenewal: data.allowEarlyRenewal,
           requiresApproval: data.requiresApproval,
           isTalentRequired: data.isTalentRequired,

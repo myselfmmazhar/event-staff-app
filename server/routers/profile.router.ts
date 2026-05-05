@@ -473,6 +473,99 @@ export const profileRouter = router({
       return await userService.findOne(ctx.userId!);
     }),
 
+  getMyClientInvoiceById: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const client = await ctx.prisma.client.findUnique({
+        where: { userId: ctx.userId! },
+        select: { id: true },
+      });
+
+      if (!client) return null;
+
+      return ctx.prisma.invoice.findFirst({
+        where: {
+          id: input.id,
+          clientId: client.id,
+          isArchived: false,
+          status: "PAID",
+        },
+        select: {
+          id: true,
+          invoiceNo: true,
+          status: true,
+          invoiceDate: true,
+          dueDate: true,
+          terms: true,
+          notes: true,
+          paymentDetails: true,
+          discountType: true,
+          discountValue: true,
+          depositAmount: true,
+          shippingAmount: true,
+          salesTaxAmount: true,
+          createdAt: true,
+          items: {
+            select: {
+              id: true,
+              description: true,
+              quantity: true,
+              price: true,
+              amount: true,
+            },
+          },
+        },
+      });
+    }),
+
+  getMyClientInvoices: protectedProcedure.query(async ({ ctx }) => {
+    const client = await ctx.prisma.client.findUnique({
+      where: { userId: ctx.userId! },
+      select: { id: true },
+    });
+
+    if (!client) return [];
+
+    const invoices = await ctx.prisma.invoice.findMany({
+      where: {
+        clientId: client.id,
+        isArchived: false,
+        status: "PAID",
+      },
+      select: {
+        id: true,
+        invoiceNo: true,
+        status: true,
+        invoiceDate: true,
+        dueDate: true,
+        terms: true,
+        notes: true,
+        paymentDetails: true,
+        discountType: true,
+        discountValue: true,
+        depositAmount: true,
+        shippingAmount: true,
+        salesTaxAmount: true,
+        createdAt: true,
+        items: {
+          select: {
+            id: true,
+            description: true,
+            quantity: true,
+            price: true,
+            amount: true,
+          },
+        },
+      },
+      orderBy: { invoiceDate: "desc" },
+    });
+
+    return invoices.map((inv) => ({
+      ...inv,
+      subtotal: inv.items.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    }));
+  }),
+
   /**
    * Mark onboarding as seen for the current user
    */

@@ -440,6 +440,12 @@ export type ServiceSelect = Prisma.ServiceGetPayload<{
     expenditurePrice: true;
     isActive: true;
     categoryId: true;
+    category: {
+      select: {
+        requirementTemplateIds: true;
+        requirementType: true;
+      };
+    };
     createdBy: true;
     createdAt: true;
     updatedAt: true;

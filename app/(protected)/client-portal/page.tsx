@@ -235,6 +235,7 @@ export default function ClientPortalDashboard() {
                             <div className="space-y-2.5">
                                 {[
                                     { label: 'All My Events', href: '/client-portal/my-events' },
+                                    { label: 'My Invoices', href: '/client-portal/invoices' },
                                     { label: 'My Profile', href: '/profile' },
                                 ].map(link => (
                                     <Link
@@ -248,7 +249,10 @@ export default function ClientPortalDashboard() {
                             </div>
                         </div>
                         <div className="bg-card border border-border rounded-xl p-5">
-                            <h3 className="text-sm font-semibold text-foreground mb-0.5">Invoices & Estimates</h3>
+                            <div className="flex items-center justify-between mb-0.5">
+                                <h3 className="text-sm font-semibold text-foreground">Invoices & Estimates</h3>
+                                <Link href="/client-portal/invoices" className="text-xs text-primary hover:underline">View All</Link>
+                            </div>
                             <p className="text-xs text-muted-foreground mb-4">Approved/rejected finance documents</p>
                             {financeLoading ? (
                                 <p className="text-sm text-muted-foreground">Loading...</p>

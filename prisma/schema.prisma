@@ -47,6 +47,7 @@ model CallTimeInvitation {
   staff                Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
   teamUnit             TeamUnit?                @relation(fields: [teamUnitId], references: [id])
   timeEntry            TimeEntry?
+  shiftSessions        ShiftSession[]
 
   @@unique([callTimeId, staffId, teamUnitId])
   @@index([callTimeId])
@@ -54,6 +55,25 @@ model CallTimeInvitation {
   @@index([status])
   @@index([teamUnitId])
   @@map("call_time_invitations")
+}
+
+model ShiftSession {
+  id           String              @id @default(uuid()) @db.Uuid
+  invitationId String              @db.Uuid
+  staffId      String              @db.Uuid
+  callTimeId   String              @db.Uuid
+  clockIn      DateTime            @db.Timestamp(6)
+  clockOut     DateTime?           @db.Timestamp(6)
+  createdAt    DateTime            @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime            @updatedAt @db.Timestamp(6)
+  invitation   CallTimeInvitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  staff        Staff               @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  callTime     CallTime            @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
+
+  @@index([invitationId])
+  @@index([staffId])
+  @@index([callTimeId])
+  @@map("shift_sessions")
 }
 
 model TimeEntry {
@@ -149,6 +169,7 @@ model CallTime {
   event                 Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
   service               Service?             @relation(fields: [serviceId], references: [id])
   timeEntries           TimeEntry[]
+  shiftSessions         ShiftSession[]
 
   @@index([callTimeId])
   @@index([eventId])
@@ -457,9 +478,7 @@ enum CategoryRequirementType {
 
 enum CatalogRequirementExpiration {
   NEVER
-  FROM_YEAR_START
-  FROM_COMPLETION
-  BEFORE_YEAR_END
+  CUSTOM_DATE
 }
 
 model CatalogRequirement {
@@ -472,6 +491,7 @@ model CatalogRequirement {
   allowImage         Boolean                      @default(true)
   allowOther         Boolean                      @default(false)
   expirationType     CatalogRequirementExpiration @default(NEVER)
+  expirationDate     DateTime?                    @db.Date
   allowEarlyRenewal  Boolean                      @default(false)
   requiresApproval   Boolean                      @default(false)
   isTalentRequired   Boolean                      @default(false)
@@ -806,6 +826,7 @@ model Staff {
   services                     StaffServiceAssignment[]
   taxDetails                   StaffTaxDetails?
   timeEntries                  TimeEntry[]
+  shiftSessions                ShiftSession[]
   bills                        Bill[]
   teamUnits                    TeamUnit[]
 

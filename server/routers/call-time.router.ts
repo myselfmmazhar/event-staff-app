@@ -149,6 +149,7 @@ export const callTimeRouter = router({
               privateComments: (invitation.callTime.event as any).privateComments,
               instructions: invitation.callTime.instructions,
               responseToken: invitation.responseToken,
+              invitationId: invitation.id,
             }
           );
         } catch (error) {
@@ -351,6 +352,7 @@ export const callTimeRouter = router({
             payRate: Number(invitation.callTime.payRate),
             payRateType: invitation.callTime.payRateType,
             responseToken: invitation.responseToken,
+            invitationId: invitation.id,
           }
         );
       } catch (error) {
@@ -475,5 +477,29 @@ export const callTimeRouter = router({
     .query(async ({ ctx, input }) => {
       const service = new CallTimeService(ctx.prisma);
       return await service.getStaffAssignmentHistory(input, ctx.userId!);
+    }),
+
+  /**
+   * Start a shift (talent clocks in)
+   * Opens a new ShiftSession with clockIn = now.
+   * Requires: Authentication (staff member who owns the invitation)
+   */
+  startShift: protectedProcedure
+    .input(CallTimeSchema.cancelInvitation)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.startShift(input.invitationId, ctx.userId!);
+    }),
+
+  /**
+   * End a shift (talent clocks out)
+   * Closes the active ShiftSession with clockOut = now.
+   * Requires: Authentication (staff member who owns the invitation)
+   */
+  endShift: protectedProcedure
+    .input(CallTimeSchema.cancelInvitation)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.endShift(input.invitationId, ctx.userId!);
     }),
 });

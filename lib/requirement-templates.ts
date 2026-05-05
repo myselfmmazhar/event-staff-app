@@ -21,6 +21,22 @@ export function isTalentSubmissionTemplateId(id: ReqTemplateId): boolean {
   return TALENT_SUBMISSION_TEMPLATE_IDS.has(id);
 }
 
+/**
+ * Templates whose fulfillment requires the talent to upload a document during onboarding.
+ * `w9` is collected via the Tax step; `esign` is captured via the signature pad on Review.
+ */
+const DOCUMENT_TEMPLATE_IDS = new Set<ReqTemplateId>(['upload', 'idv', 'headshot', 'bg']);
+
+export function isDocumentTemplateId(id: ReqTemplateId): boolean {
+  return DOCUMENT_TEMPLATE_IDS.has(id);
+}
+
+export function countDocumentTemplates(ids: ReadonlySet<ReqTemplateId>): number {
+  let n = 0;
+  for (const id of ids) if (DOCUMENT_TEMPLATE_IDS.has(id)) n++;
+  return n;
+}
+
 const REQ_TEMPLATE_ID_SET = new Set<string>(REQ_TEMPLATE_IDS);
 
 export function isReqTemplateId(value: string): value is ReqTemplateId {

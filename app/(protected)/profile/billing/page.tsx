@@ -1,33 +1,80 @@
-'use client';
+"use client";
 
-import { Card } from '@/components/ui/card';
-import { ListIcon } from '@/components/ui/icons';
+import { trpc } from "@/lib/client/trpc";
+import { Card } from "@/components/ui/card";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { BillTable } from "@/components/bills/bill-table";
+import { BillSearch } from "@/components/bills/bill-search";
+import { Pagination } from "@/components/common/pagination";
 
 export default function BillingPage() {
+    const router = useRouter();
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+    const [search, setSearch] = useState("");
+    const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "billNo" | "billDate" | "status" | "staff">("createdAt");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+    const handleSort = (field: string) => {
+        const f = field as typeof sortBy;
+        if (sortBy === f) {
+            setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        } else {
+            setSortBy(f);
+            setSortOrder("desc");
+        }
+        setPage(1);
+    };
+
+    const { data, isLoading } = trpc.bills.getMyBills.useQuery({
+        page,
+        limit,
+        search: search || undefined,
+        sortBy,
+        sortOrder,
+    }, {
+        placeholderData: (previousData) => previousData,
+    });
+
+    const bills = data?.data || [];
+    const total = data?.meta.total || 0;
+    const totalPages = data?.meta.totalPages || 0;
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <ListIcon className="h-5 w-5 text-primary" />
+            <Card className="p-6 overflow-visible relative z-20">
+                <div className="space-y-4">
+                    <BillSearch
+                        value={search}
+                        onChange={setSearch}
+                        placeholder="Search bills..."
+                    />
                 </div>
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">Billing</h1>
-                    <p className="text-sm text-muted-foreground">Manage billing and subscriptions</p>
-                </div>
-            </div>
+            </Card>
 
-            <Card className="p-12 text-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                        <ListIcon className="h-8 w-8 text-muted-foreground" />
+            <Card className="p-6">
+                <BillTable
+                    bills={bills as any}
+                    isLoading={isLoading}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                    onView={(bill) => router.push(`/profile/billing/${bill.id}`)}
+                    emptyDescription="You don't have any bills yet."
+                />
+                {total > 0 && (
+                    <div className="mt-6">
+                        <Pagination
+                            currentPage={page}
+                            totalPages={totalPages}
+                            totalItems={total}
+                            itemsPerPage={limit}
+                            onPageChange={setPage}
+                            onItemsPerPageChange={setLimit}
+                        />
                     </div>
-                    <div>
-                        <h2 className="text-xl font-semibold text-foreground">Coming Soon</h2>
-                        <p className="text-sm text-muted-foreground mt-2">
-                            Billing functionality will be available in a future update.
-                        </p>
-                    </div>
-                </div>
+                )}
             </Card>
         </div>
     );

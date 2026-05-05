@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,7 +53,7 @@ function parseSortOrderParam(value: string | null): SortOrder {
   return value === 'desc' ? 'desc' : 'asc';
 }
 
-export default function ServicesPage() {
+function ServicesPageContent() {
   const searchParams = useSearchParams();
   const filters = useServicesFilters();
   const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions, handleSuccess, handleError } =
@@ -142,6 +142,7 @@ export default function ServicesPage() {
     expenditureAmountType: service.expenditureAmountType ?? null,
     isActive: service.isActive,
     createdAt: service.createdAt,
+    category: service.category ?? null,
   }));
 
   // Get selected services for bulk delete modal display
@@ -417,5 +418,13 @@ export default function ServicesPage() {
         )}
       </ConfirmModal>
     </div>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={null}>
+      <ServicesPageContent />
+    </Suspense>
   );
 }

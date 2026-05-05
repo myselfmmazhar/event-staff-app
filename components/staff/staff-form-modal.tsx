@@ -318,17 +318,10 @@ function StaffFormContent({
     useEffect(() => {
         if (!services.length) return;
         const key = [...serviceIds].sort().join(',');
-        if (prevServiceKeyRef.current === null) {
-            prevServiceKeyRef.current = key;
-            if (isEdit) {
-                setSelectedReqTemplates(computeRequirementTemplatesFromServices(serviceIds, services));
-            }
-            return;
-        }
         if (prevServiceKeyRef.current === key) return;
         prevServiceKeyRef.current = key;
         setSelectedReqTemplates(computeRequirementTemplatesFromServices(serviceIds, services));
-    }, [serviceIds, services, isEdit]);
+    }, [serviceIds, services]);
 
     /** Only show requirement cards that come from selected services’ categories (not the full catalog). */
     const visibleReqTemplateIds = useMemo(() => {
@@ -352,7 +345,6 @@ function StaffFormContent({
                 values?: StaffFormInput;
                 teamMembers?: TeamMemberInput[];
                 wizardStep?: WizardStep;
-                selectedReqTemplates?: ReqTemplateId[];
                 createTaxFilledBy?: TaxFilledBy;
             };
             if (parsed.values) {
@@ -374,9 +366,6 @@ function StaffFormContent({
             if (parsed.teamMembers) setTeamMembers(parsed.teamMembers);
             if (parsed.wizardStep && WIZARD_STEPS.includes(parsed.wizardStep)) {
                 setWizardStep(parsed.wizardStep);
-            }
-            if (parsed.selectedReqTemplates?.length) {
-                setSelectedReqTemplates(new Set(parsed.selectedReqTemplates));
             }
             if (parsed.createTaxFilledBy) {
                 setCreateTaxFilledBy(parsed.createTaxFilledBy);
@@ -481,7 +470,6 @@ function StaffFormContent({
                 values: getValues(),
                 teamMembers,
                 wizardStep,
-                selectedReqTemplates: [...selectedReqTemplates],
                 createTaxFilledBy,
             };
             sessionStorage.setItem(STAFF_FORM_DRAFT_KEY, JSON.stringify(payload));
@@ -496,15 +484,6 @@ function StaffFormContent({
                 variant: 'error',
             });
         }
-    };
-
-    const toggleReqTemplate = (id: ReqTemplateId) => {
-        setSelectedReqTemplates((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
     };
 
     const setCreateTaxMode = (mode: TaxFilledBy) => {
@@ -910,9 +889,9 @@ function StaffFormContent({
                     <div className="mx-auto max-w-6xl">
                         <h3 className="text-base font-bold text-slate-900">3. Requirement templates</h3>
                         <p className="mt-1 text-xs text-slate-500">
-                            Cards are pre-filled from the <strong>service categories</strong> you chose on Experience.
-                            Adjust here if this onboarding packet should differ. Manage defaults in{' '}
-                            <strong>Catalog → Categories</strong>.
+                            These requirements are determined by the <strong>service categories</strong> selected on
+                            Experience and are mandatory for this onboarding packet. To change them, update the
+                            requirements on the category in <strong>Catalog → Categories</strong>.
                             {SHOW_REQUIREMENTS_DOCUMENT_UPLOAD
                                 ? ' Upload documents below when you have files ready.'
                                 : ''}
@@ -923,8 +902,8 @@ function StaffFormContent({
                                     staffAppearance
                                     staffType={staffType}
                                     selected={selectedReqTemplates}
-                                    onToggle={toggleReqTemplate}
-                                    disabled={isSubmitting}
+                                    onToggle={() => undefined}
+                                    readOnly
                                     visibleIds={visibleReqTemplateIds}
                                 />
                             ) : (

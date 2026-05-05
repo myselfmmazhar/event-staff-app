@@ -12,6 +12,8 @@ import {
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { formatDollarOrPlaceholder } from '@/lib/utils/currency-formatter';
 import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
+import { CATEGORY_REQUIREMENT_LABELS } from '@/lib/category-requirements';
+import { normalizeReqTemplateIds, formatRequirementTemplatesShort } from '@/lib/requirement-templates';
 
 interface ServiceTableProps {
   services: ServiceTableRow[];
@@ -40,8 +42,8 @@ export function ServiceTable({
   onSelectionChange,
 }: ServiceTableProps) {
   const columnLabels = useColumnLabels('services', {
-    serviceId: 'Service ID',
     title: 'Title',
+    requirements: 'Requirements',
     cost: 'Cost',
     price: 'Price',
     minimum: 'Minimum',
@@ -143,19 +145,22 @@ export function ServiceTable({
       ),
     },
     {
-      key: 'serviceId',
-      label: columnLabels.serviceId,
-      className: 'py-4 px-4 whitespace-nowrap',
-      render: (service) => (
-        <span className="font-mono text-sm text-muted-foreground">{service.serviceId}</span>
-      ),
-    },
-    {
       key: 'title',
       label: columnLabels.title,
       sortable: true,
       className: 'py-4 px-4',
       render: (service) => <span className="font-medium text-foreground">{service.title}</span>,
+    },
+    {
+      key: 'requirements',
+      label: columnLabels.requirements,
+      className: 'py-4 px-4 whitespace-nowrap text-sm text-muted-foreground',
+      render: (service) => {
+        if (!service.category) return '—';
+        const ids = normalizeReqTemplateIds(service.category.requirementTemplateIds);
+        if (ids.length > 0) return formatRequirementTemplatesShort(ids);
+        return CATEGORY_REQUIREMENT_LABELS[service.category.requirementType] ?? '—';
+      },
     },
     {
       key: 'cost',

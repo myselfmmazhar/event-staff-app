@@ -16,6 +16,7 @@ export type ServiceTableRow = Pick<
   | 'expenditureAmountType'
   | 'isActive'
   | 'createdAt'
+  | 'category'
 >;
 
 export type ServiceDeleteInfo = Pick<Service, 'title' | 'serviceId'>;
