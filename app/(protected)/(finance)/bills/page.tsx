@@ -23,7 +23,9 @@ export default function BillsPage() {
     const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "billNo" | "billDate" | "status" | "staff">("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-    // Action modal state
+    const { data: profile } = trpc.profile.getMyProfile.useQuery();
+    const isReadOnly = profile?.role === "STAFF" || profile?.role === "CLIENT";
+
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [selectedBillForAction, setSelectedBillForAction] = useState<{ id: string, billNo: string, talentName: string } | null>(null);
     const [actionType, setActionType] = useState<'archive' | 'restore' | 'delete'>('archive');
@@ -82,25 +84,27 @@ export default function BillsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-end gap-2">
-                <Button
-                    variant={showArchived ? "default" : "outline"}
-                    onClick={() => setShowArchived(!showArchived)}
-                    className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
-                    size="lg"
-                >
-                    <ArchiveIcon className="h-4 w-4 mr-2" />
-                    {showArchived ? "Showing Archived" : "View Archive"}
-                </Button>
-                <Button 
-                    onClick={() => router.push("/bills/new")}
-                    size="lg"
-                    className="rounded-xl shadow-lg shadow-primary/10"
-                >
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    Create Bill
-                </Button>
-            </div>
+            {!isReadOnly && (
+                <div className="flex items-center justify-end gap-2">
+                    <Button
+                        variant={showArchived ? "default" : "outline"}
+                        onClick={() => setShowArchived(!showArchived)}
+                        className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
+                        size="lg"
+                    >
+                        <ArchiveIcon className="h-4 w-4 mr-2" />
+                        {showArchived ? "Showing Archived" : "View Archive"}
+                    </Button>
+                    <Button 
+                        onClick={() => router.push("/bills/new")}
+                        size="lg"
+                        className="rounded-xl shadow-lg shadow-primary/10"
+                    >
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Create Bill
+                    </Button>
+                </div>
+            )}
 
             <Card className="p-6 overflow-visible relative z-20">
                 <div className="space-y-4">
@@ -122,9 +126,9 @@ export default function BillsPage() {
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     showArchived={showArchived}
-                    onEdit={(bill) => router.push(`/bills/${bill.id}/edit`)}
+                    onEdit={isReadOnly ? undefined : (bill) => router.push(`/bills/${bill.id}/edit`)}
                     onView={(bill) => router.push(`/bills/${bill.id}`)}
-                    onArchive={(bill) => {
+                    onArchive={isReadOnly ? undefined : (bill) => {
                         const talentName = `${bill.staff.firstName} ${bill.staff.lastName}`;
                         setSelectedBillForAction({
                             id: bill.id,
@@ -134,7 +138,7 @@ export default function BillsPage() {
                         setActionType(showArchived ? 'restore' : 'archive');
                         setIsActionModalOpen(true);
                     }}
-                    onDelete={(bill) => {
+                    onDelete={isReadOnly ? undefined : (bill) => {
                         const talentName = `${bill.staff.firstName} ${bill.staff.lastName}`;
                         setSelectedBillForAction({
                             id: bill.id,

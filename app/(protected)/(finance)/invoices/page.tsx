@@ -24,6 +24,9 @@ export default function InvoicesPage() {
     const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "invoiceNo" | "invoiceDate" | "status" | "client">("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+    const { data: profile } = trpc.profile.getMyProfile.useQuery();
+    const isReadOnly = profile?.role === "STAFF" || profile?.role === "CLIENT";
+
     // Action modal state
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [selectedInvoiceForAction, setSelectedInvoiceForAction] = useState<{ id: string, invoiceNo: string, clientName: string } | null>(null);
@@ -94,25 +97,27 @@ export default function InvoicesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-end gap-2">
-                <Button
-                    variant={showArchived ? "default" : "outline"}
-                    onClick={() => setShowArchived(!showArchived)}
-                    className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
-                    size="lg"
-                >
-                    <ArchiveIcon className="h-4 w-4 mr-2" />
-                    {showArchived ? "Showing Archived" : "View Archive"}
-                </Button>
-                <Button 
-                    onClick={() => router.push("/invoices/new")}
-                    size="lg"
-                    className="rounded-xl shadow-lg shadow-primary/10"
-                >
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    Create Invoice
-                </Button>
-            </div>
+            {!isReadOnly && (
+                <div className="flex items-center justify-end gap-2">
+                    <Button
+                        variant={showArchived ? "default" : "outline"}
+                        onClick={() => setShowArchived(!showArchived)}
+                        className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
+                        size="lg"
+                    >
+                        <ArchiveIcon className="h-4 w-4 mr-2" />
+                        {showArchived ? "Showing Archived" : "View Archive"}
+                    </Button>
+                    <Button 
+                        onClick={() => router.push("/invoices/new")}
+                        size="lg"
+                        className="rounded-xl shadow-lg shadow-primary/10"
+                    >
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Create Invoice
+                    </Button>
+                </div>
+            )}
 
             <Card className="p-6 overflow-visible relative z-20">
                 <div className="space-y-4">
@@ -134,9 +139,9 @@ export default function InvoicesPage() {
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     showArchived={showArchived}
-                    onEdit={(invoice) => router.push(`/invoices/${invoice.id}/edit`)}
+                    onEdit={isReadOnly ? undefined : (invoice) => router.push(`/invoices/${invoice.id}/edit`)}
                     onView={(invoice) => router.push(`/invoices/${invoice.id}`)}
-                    onArchive={(invoice) => {
+                    onArchive={isReadOnly ? undefined : (invoice) => {
                         const clientName = invoice.client.businessName || `${invoice.client.firstName} ${invoice.client.lastName}`;
                         setSelectedInvoiceForAction({
                             id: invoice.id,
@@ -146,7 +151,7 @@ export default function InvoicesPage() {
                         setActionType(showArchived ? 'restore' : 'archive');
                         setIsActionModalOpen(true);
                     }}
-                    onDelete={(invoice) => {
+                    onDelete={isReadOnly ? undefined : (invoice) => {
                         const clientName = invoice.client.businessName || `${invoice.client.firstName} ${invoice.client.lastName}`;
                         setSelectedInvoiceForAction({
                             id: invoice.id,
@@ -156,7 +161,7 @@ export default function InvoicesPage() {
                         setActionType('delete');
                         setIsActionModalOpen(true);
                     }}
-                    onReview={(invoice) => {
+                    onReview={isReadOnly ? undefined : (invoice) => {
                         updateMutation.mutate({
                             id: invoice.id,
                             invoiceNo: invoice.invoiceNo,
@@ -165,7 +170,7 @@ export default function InvoicesPage() {
                             invoiceDate: new Date(invoice.invoiceDate),
                         });
                     }}
-                    onApprove={(invoice) => {
+                    onApprove={isReadOnly ? undefined : (invoice) => {
                         updateMutation.mutate({
                             id: invoice.id,
                             invoiceNo: invoice.invoiceNo,
@@ -174,7 +179,7 @@ export default function InvoicesPage() {
                             invoiceDate: new Date(invoice.invoiceDate),
                         });
                     }}
-                    onReject={(invoice) => {
+                    onReject={isReadOnly ? undefined : (invoice) => {
                         updateMutation.mutate({
                             id: invoice.id,
                             invoiceNo: invoice.invoiceNo,
