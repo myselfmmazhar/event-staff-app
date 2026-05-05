@@ -1152,6 +1152,8 @@ model InvoiceItem {
   scheduledEnd        DateTime? @db.Timestamp(6)
   scheduledHours      Decimal?  @db.Decimal(10, 2)
   scheduledStart      DateTime? @db.Timestamp(6)
+  isScheduledChecked  Boolean   @default(false)
+  isActualChecked     Boolean   @default(false)
   invoice             Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product             Product?  @relation(fields: [productId], references: [id])
   service             Service?  @relation(fields: [serviceId], references: [id])
