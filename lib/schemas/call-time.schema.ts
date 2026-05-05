@@ -298,6 +298,18 @@ export class CallTimeSchema {
     );
 
   /**
+   * Accept a team invitation with a chosen team unit (dashboard flow)
+   */
+  static acceptTeamInvitation = z.object({
+    invitationId: z.string().uuid(FieldErrors.invitationId),
+    teamUnitId: z.string().uuid(),
+  });
+
+  static getTeamInvitationUnits = z.object({
+    invitationId: z.string().uuid(FieldErrors.invitationId),
+  });
+
+  /**
    * Batch Respond to Invitations Schema
    */
   static batchRespond = z.object({

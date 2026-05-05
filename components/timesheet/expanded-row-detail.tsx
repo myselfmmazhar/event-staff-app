@@ -4,6 +4,7 @@ import { CalendarIcon } from '@/components/ui/icons';
 import { SKILL_LABELS } from './constants';
 import type { CallTimeRow } from './types';
 import { fmtDateTime, fmtClockDateTime, toNumber } from './helpers';
+import { format } from 'date-fns';
 
 export function ExpandedRowDetail({
     ct,
@@ -19,6 +20,22 @@ export function ExpandedRowDetail({
     subTab?: 'all' | 'bill' | 'invoice' | 'commission';
 }) {
     const revisions = ct.timeEntry?.revisions ?? [];
+    const sessions = ct.shiftSessions ?? [];
+
+    const fmtSessionInstant = (d: Date | string) => format(new Date(d), 'MMM d, h:mm a');
+    const fmtDurationMs = (ms: number) => {
+        if (ms < 0) ms = 0;
+        const totalMin = Math.floor(ms / 60000);
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        if (h === 0) return `${m}m`;
+        return `${h}h ${m}m`;
+    };
+    const sessionDurationMs = (s: { clockIn: Date | string; clockOut: Date | string | null }) => {
+        if (!s.clockOut) return null;
+        return new Date(s.clockOut).getTime() - new Date(s.clockIn).getTime();
+    };
+    const totalSessionsMs = sessions.reduce((acc, s) => acc + (sessionDurationMs(s) ?? 0), 0);
     // For invoice/bill flows, hide team-unit details and show only the manager's
     // contact info (the manager IS the staff on team-based invitations).
     const hideTeamForFinance = subTab === 'invoice' || subTab === 'bill';
@@ -138,6 +155,52 @@ export function ExpandedRowDetail({
                             <p className="text-muted-foreground whitespace-pre-wrap text-[11px]">{ct.notes}</p>
                         ) : (
                             <p className="text-xs text-muted-foreground italic">No notes</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2 pb-3 border-b border-border">
+                        <div className="flex items-center justify-between gap-2">
+                            <h4 className="font-semibold text-foreground text-xs uppercase tracking-wide">Time Log</h4>
+                            {sessions.length > 0 && (
+                                <span className="text-[10px] font-medium text-muted-foreground">
+                                    {sessions.length} session{sessions.length !== 1 ? 's' : ''} &mdash; {fmtDurationMs(totalSessionsMs)} total
+                                </span>
+                            )}
+                        </div>
+                        {sessions.length === 0 ? (
+                            <p className="text-xs text-muted-foreground italic">No punch records yet</p>
+                        ) : (
+                            <div className="rounded-md border border-border divide-y divide-border">
+                                {sessions.map((s, idx) => {
+                                    const ms = sessionDurationMs(s);
+                                    return (
+                                        <div key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 text-[11px]">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <span className="font-bold text-muted-foreground w-6 shrink-0">#{idx + 1}</span>
+                                                <div className="tabular-nums">
+                                                    <span className="text-muted-foreground">In: </span>
+                                                    <span className="font-medium text-foreground">{fmtSessionInstant(s.clockIn)}</span>
+                                                </div>
+                                                <div className="tabular-nums">
+                                                    <span className="text-muted-foreground">Out: </span>
+                                                    <span className="font-medium text-foreground">
+                                                        {s.clockOut ? fmtSessionInstant(s.clockOut) : '—'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="shrink-0">
+                                                {ms === null ? (
+                                                    <Badge variant="outline" className="text-[9px] h-4 px-1.5 py-0 border-orange-500 text-orange-600">
+                                                        Active
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="font-semibold text-foreground">{fmtDurationMs(ms)}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
 

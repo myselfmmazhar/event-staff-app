@@ -11,10 +11,14 @@ import { CalendarIcon, MapPinIcon, ClockIcon, DollarSignIcon, CheckCircleIcon, X
 import { useEventTerm } from '@/lib/hooks/use-terminology';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { cn } from '@/lib/utils';
+import { trpc } from '@/lib/client/trpc';
+import { Dialog } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
 
 interface Invitation {
   id: string;
   status: string;
+  invitedAsTeam: boolean;
   callTime: {
     id: string;
     callTimeId: string;
@@ -56,10 +60,38 @@ export function PendingRequestsList({
   highlightedId,
 }: PendingRequestsListProps) {
   const eventTerm = useEventTerm();
+  const { toast } = useToast();
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<{ ids: string[], accept: boolean } | null>(null);
   const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  // Team unit selection modal state
+  const [teamUnitModal, setTeamUnitModal] = useState<{ invitationId: string } | null>(null);
+  const [selectedUnitId, setSelectedUnitId] = useState<string>('');
+
+  const utils = trpc.useUtils();
+
+  const { data: teamUnitsData, isLoading: isLoadingUnits } = trpc.callTime.getTeamInvitationUnits.useQuery(
+    { invitationId: teamUnitModal?.invitationId ?? '' },
+    { enabled: !!teamUnitModal }
+  );
+
+  const acceptTeamMutation = trpc.callTime.acceptTeamInvitation.useMutation({
+    onSuccess: (result) => {
+      if (result.isConfirmed) {
+        toast({ title: 'Invitation Accepted', description: `You've been confirmed with unit "${result.teamUnitName}".` });
+      } else {
+        toast({ title: 'Invitation Accepted', description: `Accepted with unit "${result.teamUnitName}". You're on the waitlist.` });
+      }
+      setTeamUnitModal(null);
+      setSelectedUnitId('');
+      utils.callTime.getMyInvitations.invalidate();
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
 
   useEffect(() => {
     if (highlightedId && highlightRef.current) {
@@ -120,6 +152,15 @@ export function PendingRequestsList({
       setSelectedIds(new Set());
     }
     setPendingAction(null);
+  };
+
+  const handleAcceptClick = (invitation: Invitation) => {
+    if (invitation.invitedAsTeam) {
+      setSelectedUnitId('');
+      setTeamUnitModal({ invitationId: invitation.id });
+    } else {
+      setPendingAction({ ids: [invitation.id], accept: true });
+    }
   };
 
   if (invitations.length === 0) {
@@ -335,7 +376,7 @@ export function PendingRequestsList({
                   ) : (
                     <div className="flex gap-2 md:flex-col min-w-[120px]">
                       <Button
-                        onClick={() => setPendingAction({ ids: [invitation.id], accept: true })}
+                        onClick={() => handleAcceptClick(invitation)}
                         disabled={isResponding === invitation.id || isClosed}
                         className="flex-1 md:flex-none shadow-sm font-bold"
                       >
@@ -372,6 +413,88 @@ export function PendingRequestsList({
         variant={pendingAction?.accept ? 'default' : 'danger'}
         isLoading={!!isResponding || !!isBatchResponding}
       />
+
+      {/* Team unit selection modal */}
+      <Dialog open={!!teamUnitModal} onClose={() => { setTeamUnitModal(null); setSelectedUnitId(''); }} className="max-w-lg">
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCircleIcon className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold">Select a Team Unit</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-5">
+            Choose which of your team units will take this assignment before accepting.
+          </p>
+
+          {isLoadingUnits ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : teamUnitsData?.units.length === 0 ? (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 mb-4">
+              None of your team units are currently available for this service. You cannot accept this invitation.
+            </div>
+          ) : (
+            <div className="space-y-2 mb-5">
+              {teamUnitsData?.units.map((unit) => (
+                <label
+                  key={unit.id}
+                  className={cn(
+                    'flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors',
+                    unit.available
+                      ? selectedUnitId === unit.id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                      : 'border-border bg-muted/20 opacity-60 cursor-not-allowed'
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="teamUnitId"
+                    value={unit.id}
+                    disabled={!unit.available}
+                    checked={selectedUnitId === unit.id}
+                    onChange={() => setSelectedUnitId(unit.id)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-foreground">{unit.unitName}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {unit.unitId}
+                      {unit.primaryContact ? ` · Primary: ${unit.primaryContact}` : ''}
+                      {!unit.available ? ' · Currently assigned to another active task' : ''}
+                    </div>
+                    {unit.capacityNotes && (
+                      <div className="text-xs text-muted-foreground mt-1 italic">{unit.capacityNotes}</div>
+                    )}
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <Button
+              className="flex-1 font-bold"
+              disabled={!selectedUnitId || acceptTeamMutation.isPending}
+              onClick={() => {
+                if (!teamUnitModal || !selectedUnitId) return;
+                acceptTeamMutation.mutate({ invitationId: teamUnitModal.invitationId, teamUnitId: selectedUnitId });
+              }}
+            >
+              <CheckCircleIcon className="h-4 w-4 mr-1" />
+              {acceptTeamMutation.isPending ? 'Accepting...' : 'Accept & Assign Unit'}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 font-bold"
+              disabled={acceptTeamMutation.isPending}
+              onClick={() => { setTeamUnitModal(null); setSelectedUnitId(''); }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   PendingRequestsList,
+  InProgressEventsList,
   TalentAssignmentTable,
   TalentCallTimeDetailModal,
   type TalentInvitationData,
@@ -382,15 +383,11 @@ export default function MySchedulePage() {
             ) : (
               <>
                 {activeCategory === 'inProgress' && (
-                  <TalentAssignmentTable
-                    data={(data?.inProgress || []) as TalentInvitationData[]}
-                    category="inProgress"
-                    onViewDetails={(inv) => setDetailInvitationId(inv.id)}
+                  <InProgressEventsList
+                    invitations={(data?.inProgress || []) as TalentInvitationData[]}
                     onStart={handleStartShift}
                     onEnd={handleEndShift}
                     pendingActionId={shiftActionId}
-                    emptyMessage={`No ${eventTerm.lowerPlural} in progress`}
-                    emptyDescription={`${eventTerm.plural} on today's date will appear here.`}
                   />
                 )}
 

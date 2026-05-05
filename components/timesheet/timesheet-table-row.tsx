@@ -1347,13 +1347,30 @@ export function TimesheetTableRow({
                                     return (
                                         <td className={cn("truncate", rowVariant === 'card' ? 'px-3 py-3.5' : 'px-3 py-2.5')} style={{ width: `var(--col-actual)` }} onClick={e => e.stopPropagation()}>
                                             <Popover open={isEditing} onOpenChange={setIsEditing}>
-                                                <PopoverTrigger asChild>
-                                                    <div
-                                                        className={`flex flex-col gap-0.5 rounded transition-colors ${ct.staff ? 'cursor-pointer hover:bg-muted/40' : 'opacity-60 cursor-not-allowed'}`}
-                                                        onClick={e => !ct.staff && e.stopPropagation()}
-                                                    >
-                                                        {te?.clockIn ? (
-                                                            <div className="flex flex-col gap-1 text-left">
+                                                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                    {/* Total time summary */}
+                                                    <div className="flex flex-col gap-0.5 text-left min-w-0">
+                                                        {sessionCount > 0 ? (
+                                                            <>
+                                                                <span className="text-sm font-bold text-foreground tabular-nums leading-tight">
+                                                                    {formatDurationMs(totalSessionsMs)}
+                                                                </span>
+                                                                <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                                                    <span>{sessionCount} session{sessionCount !== 1 ? 's' : ''}</span>
+                                                                    {hasOpenSession && (
+                                                                        <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 leading-none font-medium border-orange-500 text-orange-600">
+                                                                            Active
+                                                                        </Badge>
+                                                                    )}
+                                                                    {isEdited && (
+                                                                        <Badge variant="secondary" className="text-[9px] h-4 px-1 py-0 leading-none font-medium">
+                                                                            Adj
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                            </>
+                                                        ) : te?.clockIn ? (
+                                                            <>
                                                                 <div className="text-sm font-bold text-foreground tabular-nums leading-tight">
                                                                     {(() => {
                                                                         const inT = formatTime(getTimeOnly(te.clockIn));
@@ -1363,33 +1380,35 @@ export function TimesheetTableRow({
                                                                         return '\u2014';
                                                                     })()}
                                                                 </div>
-                                                                <p className="text-xs font-normal text-slate-500 flex flex-wrap items-center gap-1">
+                                                                <p className="text-[10px] text-slate-500 flex items-center gap-1">
                                                                     <span>{hoursClocked.toFixed(2)} hrs</span>
-                                                                    {sessionCount > 0 && (
-                                                                        <span className="text-slate-400">
-                                                                            \u00b7 {sessionCount} {sessionCount === 1 ? 'session' : 'sessions'}
-                                                                        </span>
-                                                                    )}
-                                                                    {hasOpenSession && (
-                                                                        <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 leading-none font-medium border-orange-500 text-orange-600">
-                                                                            Active
-                                                                        </Badge>
-                                                                    )}
                                                                     {isEdited && (
                                                                         <Badge variant="secondary" className="text-[9px] h-4 px-1 py-0 leading-none font-medium">
                                                                             Edited
                                                                         </Badge>
                                                                     )}
                                                                 </p>
-                                                            </div>
+                                                            </>
                                                         ) : (
-                                                            <div className="flex flex-col gap-1 text-left">
+                                                            <>
                                                                 <span className="text-sm font-bold text-foreground">No clock</span>
-                                                                <span className="text-xs font-normal text-slate-500">0.00 hrs</span>
-                                                            </div>
+                                                                <span className="text-[10px] text-slate-500">0.00 hrs</span>
+                                                            </>
                                                         )}
                                                     </div>
-                                                </PopoverTrigger>
+                                                    {/* View details button \u2014 this is the popover trigger */}
+                                                    {ct.staff && (
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-6 px-2 text-[10px] shrink-0"
+                                                            >
+                                                                View
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                    )}
+                                                </div>
                                                 {ct.staff && (
                                                     <PopoverContent className="w-96 p-3" onClick={e => e.stopPropagation()}>
                                                         <div className="space-y-3">

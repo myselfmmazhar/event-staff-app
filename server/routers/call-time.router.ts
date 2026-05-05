@@ -421,6 +421,26 @@ export const callTimeRouter = router({
     }),
 
   /**
+   * Get available team units for a team invitation (dashboard accept flow)
+   */
+  getTeamInvitationUnits: protectedProcedure
+    .input(CallTimeSchema.getTeamInvitationUnits)
+    .query(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.getTeamInvitationUnits(input.invitationId, ctx.userId!);
+    }),
+
+  /**
+   * Accept a team invitation with a chosen team unit (dashboard accept flow)
+   */
+  acceptTeamInvitation: protectedProcedure
+    .input(CallTimeSchema.acceptTeamInvitation)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.acceptTeamInvitationWithUnit(input.invitationId, input.teamUnitId, ctx.userId!);
+    }),
+
+  /**
    * Get invitation by ID (staff viewing details)
    * Requires: Authentication (staff member who received invitation)
    */

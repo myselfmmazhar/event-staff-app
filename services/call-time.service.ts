@@ -802,6 +802,11 @@ export class CallTimeService {
           const tied = boundUnitIds.size + reservationCount;
           const availableUnits = Math.max(0, totalUnits - tied);
 
+          // True when this manager has at least one live invitation that hasn't
+          // been accepted yet — used to power the "Include already invited" view,
+          // which is meant for following up on pending invites.
+          const hasPendingInvitations = live.some((inv) => inv.status !== 'ACCEPTED');
+
           // Invitation status for THIS task (any of the manager's invitations for any of these callTimeIds)
           const thisInv = liveInvitations.find(
             (inv) => inv.staffId === m.id && callTimeIds.includes(inv.callTimeId)
@@ -843,6 +848,7 @@ export class CallTimeService {
             managerStaffId: m.id,
             totalUnits,
             availableUnits,
+            hasPendingInvitations,
             distanceMiles: computeDistance(m.latitude, m.longitude),
             locationMatch: this.calculateLocationMatch(m, primaryCallTime.event),
             invitationStatus: thisInv?.status || null,
@@ -859,8 +865,13 @@ export class CallTimeService {
           );
         }
 
-        // Hide team rows where ALL units are tied unless includeAlreadyInvited
-        if (!input.includeAlreadyInvited) {
+        if (input.includeAlreadyInvited) {
+          // "Include already invited" mode: surface teams that have a sent-but-
+          // not-accepted invitation so the admin can follow up. Fully-accepted
+          // teams are hidden because there's nothing left to act on.
+          teamRows = teamRows.filter((r) => r.hasPendingInvitations);
+        } else {
+          // Default mode: hide teams whose units are all tied up.
           teamRows = teamRows.filter((r) => r.availableUnits > 0);
         }
       }
@@ -3079,6 +3090,156 @@ export class CallTimeService {
         positionName: updated.callTime.service?.title || 'Staff'
       };
     }
+  }
+
+  /**
+   * Get available team units for a team invitation (authenticated, by invitationId + userId).
+   * Used by the dashboard accept flow.
+   */
+  async getTeamInvitationUnits(invitationId: string, userId: string) {
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { id: invitationId },
+      include: {
+        callTime: {
+          include: {
+            service: true,
+            event: { select: { id: true, title: true, venueName: true, city: true, state: true } },
+          },
+        },
+        staff: { select: { id: true, firstName: true, lastName: true, userId: true } },
+      },
+    });
+
+    if (!invitation) throw new TRPCError({ code: 'NOT_FOUND', message: 'Invitation not found' });
+    if (invitation.staff.userId !== userId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied' });
+    if (!invitation.invitedAsTeam) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Not a team invitation' });
+
+    const ct = invitation.callTime;
+    const serviceId = ct.serviceId;
+
+    const allUnits = serviceId
+      ? await this.prisma.teamUnit.findMany({
+        where: { status: 'ACTIVE', serviceId, staffId: invitation.staffId },
+        select: { id: true, unitId: true, unitName: true, primaryContact: true, capacityNotes: true },
+      })
+      : [];
+
+    const liveInvs = serviceId
+      ? await this.prisma.callTimeInvitation.findMany({
+        where: {
+          staffId: invitation.staffId,
+          invitedAsTeam: true,
+          status: { notIn: ['CANCELLED', 'DECLINED'] },
+          callTime: { serviceId },
+          NOT: { id: invitation.id },
+        },
+        select: {
+          id: true,
+          teamUnitId: true,
+          callTime: { select: { endDate: true, endTime: true } },
+          timeEntry: { select: { clockOut: true } },
+        },
+      })
+      : [];
+
+    const now = new Date();
+    const isLive = (inv: typeof liveInvs[number]) => {
+      if (inv.timeEntry?.clockOut) return false;
+      if (!inv.callTime.endDate) return true;
+      const end = new Date(inv.callTime.endDate);
+      if (inv.callTime.endTime) {
+        const [hh, mm] = inv.callTime.endTime.split(':').map(Number);
+        end.setHours(hh ?? 23, mm ?? 59, 59, 999);
+      } else {
+        end.setHours(23, 59, 59, 999);
+      }
+      return end.getTime() > now.getTime();
+    };
+    const liveBoundUnitIds = new Set(
+      liveInvs.filter(isLive).filter((i) => i.teamUnitId).map((i) => i.teamUnitId as string)
+    );
+
+    return {
+      units: allUnits.map((u) => ({ ...u, available: !liveBoundUnitIds.has(u.id) })),
+    };
+  }
+
+  /**
+   * Accept a team invitation and bind it to a specific TeamUnit (authenticated, by invitationId + userId).
+   * Used by the dashboard accept flow.
+   */
+  async acceptTeamInvitationWithUnit(invitationId: string, teamUnitId: string, userId: string) {
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { id: invitationId },
+      include: {
+        callTime: {
+          include: {
+            service: true,
+            event: { select: { id: true, title: true, createdBy: true } },
+          },
+        },
+        staff: { select: { id: true, firstName: true, lastName: true, userId: true } },
+      },
+    });
+
+    if (!invitation) throw new TRPCError({ code: 'NOT_FOUND', message: 'Invitation not found' });
+    if (invitation.staff.userId !== userId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied' });
+    if (!invitation.invitedAsTeam) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Not a team invitation' });
+    if (invitation.status !== 'PENDING') {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: `Invitation has already been ${invitation.status.toLowerCase()}` });
+    }
+
+    const unit = await this.prisma.teamUnit.findFirst({
+      where: { id: teamUnitId, status: 'ACTIVE', staffId: invitation.staffId, serviceId: invitation.callTime.serviceId },
+    });
+    if (!unit) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Selected team unit is not eligible for this assignment' });
+    }
+
+    const conflict = await this.prisma.callTimeInvitation.findFirst({
+      where: { teamUnitId: unit.id, status: { notIn: ['CANCELLED', 'DECLINED'] }, NOT: { id: invitation.id } },
+      select: { id: true, callTime: { select: { endDate: true, endTime: true } }, timeEntry: { select: { clockOut: true } } },
+    });
+    if (conflict) {
+      const now = new Date();
+      const end = conflict.callTime.endDate ? new Date(conflict.callTime.endDate) : null;
+      if (end) {
+        if (conflict.callTime.endTime) {
+          const [hh, mm] = conflict.callTime.endTime.split(':').map(Number);
+          end.setHours(hh ?? 23, mm ?? 59, 59, 999);
+        } else {
+          end.setHours(23, 59, 59, 999);
+        }
+      }
+      const stillLive = !conflict.timeEntry?.clockOut && (!end || end.getTime() > now.getTime());
+      if (stillLive) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'This team unit is already assigned to another active task' });
+      }
+    }
+
+    await this.prisma.callTimeInvitation.update({ where: { id: invitation.id }, data: { teamUnitId: unit.id } });
+
+    const { updated } = await this.runAcceptWithSlotLogicFromInvitation({
+      id: invitation.id,
+      callTimeId: invitation.callTimeId,
+      status: invitation.status,
+      callTime: {
+        id: invitation.callTime.id,
+        eventId: invitation.callTime.eventId,
+        numberOfStaffRequired: invitation.callTime.numberOfStaffRequired,
+        service: invitation.callTime.service,
+        event: invitation.callTime.event,
+      },
+      staff: invitation.staff,
+    });
+
+    return {
+      status: updated.status,
+      isConfirmed: updated.isConfirmed,
+      eventTitle: updated.callTime.event.title,
+      positionName: updated.callTime.service?.title || 'Staff',
+      teamUnitName: unit.unitName,
+    };
   }
 
   /**
