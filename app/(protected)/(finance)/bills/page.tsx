@@ -11,10 +11,13 @@ import { BillTable } from "@/components/bills/bill-table";
 import { BillSearch } from "@/components/bills/bill-search";
 import { Pagination } from "@/components/common/pagination";
 import { BillActionModal } from "@/components/bills/bill-action-modal";
+import { UserRole } from "@prisma/client";
 
 export default function BillsPage() {
     const router = useRouter();
     const utils = trpc.useUtils();
+    const { data: currentUser } = trpc.profile.getMyProfile.useQuery();
+    const isStaff = currentUser?.role === UserRole.STAFF;
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [search, setSearch] = useState("");
@@ -82,25 +85,27 @@ export default function BillsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-end gap-2">
-                <Button
-                    variant={showArchived ? "default" : "outline"}
-                    onClick={() => setShowArchived(!showArchived)}
-                    className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
-                    size="lg"
-                >
-                    <ArchiveIcon className="h-4 w-4 mr-2" />
-                    {showArchived ? "Showing Archived" : "View Archive"}
-                </Button>
-                <Button 
-                    onClick={() => router.push("/bills/new")}
-                    size="lg"
-                    className="rounded-xl shadow-lg shadow-primary/10"
-                >
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    Create Bill
-                </Button>
-            </div>
+            {!isStaff && (
+                <div className="flex items-center justify-end gap-2">
+                    <Button
+                        variant={showArchived ? "default" : "outline"}
+                        onClick={() => setShowArchived(!showArchived)}
+                        className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
+                        size="lg"
+                    >
+                        <ArchiveIcon className="h-4 w-4 mr-2" />
+                        {showArchived ? "Showing Archived" : "View Archive"}
+                    </Button>
+                    <Button
+                        onClick={() => router.push("/bills/new")}
+                        size="lg"
+                        className="rounded-xl shadow-lg shadow-primary/10"
+                    >
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Create Bill
+                    </Button>
+                </div>
+            )}
 
             <Card className="p-6 overflow-visible relative z-20">
                 <div className="space-y-4">
@@ -119,12 +124,12 @@ export default function BillsPage() {
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onSort={handleSort}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
+                    selectedIds={isStaff ? undefined : selectedIds}
+                    onSelectionChange={isStaff ? undefined : setSelectedIds}
                     showArchived={showArchived}
-                    onEdit={(bill) => router.push(`/bills/${bill.id}/edit`)}
+                    onEdit={isStaff ? undefined : (bill) => router.push(`/bills/${bill.id}/edit`)}
                     onView={(bill) => router.push(`/bills/${bill.id}`)}
-                    onArchive={(bill) => {
+                    onArchive={isStaff ? undefined : (bill) => {
                         const talentName = `${bill.staff.firstName} ${bill.staff.lastName}`;
                         setSelectedBillForAction({
                             id: bill.id,
@@ -134,7 +139,7 @@ export default function BillsPage() {
                         setActionType(showArchived ? 'restore' : 'archive');
                         setIsActionModalOpen(true);
                     }}
-                    onDelete={(bill) => {
+                    onDelete={isStaff ? undefined : (bill) => {
                         const talentName = `${bill.staff.firstName} ${bill.staff.lastName}`;
                         setSelectedBillForAction({
                             id: bill.id,

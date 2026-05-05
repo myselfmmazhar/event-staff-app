@@ -6,6 +6,7 @@ import { ProfileForm } from '@/components/profile/profile-form';
 import { PasswordForm } from '@/components/profile/password-form';
 import { StaffProfileSection } from '@/components/profile/staff-profile-section';
 import { ClientProfileSection } from '@/components/profile/client-profile-section';
+import { TimezoneSettings } from '@/components/profile/timezone-settings';
 import { Spinner } from '@/components/ui/spinner';
 import { SessionUser } from '@/lib/types/auth.types';
 import { UserRole } from '@prisma/client';
@@ -58,6 +59,13 @@ export default function ProfilePage() {
                     <PasswordForm />
                 </div>
             </div>
+
+            {/* Timezone preference — talent and client only */}
+            {(isStaff || isClient) && (
+                <div className="mt-6">
+                    <TimezoneSettings />
+                </div>
+            )}
 
             {/* Staff-specific settings */}
             {isStaff && (

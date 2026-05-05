@@ -49,6 +49,9 @@ export function SidebarUserSection({
   const pathname = usePathname();
 
   const isAdminUser = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+  const isStaffUser = user.role === 'STAFF';
+
+  const STAFF_HIDDEN_LINKS = ['/profile/billing'];
 
   const profileLinks = [
     { href: '/profile', label: 'My Profile', icon: UserIcon },
@@ -56,7 +59,11 @@ export function SidebarUserSection({
     { href: '/profile/team', label: 'Team', icon: UsersIcon },
     { href: '/profile/reports', label: 'Reports', icon: ChartBarIcon, comingSoon: true },
     { href: '/profile/billing', label: 'Billing', icon: CreditCardIcon },
-  ].filter(({ href }) => isAdminUser || !ADMIN_ONLY_LINKS.includes(href));
+  ].filter(({ href }) => {
+    if (!isAdminUser && ADMIN_ONLY_LINKS.includes(href)) return false;
+    if (isStaffUser && STAFF_HIDDEN_LINKS.includes(href)) return false;
+    return true;
+  });
 
   return (
     <div className="px-3 py-2">

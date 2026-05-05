@@ -5,10 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   PendingRequestsList,
-  InProgressEventsList,
-  UpcomingEventsList,
-  PastEventsList,
-  DeclinedInvitationsList,
+  TalentAssignmentTable,
+  TalentCallTimeDetailModal,
+  type TalentInvitationData,
 } from '@/components/staff-dashboard';
 import { StaffCalendar } from '@/components/staff-dashboard/staff-calendar';
 import { trpc } from '@/lib/client/trpc';
@@ -29,6 +28,7 @@ export default function MySchedulePage() {
   const [shiftActionId, setShiftActionId] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [activeCategory, setActiveCategory] = useState<ActiveCategory>('inProgress');
+  const [detailInvitationId, setDetailInvitationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (highlightedInvitationId) {
@@ -382,16 +382,26 @@ export default function MySchedulePage() {
             ) : (
               <>
                 {activeCategory === 'inProgress' && (
-                  <InProgressEventsList
-                    invitations={data?.inProgress || []}
+                  <TalentAssignmentTable
+                    data={(data?.inProgress || []) as TalentInvitationData[]}
+                    category="inProgress"
+                    onViewDetails={(inv) => setDetailInvitationId(inv.id)}
                     onStart={handleStartShift}
                     onEnd={handleEndShift}
                     pendingActionId={shiftActionId}
+                    emptyMessage={`No ${eventTerm.lowerPlural} in progress`}
+                    emptyDescription={`${eventTerm.plural} on today's date will appear here.`}
                   />
                 )}
 
                 {activeCategory === 'upcoming' && (
-                  <UpcomingEventsList invitations={data?.accepted || []} />
+                  <TalentAssignmentTable
+                    data={(data?.accepted || []) as TalentInvitationData[]}
+                    category="upcoming"
+                    onViewDetails={(inv) => setDetailInvitationId(inv.id)}
+                    emptyMessage={`No upcoming ${eventTerm.lowerPlural}`}
+                    emptyDescription={`You don't have any confirmed upcoming ${eventTerm.lowerPlural} yet.`}
+                  />
                 )}
 
                 {activeCategory === 'pending' && (
@@ -411,15 +421,24 @@ export default function MySchedulePage() {
                       <h3 className="text-sm font-semibold text-foreground mb-3">
                         Completed
                       </h3>
-                      <PastEventsList invitations={data?.past || []} />
+                      <TalentAssignmentTable
+                        data={(data?.past || []) as TalentInvitationData[]}
+                        category="past"
+                        onViewDetails={(inv) => setDetailInvitationId(inv.id)}
+                        emptyMessage={`No past ${eventTerm.lowerPlural}`}
+                        emptyDescription={`Your completed ${eventTerm.lowerPlural} will appear here.`}
+                      />
                     </div>
                     {declinedCount > 0 && (
                       <div>
                         <h3 className="text-sm font-semibold text-foreground mb-3">
                           Declined
                         </h3>
-                        <DeclinedInvitationsList
-                          invitations={data?.declined || []}
+                        <TalentAssignmentTable
+                          data={(data?.declined || []) as TalentInvitationData[]}
+                          category="declined"
+                          onViewDetails={(inv) => setDetailInvitationId(inv.id)}
+                          emptyMessage="No declined invitations"
                         />
                       </div>
                     )}
@@ -430,6 +449,12 @@ export default function MySchedulePage() {
           </div>
         </div>
       </div>
+
+      <TalentCallTimeDetailModal
+        invitationId={detailInvitationId}
+        open={detailInvitationId !== null}
+        onClose={() => setDetailInvitationId(null)}
+      />
     </div>
   );
 }
