@@ -5,6 +5,24 @@ const DEFAULT_FINANCE_TAB_ORDER = ["bills", "estimates", "invoices"];
 const DEFAULT_CATALOG_TAB_ORDER = ["categories", "services", "products", "locations"];
 
 export const userPreferenceRouter = router({
+  getTimezone: protectedProcedure.query(async ({ ctx }) => {
+    const pref = await ctx.prisma.userPreference.findUnique({
+      where: { userId: ctx.userId! },
+      select: { timezone: true },
+    });
+    return { timezone: pref?.timezone ?? null };
+  }),
+
+  setTimezone: protectedProcedure
+    .input(z.object({ timezone: z.string().min(1).max(50) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.prisma.userPreference.upsert({
+        where: { userId: ctx.userId! },
+        create: { userId: ctx.userId!, timezone: input.timezone },
+        update: { timezone: input.timezone },
+      });
+      return { success: true };
+    }),
   getTabOrders: protectedProcedure.query(async ({ ctx }) => {
     const pref = await ctx.prisma.userPreference.findUnique({
       where: { userId: ctx.userId! },

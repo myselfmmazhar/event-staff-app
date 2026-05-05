@@ -11,10 +11,13 @@ import { BillTable } from "@/components/bills/bill-table";
 import { BillSearch } from "@/components/bills/bill-search";
 import { Pagination } from "@/components/common/pagination";
 import { BillActionModal } from "@/components/bills/bill-action-modal";
+import { UserRole } from "@prisma/client";
 
 export default function BillsPage() {
     const router = useRouter();
     const utils = trpc.useUtils();
+    const { data: currentUser } = trpc.profile.getMyProfile.useQuery();
+    const isStaff = currentUser?.role === UserRole.STAFF;
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [search, setSearch] = useState("");
@@ -95,7 +98,7 @@ export default function BillsPage() {
                         <ArchiveIcon className="h-4 w-4 mr-2" />
                         {showArchived ? "Showing Archived" : "View Archive"}
                     </Button>
-                    <Button 
+                    <Button
                         onClick={() => router.push("/bills/new")}
                         size="lg"
                         className="rounded-xl shadow-lg shadow-primary/10"
@@ -123,8 +126,8 @@ export default function BillsPage() {
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onSort={handleSort}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
+                    selectedIds={isStaff ? undefined : selectedIds}
+                    onSelectionChange={isStaff ? undefined : setSelectedIds}
                     showArchived={showArchived}
                     onEdit={isReadOnly ? undefined : (bill) => router.push(`/bills/${bill.id}/edit`)}
                     onView={(bill) => router.push(`/bills/${bill.id}`)}
