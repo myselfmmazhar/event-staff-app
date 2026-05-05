@@ -26,7 +26,9 @@ export default function BillsPage() {
     const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "billNo" | "billDate" | "status" | "staff">("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-    // Action modal state
+    const { data: profile } = trpc.profile.getMyProfile.useQuery();
+    const isReadOnly = profile?.role === "STAFF" || profile?.role === "CLIENT";
+
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [selectedBillForAction, setSelectedBillForAction] = useState<{ id: string, billNo: string, talentName: string } | null>(null);
     const [actionType, setActionType] = useState<'archive' | 'restore' | 'delete'>('archive');
@@ -85,7 +87,7 @@ export default function BillsPage() {
 
     return (
         <div className="space-y-6">
-            {!isStaff && (
+            {!isReadOnly && (
                 <div className="flex items-center justify-end gap-2">
                     <Button
                         variant={showArchived ? "default" : "outline"}
@@ -127,9 +129,9 @@ export default function BillsPage() {
                     selectedIds={isStaff ? undefined : selectedIds}
                     onSelectionChange={isStaff ? undefined : setSelectedIds}
                     showArchived={showArchived}
-                    onEdit={isStaff ? undefined : (bill) => router.push(`/bills/${bill.id}/edit`)}
+                    onEdit={isReadOnly ? undefined : (bill) => router.push(`/bills/${bill.id}/edit`)}
                     onView={(bill) => router.push(`/bills/${bill.id}`)}
-                    onArchive={isStaff ? undefined : (bill) => {
+                    onArchive={isReadOnly ? undefined : (bill) => {
                         const talentName = `${bill.staff.firstName} ${bill.staff.lastName}`;
                         setSelectedBillForAction({
                             id: bill.id,
@@ -139,7 +141,7 @@ export default function BillsPage() {
                         setActionType(showArchived ? 'restore' : 'archive');
                         setIsActionModalOpen(true);
                     }}
-                    onDelete={isStaff ? undefined : (bill) => {
+                    onDelete={isReadOnly ? undefined : (bill) => {
                         const talentName = `${bill.staff.firstName} ${bill.staff.lastName}`;
                         setSelectedBillForAction({
                             id: bill.id,

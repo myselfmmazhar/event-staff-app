@@ -175,7 +175,7 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
             </div>
             <div className="bg-card border border-border rounded-xl overflow-hidden mt-6">
               <div className="px-6 pt-4 pb-2 border-b border-border">
-                <h3 className="text-sm font-semibold text-foreground">Add Bill</h3>
+                <h3 className="text-sm font-semibold text-foreground">My Bills</h3>
               </div>
               <div className="px-6 py-4">
                 <Tabs defaultValue="previous">
