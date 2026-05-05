@@ -23,6 +23,9 @@ export default function EstimatesPage() {
     const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "estimateNo" | "estimateDate" | "status" | "client">("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+    const { data: profile } = trpc.profile.getMyProfile.useQuery();
+    const isReadOnly = profile?.role === "STAFF" || profile?.role === "CLIENT";
+
     // Action modal state
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [selectedEstimateForAction, setSelectedEstimateForAction] = useState<{ id: string, estimateNo: string, clientName: string } | null>(null);
@@ -93,25 +96,27 @@ export default function EstimatesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-end gap-2">
-                <Button
-                    variant={showArchived ? "default" : "outline"}
-                    onClick={() => setShowArchived(!showArchived)}
-                    className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
-                    size="lg"
-                >
-                    <ArchiveIcon className="h-4 w-4 mr-2" />
-                    {showArchived ? "Showing Archived" : "View Archive"}
-                </Button>
-                <Button 
-                    onClick={() => router.push("/estimates/new")}
-                    size="lg"
-                    className="rounded-xl shadow-lg shadow-primary/10"
-                >
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    Create Estimate
-                </Button>
-            </div>
+            {!isReadOnly && (
+                <div className="flex items-center justify-end gap-2">
+                    <Button
+                        variant={showArchived ? "default" : "outline"}
+                        onClick={() => setShowArchived(!showArchived)}
+                        className={showArchived ? "bg-blue-600 hover:bg-blue-700" : ""}
+                        size="lg"
+                    >
+                        <ArchiveIcon className="h-4 w-4 mr-2" />
+                        {showArchived ? "Showing Archived" : "View Archive"}
+                    </Button>
+                    <Button 
+                        onClick={() => router.push("/estimates/new")}
+                        size="lg"
+                        className="rounded-xl shadow-lg shadow-primary/10"
+                    >
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Create Estimate
+                    </Button>
+                </div>
+            )}
 
             <Card className="p-6 overflow-visible relative z-20">
                 <div className="space-y-4">
@@ -133,9 +138,9 @@ export default function EstimatesPage() {
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     showArchived={showArchived}
-                    onEdit={(estimate) => router.push(`/estimates/${estimate.id}/edit`)}
+                    onEdit={isReadOnly ? undefined : (estimate) => router.push(`/estimates/${estimate.id}/edit`)}
                     onView={(estimate) => router.push(`/estimates/${estimate.id}`)}
-                    onArchive={(estimate) => {
+                    onArchive={isReadOnly ? undefined : (estimate) => {
                         const clientName = estimate.client.businessName || `${estimate.client.firstName} ${estimate.client.lastName}`;
                         setSelectedEstimateForAction({
                             id: estimate.id,
@@ -145,7 +150,7 @@ export default function EstimatesPage() {
                         setActionType(showArchived ? 'restore' : 'archive');
                         setIsActionModalOpen(true);
                     }}
-                    onDelete={(estimate) => {
+                    onDelete={isReadOnly ? undefined : (estimate) => {
                         const clientName = estimate.client.businessName || `${estimate.client.firstName} ${estimate.client.lastName}`;
                         setSelectedEstimateForAction({
                             id: estimate.id,
@@ -155,7 +160,7 @@ export default function EstimatesPage() {
                         setActionType('delete');
                         setIsActionModalOpen(true);
                     }}
-                    onReview={(estimate) => {
+                    onReview={isReadOnly ? undefined : (estimate) => {
                         updateMutation.mutate({
                             id: estimate.id,
                             estimateNo: estimate.estimateNo,
@@ -164,7 +169,7 @@ export default function EstimatesPage() {
                             estimateDate: new Date(estimate.estimateDate),
                         });
                     }}
-                    onApprove={(estimate) => {
+                    onApprove={isReadOnly ? undefined : (estimate) => {
                         updateMutation.mutate({
                             id: estimate.id,
                             estimateNo: estimate.estimateNo,
@@ -173,7 +178,7 @@ export default function EstimatesPage() {
                             estimateDate: new Date(estimate.estimateDate),
                         });
                     }}
-                    onReject={(estimate) => {
+                    onReject={isReadOnly ? undefined : (estimate) => {
                         updateMutation.mutate({
                             id: estimate.id,
                             estimateNo: estimate.estimateNo,
