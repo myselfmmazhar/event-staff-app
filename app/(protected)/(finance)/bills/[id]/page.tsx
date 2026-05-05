@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image } from "lucide-react";
 import Link from "next/link";
 import React from "react";
+import { UserRole } from "@prisma/client";
 
 export default function ViewBillPage() {
     const params = useParams();
@@ -17,6 +18,8 @@ export default function ViewBillPage() {
     const billId = params.id as string;
 
     const { data: bill, isLoading } = trpc.bills.getById.useQuery({ id: billId });
+    const { data: currentUser } = trpc.profile.getMyProfile.useQuery();
+    const isStaff = currentUser?.role === UserRole.STAFF;
 
     if (isLoading) {
         return (
@@ -81,10 +84,12 @@ export default function ViewBillPage() {
                     <Button variant="outline" size="sm" className="p-2" onClick={() => window.print()} title="Download as PDF">
                         <Download className="h-4 w-4" />
                     </Button>
-                    <Button onClick={() => router.push(`/bills/${bill.id}/edit`)} className="gap-2">
-                        <Pencil className="h-4 w-4" />
-                        Edit
-                    </Button>
+                    {!isStaff && (
+                        <Button onClick={() => router.push(`/bills/${bill.id}/edit`)} className="gap-2">
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                        </Button>
+                    )}
                 </div>
             </div>
 

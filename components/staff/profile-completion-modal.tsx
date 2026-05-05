@@ -181,10 +181,10 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
 
     // Step 3
     const [documents, setDocuments] = useState<StaffDocument[]>([]);
-    const [ackPolicy, setAckPolicy] = useState(false);
     const [ackRecords, setAckRecords] = useState(false);
 
     // Step 4
+    const [ackCertification, setAckCertification] = useState(false);
     const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
     const [isUploadingSignature, setIsUploadingSignature] = useState(false);
 
@@ -359,9 +359,9 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                 });
                 return;
             }
-            if (!ackPolicy || !ackRecords) {
+            if (!ackRecords) {
                 toast({
-                    message: 'Please acknowledge both statements to continue.',
+                    message: 'Please acknowledge the statement to continue.',
                     type: 'error',
                 });
                 return;
@@ -429,8 +429,11 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
             setWizardStep('tax');
             return;
         }
-        if (documents.length < requiredDocumentCount || !ackPolicy || !ackRecords) {
+        if (documents.length < requiredDocumentCount || !ackRecords) {
             setWizardStep('requirements');
+            return;
+        }
+        if (!ackCertification) {
             return;
         }
 
@@ -464,7 +467,6 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
             ssn: taxFields.ssn || undefined,
             ein: taxFields.ein || undefined,
             signatureUrl,
-            ackPolicy,
             ackRecords,
         });
     };
@@ -555,8 +557,6 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                 requiredDocumentCount={requiredDocumentCount}
                                 documents={documents}
                                 setDocuments={setDocuments}
-                                ackPolicy={ackPolicy}
-                                setAckPolicy={setAckPolicy}
                                 ackRecords={ackRecords}
                                 setAckRecords={setAckRecords}
                                 disabled={isSubmitting}
@@ -574,8 +574,10 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                 setSignatureDataUrl={setSignatureDataUrl}
                                 onJumpTo={jumpTo}
                                 disabled={isSubmitting}
-                                ackPolicy={ackPolicy}
                                 ackRecords={ackRecords}
+                                staffType={myProfile?.staffType ?? null}
+                                ackCertification={ackCertification}
+                                setAckCertification={setAckCertification}
                                 selectedServices={
                                     showServicesStep
                                         ? selectedServiceIds
@@ -599,7 +601,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                         disabled={
                                             isSubmitting ||
                                             (wizardStep === 'requirements' &&
-                                                (documents.length < requiredDocumentCount || !ackPolicy || !ackRecords))
+                                                (documents.length < requiredDocumentCount || !ackRecords))
                                         }
                                         className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none sm:w-auto sm:min-w-[280px]"
                                     >
@@ -609,7 +611,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                     <Button
                                         type="button"
                                         onClick={handleFinalSubmit}
-                                        disabled={isSubmitting || !signatureDataUrl}
+                                        disabled={isSubmitting || !signatureDataUrl || !ackCertification}
                                         isLoading={isSubmitting}
                                         className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none sm:w-auto sm:min-w-[280px]"
                                     >
@@ -1280,8 +1282,6 @@ function RequirementsStep({
     requiredDocumentCount,
     documents,
     setDocuments,
-    ackPolicy,
-    setAckPolicy,
     ackRecords,
     setAckRecords,
     disabled,
@@ -1290,8 +1290,6 @@ function RequirementsStep({
     requiredDocumentCount: number;
     documents: StaffDocument[];
     setDocuments: (docs: StaffDocument[]) => void;
-    ackPolicy: boolean;
-    setAckPolicy: (v: boolean) => void;
     ackRecords: boolean;
     setAckRecords: (v: boolean) => void;
     disabled: boolean;
@@ -1366,19 +1364,6 @@ function RequirementsStep({
                 <div className="divide-y divide-slate-100">
                     <label className="flex cursor-pointer items-start gap-3 px-5 py-4">
                         <Checkbox
-                            checked={ackPolicy}
-                            onChange={(e) => setAckPolicy(e.target.checked)}
-                            disabled={disabled}
-                            className="mt-0.5"
-                        />
-                        <div className="min-w-0">
-                            <p className="text-sm font-bold text-slate-900">
-                                I acknowledge the safety and code of conduct policy.
-                            </p>
-                        </div>
-                    </label>
-                    <label className="flex cursor-pointer items-start gap-3 px-5 py-4">
-                        <Checkbox
                             checked={ackRecords}
                             onChange={(e) => setAckRecords(e.target.checked)}
                             disabled={disabled}
@@ -1442,8 +1427,10 @@ function ReviewStep({
     setSignatureDataUrl,
     onJumpTo,
     disabled,
-    ackPolicy,
     ackRecords,
+    staffType,
+    ackCertification,
+    setAckCertification,
     selectedServices,
 }: {
     contact: ContactFormData;
@@ -1455,8 +1442,10 @@ function ReviewStep({
     setSignatureDataUrl: (v: string | null) => void;
     onJumpTo: (step: WizardStep) => void;
     disabled: boolean;
-    ackPolicy: boolean;
     ackRecords: boolean;
+    staffType: string | null;
+    ackCertification: boolean;
+    setAckCertification: (v: boolean) => void;
     selectedServices: { id: string; title: string }[];
 }) {
     const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim() || '—';
@@ -1658,7 +1647,7 @@ function ReviewStep({
             </div>
 
             {/* Acknowledgments summary */}
-            {(ackPolicy || ackRecords) && (
+            {ackRecords && (
                 <div className="rounded-3xl border border-green-200 bg-green-50/60 p-6 shadow-sm">
                     <div className="mb-4 flex items-center gap-2.5">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 text-green-600">
@@ -1669,25 +1658,65 @@ function ReviewStep({
                         </h4>
                     </div>
                     <div className="space-y-3">
-                        {ackPolicy && (
-                            <div className="flex items-start gap-2">
-                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
-                                <p className="text-sm text-slate-700">
-                                    You have accepted the <span className="font-semibold">safety and code of conduct policy</span>.
-                                </p>
-                            </div>
-                        )}
-                        {ackRecords && (
-                            <div className="flex items-start gap-2">
-                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
-                                <p className="text-sm text-slate-700">
-                                    You have acknowledged that <span className="font-semibold">incomplete records may delay activation and payment</span>.
-                                </p>
-                            </div>
-                        )}
+                        <div className="flex items-start gap-2">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                            <p className="text-sm text-slate-700">
+                                You have acknowledged that <span className="font-semibold">incomplete records may delay activation and payment</span>.
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}
+
+            {/* Certification */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                        <ClipboardCheck className="h-4 w-4" />
+                    </div>
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+                        Certification
+                    </h4>
+                    <span className="text-sm text-destructive">*</span>
+                </div>
+
+                {staffType === 'EMPLOYEE' ? (
+                    <p className="mb-5 text-sm text-slate-600 leading-relaxed">
+                        Under penalties of perjury, I declare that I have examined this certificate
+                        and, to the best of my knowledge and belief, it is true, correct, and
+                        complete.
+                    </p>
+                ) : (
+                    <div className="mb-5 space-y-2 text-sm text-slate-600 leading-relaxed">
+                        <p>Under penalties of perjury, I certify that:</p>
+                        <div className="space-y-2 pl-4">
+                            <p>1. The number shown on this form is my correct taxpayer identification number (or I am waiting for a number to be issued to me); and</p>
+                            <div className="space-y-1">
+                                <p>2. I am not subject to backup withholding because:</p>
+                                <div className="space-y-1 pl-4">
+                                    <p>a. I am exempt from backup withholding, or</p>
+                                    <p>b. I have not been notified by the Internal Revenue Service (IRS) that I am subject to backup withholding as a result of a failure to report all interest or dividends, or</p>
+                                    <p>c. The IRS has notified me that I am no longer subject to backup withholding; and</p>
+                                </div>
+                            </div>
+                            <p>3. I am a U.S. citizen or other U.S. person (defined in the instructions); and</p>
+                            <p>4. The FATCA code(s) entered on this form (if any) indicating that I am exempt from FATCA reporting is correct.</p>
+                        </div>
+                    </div>
+                )}
+
+                <label className="flex cursor-pointer items-start gap-3">
+                    <Checkbox
+                        checked={ackCertification}
+                        onChange={(e) => setAckCertification(e.target.checked)}
+                        disabled={disabled}
+                        className="mt-0.5"
+                    />
+                    <p className="text-sm font-bold text-slate-900">
+                        I certify the above statements are true and correct.
+                    </p>
+                </label>
+            </div>
 
             {/* Signature */}
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
