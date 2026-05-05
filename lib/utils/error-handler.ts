@@ -4,8 +4,35 @@
  */
 
 import { TRPCError } from '@trpc/server';
+import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { getErrorMessage, extractFieldFromPath } from './error-messages';
+
+/** User-facing copy for common Prisma codes (see https://www.prisma.io/docs/orm/reference/error-reference) */
+const PRISMA_CODE_MESSAGES: Record<string, string> = {
+  P1000: 'Database authentication failed. Check DATABASE_URL credentials.',
+  P1001: 'Cannot reach the database server. Is it running and reachable?',
+  P1002: 'Database connection timed out.',
+  P1003: 'The database does not exist.',
+  P1008: 'Database operations timed out.',
+  P1011: 'Could not open a TLS connection to the database.',
+  P1013: 'The database connection string is invalid.',
+  P1017: 'The database server closed the connection.',
+  P2024: 'Timed out while fetching a connection from the pool.',
+  P2000: 'A value is too long for its database column.',
+  P2004: 'A database constraint failed on a related record.',
+  P2005: 'Invalid value stored for a field type.',
+  P2006: 'Invalid value provided for a field.',
+  P2007: 'Data validation error.',
+  P2011: 'A required field was set to null.',
+  P2012: 'A required value is missing.',
+  P2013: 'A required argument is missing.',
+  P2014: 'This change would break a relation between records.',
+  P2015: 'A related record could not be found.',
+  P2021: 'A database table does not exist. Run migrations.',
+  P2022: 'A database column does not exist. Run migrations or regenerate the client.',
+  P2023: 'Inconsistent column data.',
+};
 
 /**
  * Field-level error format
@@ -66,11 +93,24 @@ export function mapPrismaError(error: unknown): TRPCError {
     });
   }
 
-  // Default Prisma error
+  // Other Prisma engine / constraint errors
   if (prismaError.code && prismaError.code.startsWith('P')) {
+    const hint = prismaError.code ? PRISMA_CODE_MESSAGES[prismaError.code] : undefined;
+    const isDev = process.env.NODE_ENV === 'development';
+    const prismaDetail =
+      error instanceof Prisma.PrismaClientKnownRequestError ? error.message : undefined;
+
+    const message =
+      hint ??
+      (isDev
+        ? prismaDetail
+          ? `Database error [${prismaError.code}]: ${prismaDetail}`
+          : `Database error [${prismaError.code}]`
+        : 'Database error occurred');
+
     return new TRPCError({
       code: 'INTERNAL_SERVER_ERROR',
-      message: 'Database error occurred',
+      message,
     });
   }
 
@@ -141,7 +181,12 @@ export function logError(error: unknown, context?: string) {
     const prismaError = error as { code?: string };
     if (prismaError.code && prismaError.code.startsWith('P')) {
       logData.code = prismaError.code;
-      logData.message = 'Prisma error';
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        logData.message = error.message;
+        logData.meta = error.meta;
+      } else {
+        logData.message = 'Prisma error';
+      }
     } else {
       const genericError = error as { message?: string };
       logData.error = genericError.message || 'Unknown error';

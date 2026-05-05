@@ -64,7 +64,14 @@ const t = initTRPC.context<Context>().create({
     if (error.cause && typeof error.cause === 'object' && 'code' in error.cause) {
       const prismaError = error.cause as { code?: string };
       if (prismaError.code && prismaError.code.startsWith('P')) {
-        const mappedError = mapPrismaError(prismaError);
+        if (process.env.NODE_ENV === "development") {
+          console.error(
+            "[tRPC] Prisma error",
+            prismaError.code,
+            error.cause instanceof Error ? error.cause.message : error.cause
+          );
+        }
+        const mappedError = mapPrismaError(error.cause);
         return {
           ...shape,
           message: mappedError.message,

@@ -85,11 +85,14 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                 scheduleShiftDetail: item.scheduleShiftDetail || "",
                 actualShiftDetails: item.actualShiftDetails || "",
                 internalNotes: item.internalNotes || "",
+                isScheduledChecked: item.isScheduledChecked ?? true,
+                isActualChecked: item.isActualChecked ?? true,
             })) || [{ 
                 description: "", quantity: 1, price: 0, amount: 0, date: null, 
                 scheduledStart: null, scheduledEnd: null, scheduledHours: 0,
                 actualStart: null, actualEnd: null, actualHours: 0,
-                scheduleShiftDetail: "", actualShiftDetails: "", internalNotes: "" 
+                scheduleShiftDetail: "", actualShiftDetails: "", internalNotes: "",
+                isScheduledChecked: true, isActualChecked: true
             }],
 
         } : {
@@ -101,7 +104,8 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                     description: "", quantity: 1, price: 0, amount: 0, date: null,
                     scheduledStart: null, scheduledEnd: null, scheduledHours: 0,
                     actualStart: null, actualEnd: null, actualHours: 0,
-                    scheduleShiftDetail: "", actualShiftDetails: "", internalNotes: "" 
+                    scheduleShiftDetail: "", actualShiftDetails: "", internalNotes: "",
+                    isScheduledChecked: true, isActualChecked: true
                 }
             ],
 
@@ -267,6 +271,8 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
             // Populate some initial info if available from service template
             form.setValue(`items.${index}.scheduleShiftDetail`, service.description || "");
+            form.setValue(`items.${index}.isScheduledChecked`, true);
+            form.setValue(`items.${index}.isActualChecked`, true);
         }
     };
 
@@ -387,7 +393,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                 <div className="grid grid-cols-12 gap-4 items-start">
                                     <div className="col-span-12 md:col-span-3 space-y-2">
                                         <Label>Product / Service</Label>
-                                        <Select 
+                                        <Select
                                             onValueChange={(val) => handleProductChange(index, val)}
                                             value={form.watch(`items.${index}.serviceId`) || form.watch(`items.${index}.productId`) || undefined}
                                         >
@@ -426,38 +432,38 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                         </div>
                                     )}
 
-                                    <div className={`col-span-12 ${isService ? 'md:col-span-6' : 'md:col-span-3'} space-y-2`}>
-                                        <Label>Description</Label>
-                                        <Input {...form.register(`items.${index}.description`)} />
+                                    {!isService && (
+                                        <div className="col-span-12 md:col-span-3 space-y-2">
+                                            <Label>Description</Label>
+                                            <Input {...form.register(`items.${index}.description`)} />
+                                        </div>
+                                    )}
+
+                                    <div className="col-span-4 md:col-span-2 space-y-2">
+                                        <Label>Qty</Label>
+                                        <Input
+                                            type="number"
+                                            {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
+                                        />
                                     </div>
 
-                                    {!isService && (
-                                        <>
-                                            <div className="col-span-4 md:col-span-2 space-y-2">
-                                                <Label>Qty</Label>
-                                                <Input
-                                                    type="number"
-                                                    {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
-                                                />
-                                            </div>
-                                            <div className="col-span-4 md:col-span-2 space-y-2">
-                                                <Label>Price</Label>
-                                                <Input
-                                                    type="number"
-                                                    {...form.register(`items.${index}.price`, { valueAsNumber: true })}
-                                                />
-                                            </div>
-                                            <div className="col-span-3 md:col-span-1 space-y-2">
-                                                <Label>Amount</Label>
-                                                <Input
-                                                    readOnly
-                                                    disabled
-                                                    className="bg-muted"
-                                                    value={form.watch(`items.${index}.amount`)?.toFixed(2)}
-                                                />
-                                            </div>
-                                        </>
-                                    )}
+                                    <div className="col-span-4 md:col-span-2 space-y-2">
+                                        <Label>Price</Label>
+                                        <Input
+                                            type="number"
+                                            {...form.register(`items.${index}.price`, { valueAsNumber: true })}
+                                        />
+                                    </div>
+
+                                    <div className={`col-span-3 ${isService ? 'md:col-span-2' : 'md:col-span-1'} space-y-2`}>
+                                        <Label>Amount</Label>
+                                        <Input
+                                            readOnly
+                                            disabled
+                                            className="bg-muted"
+                                            value={form.watch(`items.${index}.amount`)?.toFixed(2)}
+                                        />
+                                    </div>
 
                                     <div className="col-span-1 flex justify-end pt-8">
                                         <Button
@@ -473,11 +479,21 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                 </div>
 
                                 {isService && (
-                                    <div className="col-span-full bg-muted/30 p-4 rounded-xl border border-border shadow-sm">
+                                    <div className="col-span-full bg-muted/30 p-4 rounded-xl border border-border shadow-sm space-y-4">
+                                        <div className="space-y-2">
+                                            <Label>Description</Label>
+                                            <Input {...form.register(`items.${index}.description`)} />
+                                        </div>
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             {/* Scheduled Shift Section */}
                                             <div className="space-y-3">
                                                 <div className="flex items-center gap-2 border-b border-blue-100 pb-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        {...form.register(`items.${index}.isScheduledChecked`)}
+                                                        className="h-4 w-4 rounded border-border accent-primary"
+                                                    />
                                                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Scheduled Shift Detail</h4>
                                                 </div>
@@ -526,6 +542,11 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                             {/* Actual Shift Section */}
                                             <div className="space-y-3">
                                                 <div className="flex items-center gap-2 border-b border-emerald-100 pb-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        {...form.register(`items.${index}.isActualChecked`)}
+                                                        className="h-4 w-4 rounded border-border accent-primary"
+                                                    />
                                                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                                                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Actual Shift Details</h4>
                                                 </div>
@@ -578,32 +599,6 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                                 {form.watch(`items.${index}.internalNotes`) || "No internal notes for this shift."}
                                             </div>
                                         </div>
-
-                                        <div className="col-span-full grid grid-cols-3 gap-4 pt-2 border-t mt-2">
-                                            <div className="space-y-2">
-                                                <Label>Qty</Label>
-                                                <Input
-                                                    type="number"
-                                                    {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Price</Label>
-                                                <Input
-                                                    type="number"
-                                                    {...form.register(`items.${index}.price`, { valueAsNumber: true })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Invoice Amount</Label>
-                                                <Input
-                                                    readOnly
-                                                    disabled
-                                                    className="bg-muted font-bold text-primary"
-                                                    value={form.watch(`items.${index}.amount`)?.toFixed(2)}
-                                                />
-                                            </div>
-                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -628,7 +623,9 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                             actualHours: 0,
                             scheduleShiftDetail: "", 
                             actualShiftDetails: "", 
-                            internalNotes: "" 
+                            internalNotes: "",
+                            isScheduledChecked: true,
+                            isActualChecked: true
                         })}
 
                         className="mt-2"
