@@ -60,6 +60,9 @@ interface StaffSearchTableProps {
   onCountChange?: (rowId: string, count: number) => void;
   isLoading?: boolean;
   showInvitationStatus?: boolean;
+  // Remaining headcount for the task(s) being filled. The team unit input is
+  // capped at this so an admin can't request more talent than the task needs.
+  remainingSlots?: number;
 }
 
 const SKILL_LEVEL_LABELS: Record<SkillLevel, string> = {
@@ -113,6 +116,7 @@ export function StaffSearchTable({
   onCountChange,
   isLoading,
   showInvitationStatus = false,
+  remainingSlots,
 }: StaffSearchTableProps) {
   const staffTerm = useStaffTerm();
 
@@ -288,39 +292,49 @@ export function StaffSearchTable({
                         <p className="text-[11px] text-muted-foreground mt-1">Always 1 for individual</p>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">
-                            {row.availableUnits} {row.availableUnits === 1 ? 'unit' : 'units'} available
-                          </Badge>
-                        </div>
-                        {selected && onCountChange && (
-                          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                            <label className="text-[10px] font-bold text-primary uppercase tracking-wider">Offers to send</label>
+                      (() => {
+                        const slotCap =
+                          remainingSlots !== undefined && remainingSlots > 0
+                            ? Math.min(row.availableUnits, remainingSlots)
+                            : row.availableUnits;
+                        const inputMax = Math.max(1, slotCap);
+                        const defaultCount = Math.max(1, slotCap);
+                        return (
+                          <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min={1}
-                                max={row.availableUnits}
-                                value={selectionCounts[row.rowId] ?? row.availableUnits}
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value);
-                                  if (!isNaN(val)) {
-                                    onCountChange(row.rowId, Math.min(row.availableUnits, Math.max(1, val)));
-                                  }
-                                }}
-                                className="w-16 h-8 px-2 py-1 text-sm border rounded bg-background focus:ring-1 focus:ring-primary outline-none transition-all"
-                              />
-                              <span className="text-xs text-muted-foreground">/ {row.availableUnits}</span>
+                              <Badge variant="outline">
+                                {row.availableUnits} {row.availableUnits === 1 ? 'unit' : 'units'} available
+                              </Badge>
                             </div>
+                            {selected && onCountChange && (
+                              <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                                <label className="text-[10px] font-bold text-primary uppercase tracking-wider">Offers to send</label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={inputMax}
+                                    value={Math.min(selectionCounts[row.rowId] ?? defaultCount, inputMax)}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value);
+                                      if (!isNaN(val)) {
+                                        onCountChange(row.rowId, Math.min(inputMax, Math.max(1, val)));
+                                      }
+                                    }}
+                                    className="w-16 h-8 px-2 py-1 text-sm border rounded bg-background focus:ring-1 focus:ring-primary outline-none transition-all"
+                                  />
+                                  <span className="text-xs text-muted-foreground">/ {inputMax}</span>
+                                </div>
+                              </div>
+                            )}
+                            {!selected && (
+                              <p className="text-[11px] text-muted-foreground">
+                                {row.totalUnits} total · {row.availableUnits} currently available
+                              </p>
+                            )}
                           </div>
-                        )}
-                        {!selected && (
-                          <p className="text-[11px] text-muted-foreground">
-                            {row.totalUnits} total · {row.availableUnits} currently available
-                          </p>
-                        )}
-                      </div>
+                        );
+                      })()
                     )}
                   </td>
                   <td className="px-4 py-3">

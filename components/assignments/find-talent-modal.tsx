@@ -117,6 +117,13 @@ export function FindTalentModal({
 
   const rows = useMemo<SearchRow[]>(() => (staffData?.data as SearchRow[]) || [], [staffData]);
 
+  // Compute the per-team unit cap. We compute it where `selection` is built
+  // because both the table input and the outgoing payload have to agree —
+  // otherwise the UI shows "2/2" but we'd send a higher count.
+  const totalConfirmed = callTimes?.reduce((sum, ct) => sum + ct.confirmedCount, 0) ?? 0;
+  const totalRequired = callTimes?.reduce((sum, ct) => sum + ct.numberOfStaffRequired, 0) ?? 0;
+  const remainingSlots = Math.max(0, totalRequired - totalConfirmed);
+
   // Split selection by kind
   const selection = useMemo(() => {
     const individualStaffIds: string[] = [];
@@ -128,7 +135,12 @@ export function FindTalentModal({
       if (row.kind === 'INDIVIDUAL') {
         individualStaffIds.push(row.id);
       } else if (row.serviceId && row.managerStaffId) {
-        const units = selectionCounts[rowId] ?? row.availableUnits;
+        const cap =
+          remainingSlots > 0
+            ? Math.min(row.availableUnits, remainingSlots)
+            : row.availableUnits;
+        const requested = selectionCounts[rowId] ?? cap;
+        const units = Math.max(1, Math.min(requested, cap));
         teamSelections.push({
           managerStaffId: row.managerStaffId,
           serviceId: row.serviceId,
@@ -143,7 +155,7 @@ export function FindTalentModal({
       teamInviteCount,
       totalSelections: individualStaffIds.length + teamSelections.length,
     };
-  }, [selectedRowIds, rows, selectionCounts]);
+  }, [selectedRowIds, rows, selectionCounts, remainingSlots]);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingOffers, setPendingOffers] = useState<{
@@ -333,8 +345,6 @@ export function FindTalentModal({
     );
   }
 
-  const totalConfirmed = callTimes.reduce((sum, ct) => sum + ct.confirmedCount, 0);
-  const totalRequired = callTimes.reduce((sum, ct) => sum + ct.numberOfStaffRequired, 0);
   const isFilled = totalConfirmed >= totalRequired;
 
   // Effective number of invitations that will be sent.
@@ -522,6 +532,7 @@ export function FindTalentModal({
             onCountChange={handleCountChange}
             isLoading={isLoadingStaff}
             showInvitationStatus={includeAlreadyInvited}
+            remainingSlots={remainingSlots}
           />
 
           {staffData && staffData.meta.totalPages > 1 && (

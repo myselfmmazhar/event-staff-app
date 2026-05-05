@@ -35,25 +35,25 @@ interface Invitation {
   id: string;
   status: string;
   isConfirmed: boolean;
-  confirmedAt: Date | null;
+  confirmedAt?: Date | null;
   shiftSessions?: ShiftSession[];
   callTime: {
     id: string;
     callTimeId: string;
     service: { title: string } | null;
-    startDate: Date | null;
+    startDate: Date | string | null;
     startTime: string | null;
-    endDate: Date | null;
+    endDate: Date | string | null;
     endTime: string | null;
-    payRate: number | { toNumber: () => number };
+    payRate: number | string | { toNumber?: () => number };
     payRateType: RateType;
     event: {
       id: string;
       eventId: string;
       title: string;
-      venueName: string;
-      city: string;
-      state: string;
+      venueName: string | null;
+      city: string | null;
+      state: string | null;
     };
   };
 }
@@ -83,7 +83,7 @@ export function InProgressEventsList({
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const formatDate = (date: Date | null) => {
+  const formatDate = (date: Date | string | null) => {
     if (!date) return 'TBD';
     const d = new Date(date);
     if (d.getFullYear() === 1970) return 'TBD';
@@ -143,12 +143,31 @@ export function InProgressEventsList({
     return sessions.some((s) => !s.clockOut);
   };
 
+  const getPayRate = (payRate: Invitation['callTime']['payRate']) => {
+    if (typeof payRate === 'number') return payRate;
+    if (typeof payRate === 'string') return parseFloat(payRate);
+    if (payRate && typeof payRate === 'object' && 'toNumber' in payRate && payRate.toNumber) {
+      return payRate.toNumber();
+    }
+    return 0;
+  };
+
+  const nowString = () =>
+    new Date().toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
   if (invitations.length === 0) {
     return (
       <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
         <h3 className="text-lg font-medium mb-2">No {eventTerm.lowerPlural} in progress</h3>
         <p className="text-muted-foreground">
-          {eventTerm.plural} on today's date will appear here.
+          {eventTerm.plural} on today&apos;s date will appear here.
         </p>
       </div>
     );
@@ -156,12 +175,9 @@ export function InProgressEventsList({
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {invitations.map((invitation) => {
-          const payRate =
-            typeof invitation.callTime.payRate === 'object'
-              ? invitation.callTime.payRate.toNumber()
-              : Number(invitation.callTime.payRate);
+          const payRate = getPayRate(invitation.callTime.payRate);
 
           const isSameDay =
             invitation.callTime.startDate &&
@@ -176,216 +192,240 @@ export function InProgressEventsList({
           const isProcessing = pendingActionId === invitation.id;
 
           return (
-            <Card key={invitation.id} className="p-5">
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                <div className="flex-1">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <CheckCircleIcon className="h-5 w-5 text-orange-500" />
-                        <h3 className="text-lg font-semibold">
-                          {invitation.callTime.service?.title || 'Service'}
-                        </h3>
-                      </div>
-                      <p className="text-muted-foreground">
+            <Card key={invitation.id} className="overflow-hidden">
+              {/* Collapsed summary row */}
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CheckCircleIcon className="h-5 w-5 text-orange-500 shrink-0" />
+                    <div className="min-w-0">
+                      <h3 className="text-base font-semibold leading-tight truncate">
+                        {invitation.callTime.service?.title || 'Service'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground truncate">
                         {invitation.callTime.event.title}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <Badge
-                        variant="default"
-                        className="bg-orange-500 hover:bg-orange-500 text-white"
-                      >
-                        {isOpen ? 'Active' : 'In Progress'}
-                      </Badge>
-                    </div>
                   </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge
+                      variant="default"
+                      className="bg-orange-500 hover:bg-orange-500 text-white"
+                    >
+                      {isOpen ? 'Active' : 'In Progress'}
+                    </Badge>
+                  </div>
+                </div>
 
-                  {/* Details */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-muted-foreground">Date</p>
-                        <p className="font-medium">
-                          {formatDate(invitation.callTime.startDate)}
-                          {!isSameDay && (
-                            <>
-                              <br />- {formatDate(invitation.callTime.endDate)}
-                            </>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <ClockIcon className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-muted-foreground">Time</p>
-                        <p className="font-medium">
-                          {formatTimeStr(invitation.callTime.startTime)} -{' '}
-                          {formatTimeStr(invitation.callTime.endTime)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <MapPinIcon className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-muted-foreground">Location</p>
-                        <p className="font-medium">
-                          {invitation.callTime.event.venueName}
-                          <br />
-                          <span className="text-muted-foreground font-normal">
-                            {invitation.callTime.event.city},{' '}
-                            {invitation.callTime.event.state}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-
+                {/* Info grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-muted-foreground">Pay Rate</p>
+                      <p className="text-xs text-muted-foreground">Date</p>
                       <p className="font-medium">
-                        ${payRate.toFixed(2)}{' '}
-                        {RATE_TYPE_LABELS[invitation.callTime.payRateType].toLowerCase()}
+                        {formatDate(invitation.callTime.startDate)}
+                        {!isSameDay && (
+                          <span className="block text-muted-foreground font-normal">
+                            – {formatDate(invitation.callTime.endDate)}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
 
-                  {/* Actions + total */}
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={isOpen || isProcessing}
-                      onClick={() =>
-                        setConfirm({ invitationId: invitation.id, action: 'start' })
-                      }
-                    >
-                      {isProcessing && !isOpen ? (
-                        <SpinnerIcon className="h-4 w-4 animate-spin" />
-                      ) : (
-                        'Start'
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={!isOpen || isProcessing}
-                      onClick={() =>
-                        setConfirm({ invitationId: invitation.id, action: 'end' })
-                      }
-                    >
-                      {isProcessing && isOpen ? (
-                        <SpinnerIcon className="h-4 w-4 animate-spin" />
-                      ) : (
-                        'End'
-                      )}
-                    </Button>
+                  <div className="flex items-start gap-2">
+                    <ClockIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Scheduled Time</p>
+                      <p className="font-medium">
+                        {formatTimeStr(invitation.callTime.startTime)} –{' '}
+                        {formatTimeStr(invitation.callTime.endTime)}
+                      </p>
+                    </div>
+                  </div>
 
-                    <div className="ml-auto flex items-center gap-2 text-sm">
-                      {sessions.length > 0 && (
-                        <span className="text-muted-foreground">
-                          Total worked:{' '}
-                          <span className="font-medium text-foreground">
-                            {formatDurationMs(totalMs)}
-                          </span>
-                          {isOpen && (
-                            <span className="text-orange-600 dark:text-orange-400 font-medium">
-                              {' '}
-                              + active
-                            </span>
-                          )}
-                        </span>
+                  <div className="flex items-start gap-2">
+                    <MapPinIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Location</p>
+                      <p className="font-medium">{invitation.callTime.event.venueName || '—'}</p>
+                      {(invitation.callTime.event.city || invitation.callTime.event.state) && (
+                        <p className="text-xs text-muted-foreground">
+                          {[invitation.callTime.event.city, invitation.callTime.event.state]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </p>
                       )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">Pay Rate</p>
+                    <p className="font-medium">
+                      ${payRate.toFixed(2)}{' '}
+                      <span className="text-muted-foreground font-normal">
+                        {RATE_TYPE_LABELS[invitation.callTime.payRateType].toLowerCase()}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Footer row */}
+                <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-sm text-muted-foreground">
+                    {sessions.length > 0 ? (
+                      <span>
+                        Time logged:{' '}
+                        <span className="font-medium text-foreground">
+                          {formatDurationMs(totalMs)}
+                        </span>
+                        {isOpen && (
+                          <span className="text-orange-600 dark:text-orange-400 font-medium">
+                            {' '}+ active
+                          </span>
+                        )}
+                        {' '}({sessions.length} session{sessions.length !== 1 ? 's' : ''})
+                      </span>
+                    ) : (
+                      <span className="italic">No time logged yet</span>
+                    )}
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => toggleExpand(invitation.id)}
+                    className="gap-1.5 text-sm"
+                  >
+                    {isExpanded ? (
+                      <>
+                        <ChevronUpIcon className="h-4 w-4" />
+                        Collapse
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDownIcon className="h-4 w-4" />
+                        Manage Shift
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Expanded section */}
+              {isExpanded && (
+                <div className="border-t border-border bg-muted/30 px-5 py-5 space-y-5">
+                  {/* Shift actions */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-1">Shift Actions</h4>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      {isOpen
+                        ? 'Your shift is currently active. Click End Shift to clock out.'
+                        : sessions.length > 0
+                        ? 'Previous session ended. Click Start Shift to clock back in.'
+                        : 'Click Start Shift to clock in for this assignment.'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
                         size="sm"
-                        variant="ghost"
-                        onClick={() => toggleExpand(invitation.id)}
-                        className="gap-1"
+                        disabled={isOpen || isProcessing}
+                        onClick={() =>
+                          setConfirm({ invitationId: invitation.id, action: 'start' })
+                        }
+                        className="min-w-[110px]"
                       >
-                        {isExpanded ? (
-                          <>
-                            <ChevronUpIcon className="h-4 w-4" />
-                            Hide history
-                          </>
+                        {isProcessing && !isOpen ? (
+                          <SpinnerIcon className="h-4 w-4 animate-spin" />
                         ) : (
-                          <>
-                            <ChevronDownIcon className="h-4 w-4" />
-                            View history ({sessions.length})
-                          </>
+                          'Start Shift'
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={!isOpen || isProcessing}
+                        onClick={() =>
+                          setConfirm({ invitationId: invitation.id, action: 'end' })
+                        }
+                        className="min-w-[110px]"
+                      >
+                        {isProcessing && isOpen ? (
+                          <SpinnerIcon className="h-4 w-4 animate-spin" />
+                        ) : (
+                          'End Shift'
                         )}
                       </Button>
                     </div>
                   </div>
 
-                  {/* Expanded session history */}
-                  {isExpanded && (
-                    <div className="mt-4 border-t border-border pt-4">
-                      <h4 className="text-sm font-medium mb-2">Time History</h4>
-                      {sessions.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                          No sessions yet. Click Start when your shift begins.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {sessions.map((session, idx) => {
-                            const ms = sessionDuration(session);
-                            return (
-                              <div
-                                key={session.id}
-                                className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <span className="text-xs font-medium text-muted-foreground w-12">
-                                    #{idx + 1}
-                                  </span>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Start:
-                                    </span>{' '}
-                                    <span className="font-medium">
-                                      {formatTimestamp(session.clockIn)}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      End:
-                                    </span>{' '}
-                                    <span className="font-medium">
-                                      {session.clockOut
-                                        ? formatTimestamp(session.clockOut)
-                                        : '—'}
-                                    </span>
-                                  </div>
+                  {/* Time log */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-3">
+                      Time Log
+                      {sessions.length > 0 && (
+                        <span className="ml-2 text-xs text-muted-foreground font-normal">
+                          ({sessions.length} session{sessions.length !== 1 ? 's' : ''} &mdash; total{' '}
+                          {formatDurationMs(totalMs)}
+                          {isOpen && ' + active'})
+                        </span>
+                      )}
+                    </h4>
+                    {sessions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No sessions recorded yet. Click <strong>Start Shift</strong> above when your shift begins.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {sessions.map((session, idx) => {
+                          const ms = sessionDuration(session);
+                          return (
+                            <div
+                              key={session.id}
+                              className="flex items-center justify-between text-sm p-3 rounded-md bg-background border border-border"
+                            >
+                              <div className="flex items-center gap-4 flex-wrap">
+                                <span className="text-xs font-medium text-muted-foreground w-8">
+                                  #{idx + 1}
+                                </span>
+                                <div>
+                                  <span className="text-xs text-muted-foreground">Clock In</span>
+                                  <p className="font-medium">{formatTimestamp(session.clockIn)}</p>
                                 </div>
                                 <div>
-                                  {ms === null ? (
-                                    <Badge
-                                      variant="outline"
-                                      className="border-orange-500 text-orange-600 dark:text-orange-400"
-                                    >
-                                      Active
-                                    </Badge>
-                                  ) : (
-                                    <span className="font-medium">
-                                      {formatDurationMs(ms)}
-                                    </span>
-                                  )}
+                                  <span className="text-xs text-muted-foreground">Clock Out</span>
+                                  <p className="font-medium">
+                                    {session.clockOut
+                                      ? formatTimestamp(session.clockOut)
+                                      : '—'}
+                                  </p>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                              <div className="shrink-0">
+                                {ms === null ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-orange-500 text-orange-600 dark:text-orange-400"
+                                  >
+                                    Active
+                                  </Badge>
+                                ) : (
+                                  <span className="text-sm font-semibold text-foreground">
+                                    {formatDurationMs(ms)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </Card>
           );
         })}
@@ -399,24 +439,15 @@ export function InProgressEventsList({
           </DialogTitle>
           <DialogDescription>
             {confirm?.action === 'start'
-              ? 'This will record the current time as your start time for this shift.'
-              : 'This will record the current time as your end time and close the active session.'}
+              ? 'This will record the current time as your clock-in for this shift.'
+              : 'This will record the current time as your clock-out and close the active session.'}
           </DialogDescription>
         </DialogHeader>
         <DialogContent>
-          <p className="text-sm">
-            <span className="text-muted-foreground">Current time:</span>{' '}
-            <span className="font-medium">
-              {new Date().toLocaleString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-              })}
-            </span>
-          </p>
+          <div className="rounded-md bg-muted px-4 py-3 text-sm">
+            <span className="text-muted-foreground">Recording time: </span>
+            <span className="font-semibold">{nowString()}</span>
+          </div>
         </DialogContent>
         <DialogFooter>
           <Button
@@ -438,7 +469,7 @@ export function InProgressEventsList({
               setConfirm(null);
             }}
           >
-            Confirm
+            {confirm?.action === 'start' ? 'Confirm Clock In' : 'Confirm Clock Out'}
           </Button>
         </DialogFooter>
       </Dialog>

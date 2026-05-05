@@ -651,6 +651,7 @@ export default function TimeManagerPage() {
                 staff: inv.staff,
                 teamUnit: inv.teamUnit ?? null,
                 timeEntry: inv.timeEntry,
+                shiftSessions: inv.shiftSessions ?? [],
                 invitations: [inv],
             };
 
@@ -800,6 +801,7 @@ export default function TimeManagerPage() {
                 staff: inv.staff,
                 teamUnit: inv.teamUnit ?? null,
                 timeEntry: inv.timeEntry,
+                shiftSessions: inv.shiftSessions ?? [],
                 invitations: [inv],
             };
             groupsMap.get(groupKey)!.callTimes.push(row);
@@ -839,6 +841,7 @@ export default function TimeManagerPage() {
                 staff: inv.staff,
                 teamUnit: inv.teamUnit ?? null,
                 timeEntry: inv.timeEntry,
+                shiftSessions: inv.shiftSessions ?? [],
                 invitations: [inv],
             };
 
@@ -895,6 +898,7 @@ export default function TimeManagerPage() {
                 staff: inv.staff,
                 teamUnit: inv.teamUnit ?? null,
                 timeEntry: inv.timeEntry,
+                shiftSessions: inv.shiftSessions ?? [],
                 invitations: [inv],
             };
 
