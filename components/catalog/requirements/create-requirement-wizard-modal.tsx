@@ -137,10 +137,13 @@ export function CreateRequirementWizardModal({
       onSaved?.();
       if (saveActionRef.current === 'new') {
         saveActionRef.current = 'close';
-        // Stay open — go back to step 2 with the same category, template, and pre-filled settings
-        if (preview) reset(preview);
+        // Stay open — go back to step 1 so user can pick a new template
+        setSelectedTemplate(null);
+        setTemplateTab('all');
         setPreview(null);
-        setStep(2);
+        reset(defaultSettings());
+        clearErrors();
+        setStep(1);
       } else {
         handleClose();
       }
