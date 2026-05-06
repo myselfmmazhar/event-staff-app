@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { inferRouterOutputs } from '@trpc/server';
 import { Button } from '@/components/ui/button';
 import {
@@ -85,6 +85,9 @@ export function FindTalentModal({
   const [rating, setRating] = useState<StaffRating | ''>('');
   const [userType, setUserType] = useState<'' | 'INDIVIDUAL' | 'TEAM'>('');
   const [availableUnits, setAvailableUnits] = useState<string>('');
+  // Service narrowing — start with all selected. Single-service case still
+  // renders a card but the checkbox is disabled (always on).
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
 
   const utils = trpc.useUtils();
 
@@ -101,6 +104,41 @@ export function FindTalentModal({
   const callTimes: CallTimesByIds | undefined = callTimesQuery.data;
   const isLoading = callTimesQuery.isLoading;
 
+  // Unique services across the selected call times. We dedupe by serviceId so
+  // multiple call times sharing the same service collapse into one card.
+  const uniqueServices = useMemo(() => {
+    const seen = new Map<string, { id: string; title: string }>();
+    callTimes?.forEach((ct) => {
+      if (ct.service?.id && !seen.has(ct.service.id)) {
+        seen.set(ct.service.id, { id: ct.service.id, title: ct.service.title });
+      }
+    });
+    return Array.from(seen.values());
+  }, [callTimes]);
+
+  // Reset to "all selected" whenever the modal opens or the underlying
+  // service set changes — closing + reopening should not preserve unchecks.
+  const uniqueServiceKey = uniqueServices.map((s) => s.id).sort().join(',');
+  useEffect(() => {
+    if (!open) return;
+    setSelectedServiceIds(uniqueServices.map((s) => s.id));
+  }, [open, uniqueServiceKey]);
+
+  // Reset the "has sent" flag each time the modal opens so a stale flag
+  // from a prior session can't trigger an immediate auto-close.
+  useEffect(() => {
+    if (open) setHasSentOffers(false);
+  }, [open]);
+
+  // Only narrow the search when the user has actually unchecked something —
+  // sending the full list is equivalent to omitting the filter and adds noise
+  // to the query key. Empty selection falls back to "all" on the backend.
+  const serviceIdsForQuery =
+    selectedServiceIds.length > 0 &&
+      selectedServiceIds.length < uniqueServices.length
+      ? selectedServiceIds
+      : undefined;
+
   const { data: staffData, isLoading: isLoadingStaff } =
     trpc.callTime.searchStaff.useQuery(
       {
@@ -111,6 +149,7 @@ export function FindTalentModal({
         ratings: rating ? [rating] : undefined,
         userType: userType || undefined,
         availableUnits: availableUnits ? Number(availableUnits) : undefined,
+        serviceIds: serviceIdsForQuery,
       },
       { enabled: hasCallTimeIds && open }
     );
@@ -123,6 +162,18 @@ export function FindTalentModal({
   const totalConfirmed = callTimes?.reduce((sum, ct) => sum + ct.confirmedCount, 0) ?? 0;
   const totalRequired = callTimes?.reduce((sum, ct) => sum + ct.numberOfStaffRequired, 0) ?? 0;
   const remainingSlots = Math.max(0, totalRequired - totalConfirmed);
+
+  // Active offers = invitations that are still in play (not declined/cancelled).
+  // Used to decide whether enough offers are out to cover required headcount.
+  const totalActiveOffers =
+    callTimes?.reduce(
+      (sum, ct) =>
+        sum +
+        ct.invitations.filter(
+          (inv) => inv.status !== 'DECLINED' && inv.status !== 'CANCELLED'
+        ).length,
+      0
+    ) ?? 0;
 
   // Split selection by kind
   const selection = useMemo(() => {
@@ -166,6 +217,7 @@ export function FindTalentModal({
   const [isAssignConfirmOpen, setIsAssignConfirmOpen] = useState(false);
   const [pendingAssign, setPendingAssign] = useState<{ callTimeIds: string[]; staffIds: string[] } | null>(null);
   const [showResendConfirm, setShowResendConfirm] = useState(false);
+  const [hasSentOffers, setHasSentOffers] = useState(false);
 
   const sendInvitations = trpc.callTime.sendInvitations.useMutation({
     onSuccess: (data) => {
@@ -177,6 +229,7 @@ export function FindTalentModal({
       setPendingOffers(null);
       setIsConfirmOpen(false);
       setShowResendConfirm(false);
+      setHasSentOffers(true);
       if (hasCallTimeIds) {
         utils.callTime.getManyByIds.invalidate({ ids: effectiveCallTimeIds });
         utils.callTime.searchStaff.invalidate({ callTimeIds: effectiveCallTimeIds });
@@ -310,6 +363,16 @@ export function FindTalentModal({
     onClose();
   };
 
+  // Auto-close once enough offers are out to cover the required headcount.
+  // Gated on hasSentOffers so opening a fully-covered call time doesn't
+  // dismiss the modal before the user can act.
+  useEffect(() => {
+    if (!open || !hasSentOffers) return;
+    if (totalRequired > 0 && totalActiveOffers >= totalRequired) {
+      handleClose();
+    }
+  }, [open, hasSentOffers, totalActiveOffers, totalRequired]);
+
   const handleSelectionChange = (newIds: string[]) => {
     setSelectedRowIds(newIds);
     setSelectionCounts((prev) => {
@@ -409,6 +472,45 @@ export function FindTalentModal({
                 </button>
               )}
             </div>
+
+            {uniqueServices.length > 0 && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Services
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {uniqueServices.map((svc) => {
+                    const checked = selectedServiceIds.includes(svc.id);
+                    // Single-service case: show the card but lock the checkbox on.
+                    const disabled = uniqueServices.length === 1;
+                    return (
+                      <label
+                        key={svc.id}
+                        className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${checked
+                            ? 'border-primary bg-primary/10 text-foreground'
+                            : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                          } ${disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="rounded border-input"
+                          checked={checked}
+                          disabled={disabled}
+                          onChange={(e) => {
+                            setSelectedServiceIds((prev) =>
+                              e.target.checked
+                                ? Array.from(new Set([...prev, svc.id]))
+                                : prev.filter((id) => id !== svc.id)
+                            );
+                          }}
+                        />
+                        <span>{svc.title}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div>

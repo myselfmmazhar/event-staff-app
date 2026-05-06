@@ -5,8 +5,11 @@ import { trpc } from "@/lib/client/trpc";
 import { WelcomeSection, QuickStats } from "@/components/dashboard";
 import { DashboardUpcomingList } from "@/components/dashboard/dashboard-upcoming-list";
 import { ViewEventModal } from "@/components/events/view-event-modal";
+import { EventFormModal } from "@/components/events/event-form-modal";
 import { useEventTerm, useTerminology } from "@/lib/hooks/use-terminology";
-import { UserRole } from "@prisma/client";
+import { useCrudMutations } from "@/lib/hooks/useCrudMutations";
+import { AmountType, EventStatus, UserRole } from "@prisma/client";
+import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument } from "@/lib/schemas/event.schema";
 import {
   CalendarIcon,
   ClockIcon,
@@ -297,6 +300,11 @@ export default function DashboardPage() {
   const { data: upcomingEventsRaw, isLoading: upcomingLoading } = trpc.event.getUpcoming.useQuery(
     undefined, { enabled: !profileLoading && !isStaff && !isClient }
   );
+  // Pre-fetch clients so the Client dropdown in the edit form is populated immediately
+  trpc.clients.getAll.useQuery(
+    { page: 1, limit: 100 },
+    { enabled: !profileLoading && !isStaff && !isClient }
+  );
   const upcomingEvents = upcomingEventsRaw?.map(e => ({
     ...e,
     client: e.client ? { ...e.client, businessName: e.client.businessName ?? '' } : null,
@@ -311,6 +319,25 @@ export default function DashboardPage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"upcoming-tasks" | "open-assignments" | "staffing" | "finance">("upcoming-tasks");
 
+  const utils = trpc.useUtils();
+  const { backendErrors, setBackendErrors, updateMutationOptions } = useCrudMutations();
+
+  const [isEditEventModalOpen, setIsEditEventModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<{
+    id: string; eventId: string; title: string; description?: string | null; requirements?: string | null;
+    privateComments?: string | null; clientId?: string | null; venueName: string; address: string;
+    addressLine2?: string | null; city: string; state: string; zipCode: string;
+    latitude?: number | null; longitude?: number | null;
+    startDate: Date | null; startTime?: string | null; endDate: Date | null; endTime?: string | null;
+    timezone: string; dailyDigestMode: boolean; requireStaff: boolean; status: EventStatus;
+    fileLinks?: FileLink[] | null; requestMethod?: string | null; requestorName?: string | null;
+    requestorPhone?: string | null; requestorEmail?: string | null; poNumber?: string | null;
+    preEventInstructions?: string | null; eventDocuments?: EventDocument[] | null;
+    customFields?: Array<{ label: string; value: string }> | null;
+    meetingPoint?: string | null; onsitePocName?: string | null; onsitePocPhone?: string | null;
+    onsitePocEmail?: string | null; estimate?: boolean | null; taskRateType?: string | null;
+  } | null>(null);
+
   const handleViewEvent = (eventId: string) => {
     setSelectedEventId(eventId);
     setIsViewOpen(true);
@@ -319,6 +346,100 @@ export default function DashboardPage() {
   const handleCloseView = () => {
     setIsViewOpen(false);
     setSelectedEventId(null);
+  };
+
+  const handleEditUpcomingTask = async (eventId: string) => {
+    try {
+      const data = await utils.event.getById.fetch({ id: eventId });
+      const d = data as typeof data & { dailyDigestMode?: boolean | null; requireStaff?: boolean | null };
+      setEditingEvent({
+        ...d,
+        fileLinks: Array.isArray(d.fileLinks) ? (d.fileLinks as FileLink[]) : null,
+        eventDocuments: Array.isArray(d.eventDocuments) ? (d.eventDocuments as EventDocument[]) : null,
+        customFields: Array.isArray(d.customFields) ? (d.customFields as Array<{ label: string; value: string }>) : null,
+        dailyDigestMode: d.dailyDigestMode ?? false,
+        requireStaff: d.requireStaff ?? false,
+      } as any);
+      setIsEditEventModalOpen(true);
+    } catch (error) {
+      console.error('[DashboardPage] handleEditUpcomingTask error:', error);
+    }
+  };
+
+  const updateEventMutation = trpc.event.update.useMutation(
+    updateMutationOptions(`${terminology.event.singular} updated successfully`, {
+      onSuccess: () => {
+        setIsEditEventModalOpen(false);
+        setEditingEvent(null);
+        setBackendErrors([]);
+        utils.event.getAll.invalidate();
+        utils.event.getById.invalidate();
+        utils.event.getUpcoming.invalidate();
+        utils.callTime.getAll.invalidate();
+      },
+    })
+  );
+
+  const bulkSyncCallTimesMutation = trpc.callTime.bulkSyncForEvent.useMutation();
+  const bulkUpdateProductsMutation = trpc.eventAttachment.bulkUpdateProducts.useMutation();
+
+  type CallTimeAssignment = {
+    serviceId: string;
+    quantity: number;
+    customCost?: number | null;
+    customPrice?: number | null;
+    startDate?: string | null;
+    startTime?: string | null;
+    endDate?: string | null;
+    endTime?: string | null;
+    experienceRequired?: 'ANY' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+    ratingRequired?: 'ANY' | 'NA' | 'A' | 'B' | 'C' | 'D';
+    approveOvertime?: boolean;
+    overtimeRate?: number | null;
+    overtimeRateType?: AmountType | null;
+    commission?: boolean;
+    commissionAmount?: number | null;
+    commissionAmountType?: AmountType | null;
+    payRate?: number | null;
+    billRate?: number | null;
+    rateType?: 'PER_HOUR' | 'PER_SHIFT' | 'PER_DAY' | 'PER_EVENT' | null;
+    expenditure?: boolean;
+    expenditureCost?: number | null;
+    expenditurePrice?: number | null;
+    expenditureAmount?: number | null;
+    expenditureAmountType?: AmountType | null;
+    minimum?: number | null;
+    travelInMinimum?: boolean;
+    notes?: string | null;
+    instructions?: string | null;
+  };
+
+  const handleEditEventSubmit = async (
+    data: CreateEventInput | Omit<UpdateEventInput, 'id'>,
+    attachments?: {
+      callTimes: CallTimeAssignment[];
+      products: Array<{ productId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
+    }
+  ) => {
+    if (!editingEvent?.id) return;
+    try {
+      await updateEventMutation.mutateAsync({ id: editingEvent.id, ...data });
+      if (attachments) {
+        await bulkSyncCallTimesMutation.mutateAsync({
+          eventId: editingEvent.id,
+          assignments: attachments.callTimes,
+        });
+        await bulkUpdateProductsMutation.mutateAsync({
+          eventId: editingEvent.id,
+          products: attachments.products,
+        });
+      }
+      utils.event.getAll.invalidate();
+      utils.event.getUpcoming.invalidate();
+      utils.callTime.getAll.invalidate();
+    } catch (error) {
+      console.error('[DashboardPage] handleEditEventSubmit error:', error);
+    }
   };
 
   if (profileLoading || isClient) {
@@ -401,7 +522,7 @@ export default function DashboardPage() {
                 <DashboardUpcomingList
                   events={upcomingEvents}
                   isLoading={upcomingLoading}
-                  onEventClick={handleViewEvent}
+                  onEventClick={handleEditUpcomingTask}
                 />
               </>
             )}
@@ -542,6 +663,26 @@ export default function DashboardPage() {
         open={isViewOpen}
         onClose={handleCloseView}
       />
+
+      {/* Edit Event Modal (opens when clicking a task in the Upcoming Tasks tab) */}
+      {/* Only mount when an event is selected so useForm initializes with the
+          actual event data (avoids the field-not-prefilled flash from a
+          pre-mounted modal whose form state was set with empty defaults). */}
+      {isEditEventModalOpen && editingEvent !== null && (
+        <EventFormModal
+          key={editingEvent.id}
+          event={editingEvent as any}
+          open={true}
+          onClose={() => {
+            setIsEditEventModalOpen(false);
+            setEditingEvent(null);
+            setBackendErrors([]);
+          }}
+          onSubmit={handleEditEventSubmit}
+          isSubmitting={updateEventMutation.isPending}
+          backendErrors={backendErrors}
+        />
+      )}
     </div>
   );
 }

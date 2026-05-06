@@ -137,6 +137,14 @@ export function CreateRequirementWizardModal({
     { serviceCategoryId: effectiveCategoryIdForQuery, limit: 100 },
     { enabled: open && !!effectiveCategoryIdForQuery }
   );
+
+  const selectedCategory = !fixedCategory && categoryId && categoryId !== 'CREATE_NEW'
+    ? activeCategories?.find((c) => c.id === categoryId)
+    : undefined;
+  const selectedCategoryReqIds = normalizeReqTemplateIds(
+    (selectedCategory?.requirementTemplateIds as string[] | undefined) ?? []
+  );
+
   const alreadyUsedTemplateIds = useMemo(() => {
     // Primary source: category's requirementTemplateIds (always in sync via syncCategoryFromRequirements)
     const ids = new Set<ReqTemplateId>(selectedCategoryReqIds);
@@ -206,12 +214,6 @@ export function CreateRequirementWizardModal({
   const effectiveCategoryId = fixedCategory?.id ?? categoryId;
   const isNewCategory = categoryId === 'CREATE_NEW';
 
-  const selectedCategory = !fixedCategory && categoryId && categoryId !== 'CREATE_NEW'
-    ? activeCategories?.find((c) => c.id === categoryId)
-    : undefined;
-  const selectedCategoryReqIds = normalizeReqTemplateIds(
-    (selectedCategory?.requirementTemplateIds as string[] | undefined) ?? []
-  );
   const selectedCategoryReqLabel = selectedCategoryReqIds.length > 0
     ? formatRequirementTemplatesShort(selectedCategoryReqIds)
     : selectedCategory?.requirementType

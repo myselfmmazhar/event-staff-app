@@ -329,6 +329,9 @@ export class CallTimeSchema {
     skillLevels: z.array(z.nativeEnum(SkillLevel)).optional(),
     ratings: z.array(z.nativeEnum(StaffRating)).optional(),
     availabilityStatuses: z.array(z.nativeEnum(AvailabilityStatus)).optional(),
+    // Narrow the search to a subset of the call times' services. When omitted
+    // or empty, derive from the call times (= all services).
+    serviceIds: z.array(z.string().uuid()).optional(),
     // INDIVIDUAL = staff with staffRole INDIVIDUAL
     // TEAM      = Team Manager rows aggregated by (manager, service) over their TeamUnits
     userType: z.enum(['INDIVIDUAL', 'TEAM']).optional(),

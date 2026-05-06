@@ -482,6 +482,19 @@ export class CallTimeService {
     const eventLat = primaryCallTime.event.latitude as number | null;
     const eventLng = primaryCallTime.event.longitude as number | null;
 
+    // Service narrowing: caller can pass a subset of the call times' services
+    // to restrict the search (e.g., user unchecked some service cards in the
+    // Find Talent modal). Empty/missing falls back to all services on the
+    // call times — same behavior as before this filter existed.
+    const allServiceIds = callTimes
+      .map((ct) => ct.serviceId)
+      .filter(Boolean) as string[];
+    const requestedServiceIds = (input.serviceIds ?? []).filter((id) =>
+      allServiceIds.includes(id)
+    );
+    const effectiveServiceIds =
+      requestedServiceIds.length > 0 ? requestedServiceIds : allServiceIds;
+
     // Skill level filter: highest requirement among selected call times
     let skillLevelFilter: SkillLevel[];
     if (input.skillLevels && input.skillLevels.length > 0) {
@@ -520,12 +533,10 @@ export class CallTimeService {
 
       const where: Prisma.StaffWhereInput = {
         staffRole: 'INDIVIDUAL',
-        ...(callTimes.some((ct) => ct.serviceId) && {
+        ...(effectiveServiceIds.length > 0 && {
           services: {
             some: {
-              serviceId: {
-                in: callTimes.map((ct) => ct.serviceId).filter(Boolean) as string[],
-              },
+              serviceId: { in: effectiveServiceIds },
             },
           },
         }),
@@ -668,9 +679,7 @@ export class CallTimeService {
     // ── TEAM MANAGER ROWS ─────────────────────────────────────────────
     let teamRows: any[] = [];
     if (wantTeams) {
-      const taskServiceIds = callTimes
-        .map((ct) => ct.serviceId)
-        .filter(Boolean) as string[];
+      const taskServiceIds = effectiveServiceIds;
 
       if (taskServiceIds.length > 0) {
         const units = await this.prisma.teamUnit.findMany({
