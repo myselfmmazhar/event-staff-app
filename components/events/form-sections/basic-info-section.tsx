@@ -95,7 +95,7 @@ export function BasicInfoSection({
         {/* Row 2: Description, Requirements */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description/Instructions</Label>
             <Textarea
               id="description"
               {...register('description')}

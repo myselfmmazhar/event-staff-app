@@ -109,6 +109,8 @@ export class InvoiceService {
                         scheduleShiftDetail: item.scheduleShiftDetail,
                         actualShiftDetails: item.actualShiftDetails,
                         internalNotes: item.internalNotes,
+                        isScheduledChecked: item.isScheduledChecked,
+                        isActualChecked: item.isActualChecked,
                     })),
                 },
             },
@@ -159,6 +161,8 @@ export class InvoiceService {
                             scheduleShiftDetail: item.scheduleShiftDetail,
                             actualShiftDetails: item.actualShiftDetails,
                             internalNotes: item.internalNotes,
+                            isScheduledChecked: item.isScheduledChecked,
+                            isActualChecked: item.isActualChecked,
                         })),
                     });
                 }

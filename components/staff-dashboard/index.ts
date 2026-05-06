@@ -12,3 +12,4 @@ export type {
   ShiftSession,
 } from './talent-assignment-table';
 export { TalentCallTimeDetailModal } from './talent-call-time-detail-modal';
+export { SessionHistoryModal } from './session-history-modal';

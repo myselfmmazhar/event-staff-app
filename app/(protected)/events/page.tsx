@@ -281,10 +281,8 @@ export default function EventsPage() {
   const updateMutation = trpc.event.update.useMutation(
     updateMutationOptions(`${terminology.event.singular} updated successfully`, {
       onSuccess: () => {
-        if (!isUpdateAndContinue) {
-          setIsFormOpen(false);
-          setSelectedEvent(null);
-        }
+        setIsFormOpen(false);
+        setSelectedEvent(null);
         setIsUpdateAndContinue(false);
         refetch();
       },

@@ -33,8 +33,9 @@ export default function ClientInvoicesPage() {
 
     const columns: ColumnDef<ClientInvoice>[] = [
         {
-            key: 'actions',
+            key: 'view',
             label: 'Actions',
+            initialWidth: 160,
             render: (invoice) => (
                 <Button
                     variant="outline"

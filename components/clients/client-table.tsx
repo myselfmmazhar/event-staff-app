@@ -163,7 +163,10 @@ export function ClientTable({
       sortable: true,
       className: 'py-4 px-4',
       render: (client) => (
-        <div className="font-medium text-foreground">
+        <div
+          className="font-medium text-primary cursor-pointer hover:underline"
+          onClick={() => onEdit(client.id)}
+        >
           {client.businessName}
         </div>
       ),

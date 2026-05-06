@@ -349,21 +349,6 @@ export function EventFormModal({
     },
   });
 
-  // Form setup
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    watch,
-    setError,
-    setValue,
-    control,
-  } = useForm<FormInput, undefined, FormOutput>({
-    resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
-    defaultValues: getDefaultValues(),
-  });
-
   function getDefaultValues(): Partial<FormInput> {
     const today = new Date();
     const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -406,6 +391,73 @@ export function EventFormModal({
     };
   }
 
+  function buildEventFormValues(e: Event): Partial<FormInput> {
+    const formatDateForInput = (date: Date | string | null) => {
+      if (!date) return '';
+      const dt = new Date(date);
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    };
+    const startDateIsUBD = isDateNullOrUBD(e.startDate);
+    const endDateIsUBD = isDateNullOrUBD(e.endDate);
+    const fileLinksData = e.fileLinks as FileLink[] | null;
+    const eventDocsData = Array.isArray(e.eventDocuments) ? (e.eventDocuments as EventDocument[]) : null;
+    return {
+      eventId: e.eventId,
+      title: e.title,
+      description: e.description || '',
+      requirements: e.requirements || '',
+      privateComments: e.privateComments || '',
+      clientId: e.clientId || '',
+      venueName: e.venueName,
+      address: e.address,
+      addressLine2: (e as any).addressLine2 || '',
+      city: e.city,
+      state: e.state,
+      zipCode: e.zipCode || '',
+      latitude: e.latitude || undefined,
+      longitude: e.longitude || undefined,
+      startDate: !startDateIsUBD ? (formatDateForInput(e.startDate) as any) : '',
+      startTime: e.startTime === 'TBD' ? '' : (e.startTime || ''),
+      endDate: !endDateIsUBD ? (formatDateForInput(e.endDate) as any) : '',
+      endTime: e.endTime === 'TBD' ? '' : (e.endTime || ''),
+      timezone: e.timezone,
+      dailyDigestMode: e.dailyDigestMode,
+      requireStaff: e.requireStaff,
+      status: e.status,
+      fileLinks: fileLinksData || [],
+      requestMethod: e.requestMethod || undefined,
+      requestorName: e.requestorName || '',
+      requestorPhone: e.requestorPhone || '',
+      requestorEmail: e.requestorEmail || '',
+      poNumber: e.poNumber || '',
+      preEventInstructions: e.preEventInstructions || '',
+      eventDocuments: eventDocsData || [],
+      customFields: (e.customFields as CustomField[]) || [],
+      meetingPoint: e.meetingPoint || '',
+      onsitePocName: e.onsitePocName || '',
+      onsitePocPhone: e.onsitePocPhone || '',
+      onsitePocEmail: e.onsitePocEmail || '',
+      estimate: e.estimate ?? false,
+      taskRateType: e.taskRateType || undefined,
+    };
+  }
+
+  // Form setup — initialise with the event's values directly so the very first
+  // render of the form fields shows the correct prefilled data (no flash).
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    watch,
+    setError,
+    setValue,
+    control,
+  } = useForm<FormInput, undefined, FormOutput>({
+    resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
+    defaultValues: event ? buildEventFormValues(event) : getDefaultValues(),
+  });
+
   // Reset form when event changes
   useEffect(() => {
     if (event) {
@@ -435,7 +487,7 @@ export function EventFormModal({
         addressLine2: (event as any).addressLine2 || '',
         city: event.city,
         state: event.state,
-        zipCode: event.zipCode,
+        zipCode: event.zipCode || '',
         latitude: event.latitude || undefined,
         longitude: event.longitude || undefined,
         startDate: !startDateIsUBD ? formatDateForInput(event.startDate) as any : '',
@@ -543,9 +595,17 @@ export function EventFormModal({
     }
   }, [selectedClientId, clientsData, setValue, watch]);
 
-  // Auto-fill venue address from client when client is selected
+  // Auto-fill venue address from client only when the user actively changes
+  // the client (skip on initial reset/edit-load so existing event values aren't overwritten).
+  const previousClientIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!selectedClientId || !clientsData?.data) return;
+    if (!clientsData?.data) return;
+    const prev = previousClientIdRef.current;
+    previousClientIdRef.current = selectedClientId || '';
+
+    if (prev === undefined) return; // skip first run (initial reset)
+    if (!selectedClientId || prev === selectedClientId) return;
+
     const selectedClient = clientsData.data.find(c => c.id === selectedClientId);
     if (!selectedClient) return;
     if (selectedClient.businessAddress) {
@@ -629,6 +689,7 @@ export function EventFormModal({
       setBatchValidationResults([]);
       setSaveAsTemplate(false);
       setTemplateName('');
+      previousClientIdRef.current = undefined;
     }
   }, [open]);
 
@@ -919,10 +980,6 @@ export function EventFormModal({
         console.log('[EventFormModal] Calling onSubmit...');
         onSubmit(finalData, attachments, pendingSaveActionRef.current);
         console.log('[EventFormModal] onSubmit called successfully');
-        // Navigate to next step after triggering update-and-continue
-        if (pendingSaveActionRef.current === 'update-continue') {
-          goNextForm();
-        }
       } else {
         console.log('[EventFormModal] Parsing with createFormSchema...');
         const finalData = createFormSchema.parse(normalizedData);

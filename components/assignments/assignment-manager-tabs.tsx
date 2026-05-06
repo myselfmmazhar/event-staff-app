@@ -13,6 +13,7 @@ import type { GroupedAssignment } from '@/lib/utils/call-time-grouping';
 
 interface AssignmentManagerTabsProps {
   onManageAssignment?: (assignment: AssignmentData) => void;
+  onEditEvent?: (eventId: string) => void;
   onFindTalent?: (assignment: AssignmentData) => void;
   onDeleteAssignment?: (assignment: AssignmentData) => void;
   onDuplicateAssignment?: (assignment: AssignmentData) => void;
@@ -25,6 +26,7 @@ interface AssignmentManagerTabsProps {
 
 export function AssignmentManagerTabs({
   onManageAssignment,
+  onEditEvent,
   onFindTalent,
   onDeleteAssignment,
   onDuplicateAssignment,
@@ -72,16 +74,12 @@ export function AssignmentManagerTabs({
   // Adapter functions to convert callTimeId back to AssignmentData for page-level handlers
   const handleManageById = (callTimeId: string) => {
     const assignment = fullData?.data.find((a) => a.id === callTimeId);
-    if (assignment) {
-      onManageAssignment?.(assignment as unknown as AssignmentData);
-    }
+    onManageAssignment?.((assignment ?? { id: callTimeId }) as unknown as AssignmentData);
   };
 
   const handleFindTalentById = (callTimeId: string) => {
     const assignment = fullData?.data.find((a) => a.id === callTimeId);
-    if (assignment) {
-      onFindTalent?.(assignment as unknown as AssignmentData);
-    }
+    onFindTalent?.((assignment ?? { id: callTimeId }) as unknown as AssignmentData);
   };
 
   const handleDeleteGroup = (group: GroupedAssignment) => {
@@ -146,6 +144,7 @@ export function AssignmentManagerTabs({
       <TabsContent value="all">
         <AllAssignmentsView
           onManage={handleManageById}
+          onEditEvent={onEditEvent}
           onFindTalent={handleFindTalentById}
           onDelete={handleDeleteGroup}
           onDuplicate={handleDuplicateGroup}

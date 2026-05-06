@@ -20,6 +20,8 @@ export interface RequirementTemplateCardGridProps {
   visibleIds?: readonly ReqTemplateId[];
   /** Render as non-interactive display: cards keep their selected styling but cannot be toggled. */
   readOnly?: boolean;
+  /** Template IDs that are already in use — rendered as disabled with an "Already added" badge. */
+  disabledIds?: ReadonlySet<ReqTemplateId>;
 }
 
 export function RequirementTemplateCardGrid({
@@ -33,6 +35,7 @@ export function RequirementTemplateCardGrid({
   onSingleChange,
   visibleIds,
   readOnly = false,
+  disabledIds,
 }: RequirementTemplateCardGridProps) {
   const visibleSet = visibleIds?.length ? new Set(visibleIds) : null;
   const cards = REQ_TEMPLATE_CARDS.filter((c) => !visibleSet || visibleSet.has(c.id));
@@ -40,6 +43,7 @@ export function RequirementTemplateCardGrid({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => {
+        const isAlreadyAdded = disabledIds?.has(card.id) ?? false;
         const isSelected =
           selectionMode === 'single'
             ? singleSelected === card.id
@@ -54,13 +58,15 @@ export function RequirementTemplateCardGrid({
         const cardClassName = cn(
           'flex flex-col rounded-xl border p-4 text-left transition-shadow',
           staffAppearance ? 'bg-white' : 'bg-card',
-          isSelected
-            ? staffAppearance
-              ? 'border-slate-900 shadow-sm ring-1 ring-slate-900/10'
-              : 'border-foreground shadow-sm ring-1 ring-foreground/10'
-            : staffAppearance
-              ? 'border-slate-200 hover:border-slate-300'
-              : 'border-border hover:border-muted-foreground/30',
+          isAlreadyAdded
+            ? 'border-border opacity-50 cursor-not-allowed'
+            : isSelected
+              ? staffAppearance
+                ? 'border-slate-900 shadow-sm ring-1 ring-slate-900/10'
+                : 'border-foreground shadow-sm ring-1 ring-foreground/10'
+              : staffAppearance
+                ? 'border-slate-200 hover:border-slate-300'
+                : 'border-border hover:border-muted-foreground/30',
           readOnly && 'cursor-default'
         );
 
@@ -75,14 +81,21 @@ export function RequirementTemplateCardGrid({
               >
                 {title}
               </span>
-              <span
-                className={cn(
-                  'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                  card.badge === 'Smart' ? 'bg-sky-100 text-sky-800' : staffAppearance ? 'bg-slate-100 text-slate-700' : 'bg-muted text-muted-foreground'
+              <div className="flex shrink-0 items-center gap-1.5">
+                {isAlreadyAdded && (
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    Already added
+                  </span>
                 )}
-              >
-                {card.badge}
-              </span>
+                <span
+                  className={cn(
+                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                    card.badge === 'Smart' ? 'bg-sky-100 text-sky-800' : staffAppearance ? 'bg-slate-100 text-slate-700' : 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  {card.badge}
+                </span>
+              </div>
             </div>
             <p
               className={cn(
@@ -130,13 +143,14 @@ export function RequirementTemplateCardGrid({
             key={card.id}
             type="button"
             onClick={() => {
+              if (isAlreadyAdded) return;
               if (selectionMode === 'single' && onSingleChange) {
                 onSingleChange(singleSelected === card.id ? null : card.id);
               } else {
                 onToggle(card.id);
               }
             }}
-            disabled={disabled}
+            disabled={disabled || isAlreadyAdded}
             className={cardClassName}
           >
             {cardBody}

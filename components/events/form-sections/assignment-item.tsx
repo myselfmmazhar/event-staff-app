@@ -153,7 +153,12 @@ export function AssignmentItem({
                 <AccordionArrow className="h-6 w-6" />
 
                 <div className="min-w-[100px] max-w-[200px] shrink-0 sm:min-w-[128px] sm:max-w-[240px]">
-                  <div className="truncate text-[13px] font-bold leading-tight text-slate-900">{title}</div>
+                  <div
+                    className="truncate text-[13px] font-bold leading-tight text-slate-900 cursor-pointer hover:text-primary hover:underline"
+                    onClick={!disabled ? onEdit : undefined}
+                  >
+                    {title}
+                  </div>
                   <div className="mt-0.5 truncate text-[11px] font-medium leading-tight text-slate-400">
                     {isProduct ? 'Product' : 'Service'}
                   </div>

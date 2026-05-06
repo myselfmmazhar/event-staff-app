@@ -158,8 +158,8 @@ export default function ViewInvoicePage() {
                                 {(() => {
                                     const rows: React.ReactNode[] = [];
                                     invoice.items?.forEach((item, index) => {
-                                        const actualHours = Number(item.actualHours) || 0;
-                                        const scheduledHours = Number(item.scheduledHours) || 0;
+                                        const actualHours = item.isActualChecked ? (Number(item.actualHours) || 0) : 0;
+                                        const scheduledHours = item.isScheduledChecked ? (Number(item.scheduledHours) || 0) : 0;
                                         const otHours = Math.max(0, actualHours - scheduledHours);
                                         const hasOT = otHours > 0;
 
@@ -168,12 +168,12 @@ export default function ViewInvoicePage() {
                                             <tr key={`item-${index}`} className="border-b last:border-0 align-top">
                                                 <td className="py-3 px-2">
                                                     <div className="font-medium">{item.description}</div>
-                                                    {item.scheduleShiftDetail && (
+                                                    {item.isScheduledChecked && item.scheduleShiftDetail && (
                                                         <div className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                                                             📅 {item.scheduleShiftDetail}
                                                         </div>
                                                     )}
-                                                    {item.actualShiftDetails && (
+                                                    {item.isActualChecked && item.actualShiftDetails && (
                                                         <div className="text-[11px] text-muted-foreground leading-relaxed">
                                                             🕒 {item.actualShiftDetails}
                                                         </div>

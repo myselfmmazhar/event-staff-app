@@ -200,7 +200,14 @@ export function BillTable({
             label: "Bill No",
             sortable: true,
             className: "py-4 px-4 font-medium",
-            render: (bill) => bill.billNo,
+            render: (bill) => (
+                <span
+                    className={onEdit ? "cursor-pointer text-primary hover:underline" : ""}
+                    onClick={onEdit ? () => onEdit(bill) : undefined}
+                >
+                    {bill.billNo}
+                </span>
+            ),
         },
         {
             key: "staff",
