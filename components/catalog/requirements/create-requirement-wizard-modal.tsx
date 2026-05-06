@@ -132,6 +132,21 @@ export function CreateRequirementWizardModal({
     enabled: open && !fixedCategory,
   });
 
+  const effectiveCategoryIdForQuery = fixedCategory?.id ?? (categoryId && categoryId !== 'CREATE_NEW' ? categoryId : '');
+  const { data: existingRequirements } = trpc.catalogRequirement.getAll.useQuery(
+    { serviceCategoryId: effectiveCategoryIdForQuery, limit: 100 },
+    { enabled: open && !!effectiveCategoryIdForQuery }
+  );
+  const alreadyUsedTemplateIds = useMemo(() => {
+    // Primary source: category's requirementTemplateIds (always in sync via syncCategoryFromRequirements)
+    const ids = new Set<ReqTemplateId>(selectedCategoryReqIds);
+    // Secondary source: direct query results (covers fixedCategory and catches any discrepancy)
+    for (const req of existingRequirements?.data ?? []) {
+      if (req.templateId) ids.add(req.templateId as ReqTemplateId);
+    }
+    return ids;
+  }, [selectedCategoryReqIds, existingRequirements]);
+
   const createMutation = trpc.catalogRequirement.create.useMutation({
     onSuccess: () => {
       onSaved?.();
@@ -466,6 +481,7 @@ export function CreateRequirementWizardModal({
                 singleSelected={selectedTemplate}
                 onSingleChange={setSelectedTemplate}
                 visibleIds={visibleTemplateIds}
+                disabledIds={alreadyUsedTemplateIds}
               />
             </div>
           </div>
@@ -670,13 +686,13 @@ export function CreateRequirementWizardModal({
       {/* Footer */}
       <div className="shrink-0 border-t border-slate-200 px-6 py-5 sm:px-8 bg-slate-50/50">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-1">
+          <div className="flex flex-wrap gap-3">
             {step === 1 && (
               <Button
                 type="button"
                 onClick={goNextFromStep1}
                 disabled={!canContinueStep1}
-                className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[280px]"
+                className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[200px]"
               >
                 Continue
               </Button>
@@ -685,7 +701,7 @@ export function CreateRequirementWizardModal({
               <Button
                 type="submit"
                 form="req-settings-form"
-                className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[280px]"
+                className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[200px]"
               >
                 Continue
               </Button>
@@ -695,11 +711,19 @@ export function CreateRequirementWizardModal({
                 type="button"
                 onClick={() => handleFinalCreate('close')}
                 disabled={isSaving}
-                className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[280px]"
+                className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[200px]"
               >
-                {isSaving && saveActionRef.current === 'close' ? 'Saving...' : 'Create Requirement'}
+                {isSaving && saveActionRef.current === 'close' ? 'Saving...' : 'Save & Close'}
               </Button>
             )}
+            <Button
+              type="button"
+              onClick={() => handleFinalCreate('new')}
+              disabled={step !== 3 || !preview || isSaving}
+              className="h-14 w-full rounded-xl bg-blue-600 px-10 text-lg font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 hover:shadow-none sm:w-auto sm:min-w-[200px] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isSaving && saveActionRef.current === 'new' ? 'Saving...' : 'Save & New'}
+            </Button>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
@@ -717,15 +741,6 @@ export function CreateRequirementWizardModal({
                 Back
               </Button>
             )}
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => handleFinalCreate('new')}
-              disabled={step !== 3 || !preview || isSaving}
-              className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white border-none px-5 text-xs font-bold shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isSaving && saveActionRef.current === 'new' ? 'Saving...' : 'Save & New'}
-            </Button>
             <Button
               type="button"
               variant="outline"

@@ -135,7 +135,14 @@ export function CategoryTable({
       sortable: true,
       initialWidth: 180,
       className: 'py-4 px-4',
-      render: (category) => <span className="text-foreground">{category.name}</span>,
+      render: (category) => (
+        <span
+          className="text-primary cursor-pointer hover:underline"
+          onClick={() => onEdit(category.id)}
+        >
+          {category.name}
+        </span>
+      ),
     },
     {
       key: 'requirementType',

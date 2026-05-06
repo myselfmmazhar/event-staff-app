@@ -315,7 +315,10 @@ export function EventTable({
       sortable: true,
       className: 'py-4 px-4',
       render: (event) => (
-        <div className="font-medium text-foreground">
+        <div
+          className="font-medium text-primary cursor-pointer hover:underline"
+          onClick={() => onEdit(event)}
+        >
           {event.title}
         </div>
       ),

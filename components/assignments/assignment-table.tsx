@@ -252,7 +252,12 @@ export function AssignmentTable({
       sortable: true,
       render: (item) => (
         <div>
-          <p className="font-medium text-foreground">{item.event.title}</p>
+          <p
+            className="font-medium text-primary cursor-pointer hover:underline"
+            onClick={() => onManage?.(item)}
+          >
+            {item.event.title}
+          </p>
           <p className="text-sm text-muted-foreground">{item.event.eventId}</p>
         </div>
       ),

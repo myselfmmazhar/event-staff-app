@@ -491,7 +491,8 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                                 <div className="flex items-center gap-2 border-b border-blue-100 pb-2">
                                                     <input
                                                         type="checkbox"
-                                                        {...form.register(`items.${index}.isScheduledChecked`)}
+                                                        checked={!!items?.[index]?.isScheduledChecked}
+                                                        onChange={(e) => form.setValue(`items.${index}.isScheduledChecked`, e.target.checked)}
                                                         className="h-4 w-4 rounded border-border accent-primary"
                                                     />
                                                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
@@ -544,7 +545,8 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                                 <div className="flex items-center gap-2 border-b border-emerald-100 pb-2">
                                                     <input
                                                         type="checkbox"
-                                                        {...form.register(`items.${index}.isActualChecked`)}
+                                                        checked={!!items?.[index]?.isActualChecked}
+                                                        onChange={(e) => form.setValue(`items.${index}.isActualChecked`, e.target.checked)}
                                                         className="h-4 w-4 rounded border-border accent-primary"
                                                     />
                                                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>

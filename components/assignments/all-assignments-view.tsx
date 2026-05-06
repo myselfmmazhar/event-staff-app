@@ -10,6 +10,7 @@ import { trpc } from '@/lib/client/trpc';
 
 interface AllAssignmentsViewProps {
   onManage?: (callTimeId: string) => void;
+  onEditEvent?: (eventId: string) => void;
   onFindTalent?: (callTimeId: string) => void;
   onDelete?: (group: GroupedAssignment) => void;
   onDuplicate?: (group: GroupedAssignment) => void;
@@ -22,6 +23,7 @@ interface AllAssignmentsViewProps {
 
 export function AllAssignmentsView({
   onManage,
+  onEditEvent,
   onFindTalent,
   onDelete,
   onDuplicate,
@@ -131,6 +133,7 @@ export function AllAssignmentsView({
         setSortBy={handleSortBy}
         setSortOrder={setSortOrder}
         onManage={onManage}
+        onEditEvent={onEditEvent}
         onFindTalent={onFindTalent}
         onDelete={onDelete}
         onDuplicate={onDuplicate}

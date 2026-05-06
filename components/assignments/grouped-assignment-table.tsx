@@ -21,6 +21,7 @@ interface GroupedAssignmentTableProps {
   setSortBy?: (field: string) => void;
   setSortOrder?: (order: 'asc' | 'desc') => void;
   onManage?: (callTimeId: string) => void;
+  onEditEvent?: (eventId: string) => void;
   onFindTalent?: (callTimeId: string) => void;
   onDelete?: (group: GroupedAssignment) => void;
   onDuplicate?: (group: GroupedAssignment) => void;
@@ -60,6 +61,7 @@ export function GroupedAssignmentTable({
   setSortBy,
   setSortOrder,
   onManage,
+  onEditEvent,
   onFindTalent,
   onDelete,
   onDuplicate,
@@ -236,7 +238,12 @@ export function GroupedAssignmentTable({
       sortable: true,
       render: (item) => (
         <div>
-          <p className="font-medium text-foreground">{item.event.title}</p>
+          <p
+            className="font-medium text-primary cursor-pointer hover:underline"
+            onClick={() => (onEditEvent ? onEditEvent(item.event.id) : onManage?.(item.primaryCallTimeId))}
+          >
+            {item.event.title}
+          </p>
           <p className="text-sm text-muted-foreground">{item.event.eventId}</p>
         </div>
       ),

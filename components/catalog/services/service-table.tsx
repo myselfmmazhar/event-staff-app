@@ -149,7 +149,14 @@ export function ServiceTable({
       label: columnLabels.title,
       sortable: true,
       className: 'py-4 px-4',
-      render: (service) => <span className="font-medium text-foreground">{service.title}</span>,
+      render: (service) => (
+        <span
+          className="font-medium text-primary cursor-pointer hover:underline"
+          onClick={() => onEdit(service.id)}
+        >
+          {service.title}
+        </span>
+      ),
     },
     {
       key: 'requirements',

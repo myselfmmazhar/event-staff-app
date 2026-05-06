@@ -435,7 +435,7 @@ export function EventFormModal({
         addressLine2: (event as any).addressLine2 || '',
         city: event.city,
         state: event.state,
-        zipCode: event.zipCode,
+        zipCode: event.zipCode || '',
         latitude: event.latitude || undefined,
         longitude: event.longitude || undefined,
         startDate: !startDateIsUBD ? formatDateForInput(event.startDate) as any : '',
@@ -919,10 +919,6 @@ export function EventFormModal({
         console.log('[EventFormModal] Calling onSubmit...');
         onSubmit(finalData, attachments, pendingSaveActionRef.current);
         console.log('[EventFormModal] onSubmit called successfully');
-        // Navigate to next step after triggering update-and-continue
-        if (pendingSaveActionRef.current === 'update-continue') {
-          goNextForm();
-        }
       } else {
         console.log('[EventFormModal] Parsing with createFormSchema...');
         const finalData = createFormSchema.parse(normalizedData);

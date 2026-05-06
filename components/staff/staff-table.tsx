@@ -314,7 +314,12 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
             sortable: true,
             className: 'py-4 px-4',
             render: (member) => (
-                <span className="font-medium">{member.firstName} {member.lastName}</span>
+                <span
+                    className="font-medium text-primary cursor-pointer hover:underline"
+                    onClick={() => onEdit(member)}
+                >
+                    {member.firstName} {member.lastName}
+                </span>
             ),
         },
         {

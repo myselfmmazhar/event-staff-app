@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { format } from 'date-fns';
 import type { RateType } from '@prisma/client';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { SessionHistoryModal } from './session-history-modal';
 
 export interface ShiftSession {
   id: string;
@@ -96,6 +98,25 @@ function hasOpenSession(sessions: ShiftSession[] | undefined): boolean {
   return sessions.some((s) => !s.clockOut);
 }
 
+function formatActualInstant(value: Date | string | null | undefined): string {
+  if (!value) return '-';
+  return format(new Date(value), 'h:mma').toLowerCase();
+}
+
+function getFirstInLastOut(sessions: ShiftSession[] | undefined): {
+  firstIn: Date | string | null;
+  lastOut: Date | string | null;
+} {
+  if (!sessions || sessions.length === 0) {
+    return { firstIn: null, lastOut: null };
+  }
+  // Sessions arrive sorted by clockIn ASC from the server.
+  const firstIn = sessions[0]?.clockIn ?? null;
+  const lastSession = sessions[sessions.length - 1];
+  const lastOut = lastSession?.clockOut ?? null;
+  return { firstIn, lastOut };
+}
+
 function getStatusBadge(item: TalentInvitationData, category: TalentTableCategory) {
   if (category === 'inProgress') {
     const isOpen = hasOpenSession(item.shiftSessions);
@@ -129,6 +150,7 @@ export function TalentAssignmentTable({
 }: TalentAssignmentTableProps) {
   const { terminology } = useTerminology();
   const showShiftActions = category === 'inProgress' && !!onStart && !!onEnd;
+  const [sessionHistoryFor, setSessionHistoryFor] = useState<TalentInvitationData | null>(null);
 
   const columns: ColumnDef<TalentInvitationData>[] = [
     {
@@ -205,11 +227,35 @@ export function TalentAssignmentTable({
     {
       key: 'time',
       label: 'Time',
-      render: (item) => (
-        <span className="text-muted-foreground">
-          {formatTime(item.callTime.startTime)} - {formatTime(item.callTime.endTime)}
-        </span>
-      ),
+      render: (item) => {
+        if (category === 'past') {
+          const sessions = item.shiftSessions ?? [];
+          const { firstIn, lastOut } = getFirstInLastOut(sessions);
+          return (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">
+                {formatActualInstant(firstIn)} - {formatActualInstant(lastOut)}
+              </span>
+              {sessions.length > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setSessionHistoryFor(item)}
+                >
+                  View ({sessions.length})
+                </Button>
+              )}
+            </div>
+          );
+        }
+        return (
+          <span className="text-muted-foreground">
+            {formatTime(item.callTime.startTime)} - {formatTime(item.callTime.endTime)}
+          </span>
+        );
+      },
     },
     {
       key: 'event',
@@ -266,25 +312,35 @@ export function TalentAssignmentTable({
   const tableId = `talent-assignments-${category}`;
 
   return (
-    <DataTable
-      tableId={tableId}
-      data={data}
-      columns={columns}
-      getRowKey={(item) => item.id}
-      emptyMessage={emptyMessage ?? 'No assignments found'}
-      emptyDescription={emptyDescription ?? 'Nothing here yet.'}
-      minWidth="1000px"
-      mobileCard={(item) => (
-        <TalentAssignmentMobileCard
-          invitation={item}
-          category={category}
-          onViewDetails={() => onViewDetails(item)}
-          onStart={showShiftActions ? () => onStart?.(item.id) : undefined}
-          onEnd={showShiftActions ? () => onEnd?.(item.id) : undefined}
-          isProcessing={pendingActionId === item.id}
-        />
-      )}
-    />
+    <>
+      <DataTable
+        tableId={tableId}
+        data={data}
+        columns={columns}
+        getRowKey={(item) => item.id}
+        emptyMessage={emptyMessage ?? 'No assignments found'}
+        emptyDescription={emptyDescription ?? 'Nothing here yet.'}
+        minWidth="1000px"
+        mobileCard={(item) => (
+          <TalentAssignmentMobileCard
+            invitation={item}
+            category={category}
+            onViewDetails={() => onViewDetails(item)}
+            onStart={showShiftActions ? () => onStart?.(item.id) : undefined}
+            onEnd={showShiftActions ? () => onEnd?.(item.id) : undefined}
+            isProcessing={pendingActionId === item.id}
+            onViewSessions={
+              category === 'past' ? () => setSessionHistoryFor(item) : undefined
+            }
+          />
+        )}
+      />
+      <SessionHistoryModal
+        open={sessionHistoryFor !== null}
+        onClose={() => setSessionHistoryFor(null)}
+        sessions={sessionHistoryFor?.shiftSessions ?? []}
+      />
+    </>
   );
 }
 
@@ -295,6 +351,7 @@ interface TalentAssignmentMobileCardProps {
   onStart?: () => void;
   onEnd?: () => void;
   isProcessing?: boolean;
+  onViewSessions?: () => void;
 }
 
 function TalentAssignmentMobileCard({
@@ -304,9 +361,13 @@ function TalentAssignmentMobileCard({
   onStart,
   onEnd,
   isProcessing,
+  onViewSessions,
 }: TalentAssignmentMobileCardProps) {
   const isOpen = hasOpenSession(invitation.shiftSessions);
   const rate = getPayRateValue(invitation.callTime.payRate);
+  const sessions = invitation.shiftSessions ?? [];
+  const showActualTime = category === 'past';
+  const { firstIn, lastOut } = getFirstInLastOut(sessions);
 
   return (
     <Card className="p-4">
@@ -330,14 +391,26 @@ function TalentAssignmentMobileCard({
         {invitation.callTime.event.title}
       </p>
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 flex-wrap">
         <CalendarIcon className="h-4 w-4" />
         <span>
           {formatDateShort(invitation.callTime.startDate)} &middot;{' '}
           <ClockIcon className="inline h-3.5 w-3.5" />{' '}
-          {formatTime(invitation.callTime.startTime)} -{' '}
-          {formatTime(invitation.callTime.endTime)}
+          {showActualTime
+            ? `${formatActualInstant(firstIn)} - ${formatActualInstant(lastOut)}`
+            : `${formatTime(invitation.callTime.startTime)} - ${formatTime(invitation.callTime.endTime)}`}
         </span>
+        {showActualTime && sessions.length > 1 && onViewSessions && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={onViewSessions}
+          >
+            View ({sessions.length})
+          </Button>
+        )}
       </div>
 
       {(invitation.callTime.event.venueName || invitation.callTime.event.city) && (

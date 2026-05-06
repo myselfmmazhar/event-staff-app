@@ -55,7 +55,7 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
     },
     {
       label: 'Bills',
-      href: '/bills',
+      href: '/profile/billing',
       icon: CurrencyDollarIcon,
       requiresAdmin: false,
       staffOnly: true,
