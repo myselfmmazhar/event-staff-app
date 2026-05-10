@@ -7,6 +7,7 @@ const reqTemplateIdSchema = z.enum(REQ_TEMPLATE_IDS);
 const CATALOG_REQUIREMENT_EXPIRATION = [
   'NEVER',
   'CUSTOM_DATE',
+  'PER_TALENT',
 ] as const;
 
 const expirationSchema = z.enum(CATALOG_REQUIREMENT_EXPIRATION);
