@@ -15,6 +15,7 @@ import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon, SendIcon, FilterIcon, XIcon, CheckCircleIcon } from '@/components/ui/icons';
 import { ConfirmModal } from '@/components/common/confirm-modal';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { SkillLevel, StaffRating } from '@prisma/client';
 import { formatDateTime } from '@/lib/utils/date-formatter';
@@ -88,6 +89,9 @@ export function FindTalentModal({
   // Service narrowing — start with all selected. Single-service case still
   // renders a card but the checkbox is disabled (always on).
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  // Shift narrowing — start with all available shifts selected. Shifts that
+  // already have an accepted invitation are excluded from the dropdown.
+  const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
 
   const utils = trpc.useUtils();
 
@@ -124,6 +128,41 @@ export function FindTalentModal({
     setSelectedServiceIds(uniqueServices.map((s) => s.id));
   }, [open, uniqueServiceKey]);
 
+  // Available shifts (call times) for the dropdown. A shift drops out once any
+  // talent has accepted an invitation for it — there's nothing to fill anymore.
+  const availableShifts = useMemo(() => {
+    return (callTimes ?? []).filter(
+      (ct) => !ct.invitations.some((inv) => inv.status === 'ACCEPTED')
+    );
+  }, [callTimes]);
+
+  const shiftOptions = useMemo(
+    () =>
+      availableShifts.map((ct) => ({
+        value: ct.id,
+        label: `${ct.service?.title || 'No Position'} • ${formatDateTime(ct.startDate, ct.startTime)}`,
+      })),
+    [availableShifts]
+  );
+
+  // Reset to "all available selected" on open or whenever the available set
+  // changes (e.g., a shift just became fully accepted in the background).
+  const availableShiftKey = availableShifts.map((c) => c.id).sort().join(',');
+  useEffect(() => {
+    if (!open) return;
+    setSelectedShiftIds(availableShifts.map((c) => c.id));
+  }, [open, availableShiftKey]);
+
+  // Effective shifts to act on. If the user unchecked everything we still need
+  // ≥1 id for the backend (schema min(1)) — fall back to all available, or to
+  // the original modal scope when nothing is available (degenerate case).
+  const effectiveShiftIds =
+    selectedShiftIds.length > 0
+      ? selectedShiftIds
+      : availableShifts.length > 0
+        ? availableShifts.map((c) => c.id)
+        : effectiveCallTimeIds;
+
   // Reset the "has sent" flag each time the modal opens so a stale flag
   // from a prior session can't trigger an immediate auto-close.
   useEffect(() => {
@@ -142,7 +181,7 @@ export function FindTalentModal({
   const { data: staffData, isLoading: isLoadingStaff } =
     trpc.callTime.searchStaff.useQuery(
       {
-        callTimeIds: effectiveCallTimeIds,
+        callTimeIds: effectiveShiftIds,
         includeAlreadyInvited,
         maxDistance: maxDistance ? Number(maxDistance) : undefined,
         skillLevels: skillLevel ? [skillLevel] : undefined,
@@ -151,7 +190,7 @@ export function FindTalentModal({
         availableUnits: availableUnits ? Number(availableUnits) : undefined,
         serviceIds: serviceIdsForQuery,
       },
-      { enabled: hasCallTimeIds && open }
+      { enabled: hasCallTimeIds && open && effectiveShiftIds.length > 0 }
     );
 
   const rows = useMemo<SearchRow[]>(() => (staffData?.data as SearchRow[]) || [], [staffData]);
@@ -223,7 +262,7 @@ export function FindTalentModal({
     onSuccess: (data) => {
       toast({
         title: showResendConfirm ? 'Invitations re-sent' : 'Offers sent',
-        description: `Successfully sent ${data.sent} offer(s) across ${effectiveCallTimeIds.length} assignment(s)`,
+        description: `Successfully sent ${data.sent} offer(s) across ${effectiveShiftIds.length} assignment(s)`,
       });
       setSelectedRowIds([]);
       setPendingOffers(null);
@@ -232,14 +271,14 @@ export function FindTalentModal({
       setHasSentOffers(true);
       if (hasCallTimeIds) {
         utils.callTime.getManyByIds.invalidate({ ids: effectiveCallTimeIds });
-        utils.callTime.searchStaff.invalidate({ callTimeIds: effectiveCallTimeIds });
+        utils.callTime.searchStaff.invalidate({ callTimeIds: effectiveShiftIds });
         utils.callTime.getAll.invalidate();
       }
     },
     onError: (error) => {
       if (error.message.includes('already been invited')) {
         setPendingOffers({
-          callTimeIds: effectiveCallTimeIds,
+          callTimeIds: effectiveShiftIds,
           staffIds: selection.individualStaffIds,
           teamSelections: selection.teamSelections,
         });
@@ -275,7 +314,7 @@ export function FindTalentModal({
       setIsAssignConfirmOpen(false);
       if (hasCallTimeIds) {
         utils.callTime.getManyByIds.invalidate({ ids: effectiveCallTimeIds });
-        utils.callTime.searchStaff.invalidate({ callTimeIds: effectiveCallTimeIds });
+        utils.callTime.searchStaff.invalidate({ callTimeIds: effectiveShiftIds });
         utils.callTime.getAll.invalidate();
       }
     },
@@ -288,10 +327,11 @@ export function FindTalentModal({
 
   const handleSendOffers = () => {
     if (selection.totalSelections === 0 || !hasCallTimeIds) return;
+    if (effectiveShiftIds.length === 0) return;
 
-    if (effectiveCallTimeIds.length > 1) {
+    if (effectiveShiftIds.length > 1) {
       setPendingOffers({
-        callTimeIds: effectiveCallTimeIds,
+        callTimeIds: effectiveShiftIds,
         staffIds: selection.individualStaffIds,
         teamSelections: selection.teamSelections,
       });
@@ -300,7 +340,7 @@ export function FindTalentModal({
     }
 
     sendInvitations.mutate({
-      callTimeIds: effectiveCallTimeIds,
+      callTimeIds: effectiveShiftIds,
       staffIds: selection.individualStaffIds.length > 0 ? selection.individualStaffIds : undefined,
       teamSelections: selection.teamSelections.length > 0 ? selection.teamSelections : undefined,
     });
@@ -329,10 +369,11 @@ export function FindTalentModal({
 
   const handleAssignAssignment = () => {
     if (selection.totalSelections === 0 || !hasCallTimeIds) return;
+    if (effectiveShiftIds.length === 0) return;
 
-    if (effectiveCallTimeIds.length > 1) {
+    if (effectiveShiftIds.length > 1) {
       setPendingAssign({
-        callTimeIds: effectiveCallTimeIds,
+        callTimeIds: effectiveShiftIds,
         staffIds: selection.individualStaffIds,
         teamSelections: selection.teamSelections,
       } as any);
@@ -341,7 +382,7 @@ export function FindTalentModal({
     }
 
     assignInvitations.mutate({
-      callTimeIds: effectiveCallTimeIds,
+      callTimeIds: effectiveShiftIds,
       staffIds: selection.individualStaffIds.length > 0 ? selection.individualStaffIds : undefined,
       teamSelections: selection.teamSelections.length > 0 ? selection.teamSelections : undefined,
     });
@@ -473,42 +514,63 @@ export function FindTalentModal({
               )}
             </div>
 
-            {uniqueServices.length > 0 && (
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">
-                  Services
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {uniqueServices.map((svc) => {
-                    const checked = selectedServiceIds.includes(svc.id);
-                    // Single-service case: show the card but lock the checkbox on.
-                    const disabled = uniqueServices.length === 1;
-                    return (
-                      <label
-                        key={svc.id}
-                        className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${checked
-                            ? 'border-primary bg-primary/10 text-foreground'
-                            : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                          } ${disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'}`}
-                      >
-                        <input
-                          type="checkbox"
-                          className="rounded border-input"
-                          checked={checked}
-                          disabled={disabled}
-                          onChange={(e) => {
-                            setSelectedServiceIds((prev) =>
-                              e.target.checked
-                                ? Array.from(new Set([...prev, svc.id]))
-                                : prev.filter((id) => id !== svc.id)
-                            );
-                          }}
-                        />
-                        <span>{svc.title}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+            {(uniqueServices.length > 0 || shiftOptions.length > 0) && (
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                {uniqueServices.length > 0 && (
+                  <div className="min-w-0 flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Services
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {uniqueServices.map((svc) => {
+                        const checked = selectedServiceIds.includes(svc.id);
+                        // Single-service case: show the card but lock the checkbox on.
+                        const disabled = uniqueServices.length === 1;
+                        return (
+                          <label
+                            key={svc.id}
+                            className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${checked
+                                ? 'border-primary bg-primary/10 text-foreground'
+                                : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                              } ${disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'}`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="rounded border-input"
+                              checked={checked}
+                              disabled={disabled}
+                              onChange={(e) => {
+                                setSelectedServiceIds((prev) =>
+                                  e.target.checked
+                                    ? Array.from(new Set([...prev, svc.id]))
+                                    : prev.filter((id) => id !== svc.id)
+                                );
+                              }}
+                            />
+                            <span>{svc.title}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {shiftOptions.length > 0 && (
+                  <div className="w-full md:w-[300px] md:flex-shrink-0">
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Shifts
+                    </label>
+                    <MultiSelect
+                      options={shiftOptions}
+                      value={selectedShiftIds}
+                      onChange={setSelectedShiftIds}
+                      placeholder="All shifts"
+                      showSelectAll
+                      searchable={shiftOptions.length > 6}
+                      searchPlaceholder="Search shifts..."
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -650,7 +712,7 @@ export function FindTalentModal({
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleConfirmSend}
         title="Confirm Batch Offers"
-        description={`You are about to send offers to ${selection.totalSelections} talent(s) for ${effectiveCallTimeIds.length} different assignments.`}
+        description={`You are about to send offers to ${selection.totalSelections} talent(s) for ${effectiveShiftIds.length} different assignments.`}
         warningMessage="Are you sure you want to send batch alert confirmation?"
         confirmText="Yes, Send Offers"
         variant="default"
@@ -665,7 +727,7 @@ export function FindTalentModal({
         }}
         onConfirm={handleConfirmAssign}
         title="Confirm assign on behalf"
-        description={`You are about to assign ${selection.totalSelections} talent(s) across ${effectiveCallTimeIds.length} assignments immediately. They will be marked as accepted (no invitation email).`}
+        description={`You are about to assign ${selection.totalSelections} talent(s) across ${effectiveShiftIds.length} assignments immediately. They will be marked as accepted (no invitation email).`}
         warningMessage="We will send a call time confirmation or waitlist email only—not an invitation. This will include individual and team assignments."
         confirmText="Yes, assign"
         variant="default"

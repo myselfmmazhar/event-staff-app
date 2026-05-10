@@ -60,8 +60,17 @@ export function Dialog({ open, onClose, children, className, fullScreen }: Dialo
 
   if (!open || !mounted) return null;
 
-  // Calculate z-index based on dialog stack position
-  const stackIndex = Array.from(openDialogs).indexOf(dialogId);
+  // Calculate z-index based on dialog stack position. On the first render
+  // where `open` flips to true, the effect that registers this dialog in
+  // openDialogs hasn't run yet, so a naive lookup returns -1 and the dialog
+  // would render *behind* any already-open dialog (e.g. an inner ConfirmModal
+  // hidden behind its parent's backdrop, requiring a second click to surface).
+  // Include this dialog in the virtual stack so the very first render gets
+  // the correct z-index.
+  const dialogIds = openDialogs.has(dialogId)
+    ? Array.from(openDialogs)
+    : [...Array.from(openDialogs), dialogId];
+  const stackIndex = dialogIds.indexOf(dialogId);
   const zIndex = 50 + (stackIndex * 10);
 
   const dialogContent = (
