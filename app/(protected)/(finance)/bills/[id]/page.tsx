@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image } from "lucide-react";
-import Link from "next/link";
 import React from "react";
 import { UserRole } from "@prisma/client";
 
@@ -93,7 +92,7 @@ export default function ViewBillPage() {
                 </div>
             </div>
 
-            {/* Print-only Header */}
+            {/* Print-only Header (only visible when printing) */}
             <div className="hidden print:block mb-8">
                 <div className="flex justify-between items-start">
                     <div>
@@ -134,7 +133,7 @@ export default function ViewBillPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <p className="text-sm text-muted-foreground mb-2">Talent Member</p>
+                            <p className="text-sm text-muted-foreground mb-2">Bill To</p>
                             <p className="font-medium">
                                 {bill.staff?.firstName} {bill.staff?.lastName}
                             </p>
@@ -186,6 +185,11 @@ export default function ViewBillPage() {
                                                             🕒 {item.actualShiftDetails}
                                                         </div>
                                                     )}
+                                                    {item.internalNotes && (
+                                                        <div className="text-[10px] italic text-slate-400 mt-1 pl-4 border-l-2 border-slate-100">
+                                                            Note: {item.internalNotes}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="py-3 px-2 text-right">
                                                     {hasOT ? scheduledHours.toFixed(2) : Number(item.quantity).toFixed(2)}
@@ -201,7 +205,7 @@ export default function ViewBillPage() {
                                         if (hasOT) {
                                             const otAmount = otHours * Number(item.price);
                                             rows.push(
-                                                <tr key={`item-ot-${index}`} className="border-b last:border-0 bg-blue-50/10 align-top text-blue-700">
+                                                <tr key={`item-ot-${index}`} className="border-b last:border-0 bg-blue-50/10 animate-in fade-in slide-in-from-left-1 duration-500 align-top">
                                                     <td className="py-3 px-2 pl-6">
                                                         <div className="font-medium text-blue-700/80">
                                                             Overtime - {item.description}
@@ -251,14 +255,55 @@ export default function ViewBillPage() {
                                 <span>${Number(bill.salesTaxAmount).toFixed(2)}</span>
                             </div>
                         )}
+                        {Number(bill.depositAmount) > 0 && (
+                            <div className="flex justify-between text-blue-600">
+                                <span>Deposit</span>
+                                <span>-${Number(bill.depositAmount).toFixed(2)}</span>
+                            </div>
+                        )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total Due</span>
-                            <span>${total.toFixed(2)}</span>
+                            <span>${(total - Number(bill.depositAmount || 0)).toFixed(2)}</span>
                         </div>
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Attachments */}
+            {bill.fileLinks && Array.isArray(bill.fileLinks) && bill.fileLinks.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Paperclip className="h-5 w-5" />
+                            Attachments
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {(bill.fileLinks as Array<{ name: string; url: string; type?: string }>).map((file, index) => (
+                                <a
+                                    key={index}
+                                    href={file.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                                >
+                                    {file.type?.startsWith('image/') ? (
+                                        <Image className="h-8 w-8 text-blue-500" />
+                                    ) : (
+                                        <FileText className="h-8 w-8 text-red-500" />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{file.name}</p>
+                                        <p className="text-xs text-muted-foreground">Click to view</p>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Notes & Payment Details */}
             {(bill.notes || bill.paymentDetails) && (
@@ -273,7 +318,7 @@ export default function ViewBillPage() {
                             )}
                             {bill.notes && (
                                 <div>
-                                    <p className="text-sm font-medium mb-2">Internal Notes</p>
+                                    <p className="text-sm font-medium mb-2">Notes</p>
                                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{bill.notes}</p>
                                 </div>
                             )}

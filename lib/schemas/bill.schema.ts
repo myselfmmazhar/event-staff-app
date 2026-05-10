@@ -31,6 +31,8 @@ export const BillItemSchema = z.object({
     scheduleShiftDetail: z.string().optional().nullable(),
     actualShiftDetails: z.string().optional().nullable(),
     internalNotes: z.string().optional().nullable(),
+    isScheduledChecked: z.boolean().optional().default(true),
+    isActualChecked: z.boolean().optional().default(true),
 });
 
 
