@@ -99,6 +99,7 @@ export class StaffService {
         customField3: true,
         // Documents
         documents: true,
+        documentExpiryDate: true,
         // Team Details (for TEAM role)
         teamEntityName: true,
         teamEmail: true,

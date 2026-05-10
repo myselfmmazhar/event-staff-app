@@ -479,6 +479,7 @@ enum CategoryRequirementType {
 enum CatalogRequirementExpiration {
   NEVER
   CUSTOM_DATE
+  PER_TALENT
 }
 
 model CatalogRequirement {
@@ -806,6 +807,7 @@ model Staff {
   customField2                 String?
   customField3                 String?
   documents                    Json?
+  documentExpiryDate           DateTime?                @db.Date
   teamEntityName               String?
   teamEmail                    String?
   teamPhone                    String?

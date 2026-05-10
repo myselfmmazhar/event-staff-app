@@ -107,11 +107,18 @@ export function ClientSelectWithCreate({
               <SelectItem value="none">Not applicable</SelectItem>
 
               {/* Client list */}
-              {clients.map((client) => (
-                <SelectItem key={client.id} value={client.id}>
-                  {client.businessName}
-                </SelectItem>
-              ))}
+              {clients.map((client) => {
+                const fullName = [client.firstName, client.lastName]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim();
+                const label = client.businessName?.trim() || fullName || 'Unnamed client';
+                return (
+                  <SelectItem key={client.id} value={client.id}>
+                    {label}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         )}

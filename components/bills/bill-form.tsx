@@ -85,11 +85,14 @@ export function BillForm({ bill }: BillFormProps) {
                 scheduleShiftDetail: item.scheduleShiftDetail || "",
                 actualShiftDetails: item.actualShiftDetails || "",
                 internalNotes: item.internalNotes || "",
-            })) || [{ 
-                description: "", quantity: 1, price: 0, amount: 0, date: null, 
+                isScheduledChecked: item.isScheduledChecked ?? true,
+                isActualChecked: item.isActualChecked ?? true,
+            })) || [{
+                description: "", quantity: 1, price: 0, amount: 0, date: null,
                 scheduledStart: null, scheduledEnd: null, scheduledHours: 0,
                 actualStart: null, actualEnd: null, actualHours: 0,
-                scheduleShiftDetail: "", actualShiftDetails: "", internalNotes: "" 
+                scheduleShiftDetail: "", actualShiftDetails: "", internalNotes: "",
+                isScheduledChecked: true, isActualChecked: true
             }],
 
         } : {
@@ -97,11 +100,12 @@ export function BillForm({ bill }: BillFormProps) {
             billDate: new Date(),
             isTaxable: false,
             items: [
-                { 
+                {
                     description: "", quantity: 1, price: 0, amount: 0, date: null,
                     scheduledStart: null, scheduledEnd: null, scheduledHours: 0,
                     actualStart: null, actualEnd: null, actualHours: 0,
-                    scheduleShiftDetail: "", actualShiftDetails: "", internalNotes: "" 
+                    scheduleShiftDetail: "", actualShiftDetails: "", internalNotes: "",
+                    isScheduledChecked: true, isActualChecked: true
                 }
             ],
 
@@ -182,6 +186,23 @@ export function BillForm({ bill }: BillFormProps) {
         });
     }, [JSON.stringify(items?.map(i => ({ s: i.scheduledStart, e: i.scheduledEnd })))]);
 
+    // Update actual hours when start or end changes
+    useEffect(() => {
+        items?.forEach((item, index) => {
+            if (item.actualStart && item.actualEnd) {
+                const start = new Date(item.actualStart);
+                const end = new Date(item.actualEnd);
+                if (isValid(start) && isValid(end) && end > start) {
+                    const diffMs = end.getTime() - start.getTime();
+                    const hours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
+                    if (Number(item.actualHours) !== hours) {
+                        form.setValue(`items.${index}.actualHours`, hours);
+                    }
+                }
+            }
+        });
+    }, [JSON.stringify(items?.map(i => ({ s: i.actualStart, e: i.actualEnd })))]);
+
     const createMutation = trpc.bills.create.useMutation({
         onSuccess: () => {
             toast({
@@ -233,15 +254,25 @@ export function BillForm({ bill }: BillFormProps) {
             form.setValue(`items.${index}.serviceId`, null);
             form.setValue(`items.${index}.description`, product.title);
             form.setValue(`items.${index}.price`, Number(product.price) || 0);
-            
+
+            // Clear service fields
             form.setValue(`items.${index}.date`, null);
+            form.setValue(`items.${index}.scheduleShiftDetail`, "");
+            form.setValue(`items.${index}.actualShiftDetails`, "");
+            form.setValue(`items.${index}.internalNotes`, "");
         } else if (service) {
             form.setValue(`items.${index}.serviceId`, service.id);
             form.setValue(`items.${index}.productId`, null);
             form.setValue(`items.${index}.description`, service.description || service.title);
             form.setValue(`items.${index}.price`, Number(service.price) || 0);
 
+            // Set date to service creation date as requested
             form.setValue(`items.${index}.date`, service.createdAt ? new Date(service.createdAt) : new Date());
+
+            // Populate some initial info if available from service template
+            form.setValue(`items.${index}.scheduleShiftDetail`, service.description || "");
+            form.setValue(`items.${index}.isScheduledChecked`, true);
+            form.setValue(`items.${index}.isActualChecked`, true);
         }
     };
 
@@ -276,7 +307,7 @@ export function BillForm({ bill }: BillFormProps) {
                             value={form.watch("staffId")}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Select Talent Member" />
+                                <SelectValue placeholder="Add new or select" />
                             </SelectTrigger>
                             <SelectContent>
                                 {staffMembers.map((staff) => (
@@ -335,23 +366,16 @@ export function BillForm({ bill }: BillFormProps) {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <Label>Status</Label>
-                            <Select
-                                onValueChange={(val) => form.setValue("status", val as any)}
-                                value={form.watch("status")}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="DRAFT">Draft</SelectItem>
-                                    <SelectItem value="PENDING">Pending</SelectItem>
-                                    <SelectItem value="APPROVED">Approved</SelectItem>
-                                    <SelectItem value="PAID">Paid</SelectItem>
-                                    <SelectItem value="VOID">Void</SelectItem>
-                                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Label>Custom Field 1</Label>
+                            <Input {...form.register("customField1")} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Custom Field 2</Label>
+                            <Input {...form.register("customField2")} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Custom Field 3</Label>
+                            <Input {...form.register("customField3")} />
                         </div>
                     </div>
                 </CardContent>
@@ -369,12 +393,12 @@ export function BillForm({ bill }: BillFormProps) {
                                 <div className="grid grid-cols-12 gap-4 items-start">
                                     <div className="col-span-12 md:col-span-3 space-y-2">
                                         <Label>Product / Service</Label>
-                                        <Select 
+                                        <Select
                                             onValueChange={(val) => handleProductChange(index, val)}
                                             value={form.watch(`items.${index}.serviceId`) || form.watch(`items.${index}.productId`) || undefined}
                                         >
                                             <SelectTrigger>
-                                                <SelectValue placeholder="Select Catalog Item" />
+                                                <SelectValue placeholder="Select from Catalog" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {products.length > 0 && (
@@ -397,38 +421,49 @@ export function BillForm({ bill }: BillFormProps) {
                                         </Select>
                                     </div>
 
-                                    <div className={`col-span-12 ${isService ? 'md:col-span-8' : 'md:col-span-5'} space-y-2`}>
-                                        <Label>Description</Label>
-                                        <Input {...form.register(`items.${index}.description`)} />
-                                    </div>
+                                    {isService && (
+                                        <div className="col-span-12 md:col-span-2 space-y-2">
+                                            <Label>Service Date</Label>
+                                            <Input
+                                                type="date"
+                                                value={form.watch(`items.${index}.date`) ? new Date(form.watch(`items.${index}.date`)!).toISOString().split('T')[0] : ''}
+                                                onChange={(e) => form.setValue(`items.${index}.date`, e.target.valueAsDate)}
+                                            />
+                                        </div>
+                                    )}
 
                                     {!isService && (
-                                        <>
-                                            <div className="col-span-4 md:col-span-1 space-y-2">
-                                                <Label>Qty</Label>
-                                                <Input
-                                                    type="number"
-                                                    {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
-                                                />
-                                            </div>
-                                            <div className="col-span-4 md:col-span-1 space-y-2">
-                                                <Label>Price</Label>
-                                                <Input
-                                                    type="number"
-                                                    {...form.register(`items.${index}.price`, { valueAsNumber: true })}
-                                                />
-                                            </div>
-                                            <div className="col-span-3 md:col-span-1 space-y-2">
-                                                <Label>Amount</Label>
-                                                <Input
-                                                    readOnly
-                                                    disabled
-                                                    className="bg-muted"
-                                                    value={form.watch(`items.${index}.amount`)?.toFixed(2)}
-                                                />
-                                            </div>
-                                        </>
+                                        <div className="col-span-12 md:col-span-3 space-y-2">
+                                            <Label>Description</Label>
+                                            <Input {...form.register(`items.${index}.description`)} />
+                                        </div>
                                     )}
+
+                                    <div className="col-span-4 md:col-span-2 space-y-2">
+                                        <Label>Qty</Label>
+                                        <Input
+                                            type="number"
+                                            {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
+                                        />
+                                    </div>
+
+                                    <div className="col-span-4 md:col-span-2 space-y-2">
+                                        <Label>Price</Label>
+                                        <Input
+                                            type="number"
+                                            {...form.register(`items.${index}.price`, { valueAsNumber: true })}
+                                        />
+                                    </div>
+
+                                    <div className={`col-span-3 ${isService ? 'md:col-span-2' : 'md:col-span-1'} space-y-2`}>
+                                        <Label>Amount</Label>
+                                        <Input
+                                            readOnly
+                                            disabled
+                                            className="bg-muted"
+                                            value={form.watch(`items.${index}.amount`)?.toFixed(2)}
+                                        />
+                                    </div>
 
                                     <div className="col-span-1 flex justify-end pt-8">
                                         <Button
@@ -442,34 +477,128 @@ export function BillForm({ bill }: BillFormProps) {
                                         </Button>
                                     </div>
                                 </div>
-                                
+
                                 {isService && (
-                                    <div className="bg-muted/30 p-4 rounded-lg border border-dashed border-border space-y-4">
-                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>Qty</Label>
-                                                <Input
-                                                    type="number"
-                                                    {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
-                                                />
+                                    <div className="col-span-full bg-muted/30 p-4 rounded-xl border border-border shadow-sm space-y-4">
+                                        <div className="space-y-2">
+                                            <Label>Description</Label>
+                                            <Input {...form.register(`items.${index}.description`)} />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            {/* Scheduled Shift Section */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2 border-b border-blue-100 pb-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!items?.[index]?.isScheduledChecked}
+                                                        onChange={(e) => form.setValue(`items.${index}.isScheduledChecked`, e.target.checked)}
+                                                        className="h-4 w-4 rounded border-border accent-primary"
+                                                    />
+                                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Scheduled Shift Detail</h4>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1">
+                                                        <span className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Start Date & Time</span>
+                                                        <Input
+                                                            type="datetime-local"
+                                                            className="h-8 text-[10px] px-2 bg-white"
+                                                            value={form.watch(`items.${index}.scheduledStart`) && isValid(new Date(form.watch(`items.${index}.scheduledStart`)!))
+                                                                ? format(new Date(form.watch(`items.${index}.scheduledStart`)!), "yyyy-MM-dd'T'HH:mm")
+                                                                : ""}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                form.setValue(`items.${index}.scheduledStart`, val ? new Date(val) : null);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <span className="text-[8px] font-bold text-muted-foreground uppercase leading-none">End Date & Time</span>
+                                                        <Input
+                                                            type="datetime-local"
+                                                            className="h-8 text-[10px] px-2 bg-white"
+                                                            value={form.watch(`items.${index}.scheduledEnd`) && isValid(new Date(form.watch(`items.${index}.scheduledEnd`)!))
+                                                                ? format(new Date(form.watch(`items.${index}.scheduledEnd`)!), "yyyy-MM-dd'T'HH:mm")
+                                                                : ""}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                form.setValue(`items.${index}.scheduledEnd`, val ? new Date(val) : null);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 pt-1">
+                                                    <span className="text-[8px] font-bold text-muted-foreground uppercase">Scheduled Hours:</span>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        className="h-6 w-16 text-[10px] px-1 font-bold text-blue-600 bg-white"
+                                                        {...form.register(`items.${index}.scheduledHours`, { valueAsNumber: true })}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Price</Label>
-                                                <Input
-                                                    type="number"
-                                                    {...form.register(`items.${index}.price`, { valueAsNumber: true })}
-                                                />
+
+                                            {/* Actual Shift Section */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2 border-b border-emerald-100 pb-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!items?.[index]?.isActualChecked}
+                                                        onChange={(e) => form.setValue(`items.${index}.isActualChecked`, e.target.checked)}
+                                                        className="h-4 w-4 rounded border-border accent-primary"
+                                                    />
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Actual Shift Details</h4>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1">
+                                                        <span className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Shift Start Date & Time</span>
+                                                        <Input
+                                                            type="datetime-local"
+                                                            className="h-8 text-[10px] px-2 bg-white"
+                                                            value={form.watch(`items.${index}.actualStart`) && isValid(new Date(form.watch(`items.${index}.actualStart`)!))
+                                                                ? format(new Date(form.watch(`items.${index}.actualStart`)!), "yyyy-MM-dd'T'HH:mm")
+                                                                : ""}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                form.setValue(`items.${index}.actualStart`, val ? new Date(val) : null);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <span className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Shift End Date & Time</span>
+                                                        <Input
+                                                            type="datetime-local"
+                                                            className="h-8 text-[10px] px-2 bg-white"
+                                                            value={form.watch(`items.${index}.actualEnd`) && isValid(new Date(form.watch(`items.${index}.actualEnd`)!))
+                                                                ? format(new Date(form.watch(`items.${index}.actualEnd`)!), "yyyy-MM-dd'T'HH:mm")
+                                                                : ""}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                form.setValue(`items.${index}.actualEnd`, val ? new Date(val) : null);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 pt-1">
+                                                    <span className="text-[8px] font-bold text-muted-foreground uppercase">Actual Hours:</span>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        className="h-6 w-16 text-[10px] px-1 font-bold text-emerald-600 bg-white"
+                                                        {...form.register(`items.${index}.actualHours`, { valueAsNumber: true })}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex justify-end">
-                                            <div className="space-y-2 w-32">
-                                                <Label>Amount</Label>
-                                                <Input
-                                                    readOnly
-                                                    disabled
-                                                    className="bg-muted font-bold"
-                                                    value={form.watch(`items.${index}.amount`)?.toFixed(2)}
-                                                />
+
+                                        <div className="mt-4 pt-4 border-t border-border/50">
+                                            <Label className="text-[8px] font-bold uppercase text-muted-foreground mb-1 block">Internal Notes</Label>
+                                            <div className="text-[10px] text-slate-600 bg-white/50 p-2 rounded border border-border italic min-h-[40px]">
+                                                {form.watch(`items.${index}.internalNotes`) || "No internal notes for this shift."}
                                             </div>
                                         </div>
                                     </div>
@@ -478,25 +607,29 @@ export function BillForm({ bill }: BillFormProps) {
                         );
                     })}
 
+
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={() => append({ 
-                            description: "", 
-                            quantity: 1, 
-                            price: 0, 
-                            amount: 0, 
-                            date: null, 
+                        onClick={() => append({
+                            description: "",
+                            quantity: 1,
+                            price: 0,
+                            amount: 0,
+                            date: null,
                             scheduledStart: null,
                             scheduledEnd: null,
                             scheduledHours: 0,
                             actualStart: null,
                             actualEnd: null,
                             actualHours: 0,
-                            scheduleShiftDetail: "", 
-                            actualShiftDetails: "", 
-                            internalNotes: "" 
+                            scheduleShiftDetail: "",
+                            actualShiftDetails: "",
+                            internalNotes: "",
+                            isScheduledChecked: true,
+                            isActualChecked: true
                         })}
+
                         className="mt-2"
                     >
                         <PlusIcon className="h-4 w-4 mr-2" />
@@ -532,7 +665,7 @@ export function BillForm({ bill }: BillFormProps) {
                         {showDiscount && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Discount Value</Label>
+                                    <Label>If Yes, Discount Value</Label>
                                     <Input
                                         type="number"
                                         {...form.register("discountValue", { valueAsNumber: true })}
@@ -553,6 +686,66 @@ export function BillForm({ bill }: BillFormProps) {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Deposit */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                        <div className="space-y-2">
+                            <Label className="font-semibold">Deposit Received?</Label>
+                            <RadioGroup
+                                className="flex gap-4"
+                                value={showDeposit ? "yes" : "no"}
+                                onValueChange={(v) => setShowDeposit(v === "yes")}
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="yes" id="deposit-yes" />
+                                    <Label htmlFor="deposit-yes">Yes</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="no" id="deposit-no" />
+                                    <Label htmlFor="deposit-no">No</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        {showDeposit && (
+                            <div className="space-y-2">
+                                <Label>Deposit Amount</Label>
+                                <Input
+                                    type="number"
+                                    {...form.register("depositAmount", { valueAsNumber: true })}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Shipping */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                        <div className="space-y-2">
+                            <Label className="font-semibold">Shipping?</Label>
+                            <RadioGroup
+                                className="flex gap-4"
+                                value={showShipping ? "yes" : "no"}
+                                onValueChange={(v) => setShowShipping(v === "yes")}
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="yes" id="shipping-yes" />
+                                    <Label htmlFor="shipping-yes">Yes</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="no" id="shipping-no" />
+                                    <Label htmlFor="shipping-no">No</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        {showShipping && (
+                            <div className="space-y-2">
+                                <Label>Shipping charges</Label>
+                                <Input
+                                    type="number"
+                                    {...form.register("shippingAmount", { valueAsNumber: true })}
+                                />
                             </div>
                         )}
                     </div>
@@ -599,43 +792,65 @@ export function BillForm({ bill }: BillFormProps) {
                             <Label className="font-semibold">Payment Details</Label>
                             <Textarea
                                 {...form.register("paymentDetails")}
-                                placeholder="Bank transfer info, etc."
+                                placeholder="Bank Account Details, etc."
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="font-semibold">Internal Notes</Label>
+                            <Label className="font-semibold">Note to Talent</Label>
                             <Textarea
                                 {...form.register("notes")}
-                                placeholder="Internal notes for this bill..."
+                                placeholder="Thank you for your work..."
                             />
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="font-semibold">Attachments</Label>
+                        <FileUpload
+                            onFilesChange={(files) => console.log(files)}
+                            accept={{ 'image/*': [], 'application/pdf': [] }}
+                        />
                     </div>
                 </CardContent>
             </Card>
 
+            {/* Total Footer Summary */}
             <Card>
                 <CardContent className="p-6">
                     <div className="space-y-4 max-w-sm ml-auto">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Subtotal</span>
-                            <span>${subtotal.toFixed(2)}</span>
+                            <span>{subtotal.toFixed(2)}</span>
                         </div>
                         {discountAmount > 0 && (
                             <div className="flex justify-between text-destructive">
                                 <span>Discount</span>
-                                <span>-${discountAmount.toFixed(2)}</span>
+                                <span>-{discountAmount.toFixed(2)}</span>
+                            </div>
+                        )}
+                        {shippingAmount > 0 && (
+                            <div className="flex justify-between">
+                                <span>Shipping</span>
+                                <span>{shippingAmount.toFixed(2)}</span>
                             </div>
                         )}
                         {salesTaxAmount > 0 && (
                             <div className="flex justify-between">
                                 <span>Sales Tax</span>
-                                <span>${salesTaxAmount.toFixed(2)}</span>
+                                <span>{salesTaxAmount.toFixed(2)}</span>
+                            </div>
+                        )}
+                        {depositAmount > 0 && (
+                            <div className="flex justify-between font-medium text-blue-600">
+                                <span>Deposit</span>
+                                <span>-{depositAmount.toFixed(2)}</span>
                             </div>
                         )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total Due</span>
-                            <span>${total.toFixed(2)}</span>
+                            {/* Total Due typically subtracts deposit */}
+                            <span>{(total - depositAmount).toFixed(2)}</span>
                         </div>
                     </div>
                 </CardContent>

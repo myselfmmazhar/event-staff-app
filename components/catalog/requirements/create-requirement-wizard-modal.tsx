@@ -40,6 +40,7 @@ import { motion } from 'framer-motion';
 const CATALOG_REQUIREMENT_EXPIRATION = [
   'NEVER',
   'CUSTOM_DATE',
+  'PER_TALENT',
 ] as const;
 
 type CatalogRequirementExpirationValue = (typeof CATALOG_REQUIREMENT_EXPIRATION)[number];
@@ -561,6 +562,15 @@ export function CreateRequirementWizardModal({
                   <RadioGroupItem value="CUSTOM_DATE" id="exp-custom" />
                   <span>Expires on a specific date</span>
                 </label>
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <RadioGroupItem value="PER_TALENT" id="exp-per-talent" />
+                  <div>
+                    <span>Expiry against the talent</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Each talent specifies their own expiry date when uploading the document.
+                    </p>
+                  </div>
+                </label>
               </RadioGroup>
               {watch('expirationType') === 'CUSTOM_DATE' && (
                 <div className="pl-6 space-y-1">
@@ -666,9 +676,11 @@ export function CreateRequirementWizardModal({
                 <span className="text-muted-foreground">Expiration: </span>
                 {settingsValues.expirationType === 'NEVER'
                   ? 'Never expires'
-                  : settingsValues.expirationDate
-                    ? `Expires on ${new Date(settingsValues.expirationDate).toLocaleDateString()}`
-                    : 'Custom date'}
+                  : settingsValues.expirationType === 'PER_TALENT'
+                    ? 'Expiry against the talent'
+                    : settingsValues.expirationDate
+                      ? `Expires on ${new Date(settingsValues.expirationDate).toLocaleDateString()}`
+                      : 'Custom date'}
               </p>
               <p>
                 <span className="text-muted-foreground">Approvals: </span>

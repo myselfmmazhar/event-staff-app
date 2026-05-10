@@ -79,6 +79,8 @@ export interface FormSectionProps {
 export interface ClientOption {
   id: string;
   businessName: string;
+  firstName?: string | null;
+  lastName?: string | null;
   requirements?: string | null;
   businessAddress?: string | null;
   businessAddressLine2?: string | null;

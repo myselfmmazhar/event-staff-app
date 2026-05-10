@@ -415,9 +415,15 @@ export function ViewStaffModal({
                     )}
 
                     {/* Documents Section */}
-                    {hasDocuments && (
+                    {(hasDocuments || staff.documentExpiryDate) && (
                         <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
                             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Documents</h3>
+                            {staff.documentExpiryDate && (
+                                <p className="text-sm mb-3">
+                                    <span className="text-muted-foreground">Document expiry: </span>
+                                    <span className="font-medium">{new Date(staff.documentExpiryDate).toLocaleDateString()}</span>
+                                </p>
+                            )}
                             <div className="space-y-2">
                                 {documents.map((doc, index) => (
                                     <div

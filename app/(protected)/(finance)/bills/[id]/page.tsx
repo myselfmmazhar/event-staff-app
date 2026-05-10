@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image } from "lucide-react";
-import Link from "next/link";
 import React from "react";
 import { UserRole } from "@prisma/client";
+import { PrintDocument } from "@/components/finance/print-document";
 
 export default function ViewBillPage() {
     const params = useParams();
@@ -19,6 +19,7 @@ export default function ViewBillPage() {
 
     const { data: bill, isLoading } = trpc.bills.getById.useQuery({ id: billId });
     const { data: currentUser } = trpc.profile.getMyProfile.useQuery();
+    const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
     const isStaff = currentUser?.role === UserRole.STAFF;
 
     if (isLoading) {
@@ -59,8 +60,55 @@ export default function ViewBillPage() {
         : Number(bill.discountValue) || 0;
     const total = subtotal - discountAmount + Number(bill.shippingAmount || 0) + Number(bill.salesTaxAmount || 0);
 
+    const printItems = (bill.items || []).map((item) => {
+        const actualHours = Number(item.actualHours) || 0;
+        const scheduledHours = Number(item.scheduledHours) || 0;
+        const baseQty = Number(item.quantity) || 0;
+        const hasShiftHours = actualHours > 0 || scheduledHours > 0;
+        const rolledQty = hasShiftHours
+            ? Math.max(actualHours, scheduledHours)
+            : baseQty;
+        const rolledAmount = hasShiftHours
+            ? rolledQty * Number(item.price)
+            : Number(item.amount);
+        return {
+            description: item.description,
+            date: item.date ?? null,
+            scheduleShiftDetail: item.scheduleShiftDetail ?? null,
+            actualShiftDetails: item.actualShiftDetails ?? null,
+            quantity: rolledQty,
+            price: Number(item.price),
+            amount: rolledAmount,
+        };
+    });
+
     return (
         <div className="container mx-auto py-6 space-y-6 max-w-4xl">
+            {/* Print-only document */}
+            <PrintDocument
+                variant="BILL"
+                documentNo={bill.billNo}
+                documentDate={bill.billDate}
+                dueDate={bill.dueDate}
+                terms={bill.terms}
+                status={bill.status}
+                billTo={{
+                    name: `${bill.staff?.firstName ?? ""} ${bill.staff?.lastName ?? ""}`.trim(),
+                    email: bill.staff?.email,
+                }}
+                company={companyProfile}
+                items={printItems}
+                subtotal={subtotal}
+                discountAmount={discountAmount}
+                shippingAmount={Number(bill.shippingAmount || 0)}
+                salesTaxAmount={Number(bill.salesTaxAmount || 0)}
+                depositAmount={Number(bill.depositAmount || 0)}
+                totalDue={total - Number(bill.depositAmount || 0)}
+                notes={bill.notes}
+            />
+
+            {/* Screen UI (hidden when printing) */}
+            <div className="print:hidden space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -90,16 +138,6 @@ export default function ViewBillPage() {
                             Edit
                         </Button>
                     )}
-                </div>
-            </div>
-
-            {/* Print-only Header */}
-            <div className="hidden print:block mb-8">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-4xl font-bold text-foreground">BILL</h1>
-                        <p className="text-muted-foreground mt-2">#{bill.billNo}</p>
-                    </div>
                 </div>
             </div>
 
@@ -134,7 +172,7 @@ export default function ViewBillPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <p className="text-sm text-muted-foreground mb-2">Talent Member</p>
+                            <p className="text-sm text-muted-foreground mb-2">Bill To</p>
                             <p className="font-medium">
                                 {bill.staff?.firstName} {bill.staff?.lastName}
                             </p>
@@ -186,6 +224,11 @@ export default function ViewBillPage() {
                                                             🕒 {item.actualShiftDetails}
                                                         </div>
                                                     )}
+                                                    {item.internalNotes && (
+                                                        <div className="text-[10px] italic text-slate-400 mt-1 pl-4 border-l-2 border-slate-100">
+                                                            Note: {item.internalNotes}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="py-3 px-2 text-right">
                                                     {hasOT ? scheduledHours.toFixed(2) : Number(item.quantity).toFixed(2)}
@@ -201,7 +244,7 @@ export default function ViewBillPage() {
                                         if (hasOT) {
                                             const otAmount = otHours * Number(item.price);
                                             rows.push(
-                                                <tr key={`item-ot-${index}`} className="border-b last:border-0 bg-blue-50/10 align-top text-blue-700">
+                                                <tr key={`item-ot-${index}`} className="border-b last:border-0 bg-blue-50/10 animate-in fade-in slide-in-from-left-1 duration-500 align-top">
                                                     <td className="py-3 px-2 pl-6">
                                                         <div className="font-medium text-blue-700/80">
                                                             Overtime - {item.description}
@@ -251,14 +294,55 @@ export default function ViewBillPage() {
                                 <span>${Number(bill.salesTaxAmount).toFixed(2)}</span>
                             </div>
                         )}
+                        {Number(bill.depositAmount) > 0 && (
+                            <div className="flex justify-between text-blue-600">
+                                <span>Deposit</span>
+                                <span>-${Number(bill.depositAmount).toFixed(2)}</span>
+                            </div>
+                        )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total Due</span>
-                            <span>${total.toFixed(2)}</span>
+                            <span>${(total - Number(bill.depositAmount || 0)).toFixed(2)}</span>
                         </div>
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Attachments */}
+            {bill.fileLinks && Array.isArray(bill.fileLinks) && bill.fileLinks.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Paperclip className="h-5 w-5" />
+                            Attachments
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {(bill.fileLinks as Array<{ name: string; url: string; type?: string }>).map((file, index) => (
+                                <a
+                                    key={index}
+                                    href={file.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                                >
+                                    {file.type?.startsWith('image/') ? (
+                                        <Image className="h-8 w-8 text-blue-500" />
+                                    ) : (
+                                        <FileText className="h-8 w-8 text-red-500" />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{file.name}</p>
+                                        <p className="text-xs text-muted-foreground">Click to view</p>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Notes & Payment Details */}
             {(bill.notes || bill.paymentDetails) && (
@@ -273,7 +357,7 @@ export default function ViewBillPage() {
                             )}
                             {bill.notes && (
                                 <div>
-                                    <p className="text-sm font-medium mb-2">Internal Notes</p>
+                                    <p className="text-sm font-medium mb-2">Notes</p>
                                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{bill.notes}</p>
                                 </div>
                             )}
@@ -281,6 +365,7 @@ export default function ViewBillPage() {
                     </CardContent>
                 </Card>
             )}
+            </div>
         </div>
     );
 }
