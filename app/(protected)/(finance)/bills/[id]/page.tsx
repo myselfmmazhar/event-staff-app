@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image } from "lucide-react";
 import React from "react";
 import { UserRole } from "@prisma/client";
+import { PrintDocument } from "@/components/finance/print-document";
 
 export default function ViewBillPage() {
     const params = useParams();
@@ -18,6 +19,7 @@ export default function ViewBillPage() {
 
     const { data: bill, isLoading } = trpc.bills.getById.useQuery({ id: billId });
     const { data: currentUser } = trpc.profile.getMyProfile.useQuery();
+    const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
     const isStaff = currentUser?.role === UserRole.STAFF;
 
     if (isLoading) {
@@ -58,8 +60,55 @@ export default function ViewBillPage() {
         : Number(bill.discountValue) || 0;
     const total = subtotal - discountAmount + Number(bill.shippingAmount || 0) + Number(bill.salesTaxAmount || 0);
 
+    const printItems = (bill.items || []).map((item) => {
+        const actualHours = Number(item.actualHours) || 0;
+        const scheduledHours = Number(item.scheduledHours) || 0;
+        const baseQty = Number(item.quantity) || 0;
+        const hasShiftHours = actualHours > 0 || scheduledHours > 0;
+        const rolledQty = hasShiftHours
+            ? Math.max(actualHours, scheduledHours)
+            : baseQty;
+        const rolledAmount = hasShiftHours
+            ? rolledQty * Number(item.price)
+            : Number(item.amount);
+        return {
+            description: item.description,
+            date: item.date ?? null,
+            scheduleShiftDetail: item.scheduleShiftDetail ?? null,
+            actualShiftDetails: item.actualShiftDetails ?? null,
+            quantity: rolledQty,
+            price: Number(item.price),
+            amount: rolledAmount,
+        };
+    });
+
     return (
         <div className="container mx-auto py-6 space-y-6 max-w-4xl">
+            {/* Print-only document */}
+            <PrintDocument
+                variant="BILL"
+                documentNo={bill.billNo}
+                documentDate={bill.billDate}
+                dueDate={bill.dueDate}
+                terms={bill.terms}
+                status={bill.status}
+                billTo={{
+                    name: `${bill.staff?.firstName ?? ""} ${bill.staff?.lastName ?? ""}`.trim(),
+                    email: bill.staff?.email,
+                }}
+                company={companyProfile}
+                items={printItems}
+                subtotal={subtotal}
+                discountAmount={discountAmount}
+                shippingAmount={Number(bill.shippingAmount || 0)}
+                salesTaxAmount={Number(bill.salesTaxAmount || 0)}
+                depositAmount={Number(bill.depositAmount || 0)}
+                totalDue={total - Number(bill.depositAmount || 0)}
+                notes={bill.notes}
+            />
+
+            {/* Screen UI (hidden when printing) */}
+            <div className="print:hidden space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -89,16 +138,6 @@ export default function ViewBillPage() {
                             Edit
                         </Button>
                     )}
-                </div>
-            </div>
-
-            {/* Print-only Header (only visible when printing) */}
-            <div className="hidden print:block mb-8">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-4xl font-bold text-foreground">BILL</h1>
-                        <p className="text-muted-foreground mt-2">#{bill.billNo}</p>
-                    </div>
                 </div>
             </div>
 
@@ -326,6 +365,7 @@ export default function ViewBillPage() {
                     </CardContent>
                 </Card>
             )}
+            </div>
         </div>
     );
 }

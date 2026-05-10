@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image, ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { PrintDocument } from "@/components/finance/print-document";
 
 export default function ViewInvoicePage() {
     const params = useParams();
@@ -16,6 +17,7 @@ export default function ViewInvoicePage() {
     const invoiceId = params.id as string;
 
     const { data: invoice, isLoading } = trpc.invoices.getById.useQuery({ id: invoiceId });
+    const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
 
     if (isLoading) {
         return (
@@ -53,8 +55,57 @@ export default function ViewInvoicePage() {
         : Number(invoice.discountValue) || 0;
     const total = subtotal - discountAmount + Number(invoice.shippingAmount || 0) + Number(invoice.salesTaxAmount || 0);
 
+    const printItems = (invoice.items || []).map((item) => {
+        const actualHours = item.isActualChecked ? Number(item.actualHours) || 0 : 0;
+        const scheduledHours = item.isScheduledChecked ? Number(item.scheduledHours) || 0 : 0;
+        const baseQty = Number(item.quantity) || 0;
+        const hasShiftHours = actualHours > 0 || scheduledHours > 0;
+        const rolledQty = hasShiftHours
+            ? Math.max(actualHours, scheduledHours)
+            : baseQty;
+        const rolledAmount = hasShiftHours
+            ? rolledQty * Number(item.price)
+            : Number(item.amount);
+        return {
+            description: item.description,
+            date: item.date ?? null,
+            scheduleShiftDetail: item.isScheduledChecked ? item.scheduleShiftDetail ?? null : null,
+            actualShiftDetails: item.isActualChecked ? item.actualShiftDetails ?? null : null,
+            quantity: rolledQty,
+            price: Number(item.price),
+            amount: rolledAmount,
+        };
+    });
+
     return (
         <div className="container mx-auto py-6 space-y-6 max-w-4xl">
+            {/* Print-only document */}
+            <PrintDocument
+                variant="INVOICE"
+                documentNo={invoice.invoiceNo}
+                documentDate={invoice.invoiceDate}
+                dueDate={invoice.dueDate}
+                terms={invoice.terms}
+                status={invoice.status}
+                billTo={{
+                    name: `${invoice.client?.firstName ?? ""} ${invoice.client?.lastName ?? ""}`.trim() ||
+                        invoice.client?.businessName || "",
+                    business: invoice.client?.businessName,
+                    email: invoice.client?.email,
+                }}
+                company={companyProfile}
+                items={printItems}
+                subtotal={subtotal}
+                discountAmount={discountAmount}
+                shippingAmount={Number(invoice.shippingAmount || 0)}
+                salesTaxAmount={Number(invoice.salesTaxAmount || 0)}
+                depositAmount={Number(invoice.depositAmount || 0)}
+                totalDue={total - Number(invoice.depositAmount || 0)}
+                notes={invoice.notes}
+            />
+
+            {/* Screen UI (hidden when printing) */}
+            <div className="print:hidden space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -82,16 +133,6 @@ export default function ViewInvoicePage() {
                         <Pencil className="h-4 w-4" />
                         Edit
                     </Button>
-                </div>
-            </div>
-
-            {/* Print-only Header (only visible when printing) */}
-            <div className="hidden print:block mb-8">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-4xl font-bold text-foreground">INVOICE</h1>
-                        <p className="text-muted-foreground mt-2">#{invoice.invoiceNo}</p>
-                    </div>
                 </div>
             </div>
 
@@ -319,6 +360,7 @@ export default function ViewInvoicePage() {
                     </CardContent>
                 </Card>
             )}
+            </div>
         </div>
     );
 }

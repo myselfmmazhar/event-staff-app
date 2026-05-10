@@ -397,3 +397,51 @@
     display: none; /* Chrome, Safari and Opera */
   }
 }
+
+/* Print styles for finance documents (bills / invoices) */
+@media print {
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* When a print document is on the page, hide everything else */
+  body:has(.print-doc) * {
+    visibility: hidden !important;
+  }
+
+  body:has(.print-doc) .print-doc,
+  body:has(.print-doc) .print-doc * {
+    visibility: visible !important;
+  }
+
+  body:has(.print-doc) .print-doc {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Preserve background colors and accents in printed output */
+  .print-doc,
+  .print-doc * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Avoid splitting key blocks across pages */
+  .print-doc__avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
