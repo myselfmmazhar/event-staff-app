@@ -255,6 +255,7 @@ export function AssignmentsSection({
       if (minDate || eventStartTime || maxDate || eventEndTime) {
         const prefill: Partial<Assignment> = {
           type: 'SERVICE',
+          quantity: 1,
           startDate: minDate || undefined,
           startTime: eventStartTime || undefined,
           endDate: maxDate || undefined,
