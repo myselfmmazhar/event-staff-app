@@ -55,6 +55,8 @@ export type PrintDocumentProps = {
     totalDue: number;
 
     notes?: string | null;
+
+    customFields?: Array<{ label: string; value: string }>;
 };
 
 const formatCurrency = (n: number) => `$${n.toFixed(2)}`;
@@ -118,7 +120,10 @@ export function PrintDocument(props: PrintDocumentProps) {
         depositAmount,
         totalDue,
         notes,
+        customFields,
     } = props;
+
+    const visibleCustomFields = (customFields ?? []).filter((f) => f.value && f.value.trim().length > 0);
 
     const isInvoice = variant === "INVOICE";
     const watermark = getWatermark(status);
@@ -292,6 +297,29 @@ export function PrintDocument(props: PrintDocumentProps) {
                     )}
                 </div>
             </div>
+
+            {/* Custom fields */}
+            {visibleCustomFields.length > 0 && (
+                <div
+                    className="print-doc__avoid-break"
+                    style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "16px 32px",
+                        marginTop: "8px",
+                        marginBottom: "4px",
+                    }}
+                >
+                    {visibleCustomFields.map((f, i) => (
+                        <div key={i} style={{ minWidth: "140px" }}>
+                            <div style={{ fontWeight: 700, fontSize: "10px", color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                {f.label}
+                            </div>
+                            <div>{f.value}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Gold rule */}
             <div

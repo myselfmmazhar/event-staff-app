@@ -15,6 +15,7 @@ interface Bill {
     billNo: string;
     status: BillStatus;
     billDate: Date | string;
+    dueDate?: Date | string | null;
     staff: {
         id: string;
         firstName?: string | null;
@@ -208,6 +209,15 @@ export function BillTable({
                     {bill.billNo}
                 </span>
             ),
+        },
+        {
+            key: "dueDate",
+            label: "Due Date",
+            className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
+            render: (bill) =>
+                bill.dueDate
+                    ? format(new Date(bill.dueDate), "MMM dd, yyyy")
+                    : <span className="opacity-60">—</span>,
         },
         {
             key: "staff",

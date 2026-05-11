@@ -370,8 +370,131 @@ export class NotificationTriggerService {
     }
 
     // ==========================================
+    // Talent Document Notifications
+    // ==========================================
+
+    /**
+     * Trigger: Talent uploaded a document update — notifies all admins.
+     */
+    async onTalentDocumentRequestSubmitted(
+        details: {
+            staffId: string;
+            staffName: string;
+            requirementTitle: string;
+            documentId: string;
+        }
+    ) {
+        const adminUserIds = await this.getAdminUserIds();
+        if (adminUserIds.length === 0) return;
+
+        await this.notificationService.createBulk(adminUserIds, {
+            type: NotificationType.TALENT_DOCUMENT_REQUEST,
+            priority: NotificationPriority.NORMAL,
+            title: "New Document Update Request",
+            message: `${details.staffName} submitted an updated ${details.requirementTitle} for review`,
+            actionUrl: `/staff`,
+            actionLabel: "Review",
+            relatedEntityType: "staffDocument",
+            relatedEntityId: details.documentId,
+        });
+    }
+
+    /**
+     * Trigger: Admin approved a talent's document update.
+     */
+    async onTalentDocumentApproved(
+        staffUserId: string,
+        details: {
+            requirementTitle: string;
+            documentId: string;
+        }
+    ) {
+        await this.notificationService.create({
+            userId: staffUserId,
+            type: NotificationType.TALENT_DOCUMENT_APPROVED,
+            priority: NotificationPriority.NORMAL,
+            title: "Document Approved",
+            message: `Your updated ${details.requirementTitle} has been approved.`,
+            actionUrl: `/profile`,
+            actionLabel: "View",
+            relatedEntityType: "staffDocument",
+            relatedEntityId: details.documentId,
+        });
+    }
+
+    /**
+     * Trigger: Admin rejected a talent's document update.
+     */
+    async onTalentDocumentRejected(
+        staffUserId: string,
+        details: {
+            requirementTitle: string;
+            documentId: string;
+            reason?: string;
+        }
+    ) {
+        const reasonSuffix = details.reason ? ` Reason: ${details.reason}` : "";
+        await this.notificationService.create({
+            userId: staffUserId,
+            type: NotificationType.TALENT_DOCUMENT_REJECTED,
+            priority: NotificationPriority.HIGH,
+            title: "Document Rejected",
+            message: `Your updated ${details.requirementTitle} was rejected.${reasonSuffix}`,
+            actionUrl: `/profile`,
+            actionLabel: "Re-upload",
+            relatedEntityType: "staffDocument",
+            relatedEntityId: details.documentId,
+        });
+    }
+
+    /**
+     * Trigger: One of the talent's documents is expiring within the warning window.
+     * Caller is responsible for stamping `expiryNotifiedAt` so this fires only once.
+     */
+    async onTalentDocumentExpiring(
+        staffUserId: string,
+        details: {
+            requirementTitle: string;
+            documentId: string;
+            expiresAt: Date;
+            daysRemaining: number;
+        }
+    ) {
+        const dateLabel = details.expiresAt.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+        });
+        await this.notificationService.create({
+            userId: staffUserId,
+            type: NotificationType.TALENT_DOCUMENT_EXPIRING,
+            priority: NotificationPriority.HIGH,
+            title: "Document Expiring Soon",
+            message: `Your ${details.requirementTitle} expires on ${dateLabel} (${details.daysRemaining} day${details.daysRemaining === 1 ? "" : "s"}). Please upload an updated copy.`,
+            actionUrl: `/profile`,
+            actionLabel: "Upload Update",
+            relatedEntityType: "staffDocument",
+            relatedEntityId: details.documentId,
+        });
+    }
+
+    // ==========================================
     // Helper Methods
     // ==========================================
+
+    /**
+     * Helper: Get user IDs of all active SUPER_ADMIN/ADMIN users.
+     */
+    private async getAdminUserIds(): Promise<string[]> {
+        const admins = await this.prisma.user.findMany({
+            where: {
+                isActive: true,
+                role: { in: ["SUPER_ADMIN", "ADMIN"] },
+            },
+            select: { id: true },
+        });
+        return admins.map((u) => u.id);
+    }
 
     /**
      * Helper: Get user IDs of all staff assigned to a specific call time

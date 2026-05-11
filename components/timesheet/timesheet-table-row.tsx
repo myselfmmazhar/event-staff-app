@@ -1347,7 +1347,19 @@ export function TimesheetTableRow({
                                     return (
                                         <td className={cn("truncate", rowVariant === 'card' ? 'px-3 py-3.5' : 'px-3 py-2.5')} style={{ width: `var(--col-actual)` }} onClick={e => e.stopPropagation()}>
                                             <Popover open={isEditing} onOpenChange={setIsEditing}>
-                                                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                <div className="flex flex-col items-start gap-1" onClick={e => e.stopPropagation()}>
+                                                    {/* View details button \u2014 this is the popover trigger */}
+                                                    {ct.staff && (
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-6 px-2 text-[10px]"
+                                                            >
+                                                                View
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                    )}
                                                     {/* Total time summary */}
                                                     <div className="flex flex-col gap-0.5 text-left min-w-0">
                                                         {sessionCount > 0 ? (
@@ -1396,18 +1408,6 @@ export function TimesheetTableRow({
                                                             </>
                                                         )}
                                                     </div>
-                                                    {/* View details button \u2014 this is the popover trigger */}
-                                                    {ct.staff && (
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-6 px-2 text-[10px] shrink-0"
-                                                            >
-                                                                View
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                    )}
                                                 </div>
                                                 {ct.staff && (
                                                     <PopoverContent className="w-96 p-3" onClick={e => e.stopPropagation()}>

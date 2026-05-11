@@ -38,9 +38,9 @@ import { phoneValidation } from '@/lib/utils/validation';
 import { FieldErrors } from '@/lib/utils/error-messages';
 import { BusinessStructure } from '@prisma/client';
 import {
-    StaffDocumentUpload,
-    type StaffDocument,
-} from '@/components/staff/staff-document-upload';
+    PerRequirementDocumentUpload,
+    type CategorizedDocument,
+} from '@/components/staff/per-requirement-document-upload';
 import { ServiceSelectionTable } from '@/components/staff/form-sections/service-selection-table';
 import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import {
@@ -179,9 +179,12 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
     const [taxErrors, setTaxErrors] = useState<TaxFieldErrors>({});
     const [taxSubmitAttempted, setTaxSubmitAttempted] = useState(false);
 
-    // Step 3
-    const [documents, setDocuments] = useState<StaffDocument[]>([]);
+    // Step 3 — categorized per requirement template
+    const [documents, setDocuments] = useState<
+        Partial<Record<ReqTemplateId, CategorizedDocument>>
+    >({});
     const [ackRecords, setAckRecords] = useState(false);
+    const documentsCount = Object.values(documents).filter(Boolean).length;
 
     // Step 4
     const [ackCertification, setAckCertification] = useState(false);
@@ -221,9 +224,9 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
             country: myProfile.country || 'USA',
         });
 
-        if (Array.isArray(myProfile.documents)) {
-            setDocuments(myProfile.documents as unknown as StaffDocument[]);
-        }
+        // Note: onboarding documents are categorized per requirement, so we don't
+        // prefill from the legacy `documents` JSON array (admin uses the legacy
+        // categorize tool to migrate those later).
 
         if (myProfile.taxDetails) {
             setTaxFields({
@@ -348,8 +351,8 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                 return;
             }
         } else if (wizardStep === 'requirements') {
-            if (documents.length < requiredDocumentCount) {
-                const missing = requiredDocumentCount - documents.length;
+            if (documentsCount < requiredDocumentCount) {
+                const missing = requiredDocumentCount - documentsCount;
                 toast({
                     message:
                         requiredDocumentCount === 1
@@ -429,7 +432,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
             setWizardStep('tax');
             return;
         }
-        if (documents.length < requiredDocumentCount || !ackRecords) {
+        if (documentsCount < requiredDocumentCount || !ackRecords) {
             setWizardStep('requirements');
             return;
         }
@@ -452,9 +455,12 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
         setIsUploadingSignature(false);
 
         const contactData = form.getValues();
+        const categorizedList = Object.values(documents).filter(
+            (d): d is CategorizedDocument => !!d
+        );
         completeProfileMutation.mutate({
             ...contactData,
-            documents: documents.length > 0 ? documents : undefined,
+            categorizedDocuments: categorizedList.length > 0 ? categorizedList : undefined,
             serviceIds: showServicesStep && selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
             taxName: taxFields.taxName,
             businessName: taxFields.businessName || undefined,
@@ -555,6 +561,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                             <RequirementsStep
                                 requiredTemplates={requiredTemplates}
                                 requiredDocumentCount={requiredDocumentCount}
+                                documentsCount={documentsCount}
                                 documents={documents}
                                 setDocuments={setDocuments}
                                 ackRecords={ackRecords}
@@ -568,6 +575,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                 contact={form.getValues()}
                                 taxFields={taxFields}
                                 documents={documents}
+                                documentsCount={documentsCount}
                                 requiredTemplates={requiredTemplates}
                                 email={myProfile?.email ?? ''}
                                 signatureDataUrl={signatureDataUrl}
@@ -601,7 +609,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                         disabled={
                                             isSubmitting ||
                                             (wizardStep === 'requirements' &&
-                                                (documents.length < requiredDocumentCount || !ackRecords))
+                                                (documentsCount < requiredDocumentCount || !ackRecords))
                                         }
                                         className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none sm:w-auto sm:min-w-[280px]"
                                     >
@@ -1280,6 +1288,7 @@ function TaxStep({
 function RequirementsStep({
     requiredTemplates,
     requiredDocumentCount,
+    documentsCount,
     documents,
     setDocuments,
     ackRecords,
@@ -1288,8 +1297,9 @@ function RequirementsStep({
 }: {
     requiredTemplates: Set<ReqTemplateId>;
     requiredDocumentCount: number;
-    documents: StaffDocument[];
-    setDocuments: (docs: StaffDocument[]) => void;
+    documentsCount: number;
+    documents: Partial<Record<ReqTemplateId, CategorizedDocument>>;
+    setDocuments: (docs: Partial<Record<ReqTemplateId, CategorizedDocument>>) => void;
     ackRecords: boolean;
     setAckRecords: (v: boolean) => void;
     disabled: boolean;
@@ -1344,11 +1354,12 @@ function RequirementsStep({
                 </h4>
                 <p className="mt-1 text-xs text-slate-500">
                     {requiredDocumentCount > 0
-                        ? `Upload ${requiredDocumentCount} document${requiredDocumentCount > 1 ? 's' : ''} — one for each active requirement above. ${documents.length} of ${requiredDocumentCount} uploaded.`
-                        : 'Upload any supporting documents your admin has requested.'}
+                        ? `Upload one file for each active requirement above. ${documentsCount} of ${requiredDocumentCount} uploaded.`
+                        : 'No document uploads required for your onboarding packet.'}
                 </p>
                 <div className="mt-4">
-                    <StaffDocumentUpload
+                    <PerRequirementDocumentUpload
+                        requiredTemplates={requiredTemplates}
                         documents={documents}
                         onChange={setDocuments}
                         disabled={disabled}
@@ -1421,6 +1432,7 @@ function ReviewStep({
     contact,
     taxFields,
     documents,
+    documentsCount,
     requiredTemplates,
     email,
     signatureDataUrl,
@@ -1435,7 +1447,8 @@ function ReviewStep({
 }: {
     contact: ContactFormData;
     taxFields: TaxFields;
-    documents: StaffDocument[];
+    documents: Partial<Record<ReqTemplateId, CategorizedDocument>>;
+    documentsCount: number;
     requiredTemplates: Set<ReqTemplateId>;
     email: string;
     signatureDataUrl: string | null;
@@ -1625,21 +1638,23 @@ function ReviewStep({
 
                     <div className="mt-6 border-t border-slate-100 pt-5">
                         <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                            Documents ({documents.length})
+                            Documents ({documentsCount})
                         </p>
-                        {documents.length === 0 ? (
+                        {documentsCount === 0 ? (
                             <p className="text-sm italic text-slate-400">No documents uploaded</p>
                         ) : (
                             <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                {documents.map((doc, i) => (
-                                    <li
-                                        key={i}
-                                        className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 text-sm text-slate-700"
-                                    >
-                                        <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                        <span className="truncate">{doc.name}</span>
-                                    </li>
-                                ))}
+                                {Object.values(documents)
+                                    .filter((d): d is CategorizedDocument => !!d)
+                                    .map((doc) => (
+                                        <li
+                                            key={doc.requirementTemplateId}
+                                            className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 text-sm text-slate-700"
+                                        >
+                                            <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                            <span className="truncate">{doc.name}</span>
+                                        </li>
+                                    ))}
                             </ul>
                         )}
                     </div>

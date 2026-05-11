@@ -425,6 +425,26 @@ export class StaffSchema {
                     })
                 )
                 .optional(),
+            // Each uploaded onboarding document paired with the requirement card it fulfils.
+            categorizedDocuments: z
+                .array(
+                    z.object({
+                        requirementTemplateId: z.enum([
+                            "w9",
+                            "upload",
+                            "esign",
+                            "idv",
+                            "bg",
+                            "headshot",
+                        ]),
+                        name: z.string(),
+                        url: z.string().url(),
+                        type: z.string().optional(),
+                        size: z.number().optional(),
+                        expiresAt: z.string().optional().nullable(),
+                    })
+                )
+                .optional(),
 
             // W-9 tax information (required on completion)
             taxName: z

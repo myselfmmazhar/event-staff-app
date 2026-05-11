@@ -657,6 +657,7 @@ export class StaffService {
 
         const {
             documents,
+            categorizedDocuments,
             serviceIds,
             taxName,
             businessName,
@@ -674,8 +675,11 @@ export class StaffService {
             ...profileData
         } = data;
 
+        // Legacy JSON column kept only as a fallback when no categorized list is provided
         const documentsPatch =
-            documents !== undefined ? { documents: documents as Prisma.InputJsonValue } : {};
+            categorizedDocuments === undefined && documents !== undefined
+                ? { documents: documents as Prisma.InputJsonValue }
+                : {};
 
         const taxPayload = {
             taxFilledBy: TaxFilledBy.TALENT,
@@ -720,6 +724,23 @@ export class StaffService {
                         await tx.staffServiceAssignment.createMany({
                             data: serviceIds.map((serviceId) => ({ staffId: staff.id, serviceId })),
                             skipDuplicates: true,
+                        });
+                    }
+
+                    if (categorizedDocuments && categorizedDocuments.length > 0) {
+                        await tx.staffDocument.createMany({
+                            data: categorizedDocuments.map((doc) => ({
+                                staffId: staff.id,
+                                requirementTemplateId: doc.requirementTemplateId,
+                                name: doc.name,
+                                url: doc.url,
+                                type: doc.type ?? null,
+                                size: doc.size ?? null,
+                                status: "APPROVED" as const,
+                                version: 1,
+                                isCurrent: true,
+                                expiresAt: doc.expiresAt ? new Date(doc.expiresAt) : null,
+                            })),
                         });
                     }
 

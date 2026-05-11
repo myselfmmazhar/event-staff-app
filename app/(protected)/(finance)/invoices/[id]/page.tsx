@@ -60,6 +60,13 @@ export default function ViewInvoicePage() {
         }
     };
 
+    const customFields = [
+        { label: invoice.customField1Label || "Custom Field 1", value: invoice.customField1 || "" },
+        { label: invoice.customField2Label || "Custom Field 2", value: invoice.customField2 || "" },
+        { label: invoice.customField3Label || "Custom Field 3", value: invoice.customField3 || "" },
+    ];
+    const visibleCustomFields = customFields.filter((f) => f.value.trim().length > 0);
+
     const subtotal = invoice.items?.reduce((acc, item) => acc + Number(item.amount), 0) || 0;
     const discountAmount = invoice.discountType === "PERCENT"
         ? subtotal * (Number(invoice.discountValue) / 100)
@@ -113,6 +120,7 @@ export default function ViewInvoicePage() {
                 depositAmount={Number(invoice.depositAmount || 0)}
                 totalDue={total - Number(invoice.depositAmount || 0)}
                 notes={invoice.notes}
+                customFields={visibleCustomFields}
             />
 
             {/* Screen UI (hidden when printing) */}
@@ -187,6 +195,20 @@ export default function ViewInvoicePage() {
                             )}
                         </div>
                     </div>
+
+                    {visibleCustomFields.length > 0 && (
+                        <>
+                            <Separator />
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                {visibleCustomFields.map((f, i) => (
+                                    <div key={i}>
+                                        <p className="text-sm text-muted-foreground">{f.label}</p>
+                                        <p className="font-medium">{f.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </CardContent>
             </Card>
 
