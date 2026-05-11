@@ -6,6 +6,7 @@ import { useProfileCompletion } from '@/components/guards/staff-profile-guard';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { ProfileCompletionModal } from '@/components/staff/profile-completion-modal';
+import { DocumentExpiryBanner } from '@/components/staff/document-expiry-banner';
 import { OnboardingTour } from '@/components/onboarding/onboarding-tour';
 import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
@@ -21,6 +22,7 @@ function ProtectedLayoutContent({
   const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
   const hasSeenOnboarding = profile?.user_preferences?.hasSeenOnboarding === true;
   const isClient = (profile?.role as string) === 'CLIENT' || (profile?.role as any) === UserRole.CLIENT;
+  const isStaff = (profile?.role as string) === 'STAFF' || (profile?.role as any) === UserRole.STAFF;
   // For staff: wait for the staff-profile query to settle so isProfileIncomplete is accurate,
   // then only show the tour after profile completion. For clients: show immediately on first login.
   const showOnboarding = !profileLoading && !staffProfileLoading && profile && !hasSeenOnboarding && (isClient || !isProfileIncomplete);
@@ -51,6 +53,9 @@ function ProtectedLayoutContent({
       <div className={`flex flex-1 flex-col overflow-hidden md:ml-64 ${shouldBlockLayout ? 'opacity-50 pointer-events-none' : ''}`}>
         {/* Header */}
         <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
+
+        {/* Staff-only: expiring document banner above page content */}
+        {isStaff && !isProfileIncomplete && <DocumentExpiryBanner />}
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto bg-muted/30 p-6">

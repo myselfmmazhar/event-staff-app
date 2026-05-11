@@ -19,6 +19,10 @@ import type { StaffWithRelations } from '@/components/staff/staff-table';
 import { TaxDetailsView } from './tax-details-view';
 import { AssignmentHistory } from './assignment-history';
 import { FileText, Download } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { AdminDocumentHistoryTable } from './admin-document-history-table';
+import { AdminDocumentRequestsTable } from './admin-document-requests-table';
+import { trpc } from '@/lib/client/trpc';
 
 interface ViewStaffModalProps {
     staff: StaffWithRelations | null;
@@ -79,7 +83,7 @@ export function ViewStaffModal({
     const hasAdminInfo = staff.experience || staff.internalNotes || staff.staffRating !== 'NA';
     const hasCustomFields = staff.customField1 || staff.customField2 || staff.customField3;
     const documents = (staff.documents as Array<{ name: string; url: string; type?: string; size?: number }>) || [];
-    const hasDocuments = documents.length > 0;
+    // documents array retained for legacy categorize flow inside Documents tab
 
     return (
         <Dialog
@@ -107,6 +111,17 @@ export function ViewStaffModal({
                         <p className="text-base font-medium">{staff.staffId}</p>
                     </div>
 
+                    <Tabs defaultValue="details">
+                        <TabsList className="mb-4 flex-wrap">
+                            <TabsTrigger value="details">Details</TabsTrigger>
+                            <TabsTrigger value="documents">Documents</TabsTrigger>
+                            <TabsTrigger value="document-requests">
+                                <DocumentRequestsTabLabel staffId={staff.id} />
+                            </TabsTrigger>
+                            <TabsTrigger value="assignment-history">Assignment History</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="details">
                     {/* Row 1: Personal Information + Account Details & Availability (side-by-side on lg+) */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         {/* Personal Information */}
@@ -414,56 +429,6 @@ export function ViewStaffModal({
                         </div>
                     )}
 
-                    {/* Documents Section */}
-                    {(hasDocuments || staff.documentExpiryDate) && (
-                        <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-                            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Documents</h3>
-                            {staff.documentExpiryDate && (
-                                <p className="text-sm mb-3">
-                                    <span className="text-muted-foreground">Document expiry: </span>
-                                    <span className="font-medium">{new Date(staff.documentExpiryDate).toLocaleDateString()}</span>
-                                </p>
-                            )}
-                            <div className="space-y-2">
-                                {documents.map((doc, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-center justify-between gap-2 p-3 bg-muted/30 border border-border/30 rounded-lg"
-                                    >
-                                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                                            <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-medium truncate">{doc.name}</p>
-                                                {doc.size && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {doc.size < 1024
-                                                            ? `${doc.size} B`
-                                                            : doc.size < 1024 * 1024
-                                                                ? `${(doc.size / 1024).toFixed(1)} KB`
-                                                                : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`
-                                                        }
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={() => window.open(doc.url, '_blank')}
-                                        >
-                                            <Download className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Assignment History Section */}
-                    <AssignmentHistory staffId={staff.id} />
-
                     {/* Tax Details Section (Read-only) */}
                     <div className="mb-6">
                         <TaxDetailsView
@@ -471,6 +436,29 @@ export function ViewStaffModal({
                             taxDetails={staff.taxDetails ?? null}
                         />
                     </div>
+                        </TabsContent>
+
+                        <TabsContent value="documents">
+                            {staff.documentExpiryDate && (
+                                <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+                                    <span className="text-muted-foreground">Legacy document expiry: </span>
+                                    <span className="font-medium">{new Date(staff.documentExpiryDate).toLocaleDateString()}</span>
+                                </div>
+                            )}
+                            <AdminDocumentHistoryTable
+                                staffId={staff.id}
+                                legacyDocuments={documents}
+                            />
+                        </TabsContent>
+
+                        <TabsContent value="document-requests">
+                            <AdminDocumentRequestsTable staffId={staff.id} />
+                        </TabsContent>
+
+                        <TabsContent value="assignment-history">
+                            <AssignmentHistory staffId={staff.id} />
+                        </TabsContent>
+                    </Tabs>
                 </DialogContent>
 
                 {/* Action Buttons */}
@@ -517,5 +505,20 @@ export function ViewStaffModal({
                 </DialogFooter>
             </div>
         </Dialog>
+    );
+}
+
+/** Tab trigger label that shows a count badge when there are pending document update requests. */
+function DocumentRequestsTabLabel({ staffId }: { staffId: string }) {
+    const { data: pending = [] } = trpc.staffDocument.getPendingForStaff.useQuery({ staffId });
+    return (
+        <span className="inline-flex items-center gap-2">
+            Document Requests
+            {pending.length > 0 && (
+                <Badge variant="warning" className="px-1.5 py-0 text-xs">
+                    {pending.length}
+                </Badge>
+            )}
+        </span>
     );
 }

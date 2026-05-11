@@ -832,6 +832,7 @@ model Staff {
   shiftSessions                ShiftSession[]
   bills                        Bill[]
   teamUnits                    TeamUnit[]
+  staffDocuments               StaffDocument[]
 
   @@index([accountStatus])
   @@index([availabilityStatus])
@@ -841,6 +842,39 @@ model Staff {
   @@index([staffId])
   @@index([staffRole])
   @@map("staff")
+}
+
+model StaffDocument {
+  id                    String              @id @default(uuid()) @db.Uuid
+  staffId               String              @db.Uuid
+  requirementTemplateId String              @db.VarChar(32)
+  name                  String
+  url                   String
+  type                  String?
+  size                  Int?
+  status                StaffDocumentStatus @default(APPROVED)
+  version               Int                 @default(1)
+  isCurrent             Boolean             @default(false)
+  replacesId            String?             @db.Uuid
+  rejectionReason       String?
+  reviewedAt            DateTime?           @db.Timestamp(6)
+  reviewedBy            String?
+  expiresAt             DateTime?           @db.Date
+  expiryNotifiedAt      DateTime?           @db.Timestamp(6)
+  createdAt             DateTime            @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime            @updatedAt @db.Timestamp(6)
+
+  staff                 Staff               @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  reviewer              User?               @relation("staff_document_reviewers", fields: [reviewedBy], references: [id])
+  replaces              StaffDocument?      @relation("StaffDocumentVersions", fields: [replacesId], references: [id])
+  versions              StaffDocument[]     @relation("StaffDocumentVersions")
+
+  @@index([staffId])
+  @@index([staffId, requirementTemplateId])
+  @@index([staffId, isCurrent])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("staff_documents")
 }
 
 model StaffServiceAssignment {
@@ -981,6 +1015,7 @@ model User {
   timeEntryRevisionsEdited         TimeEntryRevision[]     @relation("time_entry_revisions_edited_by")
   teamUnitsCreated                 TeamUnit[]
   teamUnitActivities               TeamUnitActivity[] @relation("team_unit_activities_performed")
+  staffDocumentReviews             StaffDocument[]    @relation("staff_document_reviewers")
 
   @@map("users")
 }
@@ -1334,6 +1369,17 @@ enum NotificationType {
   EVENT_STARTED
   EVENT_COMPLETED
   INVITATION_BATCH
+  TALENT_DOCUMENT_REQUEST
+  TALENT_DOCUMENT_APPROVED
+  TALENT_DOCUMENT_REJECTED
+  TALENT_DOCUMENT_EXPIRING
+}
+
+enum StaffDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUPERSEDED
 }
 
 enum RateType {
