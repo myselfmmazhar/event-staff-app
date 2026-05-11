@@ -987,15 +987,18 @@ model User {
 
 model Bill {
   id             String        @id @default(uuid()) @db.Uuid
-  billNo         String        @unique
-  staffId        String        @db.Uuid
-  status         BillStatus    @default(DRAFT)
-  billDate       DateTime      @db.Date
-  dueDate        DateTime?     @db.Date
-  terms          String?
-  customField1   String?
-  customField2   String?
-  customField3   String?
+  billNo            String        @unique
+  staffId           String        @db.Uuid
+  status            BillStatus    @default(DRAFT)
+  billDate          DateTime      @db.Date
+  dueDate           DateTime?     @db.Date
+  terms             String?
+  customField1      String?
+  customField2      String?
+  customField3      String?
+  customField1Label String?
+  customField2Label String?
+  customField3Label String?
   discountType   DiscountType?
   discountValue  Decimal?      @db.Decimal(10, 2)
   depositAmount  Decimal?      @db.Decimal(10, 2)
@@ -1100,15 +1103,18 @@ model Verification {
 
 model Invoice {
   id             String        @id @default(uuid()) @db.Uuid
-  invoiceNo      String        @unique
-  clientId       String        @db.Uuid
-  status         InvoiceStatus @default(DRAFT)
-  invoiceDate    DateTime      @db.Date
-  dueDate        DateTime?     @db.Date
-  terms          String?
-  customField1   String?
-  customField2   String?
-  customField3   String?
+  invoiceNo         String        @unique
+  clientId          String        @db.Uuid
+  status            InvoiceStatus @default(DRAFT)
+  invoiceDate       DateTime      @db.Date
+  dueDate           DateTime?     @db.Date
+  terms             String?
+  customField1      String?
+  customField2      String?
+  customField3      String?
+  customField1Label String?
+  customField2Label String?
+  customField3Label String?
   discountType   DiscountType?
   discountValue  Decimal?      @db.Decimal(10, 2)
   depositAmount  Decimal?      @db.Decimal(10, 2)

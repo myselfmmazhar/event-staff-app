@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
+import { EditableLabel } from "@/components/ui/editable-label";
 
 interface BillFormProps {
     bill?: any; // Bill data for editing
@@ -63,6 +64,12 @@ export function BillForm({ bill }: BillFormProps) {
             notes: bill.notes || "",
             paymentDetails: bill.paymentDetails || "",
             isTaxable: bill.isTaxable || false,
+            customField1: bill.customField1 || "",
+            customField2: bill.customField2 || "",
+            customField3: bill.customField3 || "",
+            customField1Label: bill.customField1Label || null,
+            customField2Label: bill.customField2Label || null,
+            customField3Label: bill.customField3Label || null,
             discountType: bill.discountType || "AMOUNT",
             discountValue: Number(bill.discountValue) || 0,
             depositAmount: Number(bill.depositAmount) || 0,
@@ -373,15 +380,27 @@ export function BillForm({ bill }: BillFormProps) {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <Label>Custom Field 1</Label>
+                            <EditableLabel
+                                value={form.watch("customField1Label")}
+                                defaultLabel="Custom Field 1"
+                                onChange={(val) => form.setValue("customField1Label", val)}
+                            />
                             <Input {...form.register("customField1")} />
                         </div>
                         <div className="space-y-2">
-                            <Label>Custom Field 2</Label>
+                            <EditableLabel
+                                value={form.watch("customField2Label")}
+                                defaultLabel="Custom Field 2"
+                                onChange={(val) => form.setValue("customField2Label", val)}
+                            />
                             <Input {...form.register("customField2")} />
                         </div>
                         <div className="space-y-2">
-                            <Label>Custom Field 3</Label>
+                            <EditableLabel
+                                value={form.watch("customField3Label")}
+                                defaultLabel="Custom Field 3"
+                                onChange={(val) => form.setValue("customField3Label", val)}
+                            />
                             <Input {...form.register("customField3")} />
                         </div>
                     </div>

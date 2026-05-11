@@ -54,6 +54,13 @@ export default function ViewBillPage() {
         }
     };
 
+    const customFields = [
+        { label: bill.customField1Label || "Custom Field 1", value: bill.customField1 || "" },
+        { label: bill.customField2Label || "Custom Field 2", value: bill.customField2 || "" },
+        { label: bill.customField3Label || "Custom Field 3", value: bill.customField3 || "" },
+    ];
+    const visibleCustomFields = customFields.filter((f) => f.value.trim().length > 0);
+
     const subtotal = bill.items?.reduce((acc, item) => acc + Number(item.amount), 0) || 0;
     const discountAmount = bill.discountType === "PERCENT"
         ? subtotal * (Number(bill.discountValue) / 100)
@@ -105,6 +112,7 @@ export default function ViewBillPage() {
                 depositAmount={Number(bill.depositAmount || 0)}
                 totalDue={total - Number(bill.depositAmount || 0)}
                 notes={bill.notes}
+                customFields={visibleCustomFields}
             />
 
             {/* Screen UI (hidden when printing) */}
@@ -181,6 +189,20 @@ export default function ViewBillPage() {
                             )}
                         </div>
                     </div>
+
+                    {visibleCustomFields.length > 0 && (
+                        <>
+                            <Separator />
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                {visibleCustomFields.map((f, i) => (
+                                    <div key={i}>
+                                        <p className="text-sm text-muted-foreground">{f.label}</p>
+                                        <p className="font-medium">{f.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </CardContent>
             </Card>
 
