@@ -128,13 +128,7 @@ const baseFields = {
 /**
  * Helper to convert required fields to optional
  */
-const optionalFields = Object.entries(baseFields).reduce(
-  (acc, [key, schema]) => {
-    acc[key] = schema.optional();
-    return acc;
-  },
-  {} as Record<string, z.ZodType>
-);
+const optionalFields = z.object(baseFields).partial().shape;
 
 /**
  * Client Zod Schemas for validation

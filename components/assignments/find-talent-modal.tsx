@@ -136,14 +136,6 @@ export function FindTalentModal({
     );
   }, [callTimes]);
 
-  const shiftOptions = useMemo(
-    () =>
-      availableShifts.map((ct) => ({
-        value: ct.id,
-        label: `${ct.service?.title || 'No Position'} • ${formatDateTime(ct.startDate, ct.startTime)}`,
-      })),
-    [availableShifts]
-  );
 
   // Reset to "all available selected" on open or whenever the available set
   // changes (e.g., a shift just became fully accepted in the background).
@@ -460,6 +452,24 @@ export function FindTalentModal({
       Math.max(0, totalRequired - totalConfirmed - selection.individualStaffIds.length)
     );
 
+  const getSelectedCountForService = (serviceId: string) => {
+    let count = 0;
+    for (const rowId of selectedRowIds) {
+      const row = rows.find((r) => r.rowId === rowId);
+      if (!row) continue;
+      if (row.kind === 'TEAM' && row.serviceId === serviceId) {
+        const cap = remainingSlots > 0 ? Math.min(row.availableUnits, remainingSlots) : row.availableUnits;
+        const requested = selectionCounts[rowId] ?? cap;
+        count += Math.max(1, Math.min(requested, cap));
+      } else if (row.kind === 'INDIVIDUAL') {
+        if (row.services?.some((s) => s.service.id === serviceId)) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  };
+
   return (
     <Dialog open={open} onClose={handleClose} className="max-w-7xl w-[95vw]">
       <DialogHeader>
@@ -514,63 +524,106 @@ export function FindTalentModal({
               )}
             </div>
 
-            {(uniqueServices.length > 0 || shiftOptions.length > 0) && (
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                {uniqueServices.length > 0 && (
-                  <div className="min-w-0 flex-1">
-                    <label className="text-xs text-muted-foreground mb-1 block">
-                      Services
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {uniqueServices.map((svc) => {
-                        const checked = selectedServiceIds.includes(svc.id);
-                        // Single-service case: show the card but lock the checkbox on.
-                        const disabled = uniqueServices.length === 1;
-                        return (
-                          <label
-                            key={svc.id}
-                            className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${checked
-                                ? 'border-primary bg-primary/10 text-foreground'
-                                : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                              } ${disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'}`}
-                          >
-                            <input
-                              type="checkbox"
-                              className="rounded border-input"
-                              checked={checked}
-                              disabled={disabled}
-                              onChange={(e) => {
-                                setSelectedServiceIds((prev) =>
-                                  e.target.checked
-                                    ? Array.from(new Set([...prev, svc.id]))
-                                    : prev.filter((id) => id !== svc.id)
-                                );
-                              }}
-                            />
-                            <span>{svc.title}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+            {uniqueServices.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {uniqueServices.map((svc) => {
+                  const isChecked = selectedServiceIds.includes(svc.id);
+                  const shiftsForService = availableShifts.filter((s) => s.service?.id === svc.id);
+                  const selectedCount = getSelectedCountForService(svc.id);
+                  const serviceShiftOptions = shiftsForService.map((ct) => ({
+                    value: ct.id,
+                    label: formatDateTime(ct.startDate, ct.startTime),
+                  }));
 
-                {shiftOptions.length > 0 && (
-                  <div className="w-full md:w-[300px] md:flex-shrink-0">
-                    <label className="text-xs text-muted-foreground mb-1 block">
-                      Shifts
-                    </label>
-                    <MultiSelect
-                      options={shiftOptions}
-                      value={selectedShiftIds}
-                      onChange={setSelectedShiftIds}
-                      placeholder="All shifts"
-                      showSelectAll
-                      searchable={shiftOptions.length > 6}
-                      searchPlaceholder="Search shifts..."
-                    />
-                  </div>
-                )}
+                  // Current selected shifts for THIS service
+                  const currentServiceShiftIds = selectedShiftIds.filter((id) =>
+                    shiftsForService.some((s) => s.id === id)
+                  );
+
+                  // Single-service case: lock the checkbox on.
+                  const disabled = uniqueServices.length === 1;
+
+                  return (
+                    <div
+                      key={svc.id}
+                      className={`p-3 rounded-lg border transition-all duration-200 ${isChecked
+                          ? 'bg-primary/5 border-primary/40 shadow-sm'
+                          : 'bg-background border-border'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <label
+                          className={`flex items-center gap-2 font-semibold ${disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+                            }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                            checked={isChecked}
+                            disabled={disabled}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setSelectedServiceIds((prev) =>
+                                checked
+                                  ? Array.from(new Set([...prev, svc.id]))
+                                  : prev.filter((id) => id !== svc.id)
+                              );
+
+                              // Sync shifts: if unchecking, remove its shifts. If checking, add them all.
+                              if (!checked) {
+                                setSelectedShiftIds((prev) =>
+                                  prev.filter((id) => !shiftsForService.some((s) => s.id === id))
+                                );
+                              } else {
+                                setSelectedShiftIds((prev) =>
+                                  Array.from(new Set([...prev, ...shiftsForService.map((s) => s.id)]))
+                                );
+                              }
+                            }}
+                          />
+                          <span className={isChecked ? 'text-foreground' : 'text-muted-foreground'}>
+                            {svc.title}
+                          </span>
+                        </label>
+                        {selectedCount > 0 && (
+                          <Badge variant="default" className="bg-primary text-primary-foreground font-black px-2 py-0 h-5">
+                            {selectedCount}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {isChecked && (
+                        <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 ml-0.5">
+                            Dates & Times
+                          </label>
+                          {serviceShiftOptions.length > 0 ? (
+                            <MultiSelect
+                              options={serviceShiftOptions}
+                              value={currentServiceShiftIds}
+                              onChange={(newIds) => {
+                                setSelectedShiftIds((prev) => {
+                                  const others = prev.filter(
+                                    (id) => !shiftsForService.some((s) => s.id === id)
+                                  );
+                                  return [...others, ...newIds];
+                                });
+                              }}
+                              placeholder="Select dates..."
+                              showSelectAll
+                              searchable={serviceShiftOptions.length > 5}
+                              className="bg-background/50"
+                            />
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic px-1">
+                              No shifts available
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 

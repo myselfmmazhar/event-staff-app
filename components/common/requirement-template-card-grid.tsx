@@ -58,7 +58,7 @@ export function RequirementTemplateCardGrid({
         const cardClassName = cn(
           'flex flex-col rounded-xl border p-4 text-left transition-shadow',
           staffAppearance ? 'bg-white' : 'bg-card',
-          isAlreadyAdded
+          (isAlreadyAdded || disabled)
             ? 'border-border opacity-50 cursor-not-allowed'
             : isSelected
               ? staffAppearance

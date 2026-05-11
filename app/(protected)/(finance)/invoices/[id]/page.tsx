@@ -1,23 +1,34 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/client/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image, ChevronLeft } from "lucide-react";
+import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image } from "lucide-react";
 import Link from "next/link";
 import { PrintDocument } from "@/components/finance/print-document";
+import { useEffect } from "react";
 
 export default function ViewInvoicePage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const invoiceId = params.id as string;
 
     const { data: invoice, isLoading } = trpc.invoices.getById.useQuery({ id: invoiceId });
     const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
+
+    useEffect(() => {
+        const action = searchParams.get("action");
+        if ((action === "print" || action === "download") && invoice && !isLoading) {
+            const timer = setTimeout(() => window.print(), 300);
+            return () => clearTimeout(timer);
+        }
+        return;
+    }, [searchParams, invoice, isLoading]);
 
     if (isLoading) {
         return (

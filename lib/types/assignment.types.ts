@@ -197,7 +197,7 @@ export interface AssignmentFormData {
 /**
  * Save action type for the assignment form
  */
-export type AssignmentSaveAction = 'close' | 'new' | 'repeat';
+export type AssignmentSaveAction = 'close' | 'new' | 'repeat' | 'find-talent';
 
 /**
  * Extended JSON data stored in EventProduct notes field

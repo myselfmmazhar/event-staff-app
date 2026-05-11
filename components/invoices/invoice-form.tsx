@@ -3,7 +3,7 @@
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format, isValid } from "date-fns";
 import { trpc } from "@/lib/client/trpc";
 import { InvoiceSchema, type InvoiceFormValues } from "@/lib/schemas/invoice.schema";
@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { TrashIcon, PlusIcon } from "@/components/ui/icons";
+import { TrashIcon, PlusIcon, DownloadIcon } from "@/components/ui/icons";
+import { Printer } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     const isEditMode = !!invoice;
     const router = useRouter();
     const { toast } = useToast();
+    const submitActionRef = useRef<"save" | "print" | "download">("save");
     const [showDiscount, setShowDiscount] = useState(() =>
         invoice ? Number(invoice.discountValue) > 0 : false
     );
@@ -118,6 +120,8 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
             discountType: "AMOUNT",
             invoiceNo: "",
+            notes: "",
+            paymentDetails: "",
         },
     });
 
@@ -211,12 +215,19 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     }, [JSON.stringify(items?.map(i => ({ s: i.actualStart, e: i.actualEnd })))]);
 
     const createMutation = trpc.invoices.create.useMutation({
-        onSuccess: () => {
+        onSuccess: (data) => {
             toast({
                 title: "Success",
                 description: "Invoice created successfully.",
             });
-            router.push("/invoices");
+            const action = submitActionRef.current;
+            if (action === "print") {
+                router.push(`/invoices/${data.id}?action=print`);
+            } else if (action === "download") {
+                router.push(`/invoices/${data.id}?action=download`);
+            } else {
+                router.push("/invoices");
+            }
         },
         onError: (error) => {
             toast({
@@ -233,7 +244,14 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                 title: "Success",
                 description: "Invoice updated successfully.",
             });
-            router.push("/invoices");
+            const action = submitActionRef.current;
+            if (action === "print") {
+                router.push(`/invoices/${invoice.id}?action=print`);
+            } else if (action === "download") {
+                router.push(`/invoices/${invoice.id}?action=download`);
+            } else {
+                router.push("/invoices");
+            }
         },
         onError: (error) => {
             toast({
@@ -293,13 +311,49 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         });
     };
 
+    const formTopRef = useRef<HTMLDivElement>(null);
+
+    const actionButtons = (
+        <div className="flex flex-wrap gap-3">
+            <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+            <Button
+                type="submit"
+                variant="outline"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                onClick={() => { submitActionRef.current = "save"; }}
+            >
+                {isEditMode ? "Update Invoice" : "Save Invoice"}
+            </Button>
+            <Button
+                type="submit"
+                variant="outline"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                onClick={() => { submitActionRef.current = "print"; }}
+                className="gap-2"
+            >
+                <Printer className="h-4 w-4" />
+                {isEditMode ? "Update & Print" : "Save & Print"}
+            </Button>
+            <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                onClick={() => { submitActionRef.current = "download"; }}
+                className="gap-2"
+            >
+                <DownloadIcon className="h-4 w-4" />
+                {isEditMode ? "Update & Download" : "Save & Download"}
+            </Button>
+        </div>
+    );
+
     return (
-        <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-8 max-w-5xl mx-auto">
-            <div className="flex justify-between items-center">
+        <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-8 w-full">
+            <div ref={formTopRef} className="flex flex-wrap justify-between items-start gap-4">
                 <div>
                     <h1 className="text-3xl font-bold">{isEditMode ? "Edit Invoice" : "Add New Invoice"}</h1>
                     <p className="text-muted-foreground">{isEditMode ? "Update invoice details." : "Create a new invoice for a client."}</p>
                 </div>
+                {actionButtons}
             </div>
 
             <Card>
@@ -519,13 +573,13 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                                         type="checkbox"
                                                         checked={!!items?.[index]?.isScheduledChecked}
                                                         onChange={(e) => form.setValue(`items.${index}.isScheduledChecked`, e.target.checked)}
-                                                        className="h-4 w-4 rounded border-border accent-primary"
+                                                        className="h-4 w-4 rounded border-border accent-primary shrink-0"
                                                     />
-                                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
                                                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Scheduled Shift Detail</h4>
                                                 </div>
-                                                
-                                                <div className="grid grid-cols-2 gap-4">
+
+                                                <div className={`grid grid-cols-2 gap-4 transition-all duration-300 ${!items?.[index]?.isScheduledChecked ? 'opacity-20 grayscale pointer-events-none select-none' : ''}`}>
                                                     <div className="space-y-1">
                                                         <span className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Start Date & Time</span>
                                                         <Input
@@ -555,7 +609,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-1.5 pt-1">
+                                                <div className={`flex items-center gap-1.5 pt-1 transition-all duration-300 ${!items?.[index]?.isScheduledChecked ? 'opacity-30 pointer-events-none select-none' : ''}`}>
                                                     <span className="text-[8px] font-bold text-muted-foreground uppercase">Scheduled Hours:</span>
                                                     <Input
                                                         type="number"
@@ -573,13 +627,13 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                                         type="checkbox"
                                                         checked={!!items?.[index]?.isActualChecked}
                                                         onChange={(e) => form.setValue(`items.${index}.isActualChecked`, e.target.checked)}
-                                                        className="h-4 w-4 rounded border-border accent-primary"
+                                                        className="h-4 w-4 rounded border-border accent-primary shrink-0"
                                                     />
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                                                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Actual Shift Details</h4>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className={`grid grid-cols-2 gap-4 transition-all duration-300 ${!items?.[index]?.isActualChecked ? 'opacity-20 grayscale pointer-events-none select-none' : ''}`}>
                                                     <div className="space-y-1">
                                                         <span className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Shift Start Date & Time</span>
                                                         <Input
@@ -609,7 +663,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-1.5 pt-1">
+                                                <div className={`flex items-center gap-1.5 pt-1 transition-all duration-300 ${!items?.[index]?.isActualChecked ? 'opacity-30 pointer-events-none select-none' : ''}`}>
                                                     <span className="text-[8px] font-bold text-muted-foreground uppercase">Actual Hours:</span>
                                                     <Input
                                                         type="number"
@@ -623,9 +677,12 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
                                         <div className="mt-4 pt-4 border-t border-border/50">
                                             <Label className="text-[8px] font-bold uppercase text-muted-foreground mb-1 block">Internal Notes</Label>
-                                            <div className="text-[10px] text-slate-600 bg-white/50 p-2 rounded border border-border italic min-h-[40px]">
-                                                {form.watch(`items.${index}.internalNotes`) || "No internal notes for this shift."}
-                                            </div>
+                                            <Textarea
+                                                {...form.register(`items.${index}.internalNotes`)}
+                                                placeholder="Add internal notes for this shift..."
+                                                className="text-[10px] text-slate-600 bg-white/80 min-h-[60px] resize-none"
+                                                rows={3}
+                                            />
                                         </div>
                                     </div>
                                 )}
@@ -882,12 +939,22 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                 </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-4 pb-10">
-                <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : isEditMode ? "Update Invoice" : "Save Invoice"}
-                </Button>
+            <div className="flex flex-wrap justify-end gap-3 pb-10">
+                {actionButtons}
             </div>
+
+            {/* Scroll to top button */}
+            <button
+                type="button"
+                onClick={() => formTopRef.current?.scrollIntoView({ behavior: "smooth" })}
+                className="fixed bottom-6 right-6 z-50 h-10 w-10 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
+                title="Scroll to top"
+                aria-label="Scroll to top"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="18 15 12 9 6 15" />
+                </svg>
+            </button>
         </form>
     );
 }
