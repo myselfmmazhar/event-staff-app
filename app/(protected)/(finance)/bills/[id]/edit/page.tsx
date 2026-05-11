@@ -12,7 +12,7 @@ export default function EditBillPage() {
 
     if (isLoading) {
         return (
-            <div className="container mx-auto py-6">
+            <div className="w-full px-4 py-6">
                 <div className="flex items-center justify-center h-64">
                     <p className="text-muted-foreground">Loading bill...</p>
                 </div>
@@ -22,7 +22,7 @@ export default function EditBillPage() {
 
     if (!bill) {
         return (
-            <div className="container mx-auto py-6">
+            <div className="w-full px-4 py-6">
                 <div className="flex items-center justify-center h-64">
                     <p className="text-muted-foreground">Bill not found</p>
                 </div>

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { trpc } from '@/lib/client/trpc';
+import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -114,6 +116,29 @@ interface StaffTableProps {
 }
 
 export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, onSort, sortBy, sortOrder, selectedIds, onSelectionChange }: StaffTableProps) {
+    const { toast } = useToast();
+    const utils = trpc.useUtils();
+    const updateStaffMutation = trpc.staff.update.useMutation({
+        onSuccess: () => {
+            utils.staff.getAll.invalidate();
+            toast({
+                title: 'Status updated',
+                description: 'Staff status has been updated successfully.',
+            });
+        },
+        onError: (error) => {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to update status',
+                variant: 'destructive',
+            });
+        },
+    });
+
+    const handleStatusChange = (id: string, newStatus: AccountStatus) => {
+        updateStaffMutation.mutate({ id, accountStatus: newStatus });
+    };
+
     const staffTerm = useStaffTerm();
     const { terminology } = useTerminology();
 
@@ -173,7 +198,8 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
         onSelectionChange(newSet);
     };
 
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (member: StaffWithRelations) => {
+        const status = member.accountStatus;
         const variants: Record<string, 'default' | 'secondary' | 'danger' | 'warning'> = {
             ACTIVE: 'default',
             PENDING: 'secondary',
@@ -184,10 +210,29 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
 
         const badgeVariant = variants[status] || 'secondary';
 
+        const statusOptions: AccountStatus[] = [
+            AccountStatus.ACTIVE,
+            AccountStatus.PENDING,
+            AccountStatus.DISABLED,
+            AccountStatus.TERMINATED,
+            AccountStatus.ARCHIVED,
+        ];
+
+        const actions: ActionItem[] = statusOptions.map((opt) => ({
+            label: opt.charAt(0) + opt.slice(1).toLowerCase(),
+            onClick: () => handleStatusChange(member.id, opt),
+            active: status === opt,
+        }));
+
         return (
-            <Badge variant={badgeVariant} asSpan>
-                {status.charAt(0) + status.slice(1).toLowerCase()}
-            </Badge>
+            <ActionDropdown
+                trigger={
+                    <Badge variant={badgeVariant} asSpan className="cursor-pointer hover:opacity-80 transition-opacity">
+                        {status.charAt(0) + status.slice(1).toLowerCase()}
+                    </Badge>
+                }
+                actions={actions}
+            />
         );
     };
 
@@ -296,7 +341,7 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
             label: columnLabels.status,
             sortable: true,
             className: 'py-4 px-4',
-            render: (member) => getStatusBadge(member.accountStatus),
+            render: (member) => getStatusBadge(member),
         },
         {
             key: 'staffId',
@@ -378,7 +423,7 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
                 </div>
                 <div className="flex flex-col gap-1">
                     {getTypeBadge(member.staffType)}
-                    {getStatusBadge(member.accountStatus)}
+                    {getStatusBadge(member)}
                 </div>
             </div>
 

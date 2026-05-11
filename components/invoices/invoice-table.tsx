@@ -15,6 +15,7 @@ interface Invoice {
     invoiceNo: string;
     status: InvoiceStatus;
     invoiceDate: Date | string;
+    dueDate?: Date | string | null;
     client: {
         id: string;
         businessName?: string | null;
@@ -221,6 +222,22 @@ export function InvoiceTable({
             ),
         },
         {
+            key: "dueDate",
+            label: "Due Date",
+            className: "py-4 px-4 text-sm whitespace-nowrap",
+            render: (invoice) => invoice.dueDate ? (
+                <span className={`font-medium ${
+                    invoice.status !== "PAID" && new Date(invoice.dueDate) < new Date()
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                }`}>
+                    {format(new Date(invoice.dueDate), "MMM dd, yyyy")}
+                </span>
+            ) : (
+                <span className="text-muted-foreground/50 text-xs">—</span>
+            ),
+        },
+        {
             key: "invoiceNo",
             label: "Invoice No",
             sortable: true,
@@ -272,6 +289,14 @@ export function InvoiceTable({
                     <span className="font-medium">Date:</span>
                     <span>{format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}</span>
                 </div>
+                {invoice.dueDate && (
+                    <div className="flex items-center gap-2">
+                        <span className="font-medium">Due:</span>
+                        <span className={invoice.status !== "PAID" && new Date(invoice.dueDate) < new Date() ? "text-destructive font-medium" : ""}>
+                            {format(new Date(invoice.dueDate), "MMM dd, yyyy")}
+                        </span>
+                    </div>
+                )}
                 <div className="flex items-center gap-2">
                     <span className="font-medium">Client:</span>
                     <span>{invoice.client.businessName || `${invoice.client.firstName} ${invoice.client.lastName}`}</span>

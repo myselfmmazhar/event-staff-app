@@ -12,7 +12,7 @@ export default function EditInvoicePage() {
 
     if (isLoading) {
         return (
-            <div className="container mx-auto py-6">
+            <div className="w-full px-4 py-6">
                 <div className="flex items-center justify-center h-64">
                     <p className="text-muted-foreground">Loading invoice...</p>
                 </div>
@@ -22,7 +22,7 @@ export default function EditInvoicePage() {
 
     if (!invoice) {
         return (
-            <div className="container mx-auto py-6">
+            <div className="w-full px-4 py-6">
                 <div className="flex items-center justify-center h-64">
                     <p className="text-muted-foreground">Invoice not found</p>
                 </div>
