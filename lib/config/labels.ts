@@ -10,6 +10,19 @@
 import type { TerminologyConfig } from './terminology';
 
 // ============================================================================
+// POD LABELS - Per-section (Task / Talent / Time) overrides for GlobalLabels
+// ============================================================================
+
+export const POD_IDS = ['task', 'talent', 'time'] as const;
+export type PodId = (typeof POD_IDS)[number];
+
+export const POD_TITLES: Record<PodId, string> = {
+  task: 'Task Pod',
+  talent: 'Talent Pod',
+  time: 'Time Pod',
+};
+
+// ============================================================================
 // GLOBAL LABELS - Shared across the entire application
 // ============================================================================
 
@@ -368,20 +381,9 @@ export interface PageLabels {
 // COMBINED LABELS CONFIG
 // ============================================================================
 
-// ============================================================================
-// POD LABELS - Per-section (Task / Talent / Time) overrides for GlobalLabels
 // Additive feature: if the podLabels column is dropped, the app falls back to
 // globalLabels with no behavioural change.
 // ============================================================================
-
-export const POD_IDS = ['task', 'talent', 'time'] as const;
-export type PodId = (typeof POD_IDS)[number];
-
-export const POD_TITLES: Record<PodId, string> = {
-  task: 'Task Pod',
-  talent: 'Talent Pod',
-  time: 'Time Pod',
-};
 
 /**
  * Storage shape for pod-scoped label overrides. Each pod holds a full snapshot
