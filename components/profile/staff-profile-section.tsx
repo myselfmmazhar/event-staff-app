@@ -25,6 +25,7 @@ import {
     BadgeIcon,
 } from 'lucide-react';
 import { signOut } from '@/lib/client/auth';
+import { TalentDocumentsPanel } from '@/components/staff/talent-documents-panel';
 
 const AVAILABILITY_OPTIONS = [
     { value: AvailabilityStatus.OPEN_TO_OFFERS, label: 'Open to Offers', description: 'Available for event assignments' },
@@ -489,6 +490,9 @@ export function StaffProfileSection() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* My Documents */}
+            <TalentDocumentsPanel />
 
             {/* Deactivate Account */}
             <Card className="border-destructive/20">

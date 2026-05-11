@@ -10,6 +10,8 @@ import {
     Clock,
     Users,
     UserPlus,
+    FileText,
+    AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/lib/hooks/useNotifications";
@@ -53,6 +55,11 @@ const typeIcons: Record<
     EVENT_STARTED: Calendar,
     EVENT_COMPLETED: Check,
     INVITATION_BATCH: Users,
+    // Talent document notifications
+    TALENT_DOCUMENT_REQUEST: FileText,
+    TALENT_DOCUMENT_APPROVED: Check,
+    TALENT_DOCUMENT_REJECTED: X,
+    TALENT_DOCUMENT_EXPIRING: AlertTriangle,
 };
 
 // Color mapping for notification types
@@ -71,6 +78,11 @@ const typeColors: Record<keyof typeof NotificationTypeEnum, string> = {
     EVENT_STARTED: "text-blue-600",
     EVENT_COMPLETED: "text-green-700",
     INVITATION_BATCH: "text-indigo-600",
+    // Talent document notifications
+    TALENT_DOCUMENT_REQUEST: "text-amber-600",
+    TALENT_DOCUMENT_APPROVED: "text-emerald-600",
+    TALENT_DOCUMENT_REJECTED: "text-red-600",
+    TALENT_DOCUMENT_EXPIRING: "text-amber-700",
 };
 
 /**

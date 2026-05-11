@@ -15,6 +15,7 @@ interface Invoice {
     invoiceNo: string;
     status: InvoiceStatus;
     invoiceDate: Date | string;
+    dueDate?: Date | string | null;
     client: {
         id: string;
         businessName?: string | null;
@@ -233,6 +234,15 @@ export function InvoiceTable({
                     {invoice.invoiceNo}
                 </span>
             ),
+        },
+        {
+            key: "dueDate",
+            label: "Due Date",
+            className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
+            render: (invoice) =>
+                invoice.dueDate
+                    ? format(new Date(invoice.dueDate), "MMM dd, yyyy")
+                    : <span className="opacity-60">—</span>,
         },
         {
             key: "client",

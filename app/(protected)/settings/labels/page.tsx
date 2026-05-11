@@ -11,11 +11,19 @@ import { useToast } from "@/components/ui/use-toast";
 import { trpc } from "@/lib/client/trpc";
 import { useLabels } from "@/lib/hooks/use-labels";
 import { useTerminology } from "@/lib/hooks/use-terminology";
-import { DEFAULT_GLOBAL_LABELS } from "@/lib/config/labels";
+import { DEFAULT_GLOBAL_LABELS, POD_IDS, POD_TITLES, type GlobalLabels, type PodId } from "@/lib/config/labels";
 import { TerminologyForm } from "@/components/settings/terminology-form";
 import { cn } from "@/lib/utils";
 
 type LabelCategory = keyof typeof DEFAULT_GLOBAL_LABELS;
+type ScopeId = "global" | PodId;
+
+const SCOPE_TABS: { id: ScopeId; label: string }[] = [
+  { id: "global", label: "Global" },
+  { id: "task", label: POD_TITLES.task },
+  { id: "talent", label: POD_TITLES.talent },
+  { id: "time", label: POD_TITLES.time },
+];
 
 const CATEGORY_TITLES: Record<LabelCategory, string> = {
   staffCustomFields: "Talent Custom Fields",
@@ -43,15 +51,31 @@ const CATEGORY_DESCRIPTIONS: Record<LabelCategory, string> = {
   messages: "Success, error, and confirmation messages",
 };
 
+/**
+ * Edited buffer keyed by scope -> category -> key.
+ * `global` and each pod id maintain independent buffers so switching tabs
+ * doesn't lose unsaved work for another scope.
+ */
+type EditedLabels = Record<ScopeId, Record<string, Record<string, string>>>;
+
+const EMPTY_EDITED: EditedLabels = {
+  global: {},
+  task: {},
+  talent: {},
+  time: {},
+};
+
 export default function LabelsSettingsPage() {
   const { toast } = useToast();
   const { labels, refreshLabels } = useLabels();
   const { terminology, isLoading: isTerminologyLoading } = useTerminology();
+  const [activeScope, setActiveScope] = useState<ScopeId>("global");
   const [expandedCategories, setExpandedCategories] = useState<Set<LabelCategory>>(new Set());
-  const [editedLabels, setEditedLabels] = useState<Record<string, Record<string, string>>>({});
+  const [editedLabels, setEditedLabels] = useState<EditedLabels>(EMPTY_EDITED);
   const [isSaving, setIsSaving] = useState(false);
 
   const updateGlobalLabelsMutation = trpc.settings.updateGlobalLabels.useMutation();
+  const updatePodLabelsMutation = trpc.settings.updatePodLabels.useMutation();
   const resetLabelsMutation = trpc.settings.resetLabels.useMutation();
 
   // Toggle category expansion
@@ -67,51 +91,76 @@ export default function LabelsSettingsPage() {
     });
   };
 
-  // Handle label change
+  // Handle label change for the active scope
   const handleLabelChange = (category: LabelCategory, key: string, value: string) => {
     setEditedLabels((prev) => ({
       ...prev,
-      [category]: {
-        ...prev[category],
-        [key]: value,
+      [activeScope]: {
+        ...prev[activeScope],
+        [category]: {
+          ...prev[activeScope]?.[category],
+          [key]: value,
+        },
       },
     }));
   };
 
-  // Get the current value for a label
-  const getLabelValue = (category: LabelCategory, key: string): string => {
-    // Check edited labels first
-    if (editedLabels[category]?.[key] !== undefined) {
-      return editedLabels[category][key];
+  /**
+   * For pod tabs: pre-fill inputs with effective values so admin sees the
+   * starting point (pod override -> global -> default). Edits replace pod-local
+   * state. For the Global tab, we read from labels.global.
+   */
+  const getStoredValue = (scope: ScopeId, category: LabelCategory, key: string): string => {
+    const defaults = DEFAULT_GLOBAL_LABELS[category] as unknown as Record<string, string>;
+    if (scope === "global") {
+      const savedGlobal = labels.global[category] as unknown as Record<string, string>;
+      return savedGlobal[key] ?? defaults[key] ?? "";
     }
-    // Then check saved labels
-    const savedLabels = labels.global[category] as unknown as Record<string, string>;
-    const defaultLabels = DEFAULT_GLOBAL_LABELS[category] as unknown as Record<string, string>;
-    return savedLabels[key] ?? defaultLabels[key] ?? "";
+    const savedPod = (labels.pods[scope]?.[category] as unknown as Record<string, string> | undefined) ?? undefined;
+    const savedGlobal = labels.global[category] as unknown as Record<string, string>;
+    return savedPod?.[key] ?? savedGlobal[key] ?? defaults[key] ?? "";
   };
 
-  // Check if a label has been modified
+  const getLabelValue = (category: LabelCategory, key: string): string => {
+    const buffered = editedLabels[activeScope]?.[category]?.[key];
+    if (buffered !== undefined) return buffered;
+    return getStoredValue(activeScope, category, key);
+  };
+
   const isLabelModified = (category: LabelCategory, key: string): boolean => {
-    return editedLabels[category]?.[key] !== undefined;
+    return editedLabels[activeScope]?.[category]?.[key] !== undefined;
   };
 
-  // Check if there are any unsaved changes
-  const hasChanges = Object.keys(editedLabels).some(
-    (category) => Object.keys(editedLabels[category as LabelCategory] ?? {}).length > 0
-  );
+  const hasChangesInScope = (scope: ScopeId): boolean =>
+    Object.keys(editedLabels[scope] ?? {}).some(
+      (category) => Object.keys(editedLabels[scope]?.[category] ?? {}).length > 0
+    );
 
-  // Save all changes
+  const hasChanges = hasChangesInScope(activeScope);
+
+  // Save changes for the active scope
   const handleSave = async () => {
     if (!hasChanges) return;
-
+    const scope = activeScope;
     setIsSaving(true);
     try {
-      await updateGlobalLabelsMutation.mutateAsync(editedLabels);
+      if (scope === "global") {
+        await updateGlobalLabelsMutation.mutateAsync(editedLabels.global);
+      } else {
+        // Snapshot semantics: send the full effective set for the pod, so the
+        // pod becomes detached from global from that point on. We compose the
+        // effective values per key (edited buffer -> stored pod -> global ->
+        // default) and submit the complete GlobalLabels-shaped object.
+        const snapshot = buildPodSnapshot(scope, labels.pods[scope], labels.global, editedLabels[scope]);
+        await updatePodLabelsMutation.mutateAsync({ pod: scope, labels: snapshot });
+      }
       await refreshLabels();
-      setEditedLabels({});
+      setEditedLabels((prev) => ({ ...prev, [scope]: {} }));
       toast({
         title: "Labels saved",
-        description: "Your label changes have been saved successfully.",
+        description: scope === "global"
+          ? "Your global label changes have been saved successfully."
+          : `${POD_TITLES[scope as PodId]} labels have been saved successfully.`,
       });
     } catch (error) {
       console.error("Failed to save labels:", error);
@@ -125,20 +174,25 @@ export default function LabelsSettingsPage() {
     }
   };
 
-  // Reset all global labels
+  // Reset labels for the active scope
   const handleReset = async () => {
-    if (!confirm("Are you sure you want to reset all global labels to their defaults?")) {
+    const scope = activeScope;
+    const scopeName = scope === "global" ? "global" : POD_TITLES[scope as PodId];
+    if (!confirm(`Are you sure you want to reset all ${scopeName} labels to their defaults?`)) {
       return;
     }
-
     setIsSaving(true);
     try {
-      await resetLabelsMutation.mutateAsync({ scope: "global" });
+      if (scope === "global") {
+        await resetLabelsMutation.mutateAsync({ scope: "global" });
+      } else {
+        await resetLabelsMutation.mutateAsync({ scope: "pod", pod: scope });
+      }
       await refreshLabels();
-      setEditedLabels({});
+      setEditedLabels((prev) => ({ ...prev, [scope]: {} }));
       toast({
         title: "Labels reset",
-        description: "All global labels have been reset to defaults.",
+        description: `${scopeName === "global" ? "All global" : `All ${scopeName}`} labels have been reset to defaults.`,
       });
     } catch (error) {
       console.error("Failed to reset labels:", error);
@@ -152,9 +206,8 @@ export default function LabelsSettingsPage() {
     }
   };
 
-  // Cancel changes
   const handleCancel = () => {
-    setEditedLabels({});
+    setEditedLabels((prev) => ({ ...prev, [activeScope]: {} }));
   };
 
   if (isTerminologyLoading) {
@@ -164,6 +217,9 @@ export default function LabelsSettingsPage() {
       </div>
     );
   }
+
+  const activeScopeLabel =
+    activeScope === "global" ? "Global" : POD_TITLES[activeScope as PodId];
 
   return (
     <div className="space-y-8">
@@ -236,14 +292,15 @@ export default function LabelsSettingsPage() {
         </Card>
       </section>
 
-      {/* Global Labels Section */}
+      {/* Labels Section with scope tabs */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">Global Labels</h2>
+            <h2 className="text-xl font-semibold">Labels</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Customize the text labels used throughout the application. Page-specific labels can be
-              edited directly on each page using the &quot;Edit Labels&quot; button.
+              {activeScope === "global"
+                ? "Customize the text labels used throughout the application."
+                : `Override labels for the ${activeScopeLabel} section. Unsaved fields fall back to the Global value.`}
             </p>
           </div>
           <div className="flex gap-2">
@@ -254,9 +311,34 @@ export default function LabelsSettingsPage() {
               disabled={isSaving}
             >
               <RotateCcwIcon className="h-4 w-4 mr-2" />
-              Reset All
+              Reset {activeScopeLabel}
             </Button>
           </div>
+        </div>
+
+        {/* Scope tabs */}
+        <div className="flex items-center gap-1 border-b border-border w-full overflow-x-auto">
+          {SCOPE_TABS.map((tab) => {
+            const isActive = activeScope === tab.id;
+            const tabHasChanges = hasChangesInScope(tab.id);
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveScope(tab.id)}
+                className={cn(
+                  "px-4 py-3 transition-all duration-200 border-b-2 -mb-[2px] whitespace-nowrap",
+                  isActive
+                    ? "text-primary border-primary font-semibold"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:border-muted-foreground/30"
+                )}
+              >
+                {tab.label}
+                {tabHasChanges && (
+                  <span className="ml-2 inline-block h-2 w-2 rounded-full bg-blue-500" aria-label="unsaved changes" />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Category Cards */}
@@ -267,7 +349,7 @@ export default function LabelsSettingsPage() {
             const labelKeys = Object.keys(categoryLabels);
 
             return (
-              <Card key={category} className="overflow-hidden">
+              <Card key={`${activeScope}-${category}`} className="overflow-hidden">
                 {/* Category Header */}
                 <button
                   onClick={() => toggleCategory(category)}
@@ -303,11 +385,13 @@ export default function LabelsSettingsPage() {
                         const defaultValue = categoryLabels[key];
                         const currentValue = getLabelValue(category, key);
                         const isModified = isLabelModified(category, key);
+                        const globalValue =
+                          (labels.global[category] as unknown as Record<string, string>)[key] ?? defaultValue;
 
                         return (
                           <div key={key} className="space-y-1.5">
                             <Label
-                              htmlFor={`${category}-${key}`}
+                              htmlFor={`${activeScope}-${category}-${key}`}
                               className="text-sm font-medium flex items-center gap-2"
                             >
                               {formatLabelKey(key)}
@@ -316,7 +400,7 @@ export default function LabelsSettingsPage() {
                               )}
                             </Label>
                             <Input
-                              id={`${category}-${key}`}
+                              id={`${activeScope}-${category}-${key}`}
                               value={currentValue}
                               onChange={(e) => handleLabelChange(category, key, e.target.value)}
                               placeholder={defaultValue}
@@ -325,7 +409,12 @@ export default function LabelsSettingsPage() {
                                 isModified && "border-blue-300 bg-blue-50"
                               )}
                             />
-                            {currentValue !== defaultValue && (
+                            {activeScope !== "global" && currentValue !== globalValue && (
+                              <p className="text-xs text-muted-foreground">
+                                Global: {globalValue}
+                              </p>
+                            )}
+                            {activeScope === "global" && currentValue !== defaultValue && (
                               <p className="text-xs text-muted-foreground">
                                 Default: {defaultValue}
                               </p>
@@ -350,12 +439,45 @@ export default function LabelsSettingsPage() {
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
             <SaveIcon className="h-4 w-4 mr-2" />
-            {isSaving ? "Saving..." : "Save Changes"}
+            {isSaving ? "Saving..." : `Save ${activeScopeLabel}`}
           </Button>
         </div>
       )}
     </div>
   );
+}
+
+/**
+ * Build a full GlobalLabels-shaped snapshot for a pod from the edited buffer.
+ *
+ * Source priority per key:
+ *   edited buffer  >  stored pod value  >  global  >  built-in default
+ *
+ * The result is sent to updatePodLabels, replacing any prior pod storage. After
+ * the save, the pod becomes detached from later globalLabels changes (matches
+ * the "Pre-filled copies of global" semantics chosen at design time).
+ */
+function buildPodSnapshot(
+  pod: PodId,
+  storedPod: Partial<GlobalLabels> | undefined,
+  global: GlobalLabels,
+  edited: Record<string, Record<string, string>>
+): GlobalLabels {
+  const result: Record<string, Record<string, string>> = {};
+  for (const category of Object.keys(DEFAULT_GLOBAL_LABELS) as (keyof GlobalLabels)[]) {
+    const defaults = DEFAULT_GLOBAL_LABELS[category] as unknown as Record<string, string>;
+    const globalCat = global[category] as unknown as Record<string, string>;
+    const storedCat = (storedPod?.[category] as unknown as Record<string, string> | undefined) || {};
+    const editedCat = edited[category] || {};
+    const merged: Record<string, string> = {};
+    for (const key of Object.keys(defaults)) {
+      merged[key] = editedCat[key] ?? storedCat[key] ?? globalCat[key] ?? defaults[key] ?? "";
+    }
+    result[category] = merged;
+  }
+  // Suppress unused-var: keeping pod in the signature for clarity at call sites.
+  void pod;
+  return result as unknown as GlobalLabels;
 }
 
 /**

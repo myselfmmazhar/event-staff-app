@@ -1,4 +1,5 @@
 import { useLabelsContext } from "@/lib/providers/labels-provider";
+import { usePodContext } from "@/lib/providers/pod-context-provider";
 import { useTerminology } from "@/lib/hooks/use-terminology";
 import type {
   LabelsConfig,
@@ -21,7 +22,7 @@ import type {
   MySchedulePageLabels,
   SettingsPageLabels,
 } from "@/lib/config/labels";
-import { getNestedValue, interpolateLabel } from "@/lib/config/labels";
+import { getEffectiveGlobalLabels, getNestedValue, interpolateLabel } from "@/lib/config/labels";
 import type { TerminologyConfig } from "@/lib/config/terminology";
 import { useMemo } from "react";
 
@@ -68,7 +69,25 @@ export function useLabels() {
 }
 
 /**
+ * Internal: returns the GlobalLabels view that should be used by consumer hooks.
+ * When inside a pod (Task / Talent / Time) the corresponding podLabels override
+ * is layered on top of the raw global values. Outside a pod, returns global
+ * unchanged — identical behaviour to before the pod-labels migration.
+ */
+function useEffectiveGlobal(): GlobalLabels {
+  const { labels } = useLabelsContext();
+  const pod = usePodContext();
+  return useMemo(
+    () => getEffectiveGlobalLabels(labels.global, labels.pods, pod),
+    [labels.global, labels.pods, pod]
+  );
+}
+
+/**
  * Hook to access global labels
+ *
+ * Returns pod-effective values when used inside a Task / Talent / Time pod, and
+ * the raw global values otherwise.
  *
  * @example
  * ```tsx
@@ -79,6 +98,14 @@ export function useLabels() {
  * ```
  */
 export function useGlobalLabels(): GlobalLabels {
+  return useEffectiveGlobal();
+}
+
+/**
+ * Hook to access the raw global labels (no pod overlay). Used by the Labels
+ * settings page when editing the Global tab.
+ */
+export function useRawGlobalLabels(): GlobalLabels {
   const { labels } = useLabelsContext();
   return labels.global;
 }
@@ -100,8 +127,7 @@ export function useGlobalLabels(): GlobalLabels {
  * ```
  */
 export function useActionLabels(): ActionLabels {
-  const { labels } = useLabelsContext();
-  return labels.global.actions;
+  return useEffectiveGlobal().actions;
 }
 
 /**
@@ -116,8 +142,7 @@ export function useActionLabels(): ActionLabels {
  * ```
  */
 export function useSearchLabels(): SearchLabels {
-  const { labels } = useLabelsContext();
-  return labels.global.search;
+  return useEffectiveGlobal().search;
 }
 
 /**
@@ -132,8 +157,7 @@ export function useSearchLabels(): SearchLabels {
  * ```
  */
 export function useFilterLabels(): FilterLabels {
-  const { labels } = useLabelsContext();
-  return labels.global.filters;
+  return useEffectiveGlobal().filters;
 }
 
 /**
@@ -148,8 +172,7 @@ export function useFilterLabels(): FilterLabels {
  * ```
  */
 export function useTableLabels(): TableLabels {
-  const { labels } = useLabelsContext();
-  return labels.global.table;
+  return useEffectiveGlobal().table;
 }
 
 /**
@@ -164,8 +187,7 @@ export function useTableLabels(): TableLabels {
  * ```
  */
 export function usePaginationLabels(): PaginationLabels {
-  const { labels } = useLabelsContext();
-  return labels.global.pagination;
+  return useEffectiveGlobal().pagination;
 }
 
 /**
@@ -180,8 +202,7 @@ export function usePaginationLabels(): PaginationLabels {
  * ```
  */
 export function useCommonLabels(): CommonLabels {
-  const { labels } = useLabelsContext();
-  return labels.global.common;
+  return useEffectiveGlobal().common;
 }
 
 /**
@@ -196,8 +217,7 @@ export function useCommonLabels(): CommonLabels {
  * ```
  */
 export function useStatusLabels(): StatusLabels {
-  const { labels } = useLabelsContext();
-  return labels.global.status;
+  return useEffectiveGlobal().status;
 }
 
 /**
@@ -212,8 +232,7 @@ export function useStatusLabels(): StatusLabels {
  * ```
  */
 export function useFormLabels(): FormLabels {
-  const { labels } = useLabelsContext();
-  return labels.global.form;
+  return useEffectiveGlobal().form;
 }
 
 /**
@@ -228,8 +247,7 @@ export function useFormLabels(): FormLabels {
  * ```
  */
 export function useMessageLabels(): MessageLabels {
-  const { labels } = useLabelsContext();
-  return labels.global.messages;
+  return useEffectiveGlobal().messages;
 }
 
 // ============================================================================

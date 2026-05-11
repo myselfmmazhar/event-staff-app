@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import type { UpdateTerminologyInput } from "@/lib/schemas/settings.schema";
-import type { UpdateGlobalLabelsInput, PageIdentifier, ResetLabelsInput } from "@/lib/schemas/labels.schema";
+import type { UpdateGlobalLabelsInput, UpdatePodLabelsInput, PageIdentifier, PodIdInput, ResetLabelsInput } from "@/lib/schemas/labels.schema";
 import { buildTerminologyConfig, getDefaultTerminology, type TerminologyConfig } from "@/lib/config/terminology";
 import {
     buildLabelsConfig,
@@ -10,9 +10,11 @@ import {
     setNestedValue,
     DEFAULT_GLOBAL_LABELS,
     DEFAULT_PAGE_LABELS,
+    POD_IDS,
     type LabelsConfig,
     type GlobalLabels,
     type PageLabels,
+    type PodLabels,
 } from "@/lib/config/labels";
 
 /**
@@ -167,12 +169,19 @@ export class SettingsService {
                 select: {
                     globalLabels: true,
                     pageLabels: true,
+                    // podLabels is additive; cast to bypass stale generated types until prisma generate runs.
+                    ...({ podLabels: true } as Record<string, true>),
                 },
-            });
+            }) as null | {
+                globalLabels: unknown;
+                pageLabels: unknown;
+                podLabels?: unknown;
+            };
 
             return buildLabelsConfig({
                 globalLabels: (settings?.globalLabels as Record<string, unknown>) || {},
                 pageLabels: (settings?.pageLabels as Record<string, unknown>) || {},
+                podLabels: (settings?.podLabels as Record<string, unknown>) || {},
             });
         } catch (error) {
             console.error("Error fetching labels from database:", error);
@@ -291,25 +300,78 @@ export class SettingsService {
     }
 
     /**
+     * Update pod labels (snapshot replacement)
+     *
+     * Stores `labels` as the full set of overrides for the given pod, replacing
+     * any prior entry for that pod. Other pods are left untouched. Resolution at
+     * read-time falls back to globalLabels for any keys not present here.
+     */
+    async updatePodLabels(input: UpdatePodLabelsInput): Promise<LabelsConfig> {
+        try {
+            const existing = await this.prisma.organizationSettings.findFirst() as
+                | (null | { id: string; podLabels?: unknown });
+            const existingPodLabels =
+                (existing?.podLabels as Record<string, unknown> | undefined) || {};
+
+            const mergedPodLabels: Record<string, unknown> = {
+                ...existingPodLabels,
+                [input.pod]: input.labels,
+            };
+
+            if (existing) {
+                await this.prisma.organizationSettings.update({
+                    where: { id: existing.id },
+                    data: {
+                        // Cast: podLabels is in the schema but generated client may be stale.
+                        ...({ podLabels: mergedPodLabels } as Record<string, unknown>),
+                        updatedAt: new Date(),
+                    } as Prisma.OrganizationSettingsUpdateInput,
+                });
+            } else {
+                await this.prisma.organizationSettings.create({
+                    data: {
+                        ...({ podLabels: mergedPodLabels } as Record<string, unknown>),
+                    } as Prisma.OrganizationSettingsCreateInput,
+                });
+            }
+
+            return this.getLabels();
+        } catch (error) {
+            console.error("Error updating pod labels:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: `Failed to update labels for ${input.pod} pod`,
+                cause: error,
+            });
+        }
+    }
+
+    /**
      * Reset labels to defaults
-     * Can reset all labels, global only, or a specific page
+     * Can reset all labels, global only, a specific page, or a specific pod
      */
     async resetLabels(input: ResetLabelsInput): Promise<LabelsConfig> {
         try {
-            const existing = await this.prisma.organizationSettings.findFirst();
+            const existing = await this.prisma.organizationSettings.findFirst() as
+                | (null | { id: string; pageLabels?: unknown; podLabels?: unknown });
 
             if (!existing) {
                 // Nothing to reset, return defaults
                 return getDefaultLabels();
             }
 
-            let updateData: { globalLabels?: Prisma.InputJsonValue; pageLabels?: Prisma.InputJsonValue } = {};
+            let updateData: {
+                globalLabels?: Prisma.InputJsonValue;
+                pageLabels?: Prisma.InputJsonValue;
+                podLabels?: Prisma.InputJsonValue;
+            } = {};
 
             switch (input.scope) {
                 case 'all':
                     updateData = {
                         globalLabels: {} as Prisma.InputJsonValue,
                         pageLabels: {} as Prisma.InputJsonValue,
+                        podLabels: {} as Prisma.InputJsonValue,
                     };
                     break;
                 case 'global':
@@ -327,6 +389,16 @@ export class SettingsService {
                         };
                     }
                     break;
+                case 'pod':
+                    if (input.pod && POD_IDS.includes(input.pod)) {
+                        const currentPodLabels = (existing.podLabels as Record<string, unknown>) || {};
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                        const { [input.pod]: _, ...rest } = currentPodLabels;
+                        updateData = {
+                            podLabels: rest as unknown as Prisma.InputJsonValue,
+                        };
+                    }
+                    break;
             }
 
             await this.prisma.organizationSettings.update({
@@ -334,7 +406,7 @@ export class SettingsService {
                 data: {
                     ...updateData,
                     updatedAt: new Date(),
-                },
+                } as Prisma.OrganizationSettingsUpdateInput,
             });
 
             return this.getLabels();
