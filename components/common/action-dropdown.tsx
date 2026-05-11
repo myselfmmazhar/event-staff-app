@@ -17,22 +17,27 @@ export interface ActionItem {
 interface ActionDropdownProps {
     actions: ActionItem[];
     align?: 'start' | 'center' | 'end';
+    trigger?: React.ReactNode;
 }
 
-export function ActionDropdown({ actions, align = 'end' }: ActionDropdownProps) {
+export function ActionDropdown({ actions, align = 'end', trigger }: ActionDropdownProps) {
     const [open, setOpen] = React.useState(false);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 w-8 p-0 hover:bg-muted"
-                >
-                    <MoreVerticalIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="sr-only">Open menu</span>
-                </Button>
+                {trigger ? (
+                    trigger
+                ) : (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-muted"
+                    >
+                        <MoreVerticalIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="sr-only">Open menu</span>
+                    </Button>
+                )}
             </PopoverTrigger>
             <PopoverContent 
                 align={align} 

@@ -421,10 +421,10 @@ function StaffFormContent({
             setWizardStep('basic');
             return;
         }
-        const submitData = {
+        const submitData = formSchema.parse({
             ...data,
             teamMembers: data.staffRole === StaffRole.TEAM ? teamMembers : undefined,
-        };
+        });
         const action = pendingSaveActionRef.current;
         if (!isEdit && taxFormRef.current) {
             const taxData = await taxFormRef.current.getFormData();
