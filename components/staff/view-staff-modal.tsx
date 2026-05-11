@@ -338,43 +338,6 @@ export function ViewStaffModal({
                         </div>
                     )}
 
-                    {/* Team/Company Details (for staff members linked to a team) */}
-                    {staff.company && (
-                        <div className="bg-blue-50/50 border border-blue-200 p-5 rounded-lg mb-6">
-                            <h3 className="text-lg font-semibold border-b border-blue-200 pb-2 mb-4">Team Information</h3>
-                            <div className="space-y-3">
-                                {staff.company.teamEntityName && (
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Team Name</p>
-                                        <p className="text-base font-medium">{staff.company.teamEntityName}</p>
-                                    </div>
-                                )}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Team Lead</p>
-                                        <p className="text-base">{staff.company.firstName} {staff.company.lastName}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Team ID</p>
-                                        <p className="text-base">{staff.company.staffId}</p>
-                                    </div>
-                                    {staff.company.teamEmail && (
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Team Email</p>
-                                            <p className="text-base">{staff.company.teamEmail}</p>
-                                        </div>
-                                    )}
-                                    {staff.company.teamPhone && (
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Team Phone</p>
-                                            <p className="text-base">{staff.company.teamPhone}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {/* Row 3: Admin Information (full width, conditional) */}
                     {hasAdminInfo && (
                         <div className="bg-accent/5 border border-border/30 p-5 rounded-lg lg:max-w-2xl mb-6">
