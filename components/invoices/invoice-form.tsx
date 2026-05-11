@@ -333,7 +333,14 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                         <div className="space-y-2">
                             <Label>Terms</Label>
                             <Select
-                                onValueChange={(val) => form.setValue("terms", val)}
+                                onValueChange={(val) => {
+                                    form.setValue("terms", val);
+                                    const baseDate = form.getValues("invoiceDate") || new Date();
+                                    const due = new Date(baseDate);
+                                    if (val === "Net 15") due.setDate(due.getDate() + 15);
+                                    else if (val === "Net 30") due.setDate(due.getDate() + 30);
+                                    form.setValue("dueDate", due);
+                                }}
                                 value={form.watch("terms") || ""}
                             >
                                 <SelectTrigger>
