@@ -6,6 +6,7 @@ import { updateTerminologySchema } from "@/lib/schemas/settings.schema";
 import {
     updateGlobalLabelsSchema,
     updatePageLabelsSchema,
+    updatePodLabelsSchema,
     resetLabelsSchema,
 } from "@/lib/schemas/labels.schema";
 
@@ -82,6 +83,17 @@ export const settingsRouter = router({
         .mutation(async ({ ctx, input }) => {
             const settingsService = new SettingsService(ctx.prisma);
             return await settingsService.updatePageLabels(input.page, input.labels);
+        }),
+
+    /**
+     * Update pod-scoped labels (Task / Talent / Time)
+     * Admin-only endpoint
+     */
+    updatePodLabels: adminProcedure
+        .input(updatePodLabelsSchema)
+        .mutation(async ({ ctx, input }) => {
+            const settingsService = new SettingsService(ctx.prisma);
+            return await settingsService.updatePodLabels(input);
         }),
 
     /**

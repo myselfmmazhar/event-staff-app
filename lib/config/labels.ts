@@ -368,9 +368,35 @@ export interface PageLabels {
 // COMBINED LABELS CONFIG
 // ============================================================================
 
+// ============================================================================
+// POD LABELS - Per-section (Task / Talent / Time) overrides for GlobalLabels
+// Additive feature: if the podLabels column is dropped, the app falls back to
+// globalLabels with no behavioural change.
+// ============================================================================
+
+export const POD_IDS = ['task', 'talent', 'time'] as const;
+export type PodId = (typeof POD_IDS)[number];
+
+export const POD_TITLES: Record<PodId, string> = {
+  task: 'Task Pod',
+  talent: 'Talent Pod',
+  time: 'Time Pod',
+};
+
+/**
+ * Storage shape for pod-scoped label overrides. Each pod holds a full snapshot
+ * of GlobalLabels — when the admin first edits a pod tab, the snapshot is seeded
+ * from the current effective global values (so the pod becomes detached and is
+ * not affected by later changes to globalLabels).
+ *
+ * Stored sparse: pods/categories not present fall back to globalLabels.
+ */
+export type PodLabels = Partial<Record<PodId, Partial<GlobalLabels>>>;
+
 export interface LabelsConfig {
   global: GlobalLabels;
   pages: PageLabels;
+  pods: PodLabels;
 }
 
 // ============================================================================
@@ -810,6 +836,8 @@ export function interpolateLabel(
     .replace(/{ROLEPLURAL}/g, terminology.role.upperPlural);
 }
 
+export const DEFAULT_POD_LABELS: PodLabels = {};
+
 /**
  * Get default labels config
  */
@@ -817,7 +845,25 @@ export function getDefaultLabels(): LabelsConfig {
   return {
     global: DEFAULT_GLOBAL_LABELS,
     pages: DEFAULT_PAGE_LABELS,
+    pods: DEFAULT_POD_LABELS,
   };
+}
+
+/**
+ * Resolve the effective GlobalLabels for a given pod, falling back to global
+ * values for any keys/categories not overridden by the pod.
+ *
+ * If pod is null or has no entry, returns global unchanged.
+ */
+export function getEffectiveGlobalLabels(
+  global: GlobalLabels,
+  pods: PodLabels,
+  pod: PodId | null
+): GlobalLabels {
+  if (!pod) return global;
+  const override = pods[pod];
+  if (!override || Object.keys(override).length === 0) return global;
+  return deepMerge<GlobalLabels>(global, override as Partial<GlobalLabels>);
 }
 
 function normalizeDotNotation(obj: Record<string, unknown>): Record<string, unknown> {
@@ -863,8 +909,19 @@ function normalizeDotNotation(obj: Record<string, unknown>): Record<string, unkn
 export function buildLabelsConfig(data: {
   globalLabels?: Record<string, unknown>;
   pageLabels?: Record<string, unknown>;
+  podLabels?: Record<string, unknown>;
 }): LabelsConfig {
   const normalizedPageLabels = normalizeDotNotation(data.pageLabels || {});
+
+  // Pods are stored as plain JSON; coerce while filtering to known pod IDs only.
+  const podsRaw = (data.podLabels || {}) as Record<string, unknown>;
+  const pods: PodLabels = {};
+  for (const podId of POD_IDS) {
+    const entry = podsRaw[podId];
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+      pods[podId] = entry as Partial<GlobalLabels>;
+    }
+  }
 
   return {
     global: deepMerge<GlobalLabels>(
@@ -875,5 +932,6 @@ export function buildLabelsConfig(data: {
       DEFAULT_PAGE_LABELS,
       normalizedPageLabels as unknown as Partial<PageLabels>
     ),
+    pods,
   };
 }

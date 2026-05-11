@@ -679,6 +679,7 @@ model OrganizationSettings {
   updatedAt         DateTime @updatedAt @db.Timestamp(6)
   globalLabels      Json     @default("{}")
   pageLabels        Json     @default("{}")
+  podLabels         Json     @default("{}")
   companyAddress    String?
   companyEmail      String?
   companyLogoUrl    String?

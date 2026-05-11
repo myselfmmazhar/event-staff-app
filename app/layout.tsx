@@ -4,6 +4,7 @@ import { TRPCProvider } from "@/lib/providers/trpc-provider";
 import { TerminologyProvider } from "@/lib/providers/terminology-provider";
 import { LabelsProvider } from "@/lib/providers/labels-provider";
 import { LabelEditModeProvider } from "@/lib/providers/label-edit-mode-provider";
+import { PodContextProvider } from "@/lib/providers/pod-context-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { EditLabelsSaveBar } from "@/components/common/edit-labels-button";
 
@@ -23,11 +24,13 @@ export default function RootLayout({
         <TRPCProvider>
           <TerminologyProvider>
             <LabelsProvider>
-              <LabelEditModeProvider>
-                {children}
-                <EditLabelsSaveBar />
-                <Toaster />
-              </LabelEditModeProvider>
+              <PodContextProvider>
+                <LabelEditModeProvider>
+                  {children}
+                  <EditLabelsSaveBar />
+                  <Toaster />
+                </LabelEditModeProvider>
+              </PodContextProvider>
             </LabelsProvider>
           </TerminologyProvider>
         </TRPCProvider>

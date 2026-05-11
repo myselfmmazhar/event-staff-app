@@ -263,12 +263,33 @@ export const updatePageLabelsSchema = z.object({
 
 export type UpdatePageLabelsInput = z.infer<typeof updatePageLabelsSchema>;
 
+// ============================================================================
+// POD LABELS SCHEMAS
+// ============================================================================
+
+export const podIdSchema = z.enum(['task', 'talent', 'time']);
+export type PodIdInput = z.infer<typeof podIdSchema>;
+
+/**
+ * Update Pod Labels Schema
+ * Replaces (snapshot-style) the stored labels for a specific pod with the
+ * provided categories. Unspecified categories fall back to globalLabels at
+ * read time.
+ */
+export const updatePodLabelsSchema = z.object({
+  pod: podIdSchema,
+  labels: updateGlobalLabelsSchema,
+});
+
+export type UpdatePodLabelsInput = z.infer<typeof updatePodLabelsSchema>;
+
 /**
  * Reset Labels Schema
  */
 export const resetLabelsSchema = z.object({
-  scope: z.enum(['all', 'global', 'page']),
+  scope: z.enum(['all', 'global', 'page', 'pod']),
   page: pageIdentifierSchema.optional(),
+  pod: podIdSchema.optional(),
 });
 
 export type ResetLabelsInput = z.infer<typeof resetLabelsSchema>;
