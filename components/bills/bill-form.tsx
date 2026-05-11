@@ -111,6 +111,8 @@ export function BillForm({ bill }: BillFormProps) {
 
             discountType: "AMOUNT",
             billNo: "",
+            notes: "",
+            paymentDetails: "",
         },
     });
 
@@ -511,7 +513,7 @@ export function BillForm({ bill }: BillFormProps) {
                                                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Scheduled Shift Detail</h4>
                                                 </div>
 
-                                                <div className={`grid grid-cols-2 gap-4 transition-all duration-300 ${!items?.[index]?.isScheduledChecked ? 'opacity-30 pointer-events-none select-none' : ''}`}>
+                                                <div className={`grid grid-cols-2 gap-4 transition-all duration-300 ${!items?.[index]?.isScheduledChecked ? 'opacity-20 grayscale pointer-events-none select-none' : ''}`}>
                                                     <div className="space-y-1">
                                                         <span className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Start Date & Time</span>
                                                         <Input
@@ -565,7 +567,7 @@ export function BillForm({ bill }: BillFormProps) {
                                                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Actual Shift Details</h4>
                                                 </div>
 
-                                                <div className={`grid grid-cols-2 gap-4 transition-all duration-300 ${!items?.[index]?.isActualChecked ? 'opacity-30 pointer-events-none select-none' : ''}`}>
+                                                <div className={`grid grid-cols-2 gap-4 transition-all duration-300 ${!items?.[index]?.isActualChecked ? 'opacity-20 grayscale pointer-events-none select-none' : ''}`}>
                                                     <div className="space-y-1">
                                                         <span className="text-[8px] font-bold text-muted-foreground uppercase leading-none">Shift Start Date & Time</span>
                                                         <Input

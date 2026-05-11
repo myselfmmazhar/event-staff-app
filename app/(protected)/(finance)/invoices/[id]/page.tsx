@@ -27,6 +27,7 @@ export default function ViewInvoicePage() {
             const timer = setTimeout(() => window.print(), 300);
             return () => clearTimeout(timer);
         }
+        return;
     }, [searchParams, invoice, isLoading]);
 
     if (isLoading) {
