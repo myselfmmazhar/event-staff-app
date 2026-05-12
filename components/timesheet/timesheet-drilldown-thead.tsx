@@ -261,7 +261,6 @@ export function TimesheetDrilldownTheadRow({
                             style={{ width: `var(--col-status)` }}
                         >
                             <SortCell id="status" label="Status" align="text-center" {...sortProps} />
-                            <TableColumnResizeHandle onMouseDown={(e) => onResizeMouseDown('status', e)} />
                         </ResizableTh>
                     );
                 default:
@@ -322,7 +321,6 @@ export function TimesheetDrilldownTheadRow({
                             style={{ width: `var(--col-cmStatus)` }}
                         >
                             <SortCell id="status" label="Status" align="text-right" className="pr-4" {...sortProps} />
-                            <TableColumnResizeHandle onMouseDown={(e) => onResizeMouseDown('cmStatus', e)} />
                         </ResizableTh>
                     );
                 default:
@@ -482,7 +480,6 @@ export function TimesheetDrilldownTheadRow({
                         style={{ width: `var(--col-status)` }}
                     >
                         <SortCell id="status" label="Status" align="text-right" className="pr-4" {...sortProps} />
-                        <TableColumnResizeHandle onMouseDown={(e) => onResizeMouseDown('status', e)} />
                     </ResizableTh>
                 );
             case 'notes':

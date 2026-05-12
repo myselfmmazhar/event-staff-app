@@ -63,44 +63,6 @@ const formatCurrency = (n: number) => `$${n.toFixed(2)}`;
 const formatDate = (d?: Date | string | null) =>
     d ? format(new Date(d), "MM/dd/yyyy") : "";
 
-type WatermarkStyle = { text: string; fill: string; stroke: string };
-
-function getWatermark(status: string): WatermarkStyle | null {
-    switch (status) {
-        case "PAID":
-            return {
-                text: "PAID",
-                fill: "rgba(34, 197, 94, 0.18)",
-                stroke: "rgba(22, 163, 74, 0.7)",
-            };
-        case "VOID":
-            return {
-                text: "VOID",
-                fill: "rgba(107, 114, 128, 0.18)",
-                stroke: "rgba(75, 85, 99, 0.7)",
-            };
-        case "CANCELLED":
-            return {
-                text: "CANCELLED",
-                fill: "rgba(239, 68, 68, 0.16)",
-                stroke: "rgba(220, 38, 38, 0.7)",
-            };
-        case "OVERDUE":
-            return {
-                text: "OVERDUE",
-                fill: "rgba(239, 68, 68, 0.16)",
-                stroke: "rgba(220, 38, 38, 0.7)",
-            };
-        case "DRAFT":
-            return {
-                text: "DRAFT",
-                fill: "rgba(156, 163, 175, 0.18)",
-                stroke: "rgba(107, 114, 128, 0.7)",
-            };
-        default:
-            return null;
-    }
-}
 
 export function PrintDocument(props: PrintDocumentProps) {
     const {
@@ -126,7 +88,6 @@ export function PrintDocument(props: PrintDocumentProps) {
     const visibleCustomFields = (customFields ?? []).filter((f) => f.value && f.value.trim().length > 0);
 
     const isInvoice = variant === "INVOICE";
-    const watermark = getWatermark(status);
     const companyName = company?.companyName || "";
     const logoUrl = company?.companyLogoUrl || "";
 
@@ -141,31 +102,6 @@ export function PrintDocument(props: PrintDocumentProps) {
                 position: "relative",
             }}
         >
-            {/* Status Watermark */}
-            {watermark && (
-                <div
-                    aria-hidden
-                    style={{
-                        position: "absolute",
-                        top: "45%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%) rotate(-22deg)",
-                        fontSize: "140px",
-                        fontWeight: 800,
-                        color: watermark.fill,
-                        WebkitTextStroke: `4px ${watermark.stroke}`,
-                        letterSpacing: "10px",
-                        pointerEvents: "none",
-                        zIndex: 50,
-                        userSelect: "none",
-                        whiteSpace: "nowrap",
-                        textTransform: "uppercase",
-                    }}
-                >
-                    {watermark.text}
-                </div>
-            )}
-
             {/* Header: company info + logo */}
             <div
                 className="print-doc__avoid-break"

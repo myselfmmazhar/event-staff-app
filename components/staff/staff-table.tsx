@@ -52,7 +52,6 @@ export type StaffWithRelations = {
     customField3: string | null;
     // Documents
     documents: Array<{ name: string; url: string; type?: string; size?: number }> | null;
-    documentExpiryDate: Date | string | null;
     // Team Details (for TEAM role)
     teamEntityName: string | null;
     teamEmail: string | null;

@@ -34,6 +34,76 @@ const SKILL_LEVEL_ORDER: Record<SkillLevel, number> = {
   ADVANCED: 3,
 };
 
+function sameDay(a: Date | null | undefined, b: Date | null | undefined): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return new Date(a).toDateString() === new Date(b).toDateString();
+}
+
+function sameDecimal(a: unknown, b: unknown): boolean {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  return String(a) === String(b);
+}
+
+/**
+ * Returns a list of human-readable labels for the call time fields that
+ * actually changed between the previous and updated records. Used to drive
+ * the in-app notification sent to invited staff after an update.
+ */
+function diffCallTimeForNotification(
+  previous: {
+    startDate: Date | null;
+    startTime: string | null;
+    endDate: Date | null;
+    endTime: string | null;
+    payRate: unknown;
+    payRateType: RateType;
+    billRate: unknown;
+    billRateType: RateType;
+    notes: string | null;
+    instructions: string | null;
+    numberOfStaffRequired: number;
+    skillLevel: SkillLevel;
+    serviceId: string | null;
+  },
+  next: {
+    startDate: Date | null;
+    startTime: string | null;
+    endDate: Date | null;
+    endTime: string | null;
+    payRate: unknown;
+    payRateType: RateType;
+    billRate: unknown;
+    billRateType: RateType;
+    notes: string | null;
+    instructions: string | null;
+    numberOfStaffRequired: number;
+    skillLevel: SkillLevel;
+    serviceId: string | null;
+  }
+): string[] {
+  const changes: string[] = [];
+
+  if (!sameDay(previous.startDate, next.startDate)) changes.push('start date');
+  if ((previous.startTime ?? '') !== (next.startTime ?? '')) changes.push('start time');
+  if (!sameDay(previous.endDate, next.endDate)) changes.push('end date');
+  if ((previous.endTime ?? '') !== (next.endTime ?? '')) changes.push('end time');
+  if (!sameDecimal(previous.payRate, next.payRate) || previous.payRateType !== next.payRateType) {
+    changes.push('pay rate');
+  }
+  if (!sameDecimal(previous.billRate, next.billRate) || previous.billRateType !== next.billRateType) {
+    changes.push('bill rate');
+  }
+  if ((previous.notes ?? '') !== (next.notes ?? '')) changes.push('notes');
+  if ((previous.instructions ?? '') !== (next.instructions ?? '')) changes.push('instructions');
+  if (previous.numberOfStaffRequired !== next.numberOfStaffRequired) changes.push('staff count');
+  if (previous.skillLevel !== next.skillLevel) changes.push('skill level');
+  if ((previous.serviceId ?? '') !== (next.serviceId ?? '')) changes.push('service');
+
+  return changes;
+}
+
 /**
  * Call Time Service - Business logic for call time operations
  */
@@ -383,6 +453,20 @@ export class CallTimeService {
   ) {
     await this.findOne(id, userId, userRole); // Verify ownership
 
+    // Snapshot the call time before the update so we can detect which fields
+    // changed and notify any staff with pending/accepted invitations.
+    const previous = await this.prisma.callTime.findUnique({
+      where: { id },
+      include: {
+        service: { select: { title: true } },
+        event: { select: { id: true, title: true } },
+        invitations: {
+          where: { status: { in: ['PENDING', 'ACCEPTED'] } },
+          select: { id: true },
+        },
+      },
+    });
+
     // Transform serviceId to Prisma relation syntax
     const { serviceId, ...restData } = data;
     const prismaData: any = { ...restData };
@@ -413,6 +497,24 @@ export class CallTimeService {
         _count: { select: { invitations: true } },
       },
     });
+
+    // Notify staff with pending/accepted invitations about changes (best-effort)
+    try {
+      if (previous && previous.invitations.length > 0) {
+        const changes = diffCallTimeForNotification(previous, updated);
+        if (changes.length > 0) {
+          const notificationService = getNotificationTriggerService(this.prisma);
+          await notificationService.onCallTimeUpdated(id, {
+            positionName: updated.service?.title || previous.service?.title || 'Staff',
+            eventTitle: updated.event.title,
+            eventId: updated.event.id,
+            changes,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to notify staff after call time update:', err);
+    }
 
     // Auto-sync estimate for this event based on current tasks (best-effort)
     try {
@@ -1860,6 +1962,7 @@ export class CallTimeService {
                 venueName: true,
                 city: true,
                 state: true,
+                timezone: true,
               },
             },
             invitations: {
@@ -2110,6 +2213,7 @@ export class CallTimeService {
                 city: true,
                 state: true,
                 zipCode: true,
+                timezone: true,
                 requirements: true,
                 meetingPoint: true,
                 onsitePocName: true,
@@ -2444,13 +2548,49 @@ export class CallTimeService {
       });
     }
 
-    // If no assignments, just delete existing and return
+    // Snapshot existing CallTimes (with their pending/accepted invitations) so we
+    // can update matched rows in place — preserving invitations — and only delete
+    // rows the user actually removed from the form.
+    const existingCallTimes = await this.prisma.callTime.findMany({
+      where: { eventId: input.eventId },
+      include: {
+        service: { select: { title: true } },
+        invitations: {
+          where: { status: { in: ['PENDING', 'ACCEPTED'] } },
+          select: { id: true },
+        },
+      },
+    });
+    const existingById = new Map(existingCallTimes.map((ct) => [ct.id, ct]));
+
+    // If no assignments, delete every existing CallTime for this event
     if (input.assignments.length === 0) {
-      await this.prisma.callTime.deleteMany({
-        where: { eventId: input.eventId },
-      });
+      if (existingCallTimes.length > 0) {
+        await this.prisma.callTime.deleteMany({
+          where: { eventId: input.eventId },
+        });
+      }
       return [];
     }
+
+    // Partition incoming assignments into updates (have a matching DB id) vs creates
+    const assignmentsToUpdate: { existing: typeof existingCallTimes[number]; assignment: BulkSyncForEventInput['assignments'][number] }[] = [];
+    const assignmentsToCreate: BulkSyncForEventInput['assignments'][number][] = [];
+    const keptIds = new Set<string>();
+
+    for (const assignment of input.assignments) {
+      const matched = assignment.id ? existingById.get(assignment.id) : undefined;
+      if (matched) {
+        assignmentsToUpdate.push({ existing: matched, assignment });
+        keptIds.add(matched.id);
+      } else {
+        assignmentsToCreate.push(assignment);
+      }
+    }
+
+    const idsToDelete = existingCallTimes
+      .filter((ct) => !keptIds.has(ct.id))
+      .map((ct) => ct.id);
 
     // OPTIMIZATION: Batch fetch all services BEFORE the transaction
     const serviceIds = [...new Set(input.assignments.map(a => a.serviceId))];
@@ -2469,89 +2609,144 @@ export class CallTimeService {
       }
     }
 
-    // OPTIMIZATION: Generate all CallTime IDs BEFORE the transaction
-    // This avoids N*2 queries inside the transaction
-    const callTimeIds = await this.generateBatchCallTimeIds(input.assignments.length);
+    // Only generate fresh CallTime IDs for the rows we'll create
+    const newCallTimeIds = assignmentsToCreate.length > 0
+      ? await this.generateBatchCallTimeIds(assignmentsToCreate.length)
+      : [];
+
+    // Build a write payload from an assignment + its service (shared by create/update)
+    const buildCallTimeData = (
+      assignment: BulkSyncForEventInput['assignments'][number],
+    ) => {
+      const service = serviceMap.get(assignment.serviceId)!;
+
+      // Parse dates - use event dates as fallback
+      const startDate = assignment.startDate
+        ? new Date(assignment.startDate)
+        : event.startDate;
+      const endDate = assignment.endDate
+        ? new Date(assignment.endDate)
+        : event.endDate;
+
+      // Determine rates
+      const payRate = assignment.payRate ?? assignment.customCost ?? Number(service.cost) ?? 0;
+      const billRate = assignment.billRate ?? assignment.customPrice ?? Number(service.price) ?? 0;
+      const rateType = assignment.rateType ?? this.mapCostUnitToRateType(service.costUnitType);
+
+      // Map rating required
+      const ratingRequired = assignment.ratingRequired === 'ANY'
+        ? null
+        : assignment.ratingRequired as StaffRating;
+
+      return {
+        serviceId: assignment.serviceId,
+        numberOfStaffRequired: assignment.quantity,
+        skillLevel: this.mapExperienceToSkillLevel(assignment.experienceRequired),
+        startDate,
+        startTime: assignment.startTime,
+        endDate,
+        endTime: assignment.endTime,
+        payRate,
+        payRateType: rateType,
+        billRate,
+        billRateType: rateType,
+        customCost: assignment.customCost,
+        customPrice: assignment.customPrice,
+        ratingRequired,
+        approveOvertime: assignment.approveOvertime,
+        overtimeRate: assignment.overtimeRate ?? null,
+        overtimeRateType: assignment.overtimeRateType ?? null,
+        commission: assignment.commission,
+        commissionAmount: assignment.commissionAmount ?? null,
+        commissionAmountType: assignment.commissionAmountType ?? null,
+        minimum: assignment.minimum ?? (service.minimum ? Number(service.minimum) : null),
+        expenditure: assignment.expenditure ?? service.expenditure ?? false,
+        expenditureCost: assignment.expenditureCost ?? (service.expenditureCost ? Number(service.expenditureCost) : null),
+        expenditurePrice: assignment.expenditurePrice ?? (service.expenditurePrice ? Number(service.expenditurePrice) : null),
+        expenditureAmount: assignment.expenditureAmount ?? (service.expenditureAmount ? Number(service.expenditureAmount) : null),
+        expenditureAmountType: assignment.expenditureAmountType ?? (service.expenditureAmountType as any) ?? null,
+        notes: assignment.notes,
+        instructions: assignment.instructions,
+      };
+    };
 
     // Use transaction with increased timeout for atomicity
-    const createdCallTimes = await this.prisma.$transaction(async (tx) => {
-      // Delete existing CallTimes for this event
-      // Note: This will cascade delete CallTimeInvitations as well
-      await tx.callTime.deleteMany({
-        where: { eventId: input.eventId },
-      });
+    const { finalCallTimes, notifyTargets } = await this.prisma.$transaction(async (tx) => {
+      // Delete only the CallTimes the user removed from the form
+      if (idsToDelete.length > 0) {
+        await tx.callTime.deleteMany({
+          where: { id: { in: idsToDelete } },
+        });
+      }
 
-      // Prepare all call time data
-      const callTimeDataList = input.assignments.map((assignment, index) => {
-        const service = serviceMap.get(assignment.serviceId)!;
-        const callTimeId = callTimeIds[index]!;
+      const finalCallTimes: any[] = [];
+      // Tracks updates that should fire an in-app notification to invited staff
+      const notifyTargets: {
+        callTimeId: string;
+        positionName: string;
+        changes: string[];
+      }[] = [];
 
-        // Parse dates - use event dates as fallback
-        const startDate = assignment.startDate
-          ? new Date(assignment.startDate)
-          : event.startDate;
-        const endDate = assignment.endDate
-          ? new Date(assignment.endDate)
-          : event.endDate;
-
-        // Determine rates
-        const payRate = assignment.payRate ?? assignment.customCost ?? Number(service.cost) ?? 0;
-        const billRate = assignment.billRate ?? assignment.customPrice ?? Number(service.price) ?? 0;
-        const rateType = assignment.rateType ?? this.mapCostUnitToRateType(service.costUnitType);
-
-        // Map rating required
-        const ratingRequired = assignment.ratingRequired === 'ANY'
-          ? null
-          : assignment.ratingRequired as StaffRating;
-
-        return {
-          callTimeId,
-          eventId: input.eventId,
-          serviceId: assignment.serviceId,
-          numberOfStaffRequired: assignment.quantity,
-          skillLevel: this.mapExperienceToSkillLevel(assignment.experienceRequired),
-          startDate,
-          startTime: assignment.startTime,
-          endDate,
-          endTime: assignment.endTime,
-          payRate,
-          payRateType: rateType,
-          billRate,
-          billRateType: rateType,
-          customCost: assignment.customCost,
-          customPrice: assignment.customPrice,
-          ratingRequired,
-          approveOvertime: assignment.approveOvertime,
-          overtimeRate: assignment.overtimeRate ?? null,
-          overtimeRateType: assignment.overtimeRateType ?? null,
-          commission: assignment.commission,
-          commissionAmount: assignment.commissionAmount ?? null,
-          commissionAmountType: assignment.commissionAmountType ?? null,
-          minimum: assignment.minimum ?? (service.minimum ? Number(service.minimum) : null),
-          expenditure: assignment.expenditure ?? service.expenditure ?? false,
-          expenditureCost: assignment.expenditureCost ?? (service.expenditureCost ? Number(service.expenditureCost) : null),
-          expenditurePrice: assignment.expenditurePrice ?? (service.expenditurePrice ? Number(service.expenditurePrice) : null),
-          expenditureAmount: assignment.expenditureAmount ?? (service.expenditureAmount ? Number(service.expenditureAmount) : null),
-          expenditureAmountType: assignment.expenditureAmountType ?? (service.expenditureAmountType as any) ?? null,
-          notes: assignment.notes,
-          instructions: assignment.instructions,
-        };
-      });
-
-      // Create all call times (sequential to maintain order, but minimal queries now)
-      const createdCallTimes = [];
-      for (const data of callTimeDataList) {
-        const callTime = await tx.callTime.create({
+      // Update matched CallTimes in place (preserves invitations)
+      for (const { existing, assignment } of assignmentsToUpdate) {
+        const data = buildCallTimeData(assignment);
+        const updated = await tx.callTime.update({
+          where: { id: existing.id },
           data,
           include: { service: true },
         });
-        createdCallTimes.push(callTime);
+        finalCallTimes.push(updated);
+
+        // Queue an update notification only when staff are actually affected
+        if (existing.invitations.length > 0) {
+          const changes = diffCallTimeForNotification(existing, updated);
+          if (changes.length > 0) {
+            notifyTargets.push({
+              callTimeId: existing.id,
+              positionName: updated.service?.title || existing.service?.title || 'Staff',
+              changes,
+            });
+          }
+        }
       }
 
-      return createdCallTimes;
+      // Create brand-new CallTimes for assignments without a matching DB row
+      for (let i = 0; i < assignmentsToCreate.length; i++) {
+        const assignment = assignmentsToCreate[i]!;
+        const data = buildCallTimeData(assignment);
+        const created = await tx.callTime.create({
+          data: {
+            ...data,
+            callTimeId: newCallTimeIds[i]!,
+            eventId: input.eventId,
+          },
+          include: { service: true },
+        });
+        finalCallTimes.push(created);
+      }
+
+      return { finalCallTimes, notifyTargets };
     }, {
       timeout: 15000, // Increase timeout to 15 seconds for bulk operations
     });
+
+    // Notify staff with pending/accepted invitations about changes (best-effort)
+    if (notifyTargets.length > 0) {
+      try {
+        const notificationService = getNotificationTriggerService(this.prisma);
+        const eventTitle = event.title;
+        for (const target of notifyTargets) {
+          await notificationService.onCallTimeUpdated(target.callTimeId, {
+            positionName: target.positionName,
+            eventTitle,
+            eventId: input.eventId,
+            changes: target.changes,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to notify staff after bulk sync:', err);
+      }
+    }
 
     // Auto-sync estimate for this event based on current tasks (best-effort)
     try {
@@ -2560,7 +2755,7 @@ export class CallTimeService {
       console.error('Failed to sync estimate after bulk sync:', err);
     }
 
-    return createdCallTimes;
+    return finalCallTimes;
   }
 
   private async syncEstimateForEvent(eventId: string, userId: string, userRole?: string | null): Promise<void> {

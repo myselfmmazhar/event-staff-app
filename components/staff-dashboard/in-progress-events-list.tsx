@@ -24,6 +24,8 @@ import {
   SpinnerIcon,
 } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
+import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
+import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 
 interface ShiftSession {
   id: string;
@@ -54,6 +56,7 @@ interface Invitation {
       venueName: string | null;
       city: string | null;
       state: string | null;
+      timezone?: string | null;
     };
   };
 }
@@ -76,6 +79,7 @@ export function InProgressEventsList({
   pendingActionId,
 }: InProgressEventsListProps) {
   const eventTerm = useEventTerm();
+  const { timezone: talentTz } = useTalentTimezone();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
 
@@ -179,11 +183,26 @@ export function InProgressEventsList({
         {invitations.map((invitation) => {
           const payRate = getPayRate(invitation.callTime.payRate);
 
+          const eventTz = invitation.callTime.event.timezone || 'UTC';
+          const start = convertWallClock(
+            invitation.callTime.startDate,
+            invitation.callTime.startTime,
+            eventTz,
+            talentTz,
+          );
+          const end = convertWallClock(
+            invitation.callTime.endDate,
+            invitation.callTime.endTime,
+            eventTz,
+            talentTz,
+          );
+          const tzLabel = shortTzLabel(talentTz, start.date ?? new Date());
+
           const isSameDay =
-            invitation.callTime.startDate &&
-            invitation.callTime.endDate &&
-            new Date(invitation.callTime.startDate).toDateString() ===
-              new Date(invitation.callTime.endDate).toDateString();
+            start.date &&
+            end.date &&
+            new Date(start.date).toDateString() ===
+              new Date(end.date).toDateString();
 
           const sessions = invitation.shiftSessions ?? [];
           const isOpen = hasOpenSession(sessions);
@@ -224,10 +243,10 @@ export function InProgressEventsList({
                     <div>
                       <p className="text-xs text-muted-foreground">Date</p>
                       <p className="font-medium">
-                        {formatDate(invitation.callTime.startDate)}
+                        {formatDate(start.date)}
                         {!isSameDay && (
                           <span className="block text-muted-foreground font-normal">
-                            – {formatDate(invitation.callTime.endDate)}
+                            – {formatDate(end.date)}
                           </span>
                         )}
                       </p>
@@ -239,8 +258,13 @@ export function InProgressEventsList({
                     <div>
                       <p className="text-xs text-muted-foreground">Scheduled Time</p>
                       <p className="font-medium">
-                        {formatTimeStr(invitation.callTime.startTime)} –{' '}
-                        {formatTimeStr(invitation.callTime.endTime)}
+                        {formatTimeStr(start.time)} –{' '}
+                        {formatTimeStr(end.time)}
+                        {tzLabel && (
+                          <span className="ml-1 text-xs font-normal text-muted-foreground">
+                            {tzLabel}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>

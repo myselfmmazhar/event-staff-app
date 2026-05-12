@@ -148,13 +148,6 @@ export function AssignmentsSection({
         setRepeatAssignment({ ...assignment, id: crypto.randomUUID() });
         setLivePreviewAssignment(null);
         break;
-      case 'find-talent':
-        // Close form and could potentially trigger navigation in the future
-        setShowForm(false);
-        setEditingAssignment(null);
-        setRepeatAssignment(null);
-        setLivePreviewAssignment(null);
-        break;
     }
 
     toast({

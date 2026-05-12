@@ -33,9 +33,8 @@ function toDateInputValue(value: Date | string | null | undefined): string {
     return d.toISOString().slice(0, 10);
 }
 
-function tomorrowDateInputValue(): string {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
+function oneWeekFromNowDateInputValue(): string {
+    const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     return d.toISOString().slice(0, 10);
 }
 
@@ -44,22 +43,20 @@ export function AdminDocumentRequestsTable({ staffId }: AdminDocumentRequestsTab
     const { data: pending = [], isLoading } = trpc.staffDocument.getPendingForStaff.useQuery(
         { staffId },
     );
-    const { data: staff } = trpc.staff.getById.useQuery({ id: staffId });
 
     const [approveFor, setApproveFor] = useState<string | null>(null);
     const [approveExpiresAt, setApproveExpiresAt] = useState('');
     const [rejectFor, setRejectFor] = useState<string | null>(null);
     const [reason, setReason] = useState('');
 
-    // Default the approve modal's expiry: prefer the doc's pre-filled value,
-    // else the talent's profile expiry, else tomorrow.
+    // Default the approve modal's expiry to the doc's pre-filled value
+    // (set to upload + 7 days at submission time) or fall back to one week from now.
     useEffect(() => {
         if (approveFor === null) return;
         const doc = pending.find((p) => p.id === approveFor);
         const fromDoc = toDateInputValue(doc?.expiresAt);
-        const fromProfile = toDateInputValue(staff?.documentExpiryDate);
-        setApproveExpiresAt(fromDoc || fromProfile || tomorrowDateInputValue());
-    }, [approveFor, pending, staff]);
+        setApproveExpiresAt(fromDoc || oneWeekFromNowDateInputValue());
+    }, [approveFor, pending]);
 
     const invalidateAll = () => {
         utils.staffDocument.getPendingForStaff.invalidate({ staffId });

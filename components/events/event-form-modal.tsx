@@ -163,7 +163,7 @@ interface Event {
   taskRateType?: AmountType | null;
 }
 
-type SaveAction = 'close' | 'new' | 'update-continue';
+type SaveAction = 'close' | 'new' | 'update-continue' | 'find-talent';
 
 // Type for CallTime assignments from Event Form
 type CallTimeAssignment = {
@@ -595,27 +595,24 @@ export function EventFormModal({
     }
   }, [selectedClientId, clientsData, setValue, watch]);
 
-  // Auto-fill venue address from client only when the user actively changes
-  // the client (skip on initial reset/edit-load so existing event values aren't overwritten).
-  const previousClientIdRef = useRef<string | undefined>(undefined);
+  // Auto-fill venue address from client only when the user actively picks a
+  // *different* client than the event already has — never on initial load.
   useEffect(() => {
-    if (!clientsData?.data) return;
-    const prev = previousClientIdRef.current;
-    previousClientIdRef.current = selectedClientId || '';
+    if (!clientsData?.data || !selectedClientId) return;
 
-    if (prev === undefined) return; // skip first run (initial reset)
-    if (!selectedClientId || prev === selectedClientId) return;
+    // Skip if the form still holds the event's original client (initial reset).
+    const eventClientId = event?.clientId || '';
+    if (selectedClientId === eventClientId) return;
 
     const selectedClient = clientsData.data.find(c => c.id === selectedClientId);
-    if (!selectedClient) return;
-    if (selectedClient.businessAddress) {
-      setValue('address', selectedClient.businessAddress);
-      setValue('addressLine2', selectedClient.businessAddressLine2 ?? '');
-      setValue('city', selectedClient.city ?? '');
-      setValue('state', selectedClient.state ?? '');
-      setValue('zipCode', selectedClient.zipCode ?? '');
-    }
-  }, [selectedClientId, clientsData, setValue]);
+    if (!selectedClient || !selectedClient.businessAddress) return;
+
+    setValue('address', selectedClient.businessAddress);
+    setValue('addressLine2', selectedClient.businessAddressLine2 ?? '');
+    setValue('city', selectedClient.city ?? '');
+    setValue('state', selectedClient.state ?? '');
+    setValue('zipCode', selectedClient.zipCode ?? '');
+  }, [event, selectedClientId, clientsData, setValue]);
 
   // Apply template data
   useEffect(() => {
@@ -689,7 +686,6 @@ export function EventFormModal({
       setBatchValidationResults([]);
       setSaveAsTemplate(false);
       setTemplateName('');
-      previousClientIdRef.current = undefined;
     }
   }, [open]);
 
@@ -737,7 +733,7 @@ export function EventFormModal({
         };
 
         return {
-          id: crypto.randomUUID(),
+          id: ct.id,
           type: 'SERVICE' as const,
           serviceId: ct.serviceId || '',
           service: ct.service ? {
@@ -926,6 +922,7 @@ export function EventFormModal({
     const attachments = {
       // Service assignments now create CallTime records
       callTimes: serviceAssignments.map((s) => ({
+        id: s.id,
         serviceId: s.serviceId,
         quantity: s.quantity,
         startDate: s.startDate,
@@ -1050,6 +1047,11 @@ export function EventFormModal({
   const handleUpdateAndContinue = () => {
     pendingSaveActionRef.current = 'update-continue';
     setPendingSaveAction('update-continue');
+  };
+
+  const handleSaveAndFindTalent = () => {
+    pendingSaveActionRef.current = 'find-talent';
+    setPendingSaveAction('find-talent');
   };
 
   // Handle form validation errors from react-hook-form
@@ -1409,42 +1411,54 @@ export function EventFormModal({
               /* Form tabs wizard footer — Continue / save left; other actions same row */
               <div className="flex w-full min-w-0 flex-row flex-wrap items-center justify-between gap-x-2 gap-y-2">
                 <div className="min-w-0 shrink-0">
-                  {isFormTab && !isLastFormStep ? (
-                    <Button
-                      type="button"
-                      onClick={goNextForm}
-                      disabled={isSubmitting || !canContinueForm}
-                      className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
-                    >
-                      Continue
-                    </Button>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {isLastFormStep && (
                       <Button
                         type="button"
                         disabled={isSubmitting || !canContinueBasic || !canContinueVenue}
-                        onClick={() => { handleSaveAndClose(); handleSubmit(handleFormSubmit, handleFormError)(); }}
+                        onClick={() => { handleSaveAndFindTalent(); handleSubmit(handleFormSubmit, handleFormError)(); }}
                         className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
                       >
-                        {isSubmitting && pendingSaveAction === 'close'
-                          ? 'Saving...'
-                          : isEdit
-                            ? `Update ${terminology.event.singular}`
-                            : 'Save & Close'}
+                        {isSubmitting && pendingSaveAction === 'find-talent' ? 'Saving...' : 'Save & Find Talent'}
                       </Button>
-                      {!isEdit && (
+                    )}
+                    {isFormTab && !isLastFormStep ? (
+                      <Button
+                        type="button"
+                        onClick={goNextForm}
+                        disabled={isSubmitting || !canContinueForm}
+                        className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
+                      >
+                        Continue
+                      </Button>
+                    ) : (
+                      <>
                         <Button
                           type="button"
-                          variant="outline"
                           disabled={isSubmitting || !canContinueBasic || !canContinueVenue}
-                          onClick={() => { handleSaveAndNew(); handleSubmit(handleFormSubmit, handleFormError)(); }}
-                          className="h-14 shrink-0 rounded-xl border-slate-200 px-8 text-lg font-bold shadow-sm transition-all hover:bg-slate-50 sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
+                          onClick={() => { handleSaveAndClose(); handleSubmit(handleFormSubmit, handleFormError)(); }}
+                          className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
                         >
-                          {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                          {isSubmitting && pendingSaveAction === 'close'
+                            ? 'Saving...'
+                            : isEdit
+                              ? `Update ${terminology.event.singular}`
+                              : 'Save & Close'}
                         </Button>
-                      )}
-                    </div>
-                  )}
+                        {!isEdit && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={isSubmitting || !canContinueBasic || !canContinueVenue}
+                            onClick={() => { handleSaveAndNew(); handleSubmit(handleFormSubmit, handleFormError)(); }}
+                            className="h-14 shrink-0 rounded-xl border-slate-200 px-8 text-lg font-bold shadow-sm transition-all hover:bg-slate-50 sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
+                          >
+                            {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                   {isEdit && isFormTab && !isLastFormStep && (

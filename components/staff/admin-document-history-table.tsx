@@ -20,7 +20,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
-import { FileText, Download } from 'lucide-react';
+import { FileText, Download, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import {
     REQ_TEMPLATE_CARDS,
@@ -65,6 +65,9 @@ export function AdminDocumentHistoryTable({
     const [pickedTemplate, setPickedTemplate] = useState<ReqTemplateId | null>(null);
     const [pickedExpiresAt, setPickedExpiresAt] = useState<string>('');
 
+    const [editExpiryFor, setEditExpiryFor] = useState<string | null>(null);
+    const [editExpiryValue, setEditExpiryValue] = useState<string>('');
+
     const categorizeMutation = trpc.staffDocument.categorizeLegacy.useMutation({
         onSuccess: () => {
             toast({ message: 'Document categorized', type: 'success' });
@@ -77,6 +80,21 @@ export function AdminDocumentHistoryTable({
         onError: (error) => {
             toast({
                 message: error.message || 'Failed to categorize',
+                type: 'error',
+            });
+        },
+    });
+
+    const updateExpiryMutation = trpc.staffDocument.updateExpiry.useMutation({
+        onSuccess: () => {
+            toast({ message: 'Expiry updated', type: 'success' });
+            setEditExpiryFor(null);
+            setEditExpiryValue('');
+            utils.staffDocument.getHistoryForStaff.invalidate({ staffId });
+        },
+        onError: (error) => {
+            toast({
+                message: error.message || 'Failed to update expiry',
                 type: 'error',
             });
         },
@@ -131,16 +149,34 @@ export function AdminDocumentHistoryTable({
                                             v{doc.version}
                                         </span>
                                     </div>
-                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                                         <span>
                                             Uploaded {format(new Date(doc.createdAt), 'PP p')}
                                         </span>
-                                        {doc.expiresAt && (
-                                            <span>
-                                                Expires{' '}
-                                                {format(new Date(doc.expiresAt), 'PP')}
-                                            </span>
-                                        )}
+                                        <span className="inline-flex items-center gap-1">
+                                            {doc.expiresAt
+                                                ? `Expires ${format(new Date(doc.expiresAt), 'PP')}`
+                                                : 'No expiry'}
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-5 w-5 p-0"
+                                                onClick={() => {
+                                                    setEditExpiryFor(doc.id);
+                                                    setEditExpiryValue(
+                                                        doc.expiresAt
+                                                            ? new Date(doc.expiresAt)
+                                                                  .toISOString()
+                                                                  .slice(0, 10)
+                                                            : '',
+                                                    );
+                                                }}
+                                                title="Edit expiry"
+                                            >
+                                                <Pencil className="h-3 w-3" />
+                                            </Button>
+                                        </span>
                                         {doc.reviewedAt && (
                                             <span>
                                                 Reviewed{' '}
@@ -295,6 +331,64 @@ export function AdminDocumentHistoryTable({
                                 categorizeFor === null
                             }
                             isLoading={categorizeMutation.isPending}
+                        >
+                            Save
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={editExpiryFor !== null}
+                onClose={() => {
+                    if (!updateExpiryMutation.isPending) {
+                        setEditExpiryFor(null);
+                        setEditExpiryValue('');
+                    }
+                }}
+                className="mx-4 w-full max-w-md rounded-xl border border-border bg-card p-0"
+            >
+                <DialogContent className="p-6">
+                    <DialogHeader>
+                        <DialogTitle>Edit Document Expiry</DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4 space-y-4">
+                        <div>
+                            <label className="text-sm font-medium">Expiry Date</label>
+                            <Input
+                                type="date"
+                                value={editExpiryValue}
+                                onChange={(e) => setEditExpiryValue(e.target.value)}
+                                disabled={updateExpiryMutation.isPending}
+                            />
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Leave blank to clear the expiry date.
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter className="mt-6 flex justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                                setEditExpiryFor(null);
+                                setEditExpiryValue('');
+                            }}
+                            disabled={updateExpiryMutation.isPending}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                if (!editExpiryFor) return;
+                                updateExpiryMutation.mutate({
+                                    documentId: editExpiryFor,
+                                    expiresAt: editExpiryValue || null,
+                                });
+                            }}
+                            disabled={updateExpiryMutation.isPending}
+                            isLoading={updateExpiryMutation.isPending}
                         >
                             Save
                         </Button>

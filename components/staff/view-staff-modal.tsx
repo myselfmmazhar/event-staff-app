@@ -402,12 +402,6 @@ export function ViewStaffModal({
                         </TabsContent>
 
                         <TabsContent value="documents">
-                            {staff.documentExpiryDate && (
-                                <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-sm">
-                                    <span className="text-muted-foreground">Legacy document expiry: </span>
-                                    <span className="font-medium">{new Date(staff.documentExpiryDate).toLocaleDateString()}</span>
-                                </div>
-                            )}
                             <AdminDocumentHistoryTable
                                 staffId={staff.id}
                                 legacyDocuments={documents}

@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/client/trpc';
 import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
+import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 
 interface Invitation {
   id: string;
@@ -38,6 +40,7 @@ interface Invitation {
       venueName: string;
       city: string;
       state: string;
+      timezone?: string | null;
     };
   };
 }
@@ -61,6 +64,7 @@ export function PendingRequestsList({
 }: PendingRequestsListProps) {
   const eventTerm = useEventTerm();
   const { toast } = useToast();
+  const { timezone: talentTz } = useTalentTimezone();
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<{ ids: string[], accept: boolean } | null>(null);
@@ -238,9 +242,24 @@ export function PendingRequestsList({
             ? (invitation.callTime.payRate as any).toNumber()
             : Number(invitation.callTime.payRate);
 
-        const isSameDay = invitation.callTime.startDate && invitation.callTime.endDate &&
-          new Date(invitation.callTime.startDate).toDateString() ===
-          new Date(invitation.callTime.endDate).toDateString();
+        const eventTz = invitation.callTime.event.timezone || 'UTC';
+        const start = convertWallClock(
+          invitation.callTime.startDate,
+          invitation.callTime.startTime,
+          eventTz,
+          talentTz,
+        );
+        const end = convertWallClock(
+          invitation.callTime.endDate,
+          invitation.callTime.endTime,
+          eventTz,
+          talentTz,
+        );
+        const tzLabel = shortTzLabel(talentTz, start.date ?? new Date());
+
+        const isSameDay = start.date && end.date &&
+          new Date(start.date).toDateString() ===
+          new Date(end.date).toDateString();
 
         const isClosed = invitation.callTime.confirmedCount >= invitation.callTime.numberOfStaffRequired;
 
@@ -308,10 +327,10 @@ export function PendingRequestsList({
                         <div>
                           <p className="text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">Date</p>
                           <p className="font-semibold text-foreground leading-tight">
-                            {formatDate(invitation.callTime.startDate)}
+                            {formatDate(start.date)}
                             {!isSameDay && (
                               <>
-                                <br />- {formatDate(invitation.callTime.endDate)}
+                                <br />- {formatDate(end.date)}
                               </>
                             )}
                           </p>
@@ -325,8 +344,13 @@ export function PendingRequestsList({
                         <div>
                           <p className="text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">Time</p>
                           <p className="font-semibold text-foreground leading-tight">
-                            {formatTime(invitation.callTime.startTime)} -{' '}
-                            {formatTime(invitation.callTime.endTime)}
+                            {formatTime(start.time)} -{' '}
+                            {formatTime(end.time)}
+                            {tzLabel && (
+                              <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                                {tzLabel}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>

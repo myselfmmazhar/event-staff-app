@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
 import { EditableLabel } from "@/components/ui/editable-label";
+import { TaskDetailsCard } from "@/components/finance/task-details-card";
 
 interface BillFormProps {
     bill?: any; // Bill data for editing
@@ -315,6 +316,8 @@ export function BillForm({ bill }: BillFormProps) {
                 </div>
                 {actionButtons}
             </div>
+
+            {isEditMode && <TaskDetailsCard items={bill?.items as any} />}
 
             <Card>
                 <CardHeader>

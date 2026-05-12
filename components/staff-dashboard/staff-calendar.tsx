@@ -12,6 +12,8 @@ import { ViewMode, CalendarEvent } from '@/lib/utils/calendar-helpers';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
 import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
+import { convertWallClock } from '@/lib/utils/timezone-convert';
 import {
   addMonths,
   subMonths,
@@ -52,8 +54,11 @@ export function StaffCalendar({ onEventClick }: StaffCalendarProps) {
 
   // Fetch staff invitations
   const { data: invitations, isLoading } = trpc.callTime.getMyInvitations.useQuery({});
+  const { timezone: talentTz } = useTalentTimezone();
 
-  // Map invitations to CalendarEvents
+  // Map invitations to CalendarEvents, converting each task's wall-clock from
+  // the event timezone to the talent's preferred timezone so the calendar grid
+  // positions and labels match what the talent sees locally.
   const events = useMemo(() => {
     if (!invitations) return [];
 
@@ -66,20 +71,25 @@ export function StaffCalendar({ onEventClick }: StaffCalendarProps) {
 
     return allInvs
       .filter(inv => !isDateNullOrUBD(inv.callTime.startDate) && !isDateNullOrUBD(inv.callTime.endDate))
-      .map(inv => ({
-        id: inv.id, // Use invitation ID as the primary ID here
-        eventId: inv.callTime.eventId,
-        title: `${inv.callTime.service?.title || 'Assignment'} - ${inv.callTime.event.title}`,
-        startDate: inv.callTime.startDate,
-        startTime: inv.callTime.startTime,
-        endDate: inv.callTime.endDate,
-        endTime: inv.callTime.endTime,
-        // Map invitation status to EventStatus for coloring
-        status: inv.status === 'ACCEPTED' ? (inv.isConfirmed ? EventStatus.ASSIGNED : EventStatus.PUBLISHED) : EventStatus.DRAFT,
-        timezone: 'UTC', // Default or fetch from event if available
-        venueName: inv.callTime.event.venueName || '',
-      })) as CalendarEvent[];
-  }, [invitations]);
+      .map(inv => {
+        const eventTz = inv.callTime.event.timezone || 'UTC';
+        const start = convertWallClock(inv.callTime.startDate, inv.callTime.startTime, eventTz, talentTz);
+        const end = convertWallClock(inv.callTime.endDate, inv.callTime.endTime, eventTz, talentTz);
+        return {
+          id: inv.id,
+          eventId: inv.callTime.eventId,
+          title: `${inv.callTime.service?.title || 'Assignment'} - ${inv.callTime.event.title}`,
+          startDate: start.date,
+          startTime: start.time,
+          endDate: end.date,
+          endTime: end.time,
+          // Map invitation status to EventStatus for coloring
+          status: inv.status === 'ACCEPTED' ? (inv.isConfirmed ? EventStatus.ASSIGNED : EventStatus.PUBLISHED) : EventStatus.DRAFT,
+          timezone: talentTz,
+          venueName: inv.callTime.event.venueName || '',
+        };
+      }) as CalendarEvent[];
+  }, [invitations, talentTz]);
 
   // Navigation handlers
   const handleNavigate = (direction: 'prev' | 'next') => {

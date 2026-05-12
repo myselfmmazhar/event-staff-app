@@ -11,6 +11,7 @@ import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image } from
 import React from "react";
 import { UserRole } from "@prisma/client";
 import { PrintDocument } from "@/components/finance/print-document";
+import { TaskDetailsCard } from "@/components/finance/task-details-card";
 
 export default function ViewBillPage() {
     const params = useParams();
@@ -90,7 +91,7 @@ export default function ViewBillPage() {
     });
 
     return (
-        <div className="container mx-auto py-6 space-y-6 max-w-4xl">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             {/* Print-only document */}
             <PrintDocument
                 variant="BILL"
@@ -205,6 +206,9 @@ export default function ViewBillPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Task Details (read-only, derived from linked event) */}
+            <TaskDetailsCard items={bill.items as any} />
 
             {/* Line Items Card */}
             <Card>
