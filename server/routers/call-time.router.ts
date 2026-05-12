@@ -126,8 +126,35 @@ export const callTimeRouter = router({
       const service = new CallTimeService(ctx.prisma);
       const result = await service.sendInvitations(input, ctx.userId!, ctx.userRole);
 
-      // Send emails to all invited staff
+      // Group team-manager invitations by (manager, event). When the same
+      // manager picks up 2+ units in one send, collapse those into a single
+      // batch email instead of N copies of the per-shift invitation.
+      const teamGroups = new Map<string, typeof result.invitations>();
+      const individualInvitations: typeof result.invitations = [];
+
       for (const invitation of result.invitations) {
+        if (invitation.invitedAsTeam) {
+          const key = `${invitation.staff.id}::${invitation.callTime.event.id}`;
+          const bucket = teamGroups.get(key) ?? [];
+          bucket.push(invitation);
+          teamGroups.set(key, bucket);
+        } else {
+          individualInvitations.push(invitation);
+        }
+      }
+
+      // Solo team invitations fall back to the standard per-shift email —
+      // a batch email with only one shift would lose info (pay rate, times)
+      // and offer no benefit over the regular template.
+      for (const [key, group] of teamGroups) {
+        if (group.length < 2) {
+          individualInvitations.push(...group);
+          teamGroups.delete(key);
+        }
+      }
+
+      // Send standard per-shift invitations
+      for (const invitation of individualInvitations) {
         try {
           await emailService.sendCallTimeInvitation(
             invitation.staff.email,
@@ -155,6 +182,29 @@ export const callTimeRouter = router({
         } catch (error) {
           console.error(
             `Failed to send invitation email to ${invitation.staff.email}:`,
+            error
+          );
+        }
+      }
+
+      // Send one batch email per (manager, event) group with 2+ invitations
+      for (const group of teamGroups.values()) {
+        const first = group[0];
+        try {
+          await emailService.sendCallInvitationBatch(
+            first.staff.email,
+            first.staff.firstName,
+            {
+              eventTitle: first.callTime.event.title,
+              eventVenue: first.callTime.event.venueName,
+              eventLocation: `${first.callTime.event.city}, ${first.callTime.event.state}`,
+              startDate: first.callTime.startDate,
+              endDate: first.callTime.endDate,
+            }
+          );
+        } catch (error) {
+          console.error(
+            `Failed to send batch invitation email to ${first.staff.email}:`,
             error
           );
         }
