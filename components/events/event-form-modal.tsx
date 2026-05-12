@@ -163,7 +163,7 @@ interface Event {
   taskRateType?: AmountType | null;
 }
 
-type SaveAction = 'close' | 'new' | 'update-continue';
+type SaveAction = 'close' | 'new' | 'update-continue' | 'find-talent';
 
 // Type for CallTime assignments from Event Form
 type CallTimeAssignment = {
@@ -1052,6 +1052,11 @@ export function EventFormModal({
     setPendingSaveAction('update-continue');
   };
 
+  const handleSaveAndFindTalent = () => {
+    pendingSaveActionRef.current = 'find-talent';
+    setPendingSaveAction('find-talent');
+  };
+
   // Handle form validation errors from react-hook-form
   const handleFormError = (formErrors: any) => {
     const firstErrorKey = Object.keys(formErrors)[0];
@@ -1409,42 +1414,54 @@ export function EventFormModal({
               /* Form tabs wizard footer — Continue / save left; other actions same row */
               <div className="flex w-full min-w-0 flex-row flex-wrap items-center justify-between gap-x-2 gap-y-2">
                 <div className="min-w-0 shrink-0">
-                  {isFormTab && !isLastFormStep ? (
-                    <Button
-                      type="button"
-                      onClick={goNextForm}
-                      disabled={isSubmitting || !canContinueForm}
-                      className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
-                    >
-                      Continue
-                    </Button>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {isLastFormStep && (
                       <Button
                         type="button"
                         disabled={isSubmitting || !canContinueBasic || !canContinueVenue}
-                        onClick={() => { handleSaveAndClose(); handleSubmit(handleFormSubmit, handleFormError)(); }}
+                        onClick={() => { handleSaveAndFindTalent(); handleSubmit(handleFormSubmit, handleFormError)(); }}
                         className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
                       >
-                        {isSubmitting && pendingSaveAction === 'close'
-                          ? 'Saving...'
-                          : isEdit
-                            ? `Update ${terminology.event.singular}`
-                            : 'Save & Close'}
+                        {isSubmitting && pendingSaveAction === 'find-talent' ? 'Saving...' : 'Save & Find Talent'}
                       </Button>
-                      {!isEdit && (
+                    )}
+                    {isFormTab && !isLastFormStep ? (
+                      <Button
+                        type="button"
+                        onClick={goNextForm}
+                        disabled={isSubmitting || !canContinueForm}
+                        className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
+                      >
+                        Continue
+                      </Button>
+                    ) : (
+                      <>
                         <Button
                           type="button"
-                          variant="outline"
                           disabled={isSubmitting || !canContinueBasic || !canContinueVenue}
-                          onClick={() => { handleSaveAndNew(); handleSubmit(handleFormSubmit, handleFormError)(); }}
-                          className="h-14 shrink-0 rounded-xl border-slate-200 px-8 text-lg font-bold shadow-sm transition-all hover:bg-slate-50 sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
+                          onClick={() => { handleSaveAndClose(); handleSubmit(handleFormSubmit, handleFormError)(); }}
+                          className="h-14 shrink-0 rounded-xl bg-slate-900 px-8 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
                         >
-                          {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                          {isSubmitting && pendingSaveAction === 'close'
+                            ? 'Saving...'
+                            : isEdit
+                              ? `Update ${terminology.event.singular}`
+                              : 'Save & Close'}
                         </Button>
-                      )}
-                    </div>
-                  )}
+                        {!isEdit && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={isSubmitting || !canContinueBasic || !canContinueVenue}
+                            onClick={() => { handleSaveAndNew(); handleSubmit(handleFormSubmit, handleFormError)(); }}
+                            className="h-14 shrink-0 rounded-xl border-slate-200 px-8 text-lg font-bold shadow-sm transition-all hover:bg-slate-50 sm:h-16 sm:px-12 sm:text-xl sm:min-w-[300px]"
+                          >
+                            {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                   {isEdit && isFormTab && !isLastFormStep && (

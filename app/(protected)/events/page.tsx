@@ -15,6 +15,7 @@ import { EventFilters } from '@/components/events/event-filters';
 import { EventFormModal } from '@/components/events/event-form-modal';
 import { EventSearch } from '@/components/events/event-search';
 import { EventTable } from '@/components/events/event-table';
+import { FindTalentModal } from '@/components/assignments/find-talent-modal';
 import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { TaskMessageModal } from '@/components/events/task-message-modal';
 import { trpc } from '@/lib/client/trpc';
@@ -140,6 +141,10 @@ export default function EventsPage() {
 
   // Track if we're doing Update & Continue (to prevent closing the form)
   const [isUpdateAndContinue, setIsUpdateAndContinue] = useState(false);
+
+  // Find Talent modal state — opened after Save & Find Talent
+  const [findTalentCallTimeIds, setFindTalentCallTimeIds] = useState<string[]>([]);
+  const [isFindTalentOpen, setIsFindTalentOpen] = useState(false);
 
   // Page tab state (events / event-requests)
   type EventsTabMode = 'events' | 'event-requests';
@@ -432,7 +437,7 @@ export default function EventsPage() {
   const bulkSyncCallTimesMutation = trpc.callTime.bulkSyncForEvent.useMutation();
   const bulkUpdateProductsMutation = trpc.eventAttachment.bulkUpdateProducts.useMutation();
 
-  type SaveAction = 'close' | 'new' | 'update-continue';
+  type SaveAction = 'close' | 'new' | 'update-continue' | 'find-talent';
 
   // Type for CallTime assignments from Event Form
   type CallTimeAssignment = {
@@ -485,6 +490,8 @@ export default function EventsPage() {
     setIsUpdateAndContinue(saveAction === 'update-continue');
 
     try {
+      let savedCallTimeIds: string[] = [];
+
       if (selectedEvent) {
         // Update existing event
         console.log('[EventsPage] Updating event with id:', selectedEvent.id);
@@ -493,10 +500,11 @@ export default function EventsPage() {
 
         // Update attachments if provided (run sequentially to avoid transaction conflicts)
         if (attachments) {
-          await bulkSyncCallTimesMutation.mutateAsync({
+          const callTimes = await bulkSyncCallTimesMutation.mutateAsync({
             eventId: selectedEvent.id,
             assignments: attachments.callTimes,
           });
+          savedCallTimeIds = (callTimes ?? []).map((ct: { id: string }) => ct.id);
           await bulkUpdateProductsMutation.mutateAsync({
             eventId: selectedEvent.id,
             products: attachments.products,
@@ -512,10 +520,11 @@ export default function EventsPage() {
 
         // Save attachments if provided (run sequentially to avoid transaction conflicts)
         if (attachments && newEvent?.id) {
-          await bulkSyncCallTimesMutation.mutateAsync({
+          const callTimes = await bulkSyncCallTimesMutation.mutateAsync({
             eventId: newEvent.id,
             assignments: attachments.callTimes,
           });
+          savedCallTimeIds = (callTimes ?? []).map((ct: { id: string }) => ct.id);
           await bulkUpdateProductsMutation.mutateAsync({
             eventId: newEvent.id,
             products: attachments.products,
@@ -532,6 +541,12 @@ export default function EventsPage() {
           // Reset the flag for next submission
           setIsSaveAndNew(false);
         }
+      }
+
+      // Handle Save & Find Talent: open the Find Talent modal for the saved task
+      if (saveAction === 'find-talent') {
+        setFindTalentCallTimeIds(savedCallTimeIds);
+        setIsFindTalentOpen(true);
       }
     } catch (error) {
       // Errors are already handled by mutation options
@@ -914,6 +929,16 @@ export default function EventsPage() {
         onClose={() => {
           setIsMessageOpen(false);
           setMessageTarget(null);
+        }}
+      />
+
+      {/* Find Talent Modal — opened after Save & Find Talent */}
+      <FindTalentModal
+        callTimeIds={findTalentCallTimeIds}
+        open={isFindTalentOpen}
+        onClose={() => {
+          setIsFindTalentOpen(false);
+          setFindTalentCallTimeIds([]);
         }}
       />
       </>}

@@ -1367,15 +1367,6 @@ export function AssignmentForm({
           <Button
             type="button"
             variant="secondary"
-            onClick={() => handleSaveWithAction('find-talent')}
-            disabled={disabled}
-            className="bg-blue-500 hover:bg-blue-600 text-white border-none min-w-[120px] shadow-sm"
-          >
-            Save & Find Talent
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
             onClick={() => handleSaveWithAction('repeat')}
             disabled={disabled}
             className="bg-orange-500 hover:bg-orange-600 text-white border-none min-w-[120px] shadow-sm"
