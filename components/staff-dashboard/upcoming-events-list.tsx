@@ -11,6 +11,8 @@ import {
   CheckCircleIcon,
 } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
+import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
+import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 
 interface Invitation {
   id: string;
@@ -34,6 +36,7 @@ interface Invitation {
       venueName: string;
       city: string;
       state: string;
+      timezone?: string | null;
     };
   };
 }
@@ -44,6 +47,7 @@ interface UpcomingEventsListProps {
 
 export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
   const eventTerm = useEventTerm();
+  const { timezone: talentTz } = useTalentTimezone();
 
   const formatDate = (date: Date | null) => {
     if (!date) return 'UBD';
@@ -96,11 +100,26 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
             ? invitation.callTime.payRate.toNumber()
             : Number(invitation.callTime.payRate);
 
-        const isSameDay = invitation.callTime.startDate && invitation.callTime.endDate &&
-          new Date(invitation.callTime.startDate).toDateString() ===
-          new Date(invitation.callTime.endDate).toDateString();
+        const eventTz = invitation.callTime.event.timezone || 'UTC';
+        const start = convertWallClock(
+          invitation.callTime.startDate,
+          invitation.callTime.startTime,
+          eventTz,
+          talentTz,
+        );
+        const end = convertWallClock(
+          invitation.callTime.endDate,
+          invitation.callTime.endTime,
+          eventTz,
+          talentTz,
+        );
+        const tzLabel = shortTzLabel(talentTz, start.date ?? new Date());
 
-        const daysUntil = getDaysUntil(invitation.callTime.startDate);
+        const isSameDay = start.date && end.date &&
+          new Date(start.date).toDateString() ===
+          new Date(end.date).toDateString();
+
+        const daysUntil = getDaysUntil(start.date);
 
         return (
           <Card key={invitation.id} className="p-5">
@@ -136,10 +155,10 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
                     <div>
                       <p className="text-muted-foreground">Date</p>
                       <p className="font-medium">
-                        {formatDate(invitation.callTime.startDate)}
+                        {formatDate(start.date)}
                         {!isSameDay && (
                           <>
-                            <br />- {formatDate(invitation.callTime.endDate)}
+                            <br />- {formatDate(end.date)}
                           </>
                         )}
                       </p>
@@ -151,8 +170,13 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
                     <div>
                       <p className="text-muted-foreground">Time</p>
                       <p className="font-medium">
-                        {formatTime(invitation.callTime.startTime)} -{' '}
-                        {formatTime(invitation.callTime.endTime)}
+                        {formatTime(start.time)} -{' '}
+                        {formatTime(end.time)}
+                        {tzLabel && (
+                          <span className="ml-1 text-xs font-normal text-muted-foreground">
+                            {tzLabel}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>

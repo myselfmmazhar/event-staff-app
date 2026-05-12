@@ -14,6 +14,8 @@ import {
   ChevronUpIcon,
 } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
+import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
+import { convertWallClock } from '@/lib/utils/timezone-convert';
 
 interface ShiftSession {
   id: string;
@@ -43,6 +45,7 @@ interface Invitation {
       venueName: string;
       city: string;
       state: string;
+      timezone?: string | null;
     };
   };
 }
@@ -53,6 +56,7 @@ interface PastEventsListProps {
 
 export function PastEventsList({ invitations }: PastEventsListProps) {
   const eventTerm = useEventTerm();
+  const { timezone: talentTz } = useTalentTimezone();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (id: string) => {
@@ -120,6 +124,14 @@ export function PastEventsList({ invitations }: PastEventsListProps) {
             ? invitation.callTime.payRate.toNumber()
             : Number(invitation.callTime.payRate);
 
+        const eventTz = invitation.callTime.event.timezone || 'UTC';
+        const start = convertWallClock(
+          invitation.callTime.startDate,
+          invitation.callTime.startTime,
+          eventTz,
+          talentTz,
+        );
+
         const sessions = invitation.shiftSessions ?? [];
         const isExpanded = !!expanded[invitation.id];
         const totalMs = totalSessionsMs(sessions);
@@ -144,7 +156,7 @@ export function PastEventsList({ invitations }: PastEventsListProps) {
               <div className="flex items-center gap-6 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <CalendarIcon className="h-4 w-4" />
-                  {formatDate(invitation.callTime.startDate)}
+                  {formatDate(start.date)}
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <MapPinIcon className="h-4 w-4" />

@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card';
 import { CalendarIcon, ClockIcon, MapPinIcon } from '@/components/ui/icons';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
+import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
+import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 import type { RateType } from '@prisma/client';
 
 interface Invitation {
@@ -28,6 +30,7 @@ interface Invitation {
       venueName: string;
       city: string;
       state: string;
+      timezone?: string | null;
     };
   };
 }
@@ -66,6 +69,7 @@ export function DeclinedInvitationsList({
   invitations,
 }: DeclinedInvitationsListProps) {
   const eventTerm = useEventTerm();
+  const { timezone: talentTz } = useTalentTimezone();
 
   if (invitations.length === 0) {
     return (
@@ -89,6 +93,21 @@ export function DeclinedInvitationsList({
           typeof invitation.callTime.payRate === 'object'
             ? invitation.callTime.payRate.toNumber()
             : Number(invitation.callTime.payRate);
+
+        const eventTz = invitation.callTime.event.timezone || 'UTC';
+        const start = convertWallClock(
+          invitation.callTime.startDate,
+          invitation.callTime.startTime,
+          eventTz,
+          talentTz,
+        );
+        const end = convertWallClock(
+          invitation.callTime.endDate,
+          invitation.callTime.endTime,
+          eventTz,
+          talentTz,
+        );
+        const tzLabel = shortTzLabel(talentTz, start.date ?? new Date());
 
         return (
           <Card key={invitation.id} className="p-4 border-destructive/20 bg-destructive/5">
@@ -119,7 +138,7 @@ export function DeclinedInvitationsList({
                   <div>
                     <p className="text-muted-foreground">Date</p>
                     <p className="font-medium">
-                      {formatDate(invitation.callTime.startDate)}
+                      {formatDate(start.date)}
                     </p>
                   </div>
                 </div>
@@ -129,8 +148,13 @@ export function DeclinedInvitationsList({
                   <div>
                     <p className="text-muted-foreground">Time</p>
                     <p className="font-medium">
-                      {formatTime(invitation.callTime.startTime)} -{' '}
-                      {formatTime(invitation.callTime.endTime)}
+                      {formatTime(start.time)} -{' '}
+                      {formatTime(end.time)}
+                      {tzLabel && (
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                          {tzLabel}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>

@@ -733,7 +733,7 @@ export function EventFormModal({
         };
 
         return {
-          id: crypto.randomUUID(),
+          id: ct.id,
           type: 'SERVICE' as const,
           serviceId: ct.serviceId || '',
           service: ct.service ? {
@@ -922,6 +922,7 @@ export function EventFormModal({
     const attachments = {
       // Service assignments now create CallTime records
       callTimes: serviceAssignments.map((s) => ({
+        id: s.id,
         serviceId: s.serviceId,
         quantity: s.quantity,
         startDate: s.startDate,

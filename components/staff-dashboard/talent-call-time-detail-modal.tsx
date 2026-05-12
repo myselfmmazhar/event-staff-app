@@ -20,6 +20,8 @@ import {
 import { trpc } from '@/lib/client/trpc';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
+import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
+import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 import { isDateNullOrUBD, isSameDay as checkSameDay } from '@/lib/utils/date-formatter';
 import type { RateType, SkillLevel } from '@prisma/client';
 
@@ -85,6 +87,7 @@ export function TalentCallTimeDetailModal({
   onClose,
 }: TalentCallTimeDetailModalProps) {
   const eventTerm = useEventTerm();
+  const { timezone: talentTz } = useTalentTimezone();
   const hasInvitationId = Boolean(invitationId);
 
   const { data: invitation, isLoading } = trpc.callTime.getInvitationById.useQuery(
@@ -108,6 +111,7 @@ export function TalentCallTimeDetailModal({
 
   const callTime = invitation.callTime;
   const event = callTime.event;
+  const eventTz = (event as { timezone?: string | null }).timezone || 'UTC';
 
   const payRate =
     typeof callTime.payRate === 'object' && callTime.payRate !== null && 'toNumber' in callTime.payRate
@@ -117,9 +121,13 @@ export function TalentCallTimeDetailModal({
   const payRateTypeLabel = RATE_TYPE_LABELS[callTime.payRateType as RateType];
   const skillLevelLabel = SKILL_LEVEL_LABELS[callTime.skillLevel as SkillLevel];
 
-  const isSameDay = checkSameDay(callTime.startDate, callTime.endDate);
-  const isStartDateUBD = isDateNullOrUBD(callTime.startDate);
-  const isEndDateUBD = isDateNullOrUBD(callTime.endDate);
+  const start = convertWallClock(callTime.startDate, callTime.startTime, eventTz, talentTz);
+  const end = convertWallClock(callTime.endDate, callTime.endTime, eventTz, talentTz);
+  const tzLabel = shortTzLabel(talentTz, start.date ?? new Date());
+
+  const isSameDay = checkSameDay(start.date, end.date);
+  const isStartDateUBD = isDateNullOrUBD(start.date);
+  const isEndDateUBD = isDateNullOrUBD(end.date);
 
   const documents: EventDocumentLike[] = Array.isArray(event.eventDocuments)
     ? (event.eventDocuments as unknown as EventDocumentLike[])
@@ -158,12 +166,12 @@ export function TalentCallTimeDetailModal({
           <div>
             <p className="text-sm text-muted-foreground">Date</p>
             <p className="font-medium">
-              {isStartDateUBD ? 'UBD' : formatDate(callTime.startDate)}
+              {isStartDateUBD ? 'UBD' : formatDate(start.date)}
               {!isSameDay && !isEndDateUBD && (
                 <>
                   <br />
                   <span className="text-muted-foreground">to </span>
-                  {formatDate(callTime.endDate)}
+                  {formatDate(end.date)}
                 </>
               )}
             </p>
@@ -171,7 +179,12 @@ export function TalentCallTimeDetailModal({
           <div>
             <p className="text-sm text-muted-foreground">Time</p>
             <p className="font-medium">
-              {formatTime(callTime.startTime)} - {formatTime(callTime.endTime)}
+              {formatTime(start.time)} - {formatTime(end.time)}
+              {tzLabel && (
+                <span className="ml-1 text-xs text-muted-foreground">
+                  {tzLabel}
+                </span>
+              )}
             </p>
           </div>
           <div>

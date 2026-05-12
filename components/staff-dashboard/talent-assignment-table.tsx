@@ -16,6 +16,8 @@ import { format } from 'date-fns';
 import type { RateType } from '@prisma/client';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
+import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 import { SessionHistoryModal } from './session-history-modal';
 
 export interface ShiftSession {
@@ -47,6 +49,7 @@ export interface TalentInvitationData {
       venueName: string | null;
       city: string | null;
       state: string | null;
+      timezone?: string | null;
     };
   };
 }
@@ -149,6 +152,7 @@ export function TalentAssignmentTable({
   emptyDescription,
 }: TalentAssignmentTableProps) {
   const { terminology } = useTerminology();
+  const { timezone: talentTz } = useTalentTimezone();
   const showShiftActions = category === 'inProgress' && !!onStart && !!onEnd;
   const [sessionHistoryFor, setSessionHistoryFor] = useState<TalentInvitationData | null>(null);
 
@@ -218,11 +222,20 @@ export function TalentAssignmentTable({
     {
       key: 'startDate',
       label: 'Date',
-      render: (item) => (
-        <span className="font-medium text-foreground">
-          {formatDateShort(item.callTime.startDate)}
-        </span>
-      ),
+      render: (item) => {
+        const eventTz = item.callTime.event.timezone || 'UTC';
+        const start = convertWallClock(
+          item.callTime.startDate,
+          item.callTime.startTime,
+          eventTz,
+          talentTz,
+        );
+        return (
+          <span className="font-medium text-foreground">
+            {formatDateShort(start.date)}
+          </span>
+        );
+      },
     },
     {
       key: 'time',
@@ -250,9 +263,28 @@ export function TalentAssignmentTable({
             </div>
           );
         }
+        const eventTz = item.callTime.event.timezone || 'UTC';
+        const start = convertWallClock(
+          item.callTime.startDate,
+          item.callTime.startTime,
+          eventTz,
+          talentTz,
+        );
+        const end = convertWallClock(
+          item.callTime.endDate,
+          item.callTime.endTime,
+          eventTz,
+          talentTz,
+        );
+        const tzLabel = shortTzLabel(talentTz, start.date ?? new Date());
         return (
           <span className="text-muted-foreground">
-            {formatTime(item.callTime.startTime)} - {formatTime(item.callTime.endTime)}
+            {formatTime(start.time)} - {formatTime(end.time)}
+            {tzLabel && (
+              <span className="ml-1 text-xs">
+                {tzLabel}
+              </span>
+            )}
           </span>
         );
       },
@@ -363,11 +395,27 @@ function TalentAssignmentMobileCard({
   isProcessing,
   onViewSessions,
 }: TalentAssignmentMobileCardProps) {
+  const { timezone: talentTz } = useTalentTimezone();
   const isOpen = hasOpenSession(invitation.shiftSessions);
   const rate = getPayRateValue(invitation.callTime.payRate);
   const sessions = invitation.shiftSessions ?? [];
   const showActualTime = category === 'past';
   const { firstIn, lastOut } = getFirstInLastOut(sessions);
+
+  const eventTz = invitation.callTime.event.timezone || 'UTC';
+  const start = convertWallClock(
+    invitation.callTime.startDate,
+    invitation.callTime.startTime,
+    eventTz,
+    talentTz,
+  );
+  const end = convertWallClock(
+    invitation.callTime.endDate,
+    invitation.callTime.endTime,
+    eventTz,
+    talentTz,
+  );
+  const tzLabel = shortTzLabel(talentTz, start.date ?? new Date());
 
   return (
     <Card className="p-4">
@@ -394,11 +442,14 @@ function TalentAssignmentMobileCard({
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 flex-wrap">
         <CalendarIcon className="h-4 w-4" />
         <span>
-          {formatDateShort(invitation.callTime.startDate)} &middot;{' '}
+          {formatDateShort(start.date)} &middot;{' '}
           <ClockIcon className="inline h-3.5 w-3.5" />{' '}
           {showActualTime
             ? `${formatActualInstant(firstIn)} - ${formatActualInstant(lastOut)}`
-            : `${formatTime(invitation.callTime.startTime)} - ${formatTime(invitation.callTime.endTime)}`}
+            : `${formatTime(start.time)} - ${formatTime(end.time)}`}
+          {!showActualTime && tzLabel && (
+            <span className="ml-1 text-xs">{tzLabel}</span>
+          )}
         </span>
         {showActualTime && sessions.length > 1 && onViewSessions && (
           <Button

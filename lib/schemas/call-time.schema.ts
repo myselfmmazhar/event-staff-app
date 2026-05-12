@@ -406,6 +406,7 @@ export class CallTimeSchema {
    * Event Form Assignment Schema - For creating CallTimes from Event Form
    */
   static eventFormAssignment = z.object({
+    id: z.string().uuid().optional().nullable(),
     serviceId: z.string().uuid(FieldErrors.serviceId),
     quantity: z.number().int().min(1).default(1),
     customCost: z.number().min(0).optional().nullable(),
