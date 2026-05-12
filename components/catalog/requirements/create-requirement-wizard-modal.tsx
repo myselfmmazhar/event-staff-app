@@ -128,6 +128,7 @@ export function CreateRequirementWizardModal({
   const [categoryDescription, setCategoryDescription] = useState<string>('');
   const [preview, setPreview] = useState<SettingsFormOutput | null>(null);
   const saveActionRef = useRef<'close' | 'new'>('close');
+  const utils = trpc.useUtils();
 
   const { data: activeCategories } = trpc.category.getAllActive.useQuery(undefined, {
     enabled: open && !fixedCategory,
@@ -157,10 +158,16 @@ export function CreateRequirementWizardModal({
   }, [selectedCategoryReqIds, existingRequirements]);
 
   const createMutation = trpc.catalogRequirement.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       onSaved?.();
       if (saveActionRef.current === 'new') {
         saveActionRef.current = 'close';
+        // Refresh the queries that drive the "already used" template list so the
+        // just-created requirement is reflected when the wizard returns to step 1.
+        await Promise.all([
+          utils.catalogRequirement.getAll.invalidate(),
+          utils.category.getAllActive.invalidate(),
+        ]);
         // Stay open — go back to step 1 so user can pick a new template
         setSelectedTemplate(null);
         setTemplateTab('all');
@@ -549,8 +556,10 @@ export function CreateRequirementWizardModal({
               <RadioGroup
                 value={watch('expirationType')}
                 onValueChange={(v) => {
-                  setValue('expirationType', v as CatalogRequirementExpirationValue);
-                  if (v !== 'CUSTOM_DATE') setValue('expirationDate', undefined);
+                  const next = v as CatalogRequirementExpirationValue;
+                  setValue('expirationType', next);
+                  if (next !== 'CUSTOM_DATE') setValue('expirationDate', undefined);
+                  setValue('requiresApproval', next === 'PER_TALENT');
                 }}
                 className="space-y-2"
               >
@@ -565,7 +574,7 @@ export function CreateRequirementWizardModal({
                 <label className="flex items-start gap-2 text-sm cursor-pointer">
                   <RadioGroupItem value="PER_TALENT" id="exp-per-talent" />
                   <div>
-                    <span>Expiry against the talent</span>
+                    <span>Document expiry date</span>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Each talent specifies their own expiry date when uploading the document.
                     </p>
@@ -677,7 +686,7 @@ export function CreateRequirementWizardModal({
                 {settingsValues.expirationType === 'NEVER'
                   ? 'Never expires'
                   : settingsValues.expirationType === 'PER_TALENT'
-                    ? 'Expiry against the talent'
+                    ? 'Document expiry date'
                     : settingsValues.expirationDate
                       ? `Expires on ${new Date(settingsValues.expirationDate).toLocaleDateString()}`
                       : 'Custom date'}
@@ -736,7 +745,7 @@ export function CreateRequirementWizardModal({
               disabled={step !== 3 || !preview || isSaving}
               className="h-14 w-full rounded-xl bg-blue-600 px-10 text-lg font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 hover:shadow-none sm:w-auto sm:min-w-[200px] disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {isSaving && saveActionRef.current === 'new' ? 'Saving...' : 'Save & New'}
+              {isSaving && saveActionRef.current === 'new' ? 'Saving...' : 'Save & Add New Requirement'}
             </Button>
           </div>
 

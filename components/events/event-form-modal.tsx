@@ -595,27 +595,24 @@ export function EventFormModal({
     }
   }, [selectedClientId, clientsData, setValue, watch]);
 
-  // Auto-fill venue address from client only when the user actively changes
-  // the client (skip on initial reset/edit-load so existing event values aren't overwritten).
-  const previousClientIdRef = useRef<string | undefined>(undefined);
+  // Auto-fill venue address from client only when the user actively picks a
+  // *different* client than the event already has — never on initial load.
   useEffect(() => {
-    if (!clientsData?.data) return;
-    const prev = previousClientIdRef.current;
-    previousClientIdRef.current = selectedClientId || '';
+    if (!clientsData?.data || !selectedClientId) return;
 
-    if (prev === undefined) return; // skip first run (initial reset)
-    if (!selectedClientId || prev === selectedClientId) return;
+    // Skip if the form still holds the event's original client (initial reset).
+    const eventClientId = event?.clientId || '';
+    if (selectedClientId === eventClientId) return;
 
     const selectedClient = clientsData.data.find(c => c.id === selectedClientId);
-    if (!selectedClient) return;
-    if (selectedClient.businessAddress) {
-      setValue('address', selectedClient.businessAddress);
-      setValue('addressLine2', selectedClient.businessAddressLine2 ?? '');
-      setValue('city', selectedClient.city ?? '');
-      setValue('state', selectedClient.state ?? '');
-      setValue('zipCode', selectedClient.zipCode ?? '');
-    }
-  }, [selectedClientId, clientsData, setValue]);
+    if (!selectedClient || !selectedClient.businessAddress) return;
+
+    setValue('address', selectedClient.businessAddress);
+    setValue('addressLine2', selectedClient.businessAddressLine2 ?? '');
+    setValue('city', selectedClient.city ?? '');
+    setValue('state', selectedClient.state ?? '');
+    setValue('zipCode', selectedClient.zipCode ?? '');
+  }, [event, selectedClientId, clientsData, setValue]);
 
   // Apply template data
   useEffect(() => {
@@ -689,7 +686,6 @@ export function EventFormModal({
       setBatchValidationResults([]);
       setSaveAsTemplate(false);
       setTemplateName('');
-      previousClientIdRef.current = undefined;
     }
   }, [open]);
 
