@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image } from "lucide-react";
 import Link from "next/link";
 import { PrintDocument } from "@/components/finance/print-document";
+import { TaskDetailsCard } from "@/components/finance/task-details-card";
 import { useEffect } from "react";
 
 export default function ViewInvoicePage() {
@@ -96,7 +97,7 @@ export default function ViewInvoicePage() {
     });
 
     return (
-        <div className="container mx-auto py-6 space-y-6 max-w-4xl">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             {/* Print-only document */}
             <PrintDocument
                 variant="INVOICE"
@@ -211,6 +212,9 @@ export default function ViewInvoicePage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Task Details (read-only, derived from linked event) */}
+            <TaskDetailsCard items={invoice.items as any} />
 
             {/* Line Items Card */}
             <Card>

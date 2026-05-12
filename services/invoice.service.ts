@@ -67,7 +67,31 @@ export class InvoiceService {
         return this.prisma.invoice.findUnique({
             where: { id },
             include: {
-                items: true,
+                items: {
+                    include: {
+                        service: {
+                            include: {
+                                callTimes: {
+                                    include: {
+                                        event: {
+                                            select: {
+                                                id: true,
+                                                title: true,
+                                                venueName: true,
+                                                address: true,
+                                                addressLine2: true,
+                                                city: true,
+                                                state: true,
+                                                zipCode: true,
+                                                startDate: true,
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
                 client: true,
             },
         });

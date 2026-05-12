@@ -20,6 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
 import { EditableLabel } from "@/components/ui/editable-label";
+import { TaskDetailsCard } from "@/components/finance/task-details-card";
 
 interface InvoiceFormProps {
     invoice?: any; // Invoice data for editing
@@ -355,6 +356,8 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                 </div>
                 {actionButtons}
             </div>
+
+            {isEditMode && <TaskDetailsCard items={invoice?.items as any} />}
 
             <Card>
                 <CardHeader>
