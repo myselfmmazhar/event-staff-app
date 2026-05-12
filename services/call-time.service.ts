@@ -34,6 +34,76 @@ const SKILL_LEVEL_ORDER: Record<SkillLevel, number> = {
   ADVANCED: 3,
 };
 
+function sameDay(a: Date | null | undefined, b: Date | null | undefined): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return new Date(a).toDateString() === new Date(b).toDateString();
+}
+
+function sameDecimal(a: unknown, b: unknown): boolean {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  return String(a) === String(b);
+}
+
+/**
+ * Returns a list of human-readable labels for the call time fields that
+ * actually changed between the previous and updated records. Used to drive
+ * the in-app notification sent to invited staff after an update.
+ */
+function diffCallTimeForNotification(
+  previous: {
+    startDate: Date | null;
+    startTime: string | null;
+    endDate: Date | null;
+    endTime: string | null;
+    payRate: unknown;
+    payRateType: RateType;
+    billRate: unknown;
+    billRateType: RateType;
+    notes: string | null;
+    instructions: string | null;
+    numberOfStaffRequired: number;
+    skillLevel: SkillLevel;
+    serviceId: string | null;
+  },
+  next: {
+    startDate: Date | null;
+    startTime: string | null;
+    endDate: Date | null;
+    endTime: string | null;
+    payRate: unknown;
+    payRateType: RateType;
+    billRate: unknown;
+    billRateType: RateType;
+    notes: string | null;
+    instructions: string | null;
+    numberOfStaffRequired: number;
+    skillLevel: SkillLevel;
+    serviceId: string | null;
+  }
+): string[] {
+  const changes: string[] = [];
+
+  if (!sameDay(previous.startDate, next.startDate)) changes.push('start date');
+  if ((previous.startTime ?? '') !== (next.startTime ?? '')) changes.push('start time');
+  if (!sameDay(previous.endDate, next.endDate)) changes.push('end date');
+  if ((previous.endTime ?? '') !== (next.endTime ?? '')) changes.push('end time');
+  if (!sameDecimal(previous.payRate, next.payRate) || previous.payRateType !== next.payRateType) {
+    changes.push('pay rate');
+  }
+  if (!sameDecimal(previous.billRate, next.billRate) || previous.billRateType !== next.billRateType) {
+    changes.push('bill rate');
+  }
+  if ((previous.notes ?? '') !== (next.notes ?? '')) changes.push('notes');
+  if ((previous.instructions ?? '') !== (next.instructions ?? '')) changes.push('instructions');
+  if (previous.numberOfStaffRequired !== next.numberOfStaffRequired) changes.push('staff count');
+  if (previous.skillLevel !== next.skillLevel) changes.push('skill level');
+  if ((previous.serviceId ?? '') !== (next.serviceId ?? '')) changes.push('service');
+
+  return changes;
+}
+
 /**
  * Call Time Service - Business logic for call time operations
  */
@@ -383,6 +453,20 @@ export class CallTimeService {
   ) {
     await this.findOne(id, userId, userRole); // Verify ownership
 
+    // Snapshot the call time before the update so we can detect which fields
+    // changed and notify any staff with pending/accepted invitations.
+    const previous = await this.prisma.callTime.findUnique({
+      where: { id },
+      include: {
+        service: { select: { title: true } },
+        event: { select: { id: true, title: true } },
+        invitations: {
+          where: { status: { in: ['PENDING', 'ACCEPTED'] } },
+          select: { id: true },
+        },
+      },
+    });
+
     // Transform serviceId to Prisma relation syntax
     const { serviceId, ...restData } = data;
     const prismaData: any = { ...restData };
@@ -413,6 +497,24 @@ export class CallTimeService {
         _count: { select: { invitations: true } },
       },
     });
+
+    // Notify staff with pending/accepted invitations about changes (best-effort)
+    try {
+      if (previous && previous.invitations.length > 0) {
+        const changes = diffCallTimeForNotification(previous, updated);
+        if (changes.length > 0) {
+          const notificationService = getNotificationTriggerService(this.prisma);
+          await notificationService.onCallTimeUpdated(id, {
+            positionName: updated.service?.title || previous.service?.title || 'Staff',
+            eventTitle: updated.event.title,
+            eventId: updated.event.id,
+            changes,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to notify staff after call time update:', err);
+    }
 
     // Auto-sync estimate for this event based on current tasks (best-effort)
     try {

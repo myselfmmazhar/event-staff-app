@@ -1,4 +1,4 @@
-import { PrismaClient, NotificationType, NotificationPriority } from "@prisma/client";
+import { PrismaClient, NotificationType, NotificationPriority, CallTimeInvitationStatus } from "@prisma/client";
 import { NotificationService } from "./notification.service";
 
 /**
@@ -214,6 +214,44 @@ export class NotificationTriggerService {
             message: `${inviterName} has invited you to join the team. Complete your profile to get started.`,
             actionUrl: `/profile`,
             actionLabel: "Complete Profile",
+        });
+    }
+
+    /**
+     * Trigger: Call time / task details updated.
+     * Notifies every staff member with a PENDING or ACCEPTED invitation
+     * for this call time so they know to review the changes.
+     */
+    async onCallTimeUpdated(
+        callTimeId: string,
+        callTimeDetails: {
+            positionName: string;
+            eventTitle: string;
+            eventId: string;
+            changes: string[];
+        }
+    ) {
+        const recipientUserIds = await this.getInvitedStaffForCallTime(
+            callTimeId,
+            [CallTimeInvitationStatus.PENDING, CallTimeInvitationStatus.ACCEPTED]
+        );
+
+        if (recipientUserIds.length === 0) return;
+
+        const message = callTimeDetails.changes.length > 0
+            ? `Your ${callTimeDetails.positionName} assignment for "${callTimeDetails.eventTitle}" was updated. Changes: ${callTimeDetails.changes.join(", ")}`
+            : `Your ${callTimeDetails.positionName} assignment for "${callTimeDetails.eventTitle}" has been updated.`;
+
+        await this.notificationService.createBulk(recipientUserIds, {
+            type: NotificationType.EVENT_UPDATE,
+            priority: NotificationPriority.NORMAL,
+            title: "Shift Details Updated",
+            message,
+            actionUrl: `/my-schedule`,
+            actionLabel: "View Details",
+            relatedEntityType: "callTime",
+            relatedEntityId: callTimeId,
+            batchKey: `call_time_update_${callTimeId}`,
         });
     }
 
@@ -494,6 +532,30 @@ export class NotificationTriggerService {
             select: { id: true },
         });
         return admins.map((u) => u.id);
+    }
+
+    /**
+     * Helper: Get user IDs of staff invited to a call time, filtered by invitation status.
+     */
+    private async getInvitedStaffForCallTime(
+        callTimeId: string,
+        statuses: CallTimeInvitationStatus[]
+    ): Promise<string[]> {
+        const invitations = await this.prisma.callTimeInvitation.findMany({
+            where: {
+                callTimeId,
+                status: { in: statuses },
+            },
+            include: {
+                staff: { select: { userId: true } },
+            },
+        });
+
+        const userIds = invitations
+            .map((inv) => inv.staff.userId)
+            .filter((userId): userId is string => userId !== null);
+
+        return [...new Set(userIds)];
     }
 
     /**

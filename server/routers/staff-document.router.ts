@@ -55,6 +55,14 @@ export const staffDocumentRouter = router({
             return service.approve(ctx.userId!, input);
         }),
 
+    /** Admin: change the expiry date on an existing document row. */
+    updateExpiry: adminProcedure
+        .input(StaffDocumentSchema.updateExpiry)
+        .mutation(async ({ ctx, input }) => {
+            const service = new StaffDocumentService(ctx.prisma);
+            return service.updateExpiry(ctx.userId!, input);
+        }),
+
     /** Admin: reject a pending document. */
     reject: adminProcedure
         .input(StaffDocumentSchema.reject)

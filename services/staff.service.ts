@@ -99,7 +99,6 @@ export class StaffService {
         customField3: true,
         // Documents
         documents: true,
-        documentExpiryDate: true,
         // Team Details (for TEAM role)
         teamEntityName: true,
         teamEmail: true,
@@ -728,6 +727,8 @@ export class StaffService {
                     }
 
                     if (categorizedDocuments && categorizedDocuments.length > 0) {
+                        // Default expiry is one week from upload; admin can adjust per-document later.
+                        const defaultExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
                         await tx.staffDocument.createMany({
                             data: categorizedDocuments.map((doc) => ({
                                 staffId: staff.id,
@@ -739,7 +740,7 @@ export class StaffService {
                                 status: "APPROVED" as const,
                                 version: 1,
                                 isCurrent: true,
-                                expiresAt: doc.expiresAt ? new Date(doc.expiresAt) : null,
+                                expiresAt: defaultExpiry,
                             })),
                         });
                     }

@@ -130,7 +130,6 @@ const getDefaultFormValues = () => ({
     customField2: '',
     customField3: '',
     documents: [] as Array<{ name: string; url: string; type?: string; size?: number }>,
-    documentExpiryDate: null as Date | null,
     teamEntityName: '',
     teamEmail: '',
     teamPhone: '',
@@ -168,7 +167,6 @@ const getFormValuesFromStaff = (staff: StaffWithRelations) => ({
     customField2: staff.customField2 || '',
     customField3: staff.customField3 || '',
     documents: (staff.documents as Array<{ name: string; url: string; type?: string; size?: number }>) || [],
-    documentExpiryDate: staff.documentExpiryDate ? new Date(staff.documentExpiryDate) : null,
     teamEntityName: staff.teamEntityName || '',
     teamEmail: staff.teamEmail || '',
     teamPhone: staff.teamPhone || '',
@@ -722,33 +720,6 @@ function StaffFormContent({
                                     disabled={isSubmitting}
                                     placeholder="Optional internal reference"
                                     className="mt-2 rounded-lg border-slate-200"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="sf-doc-expiry" className="text-sm font-bold text-slate-900">
-                                    Document expiry
-                                </Label>
-                                <p className="mt-1 text-xs text-slate-500">Optional — date the talent&apos;s submitted documents expire</p>
-                                <Controller
-                                    name="documentExpiryDate"
-                                    control={control}
-                                    render={({ field }) => {
-                                        const value = field.value
-                                            ? (field.value instanceof Date
-                                                ? field.value.toISOString().split('T')[0]
-                                                : String(field.value).split('T')[0])
-                                            : '';
-                                        return (
-                                            <Input
-                                                id="sf-doc-expiry"
-                                                type="date"
-                                                value={value}
-                                                onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
-                                                disabled={isSubmitting}
-                                                className="mt-2 rounded-lg border-slate-200"
-                                            />
-                                        );
-                                    }}
                                 />
                             </div>
                             <div>

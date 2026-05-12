@@ -17,7 +17,6 @@ export const StaffDocumentSchema = {
         url: fileSchema.shape.url,
         type: fileSchema.shape.type,
         size: fileSchema.shape.size,
-        expiresAt: z.string().optional().nullable(),
     }),
     listForStaff: z.object({
         staffId: z.string().uuid(),
@@ -26,6 +25,10 @@ export const StaffDocumentSchema = {
         staffId: z.string().uuid(),
     }),
     approve: z.object({
+        documentId: z.string().uuid(),
+        expiresAt: z.string().optional().nullable(),
+    }),
+    updateExpiry: z.object({
         documentId: z.string().uuid(),
         expiresAt: z.string().optional().nullable(),
     }),
@@ -43,5 +46,6 @@ export const StaffDocumentSchema = {
 
 export type UploadUpdateInput = z.infer<typeof StaffDocumentSchema.uploadUpdate>;
 export type ApproveInput = z.infer<typeof StaffDocumentSchema.approve>;
+export type UpdateExpiryInput = z.infer<typeof StaffDocumentSchema.updateExpiry>;
 export type RejectInput = z.infer<typeof StaffDocumentSchema.reject>;
 export type CategorizeLegacyInput = z.infer<typeof StaffDocumentSchema.categorizeLegacy>;

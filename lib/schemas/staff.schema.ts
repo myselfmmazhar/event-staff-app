@@ -150,17 +150,6 @@ const baseFields = {
         size: z.number().optional(),
     })).optional().nullable(),
 
-    // Optional document expiry date for the talent's submitted documents
-    documentExpiryDate: z
-        .union([z.date(), z.string()])
-        .optional()
-        .nullable()
-        .transform((val) => {
-            if (val === null || val === undefined || val === '') return null;
-            const date = val instanceof Date ? val : new Date(val);
-            return Number.isNaN(date.getTime()) ? null : date;
-        }),
-
     // Team Details (only when staffRole = TEAM)
     teamEntityName: z
         .string()
@@ -441,7 +430,6 @@ export class StaffSchema {
                         url: z.string().url(),
                         type: z.string().optional(),
                         size: z.number().optional(),
-                        expiresAt: z.string().optional().nullable(),
                     })
                 )
                 .optional(),

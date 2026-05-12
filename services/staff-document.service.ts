@@ -8,6 +8,7 @@ import {
 import type {
     UploadUpdateInput,
     ApproveInput,
+    UpdateExpiryInput,
     RejectInput,
     CategorizeLegacyInput,
 } from "@/lib/schemas/staff-document.schema";
@@ -90,19 +91,14 @@ export class StaffDocumentService {
                 id: true,
                 firstName: true,
                 lastName: true,
-                documentExpiryDate: true,
             },
         });
         if (!staff) {
             throw new TRPCError({ code: "NOT_FOUND", message: "Staff record not found" });
         }
 
-        // Talent UI no longer collects an expiry — default to the date on the
-        // talent's profile so admins see a proposed expiry when reviewing. Admin
-        // can override on approval.
-        const expiresAt = input.expiresAt
-            ? new Date(input.expiresAt)
-            : staff.documentExpiryDate ?? null;
+        // Default expiry is one week from upload; admin can adjust later from the talent profile.
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
         // Find the most recent version for this slot to compute next version
         const latest = await this.prisma.staffDocument.findFirst({
@@ -306,6 +302,29 @@ export class StaffDocumentService {
         }
 
         return approved;
+    }
+
+    /**
+     * Admin: change the expiry date on an existing document row.
+     */
+    async updateExpiry(_reviewerUserId: string, input: UpdateExpiryInput): Promise<StaffDocumentRow> {
+        const doc = await this.prisma.staffDocument.findUnique({
+            where: { id: input.documentId },
+            select: { id: true },
+        });
+        if (!doc) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
+        }
+
+        return this.prisma.staffDocument.update({
+            where: { id: input.documentId },
+            data: {
+                expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+                // Reset the one-time warning stamp so the talent gets a fresh
+                // notification if the new expiry falls inside the warning window.
+                expiryNotifiedAt: null,
+            },
+        });
     }
 
     /**

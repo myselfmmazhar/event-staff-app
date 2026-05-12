@@ -119,7 +119,6 @@ export type StaffSelect = Prisma.StaffGetPayload<{
     customField3: true;
     // Documents
     documents: true;
-    documentExpiryDate: true;
     // Team Details (for TEAM role)
     teamEntityName: true;
     teamEmail: true;
