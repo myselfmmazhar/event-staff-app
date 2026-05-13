@@ -8,12 +8,15 @@ import { CalendarIcon, UserIcon, BriefcaseIcon, ClockIcon, MapPinIcon, FileTextI
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { useUserTimezone } from '@/lib/hooks/use-user-timezone';
+import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 
 export default function ClientPortalDashboard() {
     const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
     const { data: stats, isLoading: statsLoading } = trpc.profile.getMyClientStats.useQuery();
     const { data: events, isLoading: eventsLoading } = trpc.profile.getMyClientEvents.useQuery();
     const { data: financeData, isLoading: financeLoading } = trpc.profile.getMyClientFinance.useQuery();
+    const { timezone: userTz } = useUserTimezone();
 
     const upcomingEvents = events
         ?.filter(e => {
@@ -171,16 +174,22 @@ export default function ClientPortalDashboard() {
                                                 ? "border-amber-400 text-amber-700 bg-amber-50/50"
                                                 : (statusColor[event.status] || "border-muted-foreground/30 text-muted-foreground");
 
+                                            const eventTz = event.timezone || 'UTC';
+                                            const start = convertWallClock(event.startDate, event.startTime, eventTz, userTz);
+                                            const end = convertWallClock(event.endDate, event.endTime, eventTz, userTz);
+                                            const tzLabel = shortTzLabel(userTz, start.date ?? new Date());
+
                                             return (
                                                 <Link key={event.id} href={`/client-portal/my-events/${event.id}`}>
                                                     <div className="grid grid-cols-[150px_1fr_160px_150px_110px] gap-4 px-6 py-4 hover:bg-muted/30 cursor-pointer transition-colors items-center">
                                                         {/* Date / Time */}
                                                         <div>
                                                             <p className="text-sm font-semibold text-foreground leading-snug">
-                                                                {event.startDate ? format(new Date(event.startDate), "MMM d, yyyy") : "Date TBD"}
+                                                                {start.date ? format(new Date(start.date), "MMM d, yyyy") : "Date TBD"}
                                                             </p>
                                                             <p className="text-[11px] text-muted-foreground mt-0.5">
-                                                                {event.startTime || "TBD"}{event.endTime ? ` – ${event.endTime}` : ''}
+                                                                {start.time || "TBD"}{end.time ? ` – ${end.time}` : ''}
+                                                                {tzLabel && <span className="ml-1">{tzLabel}</span>}
                                                             </p>
                                                         </div>
 
