@@ -1356,7 +1356,7 @@ export function TimesheetTableRow({
                                                                 variant="outline"
                                                                 className="h-6 px-2 text-[10px]"
                                                             >
-                                                                View
+                                                                View / Edit
                                                             </Button>
                                                         </PopoverTrigger>
                                                     )}

@@ -26,6 +26,8 @@ import { format } from 'date-fns';
 import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
+import { useUserTimezone } from '@/lib/hooks/use-user-timezone';
+import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ClientEventDetail = RouterOutputs['profile']['getMyClientEventDetail'];
@@ -40,6 +42,7 @@ type ClientCallTimeInvitation = ClientCallTime['invitations'][number];
 export default function ClientEventDetailPage() {
     const params = useParams();
     const eventId = params.eventId as string;
+    const { timezone: userTz } = useUserTimezone();
 
     // Fetch the event details
     const { data: event, isLoading, error } = trpc.profile.getMyClientEventDetail.useQuery(
@@ -96,6 +99,11 @@ export default function ClientEventDetailPage() {
         );
     }
 
+    const eventTz = event.timezone || 'UTC';
+    const eventStart = convertWallClock(event.startDate, event.startTime, eventTz, userTz);
+    const eventEnd = convertWallClock(event.endDate, event.endTime, eventTz, userTz);
+    const tzLabel = shortTzLabel(userTz, eventStart.date ?? new Date());
+
     return (
         <div className="space-y-6">
                 {/* Header */}
@@ -138,22 +146,27 @@ export default function ClientEventDetailPage() {
                                 <div>
                                     <p className="text-sm text-muted-foreground">Date</p>
                                     <p className="font-medium">
-                                        {isDateNullOrUBD(event.startDate) ? 'UBD' : format(new Date(event.startDate!), 'EEEE, MMMM d, yyyy')}
-                                        {event.endDate && !isDateNullOrUBD(event.endDate) && event.endDate !== event.startDate && (
-                                            <> – {format(new Date(event.endDate), 'MMMM d, yyyy')}</>
+                                        {isDateNullOrUBD(eventStart.date) ? 'UBD' : format(new Date(eventStart.date!), 'EEEE, MMMM d, yyyy')}
+                                        {eventEnd.date && !isDateNullOrUBD(eventEnd.date) && eventStart.date && new Date(eventEnd.date).toDateString() !== new Date(eventStart.date).toDateString() && (
+                                            <> – {format(new Date(eventEnd.date), 'MMMM d, yyyy')}</>
                                         )}
                                     </p>
                                 </div>
                             </div>
 
-                            {event.startTime && (
+                            {eventStart.time && (
                                 <div className="flex items-start gap-3">
                                     <ClockIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                                     <div>
                                         <p className="text-sm text-muted-foreground">Time</p>
                                         <p className="font-medium">
-                                            {event.startTime}
-                                            {event.endTime && <> – {event.endTime}</>}
+                                            {eventStart.time}
+                                            {eventEnd.time && <> – {eventEnd.time}</>}
+                                            {tzLabel && (
+                                                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                                    {tzLabel}
+                                                </span>
+                                            )}
                                         </p>
                                     </div>
                                 </div>
@@ -295,7 +308,10 @@ export default function ClientEventDetailPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {event.callTimes.map((callTime: ClientCallTime) => (
+                            {event.callTimes.map((callTime: ClientCallTime) => {
+                                const ctStart = convertWallClock(callTime.startDate, callTime.startTime, eventTz, userTz);
+                                const ctEnd = convertWallClock(callTime.endDate, callTime.endTime, eventTz, userTz);
+                                return (
                                 <div key={callTime.id} className="border rounded-lg p-4 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -303,7 +319,10 @@ export default function ClientEventDetailPage() {
                                                 {callTime.service?.title || 'Service'}
                                             </p>
                                             <p className="text-sm text-muted-foreground">
-                                                {callTime.startTime || 'TBD'} – {callTime.endTime || 'TBD'}
+                                                {ctStart.time || 'TBD'} – {ctEnd.time || 'TBD'}
+                                                {tzLabel && (
+                                                    <span className="ml-1 text-xs">{tzLabel}</span>
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -342,7 +361,8 @@ export default function ClientEventDetailPage() {
                                         </div>
                                     )}
                                 </div>
-                            ))}
+                                );
+                            })}
                         </CardContent>
                     </Card>
                 )}

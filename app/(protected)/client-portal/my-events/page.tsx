@@ -17,6 +17,8 @@ import { EventUpdateRequestModal } from '@/components/events/event-update-reques
 import { MapPinIcon, FileTextIcon, EyeIcon } from 'lucide-react';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/routers/_app';
+import { useUserTimezone } from '@/lib/hooks/use-user-timezone';
+import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ClientEventListItem = RouterOutputs['profile']['getMyClientEvents'][number];
@@ -297,6 +299,7 @@ export default function ClientPortalMyEvents() {
     const [expandedEventKeys, setExpandedEventKeys] = useState<Set<string>>(new Set());
     const [expandedRequestKeys, setExpandedRequestKeys] = useState<Set<string>>(new Set());
 
+    const { timezone: userTz } = useUserTimezone();
     const { data: eventsData, isLoading: eventsLoading } = trpc.profile.getMyClientEvents.useQuery();
     const { data: requestsData, isLoading: requestsLoading } = trpc.eventRequest.getMyRequests.useQuery({
         limit: 100,
@@ -334,14 +337,23 @@ export default function ClientPortalMyEvents() {
             key: 'startDate',
             label: 'Date',
             sortable: true,
-            render: (item) => (
-                <div className="text-sm font-medium text-foreground whitespace-nowrap">
-                    <div>{formatDateTime(item.startDate, item.startTime)}</div>
-                    {(item.endDate || item.endTime) && (
-                        <div className="text-muted-foreground">- {formatDateTime(item.endDate, item.endTime)}</div>
-                    )}
-                </div>
-            ),
+            render: (item) => {
+                const eventTz = (item as { timezone?: string | null }).timezone || 'UTC';
+                const start = convertWallClock(item.startDate, item.startTime, eventTz, userTz);
+                const end = convertWallClock(item.endDate, item.endTime, eventTz, userTz);
+                const tzLabel = shortTzLabel(userTz, start.date ?? new Date());
+                return (
+                    <div className="text-sm font-medium text-foreground whitespace-nowrap">
+                        <div>
+                            {formatDateTime(start.date, start.time)}
+                            {tzLabel && <span className="ml-1 text-xs font-normal text-muted-foreground">{tzLabel}</span>}
+                        </div>
+                        {(end.date || end.time) && (
+                            <div className="text-muted-foreground">- {formatDateTime(end.date, end.time)}</div>
+                        )}
+                    </div>
+                );
+            },
         },
         {
             key: 'title',
