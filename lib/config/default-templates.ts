@@ -65,6 +65,9 @@ export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{acceptUrl}}': 'Direct URL to accept the offer from email',
   '{{rejectUrl}}': 'Direct URL to reject the offer from email',
   '{{detailsUrl}}': 'URL to view the full invitation details in the talent portal',
+  '{{confirmationStatus}}': 'Confirmation status label (e.g., "Confirmed" or "Waitlisted")',
+  '{{statusMessage}}': 'Long-form status message shown after accepting',
+  '{{isWaitlisted}}': 'Set to "true" when the acceptance landed on the waitlist (otherwise empty)',
 };
 
 export interface DefaultEmailTemplate {
@@ -265,6 +268,40 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
 
 <p class="note">Please respond as soon as possible. Positions are filled on a first-come, first-served basis.</p>`,
   },
+  {
+    type: 'CALL_TIME_INVITATION_ACCEPTED',
+    subject: 'Invitation Accepted: {{positionName}} at {{eventTitle}}',
+    headerTitle: 'Invitation Accepted',
+    description: 'Shown on the confirmation page after a staff member accepts an invitation from the email link',
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      '{{positionName}}',
+      '{{eventTitle}}',
+      '{{eventVenue}}',
+      '{{eventLocation}}',
+      '{{startDate}}',
+      '{{endDate}}',
+      '{{startTime}}',
+      '{{endTime}}',
+      '{{loginUrl}}',
+      '{{dashboardUrl}}',
+      '{{confirmationStatus}}',
+      '{{statusMessage}}',
+      '{{isWaitlisted}}',
+    ],
+    bodyHtml: `<p>{{statusMessage}}</p>
+
+<div class="info-box">
+  <p><strong>Position:</strong> {{positionName}}</p>
+  <p><strong>Event:</strong> {{eventTitle}}</p>
+  <p><strong>Location:</strong> {{eventVenue}}, {{eventLocation}}</p>
+  <p><strong>Date:</strong> {{startDate}}</p>
+  <p><strong>Time:</strong> {{startTime}} - {{endTime}}</p>
+  <p><strong>Status:</strong> {{confirmationStatus}}</p>
+</div>
+
+{{button:Log In to View My Schedule|{{loginUrl}}}}`,
+  },
 ];
 
 /**
@@ -351,6 +388,7 @@ export const TEMPLATE_TYPE_LABELS: Record<EmailTemplateType | SmsTemplateType, s
   CALL_TIME_WAITLISTED: 'Call Time Waitlisted',
   USER_INVITATION: 'User Invitation',
   CALL_INVITATION_BATCH: 'Call Invitation Batch',
+  CALL_TIME_INVITATION_ACCEPTED: 'Invitation Accepted Page',
 };
 
 /**
@@ -380,6 +418,7 @@ export function getAllTemplateTypes(): (EmailTemplateType | SmsTemplateType)[] {
     'CALL_TIME_WAITLISTED',
     'USER_INVITATION',
     'CALL_INVITATION_BATCH',
+    'CALL_TIME_INVITATION_ACCEPTED',
   ];
 }
 
@@ -467,6 +506,14 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
       };
     case 'CALL_INVITATION_BATCH':
       return callTimeCommon;
+    case 'CALL_TIME_INVITATION_ACCEPTED':
+      return {
+        ...callTimeCommon,
+        loginUrl: 'https://example.com/login',
+        confirmationStatus: 'Confirmed',
+        statusMessage: 'Great! You have been confirmed for this position.',
+        isWaitlisted: '',
+      };
     default:
       return common;
   }

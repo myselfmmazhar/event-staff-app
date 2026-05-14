@@ -3204,7 +3204,14 @@ export class CallTimeService {
           include: {
             service: true,
             event: {
-              select: { id: true, title: true, createdBy: true },
+              select: {
+                id: true,
+                title: true,
+                createdBy: true,
+                venueName: true,
+                city: true,
+                state: true,
+              },
             },
           },
         },
@@ -3218,6 +3225,31 @@ export class CallTimeService {
       throw new Error('Invalid or expired invitation token');
     }
 
+    const ev = invitation.callTime.event;
+    const eventVenue = ev.venueName || '';
+    const eventLocation = [ev.city, ev.state].filter(Boolean).join(', ');
+    const formatDate = (d: Date | null | undefined) =>
+      d && d.getFullYear() !== 1970
+        ? d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        : 'TBD';
+    const formatTime = (t: string | null | undefined) => {
+      if (!t) return 'TBD';
+      const [hh, mm] = t.split(':');
+      if (!hh || !mm) return 'TBD';
+      const hour = Number.parseInt(hh, 10);
+      if (Number.isNaN(hour)) return 'TBD';
+      return `${hour > 12 ? hour - 12 : hour}:${mm} ${hour >= 12 ? 'PM' : 'AM'}`;
+    };
+    const eventDetails = {
+      firstName: invitation.staff.firstName,
+      eventVenue,
+      eventLocation,
+      startDate: formatDate(invitation.callTime.startDate),
+      endDate: formatDate(invitation.callTime.endDate),
+      startTime: formatTime(invitation.callTime.startTime),
+      endTime: formatTime(invitation.callTime.endTime),
+    };
+
     if (invitation.status !== 'PENDING') {
       return {
         status: invitation.status,
@@ -3226,6 +3258,7 @@ export class CallTimeService {
         positionName: invitation.callTime.service?.title || 'Staff',
         isTeamInvitation: invitation.invitedAsTeam,
         needsUnitSelection: false,
+        ...eventDetails,
       };
     }
 
@@ -3237,6 +3270,7 @@ export class CallTimeService {
         positionName: invitation.callTime.service?.title || 'Staff',
         isTeamInvitation: true,
         needsUnitSelection: true,
+        ...eventDetails,
       };
     }
 
@@ -3261,6 +3295,7 @@ export class CallTimeService {
         positionName: updated.callTime.service?.title || 'Staff',
         isTeamInvitation: invitation.invitedAsTeam,
         needsUnitSelection: false,
+        ...eventDetails,
       };
     } else {
       const triggerService = getNotificationTriggerService(this.prisma);
@@ -3289,9 +3324,12 @@ export class CallTimeService {
       );
 
       return {
-        status: 'DECLINED',
+        status: 'DECLINED' as const,
         eventTitle: updated.callTime.event.title,
-        positionName: updated.callTime.service?.title || 'Staff'
+        positionName: updated.callTime.service?.title || 'Staff',
+        isTeamInvitation: invitation.invitedAsTeam,
+        needsUnitSelection: false,
+        ...eventDetails,
       };
     }
   }

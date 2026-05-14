@@ -26,8 +26,15 @@ export async function GET(request: NextRequest) {
     url.searchParams.set('status', result.status);
     url.searchParams.set('event', result.eventTitle);
     url.searchParams.set('position', result.positionName);
-    if (result.alreadyResponded) url.searchParams.set('already', 'true');
-    if (result.isConfirmed) url.searchParams.set('confirmed', 'true');
+    if ('alreadyResponded' in result && result.alreadyResponded) url.searchParams.set('already', 'true');
+    if ('isConfirmed' in result && result.isConfirmed) url.searchParams.set('confirmed', 'true');
+    if (result.firstName) url.searchParams.set('firstName', result.firstName);
+    if (result.eventVenue) url.searchParams.set('venue', result.eventVenue);
+    if (result.eventLocation) url.searchParams.set('location', result.eventLocation);
+    if (result.startDate) url.searchParams.set('startDate', result.startDate);
+    if (result.endDate) url.searchParams.set('endDate', result.endDate);
+    if (result.startTime) url.searchParams.set('startTime', result.startTime);
+    if (result.endTime) url.searchParams.set('endTime', result.endTime);
 
     return NextResponse.redirect(url);
   } catch (error: any) {

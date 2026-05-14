@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "EmailTemplateType" ADD VALUE 'CALL_TIME_INVITATION_ACCEPTED';
