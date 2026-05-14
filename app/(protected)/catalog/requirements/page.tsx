@@ -31,7 +31,6 @@ import { ConfirmModal } from '@/components/common/confirm-modal';
 import { CategorySearch } from '@/components/catalog/categories/category-search';
 import { CategoryFilters } from '@/components/catalog/categories/category-filters';
 import { CategoryTable } from '@/components/catalog/categories/category-table';
-import { CategoryFormModal } from '@/components/catalog/categories/category-form-modal';
 import { DeleteCategoryModal } from '@/components/catalog/categories/delete-category-modal';
 import { useCategoriesFilters, type CategoryStatus, type CategorySortBy, type SortOrder } from '@/store/categories-filters.store';
 import { ActiveFilters } from '@/components/common/active-filters';
@@ -76,33 +75,30 @@ function parseSortOrderParam(value: string | null): SortOrder {
 
 function CatalogRequirementsContent() {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<SubTab>((searchParams.get('tab') as SubTab) || 'categories');
-  
+  // "All Requirements" tab is hidden — categories tab is the only visible one.
+  const [activeTab, setActiveTab] = useState<SubTab>('categories');
+
   // --- Requirements State ---
   const { deleteMutationOptions: reqDeleteOptions, handleError } = useCrudMutations();
   const [reqSearch, setReqSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [reqDeleteId, setReqDeleteId] = useState<string | null>(null);
 
   // --- Categories State ---
   const catFilters = useCategoriesFilters();
-  const { 
-    backendErrors, 
-    setBackendErrors, 
-    createMutationOptions: catCreateOptions, 
-    updateMutationOptions: catUpdateOptions, 
-    deleteMutationOptions: catDeleteOptions, 
-    handleSuccess 
+  const {
+    setBackendErrors,
+    deleteMutationOptions: catDeleteOptions,
+    handleSuccess,
   } = useCrudMutations();
 
   const [catModals, setCatModals] = useState({
-    form: false,
     delete: false,
   });
 
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [pendingRequirementCategory, setPendingRequirementCategory] = useState<Category | null>(null);
   const [selectedCatIds, setSelectedCatIds] = useState<Set<string>>(new Set());
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
@@ -149,30 +145,6 @@ function CatalogRequirementsContent() {
     })
   );
 
-  const catCreateMutation = trpc.category.create.useMutation(
-    catCreateOptions('Category created successfully', {
-      onSuccess: (created) => {
-        setCatModals((prev) => ({ ...prev, form: false }));
-        setSelectedCategory(null);
-        refetchCats();
-        if (created) {
-          setPendingRequirementCategory(created as Category);
-          setWizardOpen(true);
-        }
-      },
-    })
-  );
-
-  const catUpdateMutation = trpc.category.update.useMutation(
-    catUpdateOptions('Category updated successfully', {
-      onSuccess: () => {
-        setCatModals((prev) => ({ ...prev, form: false }));
-        setSelectedCategory(null);
-        refetchCats();
-      },
-    })
-  );
-
   const catDeleteMutation = trpc.category.delete.useMutation(
     catDeleteOptions('Category deleted successfully', {
       onSuccess: () => {
@@ -194,24 +166,26 @@ function CatalogRequirementsContent() {
   });
 
   const toggleActiveMutation = trpc.category.toggleActive.useMutation({
-    ...catUpdateOptions('Category status updated', {
-      onSuccess: () => refetchCats(),
-    }),
+    onSuccess: () => {
+      handleSuccess('Category status updated');
+      refetchCats();
+    },
+    onError: handleError,
   });
 
   // --- Handlers ---
   const handleCreateCategory = () => {
-    setSelectedCategory(null);
+    setEditCategory(null);
     setBackendErrors([]);
-    setCatModals((prev) => ({ ...prev, form: true }));
+    setWizardOpen(true);
   };
 
   const handleEditCategory = (id: string) => {
     const category = (catData?.data as any[]).find((c) => c.id === id);
     if (category) {
-      setSelectedCategory(category);
+      setEditCategory(category as Category);
       setBackendErrors([]);
-      setCatModals((prev) => ({ ...prev, form: true }));
+      setWizardOpen(true);
     }
   };
 
@@ -278,10 +252,14 @@ function CatalogRequirementsContent() {
             <SquaresIcon className="h-4 w-4" />
             Requirement
           </button>
+          {/* All Requirements tab is hidden per product spec; keep code for future re-enable. */}
           <button
+            hidden
+            aria-hidden
+            tabIndex={-1}
             onClick={() => setActiveTab('requirements')}
             className={cn(
-              "flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all",
+              "hidden",
               activeTab === 'requirements' ? "text-primary border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
             )}
           >
@@ -290,7 +268,7 @@ function CatalogRequirementsContent() {
           </button>
         </div>
         <div className="pb-2">
-          <Button onClick={() => setWizardOpen(true)} size="sm" className="rounded-lg shadow-sm">
+          <Button onClick={handleCreateCategory} size="sm" className="rounded-lg shadow-sm">
             <PlusIcon className="h-4 w-4 mr-2" />
             Add Requirement
           </Button>
@@ -429,25 +407,6 @@ function CatalogRequirementsContent() {
       )}
 
       {/* Modals */}
-      <CategoryFormModal
-        category={selectedCategory}
-        open={catModals.form}
-        onClose={() => {
-          setCatModals((prev) => ({ ...prev, form: false }));
-          setSelectedCategory(null);
-          setBackendErrors([]);
-        }}
-        onSubmit={(formData) => {
-          if (selectedCategory) {
-            catUpdateMutation.mutate({ id: selectedCategory.id, name: formData.name, description: formData.description });
-          } else {
-            catCreateMutation.mutate({ ...formData, requirementTemplateIds: [], isRequired: false });
-          }
-        }}
-        isSubmitting={catCreateMutation.isPending || catUpdateMutation.isPending}
-        backendErrors={backendErrors}
-      />
-
       <DeleteCategoryModal
         category={selectedCategory ? { name: selectedCategory.name, categoryId: selectedCategory.categoryId } : null}
         open={catModals.delete}
@@ -458,8 +417,8 @@ function CatalogRequirementsContent() {
 
       <CreateRequirementWizardModal
         open={wizardOpen}
-        onClose={() => { setWizardOpen(false); setPendingRequirementCategory(null); }}
-        fixedCategory={pendingRequirementCategory ? { id: pendingRequirementCategory.id, name: pendingRequirementCategory.name, categoryId: pendingRequirementCategory.categoryId } : null}
+        onClose={() => { setWizardOpen(false); setEditCategory(null); }}
+        editCategory={editCategory ? { id: editCategory.id, name: editCategory.name, description: editCategory.description ?? null } : null}
         onSaved={() => { refetchReqs(); refetchCats(); }}
       />
 

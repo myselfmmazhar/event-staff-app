@@ -562,8 +562,22 @@ export const callTimeRouter = router({
     }),
 
   /**
-   * End a shift (talent clocks out)
-   * Closes the active ShiftSession with clockOut = now.
+   * Pause a shift (talent clocks out of the current session)
+   * Closes the active ShiftSession with clockOut = now. The talent can start
+   * a new session afterwards.
+   * Requires: Authentication (staff member who owns the invitation)
+   */
+  pauseShift: protectedProcedure
+    .input(CallTimeSchema.cancelInvitation)
+    .mutation(async ({ ctx, input }) => {
+      const service = new CallTimeService(ctx.prisma);
+      return await service.pauseShift(input.invitationId, ctx.userId!);
+    }),
+
+  /**
+   * End a shift permanently (talent finalizes the shift)
+   * Closes any open ShiftSession and marks the invitation as shift-ended so
+   * the talent cannot start a new session.
    * Requires: Authentication (staff member who owns the invitation)
    */
   endShift: protectedProcedure

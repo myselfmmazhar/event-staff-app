@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type ClientLoginAccess = "all" | "with" | "without";
-export type ClientSortBy = "clientId" | "businessName" | "createdAt";
+export type ClientSortBy = "clientId" | "businessName" | "createdAt" | "status" | "lastLoginAt";
 export type SortOrder = "asc" | "desc";
 
 interface ClientsFiltersState {

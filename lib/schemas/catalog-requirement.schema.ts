@@ -54,6 +54,39 @@ export const CatalogRequirementSchema = {
       }
     }),
 
+  update: z
+    .object({
+      id: z.string().uuid('Invalid requirement ID'),
+      name: z
+        .string()
+        .min(1, 'Name is required')
+        .max(200, 'Name must be 200 characters or less')
+        .transform((v) => v.trim()),
+      instructions: z
+        .string()
+        .max(5000)
+        .transform((v) => v.trim())
+        .optional()
+        .nullable(),
+      allowPdf: z.boolean(),
+      allowImage: z.boolean(),
+      allowOther: z.boolean(),
+      expirationType: expirationSchema,
+      expirationDate: z.coerce.date().optional().nullable(),
+      allowEarlyRenewal: z.boolean(),
+      requiresApproval: z.boolean(),
+      isTalentRequired: z.boolean(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.expirationType === 'CUSTOM_DATE' && !data.expirationDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Please select an expiration date',
+          path: ['expirationDate'],
+        });
+      }
+    }),
+
   query: z.object({
     page: z.number().int().min(1).default(1).optional(),
     limit: z.number().int().min(1).max(100).default(10).optional(),
@@ -67,5 +100,6 @@ export const CatalogRequirementSchema = {
 };
 
 export type CreateCatalogRequirementInput = z.infer<typeof CatalogRequirementSchema.create>;
+export type UpdateCatalogRequirementInput = z.infer<typeof CatalogRequirementSchema.update>;
 export type QueryCatalogRequirementsInput = z.infer<typeof CatalogRequirementSchema.query>;
 export type CatalogRequirementIdInput = z.infer<typeof CatalogRequirementSchema.id>;

@@ -442,7 +442,7 @@ export class EmailService {
         const actionBlock = `
 <div style="text-align: center; margin: 24px 0;">
   <a href="${acceptUrl}" style="background-color: #22c55e; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 0 6px 8px 6px;">Accept Offer</a>
-  <a href="${rejectUrl}" style="background-color: #ef4444; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 0 6px 8px 6px;">Reject Offer</a>
+  <a href="${rejectUrl}" style="background-color: #ef4444; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 0 6px 8px 6px;">Decline Offer</a>
   <a href="${detailsUrl}" style="background-color: #6b7280; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 0 6px 8px 6px;">View More Details</a>
 </div>
 <p style="font-size: 13px; color: #6b7280; margin-top: 0;">If the buttons do not work, open your schedule: <a href="${dashboardUrl}" style="color: #4f46e5;">${dashboardUrl}</a></p>`;
@@ -459,7 +459,7 @@ export class EmailService {
         ? `<p>Hi ${firstName}, you've been invited to work as <strong>${callTimeDetails.positionName}</strong> at <strong>${callTimeDetails.eventTitle}</strong>.</p>
            <div style="margin: 20px 0;">
              <a href="${acceptUrl}" style="background-color: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 5px;">Accept Offer</a>
-             <a href="${rejectUrl}" style="background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 5px;">Reject Offer</a>
+             <a href="${rejectUrl}" style="background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 5px;">Decline Offer</a>
            </div>
            <p style="font-size: 14px; color: #666;">You can also <a href="${dashboardUrl}">view details and respond</a> in the portal.</p>`
         : `<p>Hi ${firstName}, you've been invited to work as ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}.</p><p><a href="${dashboardUrl}">View & Respond</a></p>`;
@@ -579,6 +579,50 @@ export class EmailService {
         email,
         `Waitlisted: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
         `<p>Hi ${firstName}, you're on the waitlist for ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}.</p><p><a href="${dashboardUrl}">View My Schedule</a></p>`
+      );
+    }
+  }
+
+  /**
+   * Send talent document expiring email.
+   * Fired from the lazy bucket-based expiry check on dashboard/profile loads.
+   */
+  async sendDocumentExpiring(
+    email: string,
+    firstName: string,
+    details: {
+      requirementTitle: string;
+      expiresAt: Date;
+      daysRemaining: number;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const profileUrl = `${this.appUrl}/profile`;
+    const formattedExpiry = details.expiresAt.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'TALENT_DOCUMENT_EXPIRING',
+        {
+          firstName,
+          email,
+          requirementTitle: details.requirementTitle,
+          expiresAt: formattedExpiry,
+          daysRemaining: String(details.daysRemaining),
+          profileUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering document expiring template:', error);
+      return this.sendEmail(
+        email,
+        `Your ${details.requirementTitle} expires in ${details.daysRemaining} days`,
+        `<p>Hi ${firstName}, your <strong>${details.requirementTitle}</strong> expires on ${formattedExpiry} (${details.daysRemaining} day${details.daysRemaining === 1 ? '' : 's'}). Please upload an updated copy.</p><p><a href="${profileUrl}">Upload Updated Document</a></p>`
       );
     }
   }

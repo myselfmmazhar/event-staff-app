@@ -42,6 +42,7 @@ model CallTimeInvitation {
   reviewedBy           String?
   invitedAsTeam        Boolean                  @default(false)
   teamUnitId           String?                  @db.Uuid
+  shiftEndedAt         DateTime?                @db.Timestamp(6)
   callTime             CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
   reviewer             User?                    @relation("invitation_reviews", fields: [reviewedBy], references: [id])
   staff                Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
@@ -862,6 +863,7 @@ model StaffDocument {
   reviewedBy            String?
   expiresAt             DateTime?           @db.Date
   expiryNotifiedAt      DateTime?           @db.Timestamp(6)
+  notifiedThresholds    Int[]               @default([])
   createdAt             DateTime            @default(now()) @db.Timestamp(6)
   updatedAt             DateTime            @updatedAt @db.Timestamp(6)
 
@@ -1320,6 +1322,8 @@ enum EmailTemplateType {
   STAFF_CREDENTIALS
   USER_INVITATION
   CALL_INVITATION_BATCH
+  CALL_TIME_INVITATION_ACCEPTED
+  TALENT_DOCUMENT_EXPIRING
 }
 
 enum EventStatus {

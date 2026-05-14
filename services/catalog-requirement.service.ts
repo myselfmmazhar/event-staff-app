@@ -9,6 +9,7 @@ import {
 import { TRPCError } from '@trpc/server';
 import type {
   CreateCatalogRequirementInput,
+  UpdateCatalogRequirementInput,
   QueryCatalogRequirementsInput,
 } from '@/lib/schemas/catalog-requirement.schema';
 import type { PaginatedResponse } from '@/lib/types/prisma-types';
@@ -119,6 +120,73 @@ export class CatalogRequirementService {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: `Failed to create requirement: ${message}`,
+      });
+    }
+  }
+
+  async findById(id: string) {
+    const requirement = await this.prisma.catalogRequirement.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        serviceCategoryId: true,
+        templateId: true,
+        name: true,
+        instructions: true,
+        allowPdf: true,
+        allowImage: true,
+        allowOther: true,
+        expirationType: true,
+        expirationDate: true,
+        allowEarlyRenewal: true,
+        requiresApproval: true,
+        isTalentRequired: true,
+      },
+    });
+    if (!requirement) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Requirement not found' });
+    }
+    return requirement;
+  }
+
+  async update(id: string, data: Omit<UpdateCatalogRequirementInput, 'id'>): Promise<CatalogRequirementListRow> {
+    const existing = await this.prisma.catalogRequirement.findUnique({
+      where: { id },
+      select: { id: true, serviceCategoryId: true, templateId: true },
+    });
+    if (!existing) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Requirement not found' });
+    }
+
+    try {
+      const isUploadTemplate = existing.templateId === 'upload';
+      const updated = await this.prisma.catalogRequirement.update({
+        where: { id },
+        data: {
+          name: data.name,
+          instructions: data.instructions?.trim() || null,
+          allowPdf: isUploadTemplate ? data.allowPdf : true,
+          allowImage: isUploadTemplate ? data.allowImage : true,
+          allowOther: isUploadTemplate ? data.allowOther : false,
+          expirationType: data.expirationType,
+          expirationDate: data.expirationType === 'CUSTOM_DATE' ? (data.expirationDate ?? null) : null,
+          allowEarlyRenewal: data.allowEarlyRenewal,
+          requiresApproval: data.requiresApproval,
+          isTalentRequired: isTalentSubmissionTemplateId(existing.templateId as ReqTemplateId)
+            ? data.isTalentRequired
+            : false,
+        },
+        select: this.listSelect,
+      });
+      await this.syncCategoryFromRequirements(existing.serviceCategoryId);
+      return updated as CatalogRequirementListRow;
+    } catch (error: unknown) {
+      if (error instanceof TRPCError) throw error;
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error updating catalog requirement:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Failed to update requirement: ${message}`,
       });
     }
   }

@@ -294,6 +294,20 @@ export function EventTable({
       },
     },
     {
+      key: 'title',
+      label: columnLabels.title,
+      sortable: true,
+      className: 'py-4 px-4',
+      render: (event) => (
+        <div
+          className="font-medium text-primary cursor-pointer hover:underline"
+          onClick={() => onEdit(event)}
+        >
+          {event.title}
+        </div>
+      ),
+    },
+    {
       key: 'startDate',
       label: columnLabels.startDate,
       sortable: true,
@@ -306,20 +320,6 @@ export function EventTable({
               {formatDateTime(event.endDate, event.endTime)}
             </div>
           )}
-        </div>
-      ),
-    },
-    {
-      key: 'title',
-      label: columnLabels.title,
-      sortable: true,
-      className: 'py-4 px-4',
-      render: (event) => (
-        <div
-          className="font-medium text-primary cursor-pointer hover:underline"
-          onClick={() => onEdit(event)}
-        >
-          {event.title}
         </div>
       ),
     },

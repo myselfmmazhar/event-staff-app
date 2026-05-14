@@ -71,6 +71,12 @@ export type ClientSelect = Prisma.ClientGetPayload<{
         updatedAt: true;
       };
     };
+    users_clients_userIdTousers: {
+      select: {
+        isActive: true;
+        lastLoginAt: true;
+      };
+    };
   };
 }>;
 

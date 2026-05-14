@@ -228,6 +228,22 @@ export function AssignmentTable({
       ),
     },
     {
+      key: 'event',
+      label: terminology.event.singular,
+      sortable: true,
+      render: (item) => (
+        <div>
+          <p
+            className="font-medium text-primary cursor-pointer hover:underline"
+            onClick={() => onManage?.(item)}
+          >
+            {item.event.title}
+          </p>
+          <p className="text-sm text-muted-foreground">{item.event.eventId}</p>
+        </div>
+      ),
+    },
+    {
       key: 'startDate',
       label: 'Date',
       sortable: true,
@@ -244,22 +260,6 @@ export function AssignmentTable({
         <span className="text-muted-foreground">
           {formatTime(item.startTime)} - {formatTime(item.endTime)}
         </span>
-      ),
-    },
-    {
-      key: 'event',
-      label: terminology.event.singular,
-      sortable: true,
-      render: (item) => (
-        <div>
-          <p
-            className="font-medium text-primary cursor-pointer hover:underline"
-            onClick={() => onManage?.(item)}
-          >
-            {item.event.title}
-          </p>
-          <p className="text-sm text-muted-foreground">{item.event.eventId}</p>
-        </div>
       ),
     },
     {

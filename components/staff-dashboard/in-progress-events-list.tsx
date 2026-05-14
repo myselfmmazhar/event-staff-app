@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,11 @@ import {
 } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
 import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
-import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
+import {
+  convertWallClock,
+  resolveWallClockInstant,
+  shortTzLabel,
+} from '@/lib/utils/timezone-convert';
 
 interface ShiftSession {
   id: string;
@@ -39,6 +43,7 @@ interface Invitation {
   isConfirmed: boolean;
   confirmedAt?: Date | null;
   shiftSessions?: ShiftSession[];
+  shiftEndedAt?: Date | string | null;
   callTime: {
     id: string;
     callTimeId: string;
@@ -64,17 +69,21 @@ interface Invitation {
 interface InProgressEventsListProps {
   invitations: Invitation[];
   onStart: (invitationId: string) => void;
+  onPause: (invitationId: string) => void;
   onEnd: (invitationId: string) => void;
   pendingActionId?: string;
 }
 
 type PendingConfirm =
-  | { invitationId: string; action: 'start' | 'end' }
+  | { invitationId: string; action: 'start' | 'pause' | 'end' }
   | null;
+
+const START_WINDOW_MS = 15 * 60 * 1000;
 
 export function InProgressEventsList({
   invitations,
   onStart,
+  onPause,
   onEnd,
   pendingActionId,
 }: InProgressEventsListProps) {
@@ -82,9 +91,15 @@ export function InProgressEventsList({
   const { timezone: talentTz } = useTalentTimezone();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleExpand = (id: string) => {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+    setExpanded((prev) => ({ ...prev, [id]: prev[id] === false ? true : false }));
   };
 
   const formatDate = (date: Date | string | null) => {
@@ -117,6 +132,7 @@ export function InProgressEventsList({
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
+      ...(talentTz ? { timeZone: talentTz } : {}),
     });
   };
 
@@ -164,6 +180,7 @@ export function InProgressEventsList({
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
+      ...(talentTz ? { timeZone: talentTz } : {}),
     });
 
   if (invitations.length === 0) {
@@ -207,8 +224,29 @@ export function InProgressEventsList({
           const sessions = invitation.shiftSessions ?? [];
           const isOpen = hasOpenSession(sessions);
           const totalMs = totalSessionsMs(sessions);
-          const isExpanded = !!expanded[invitation.id];
+          const isExpanded = expanded[invitation.id] !== false;
           const isProcessing = pendingActionId === invitation.id;
+          const isShiftEnded = !!invitation.shiftEndedAt;
+
+          const scheduledStartInstant = resolveWallClockInstant(
+            invitation.callTime.startDate,
+            invitation.callTime.startTime,
+            eventTz,
+          );
+          const hasScheduledStart = scheduledStartInstant !== null;
+          const scheduledStartMs = scheduledStartInstant?.getTime() ?? null;
+          const withinStartWindow =
+            !hasScheduledStart ||
+            scheduledStartMs === null ||
+            now >= scheduledStartMs - START_WINDOW_MS;
+          const minutesUntilWindowOpens =
+            hasScheduledStart && scheduledStartMs !== null
+              ? Math.max(0, Math.ceil((scheduledStartMs - START_WINDOW_MS - now) / 60_000))
+              : 0;
+
+          const startDisabled = isOpen || isProcessing || isShiftEnded || !withinStartWindow;
+          const pauseDisabled = !isOpen || isProcessing || isShiftEnded;
+          const endDisabled = (sessions.length === 0 && !isOpen) || isProcessing || isShiftEnded;
 
           return (
             <Card key={invitation.id} className="overflow-hidden">
@@ -231,7 +269,7 @@ export function InProgressEventsList({
                       variant="default"
                       className="bg-orange-500 hover:bg-orange-500 text-white"
                     >
-                      {isOpen ? 'Active' : 'In Progress'}
+                      {isShiftEnded ? 'Ended' : isOpen ? 'Active' : 'In Progress'}
                     </Badge>
                   </div>
                 </div>
@@ -345,17 +383,21 @@ export function InProgressEventsList({
                   <div>
                     <h4 className="text-sm font-semibold mb-1">Shift Actions</h4>
                     <p className="text-xs text-muted-foreground mb-3">
-                      {isOpen
-                        ? 'Your shift is currently active. Click End Shift to clock out.'
+                      {isShiftEnded
+                        ? 'This shift has been ended. No further actions are available.'
+                        : isOpen
+                        ? 'Your shift is currently active. Click Pause to save the current session, or End to finish the shift.'
                         : sessions.length > 0
-                        ? 'Previous session ended. Click Start Shift to clock back in.'
-                        : 'Click Start Shift to clock in for this assignment.'}
+                        ? 'Shift paused. Click Start to clock back in, or End to finish the shift.'
+                        : hasScheduledStart && !withinStartWindow
+                        ? `Start will be available 15 minutes before the scheduled start time (in ${minutesUntilWindowOpens} minute${minutesUntilWindowOpens === 1 ? '' : 's'}).`
+                        : 'Click Start to clock in for this assignment.'}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
                         size="sm"
-                        disabled={isOpen || isProcessing}
+                        disabled={startDisabled}
                         onClick={() =>
                           setConfirm({ invitationId: invitation.id, action: 'start' })
                         }
@@ -364,23 +406,39 @@ export function InProgressEventsList({
                         {isProcessing && !isOpen ? (
                           <SpinnerIcon className="h-4 w-4 animate-spin" />
                         ) : (
-                          'Start Shift'
+                          'Start'
                         )}
                       </Button>
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={!isOpen || isProcessing}
+                        disabled={pauseDisabled}
                         onClick={() =>
-                          setConfirm({ invitationId: invitation.id, action: 'end' })
+                          setConfirm({ invitationId: invitation.id, action: 'pause' })
                         }
                         className="min-w-[110px]"
                       >
                         {isProcessing && isOpen ? (
                           <SpinnerIcon className="h-4 w-4 animate-spin" />
                         ) : (
-                          'End Shift'
+                          'Pause'
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={endDisabled}
+                        onClick={() =>
+                          setConfirm({ invitationId: invitation.id, action: 'end' })
+                        }
+                        className="min-w-[110px]"
+                      >
+                        {isProcessing && !isOpen && sessions.length > 0 ? (
+                          <SpinnerIcon className="h-4 w-4 animate-spin" />
+                        ) : (
+                          'End'
                         )}
                       </Button>
                     </div>
@@ -400,7 +458,7 @@ export function InProgressEventsList({
                     </h4>
                     {sessions.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        No sessions recorded yet. Click <strong>Start Shift</strong> above when your shift begins.
+                        No sessions recorded yet. Click <strong>Start</strong> above when your shift begins.
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -459,18 +517,29 @@ export function InProgressEventsList({
       <Dialog open={confirm !== null} onClose={() => setConfirm(null)}>
         <DialogHeader>
           <DialogTitle>
-            {confirm?.action === 'start' ? 'Start shift?' : 'End shift?'}
+            {confirm?.action === 'start'
+              ? 'Start shift?'
+              : confirm?.action === 'pause'
+              ? 'Pause shift?'
+              : 'End shift?'}
           </DialogTitle>
           <DialogDescription>
             {confirm?.action === 'start'
               ? 'This will record the current time as your clock-in for this shift.'
-              : 'This will record the current time as your clock-out and close the active session.'}
+              : confirm?.action === 'pause'
+              ? 'This will close the current session and save the time. You can start a new session afterwards.'
+              : 'This will permanently end the shift. You will not be able to start it again.'}
           </DialogDescription>
         </DialogHeader>
         <DialogContent>
           <div className="rounded-md bg-muted px-4 py-3 text-sm">
             <span className="text-muted-foreground">Recording time: </span>
             <span className="font-semibold">{nowString()}</span>
+            {talentTz && (
+              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                {shortTzLabel(talentTz)}
+              </span>
+            )}
           </div>
         </DialogContent>
         <DialogFooter>
@@ -487,13 +556,19 @@ export function InProgressEventsList({
               if (!confirm) return;
               if (confirm.action === 'start') {
                 onStart(confirm.invitationId);
+              } else if (confirm.action === 'pause') {
+                onPause(confirm.invitationId);
               } else {
                 onEnd(confirm.invitationId);
               }
               setConfirm(null);
             }}
           >
-            {confirm?.action === 'start' ? 'Confirm Clock In' : 'Confirm Clock Out'}
+            {confirm?.action === 'start'
+              ? 'Confirm Clock In'
+              : confirm?.action === 'pause'
+              ? 'Confirm Pause'
+              : 'Confirm End Shift'}
           </Button>
         </DialogFooter>
       </Dialog>

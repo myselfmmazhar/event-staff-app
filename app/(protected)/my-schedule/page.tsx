@@ -110,6 +110,25 @@ export default function MySchedulePage() {
     },
   });
 
+  const pauseShiftMutation = trpc.callTime.pauseShift.useMutation({
+    onSuccess: () => {
+      toast({
+        title: 'Shift paused',
+        description: 'Your session has been saved.',
+      });
+      setShiftActionId(undefined);
+      utils.callTime.getMyInvitations.invalidate();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'error',
+      });
+      setShiftActionId(undefined);
+    },
+  });
+
   const endShiftMutation = trpc.callTime.endShift.useMutation({
     onSuccess: () => {
       toast({
@@ -145,6 +164,11 @@ export default function MySchedulePage() {
   const handleStartShift = (invitationId: string) => {
     setShiftActionId(invitationId);
     startShiftMutation.mutate({ invitationId });
+  };
+
+  const handlePauseShift = (invitationId: string) => {
+    setShiftActionId(invitationId);
+    pauseShiftMutation.mutate({ invitationId });
   };
 
   const handleEndShift = (invitationId: string) => {
@@ -386,6 +410,7 @@ export default function MySchedulePage() {
                   <InProgressEventsList
                     invitations={(data?.inProgress || []) as TalentInvitationData[]}
                     onStart={handleStartShift}
+                    onPause={handlePauseShift}
                     onEnd={handleEndShift}
                     pendingActionId={shiftActionId}
                   />

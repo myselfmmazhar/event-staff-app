@@ -208,6 +208,20 @@ export function InvoiceTable({
             ),
         },
         {
+            key: "invoiceNo",
+            label: "Invoice No",
+            sortable: true,
+            className: "py-4 px-4 font-medium",
+            render: (invoice) => (
+                <span
+                    className={onEdit ? "cursor-pointer text-primary hover:underline" : ""}
+                    onClick={onEdit ? () => onEdit(invoice) : undefined}
+                >
+                    {invoice.invoiceNo}
+                </span>
+            ),
+        },
+        {
             key: "invoiceDate",
             label: "Date",
             sortable: true,
@@ -235,20 +249,6 @@ export function InvoiceTable({
                 </span>
             ) : (
                 <span className="text-muted-foreground/50 text-xs">—</span>
-            ),
-        },
-        {
-            key: "invoiceNo",
-            label: "Invoice No",
-            sortable: true,
-            className: "py-4 px-4 font-medium",
-            render: (invoice) => (
-                <span
-                    className={onEdit ? "cursor-pointer text-primary hover:underline" : ""}
-                    onClick={onEdit ? () => onEdit(invoice) : undefined}
-                >
-                    {invoice.invoiceNo}
-                </span>
             ),
         },
         {

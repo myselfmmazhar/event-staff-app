@@ -2118,7 +2118,7 @@ export class CallTimeService {
 
     const invitation = await this.prisma.callTimeInvitation.findUnique({
       where: { id: invitationId },
-      select: { id: true, staffId: true, callTimeId: true, status: true, isConfirmed: true },
+      select: { id: true, staffId: true, callTimeId: true, status: true, isConfirmed: true, shiftEndedAt: true },
     });
     if (!invitation || invitation.staffId !== staff.id) {
       throw new Error('Invitation not found');
@@ -2126,13 +2126,16 @@ export class CallTimeService {
     if (invitation.status !== 'ACCEPTED' || !invitation.isConfirmed) {
       throw new Error('Cannot start a shift that is not accepted and confirmed');
     }
+    if (invitation.shiftEndedAt) {
+      throw new Error('This shift has been ended and can no longer be started.');
+    }
 
     const openSession = await this.prisma.shiftSession.findFirst({
       where: { invitationId, clockOut: null },
       select: { id: true },
     });
     if (openSession) {
-      throw new Error('You already have an active session for this shift. End it before starting a new one.');
+      throw new Error('You already have an active session for this shift. Pause it before starting a new one.');
     }
 
     const session = await this.prisma.shiftSession.create({
@@ -2155,10 +2158,11 @@ export class CallTimeService {
   }
 
   /**
-   * End a shift — closes the currently open ShiftSession (clockOut = now).
+   * Pause a shift — closes the currently open ShiftSession (clockOut = now).
+   * The talent can clock back in again with startShift afterwards.
    * Also syncs the aggregated state into TimeEntry.
    */
-  async endShift(invitationId: string, userId: string) {
+  async pauseShift(invitationId: string, userId: string) {
     const staff = await this.prisma.staff.findUnique({
       where: { userId },
       select: { id: true },
@@ -2173,7 +2177,7 @@ export class CallTimeService {
       select: { id: true, callTimeId: true },
     });
     if (!openSession) {
-      throw new Error('No active session to end. Click Start first.');
+      throw new Error('No active session to pause. Click Start first.');
     }
 
     const updated = await this.prisma.shiftSession.update({
@@ -2185,6 +2189,59 @@ export class CallTimeService {
       invitationId,
       staff.id,
       openSession.callTimeId,
+      userId
+    );
+
+    return updated;
+  }
+
+  /**
+   * End a shift permanently — closes any currently open ShiftSession and marks
+   * the invitation as shift-ended, so the talent cannot start a new session.
+   * Also syncs the aggregated state into TimeEntry.
+   */
+  async endShift(invitationId: string, userId: string) {
+    const staff = await this.prisma.staff.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!staff) {
+      throw new Error('Staff record not found for current user');
+    }
+
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { id: invitationId },
+      select: { id: true, staffId: true, callTimeId: true, shiftEndedAt: true },
+    });
+    if (!invitation || invitation.staffId !== staff.id) {
+      throw new Error('Invitation not found');
+    }
+    if (invitation.shiftEndedAt) {
+      throw new Error('This shift has already been ended.');
+    }
+
+    const openSession = await this.prisma.shiftSession.findFirst({
+      where: { invitationId, staffId: staff.id, clockOut: null },
+      orderBy: { clockIn: 'desc' },
+      select: { id: true },
+    });
+
+    if (openSession) {
+      await this.prisma.shiftSession.update({
+        where: { id: openSession.id },
+        data: { clockOut: new Date() },
+      });
+    }
+
+    const updated = await this.prisma.callTimeInvitation.update({
+      where: { id: invitationId },
+      data: { shiftEndedAt: new Date() },
+    });
+
+    await this.syncTimeEntryFromSessions(
+      invitationId,
+      staff.id,
+      invitation.callTimeId,
       userId
     );
 
@@ -3204,7 +3261,14 @@ export class CallTimeService {
           include: {
             service: true,
             event: {
-              select: { id: true, title: true, createdBy: true },
+              select: {
+                id: true,
+                title: true,
+                createdBy: true,
+                venueName: true,
+                city: true,
+                state: true,
+              },
             },
           },
         },
@@ -3218,6 +3282,31 @@ export class CallTimeService {
       throw new Error('Invalid or expired invitation token');
     }
 
+    const ev = invitation.callTime.event;
+    const eventVenue = ev.venueName || '';
+    const eventLocation = [ev.city, ev.state].filter(Boolean).join(', ');
+    const formatDate = (d: Date | null | undefined) =>
+      d && d.getFullYear() !== 1970
+        ? d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        : 'TBD';
+    const formatTime = (t: string | null | undefined) => {
+      if (!t) return 'TBD';
+      const [hh, mm] = t.split(':');
+      if (!hh || !mm) return 'TBD';
+      const hour = Number.parseInt(hh, 10);
+      if (Number.isNaN(hour)) return 'TBD';
+      return `${hour > 12 ? hour - 12 : hour}:${mm} ${hour >= 12 ? 'PM' : 'AM'}`;
+    };
+    const eventDetails = {
+      firstName: invitation.staff.firstName,
+      eventVenue,
+      eventLocation,
+      startDate: formatDate(invitation.callTime.startDate),
+      endDate: formatDate(invitation.callTime.endDate),
+      startTime: formatTime(invitation.callTime.startTime),
+      endTime: formatTime(invitation.callTime.endTime),
+    };
+
     if (invitation.status !== 'PENDING') {
       return {
         status: invitation.status,
@@ -3226,6 +3315,7 @@ export class CallTimeService {
         positionName: invitation.callTime.service?.title || 'Staff',
         isTeamInvitation: invitation.invitedAsTeam,
         needsUnitSelection: false,
+        ...eventDetails,
       };
     }
 
@@ -3237,6 +3327,7 @@ export class CallTimeService {
         positionName: invitation.callTime.service?.title || 'Staff',
         isTeamInvitation: true,
         needsUnitSelection: true,
+        ...eventDetails,
       };
     }
 
@@ -3261,6 +3352,7 @@ export class CallTimeService {
         positionName: updated.callTime.service?.title || 'Staff',
         isTeamInvitation: invitation.invitedAsTeam,
         needsUnitSelection: false,
+        ...eventDetails,
       };
     } else {
       const triggerService = getNotificationTriggerService(this.prisma);
@@ -3289,9 +3381,12 @@ export class CallTimeService {
       );
 
       return {
-        status: 'DECLINED',
+        status: 'DECLINED' as const,
         eventTitle: updated.callTime.event.title,
-        positionName: updated.callTime.service?.title || 'Staff'
+        positionName: updated.callTime.service?.title || 'Staff',
+        isTeamInvitation: invitation.invitedAsTeam,
+        needsUnitSelection: false,
+        ...eventDetails,
       };
     }
   }

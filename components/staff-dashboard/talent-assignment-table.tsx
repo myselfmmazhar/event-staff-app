@@ -32,6 +32,7 @@ export interface TalentInvitationData {
   isConfirmed: boolean;
   declineReason?: string | null;
   shiftSessions?: ShiftSession[];
+  shiftEndedAt?: Date | string | null;
   callTime: {
     id: string;
     callTimeId: string;

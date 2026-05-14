@@ -13,8 +13,32 @@ import type {
     CategorizeLegacyInput,
 } from "@/lib/schemas/staff-document.schema";
 import { getNotificationTriggerService } from "./notification-trigger.service";
+import { emailService } from "./email.service";
 
-export const DOCUMENT_EXPIRY_WARNING_DAYS = 5;
+/**
+ * Buckets used for talent document expiry notifications.
+ * On each lazy check, the doc's current bucket is the smallest threshold N such
+ * that `daysRemaining <= N`. Each bucket fires at most once per document; once
+ * fired it's recorded in `StaffDocument.notifiedThresholds`. Stale buckets the
+ * talent has already passed are skipped entirely.
+ */
+export const EXPIRY_THRESHOLDS = [30, 15, 7, 5, 2] as const;
+
+/** Banner / `getExpiringForTalent` lookback window — matches the largest bucket. */
+export const DOCUMENT_EXPIRY_BANNER_DAYS = EXPIRY_THRESHOLDS[0];
+
+/**
+ * Returns the current expiry bucket for a given `daysRemaining`, or `null` if
+ * the doc is outside the warning window (too early or already expired).
+ */
+function getCurrentExpiryBucket(daysRemaining: number): number | null {
+    if (daysRemaining <= 0) return null;
+    // Smallest threshold N such that daysRemaining <= N
+    for (const n of [...EXPIRY_THRESHOLDS].sort((a, b) => a - b)) {
+        if (daysRemaining <= n) return n;
+    }
+    return null;
+}
 
 export type StaffDocumentRow = {
     id: string;
@@ -33,6 +57,7 @@ export type StaffDocumentRow = {
     reviewedBy: string | null;
     expiresAt: Date | null;
     expiryNotifiedAt: Date | null;
+    notifiedThresholds: number[];
     createdAt: Date;
     updatedAt: Date;
     reviewer?: { firstName: string; lastName: string; email: string } | null;
@@ -283,10 +308,10 @@ export class StaffDocumentService {
                             : input.expiresAt === null
                                 ? null
                                 : new Date(input.expiresAt),
-                    // Reset the one-time notification stamp so the talent gets
-                    // a fresh expiry warning when this new expiry falls inside
-                    // the warning window.
+                    // Reset the notification stamps so the talent gets a fresh
+                    // round of bucket warnings as the new expiry approaches.
                     expiryNotifiedAt: null,
+                    notifiedThresholds: [],
                 },
             });
         });
@@ -320,9 +345,10 @@ export class StaffDocumentService {
             where: { id: input.documentId },
             data: {
                 expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
-                // Reset the one-time warning stamp so the talent gets a fresh
-                // notification if the new expiry falls inside the warning window.
+                // Reset the notification stamps so the talent gets a fresh round
+                // of bucket warnings as the new expiry approaches.
                 expiryNotifiedAt: null,
+                notifiedThresholds: [],
             },
         });
     }
@@ -457,19 +483,29 @@ export class StaffDocumentService {
 
     /**
      * Lazy expiry check for a talent: returns all of their APPROVED+isCurrent docs
-     * expiring within the warning window, and sends a one-time in-app notification
-     * for any that haven't been notified yet.
+     * expiring within the warning window. For each doc, determines the current
+     * expiry "bucket" (30/15/7/5/2) and, if that bucket hasn't fired yet, sends
+     * a one-time in-app notification + email and records the bucket as notified.
+     * Stale buckets the talent has already passed are skipped.
+     *
+     * Side-effect work (notification + email) is fire-and-forget so it doesn't
+     * block the dashboard query response.
      */
     async getExpiringForTalent(userId: string) {
         const staff = await this.prisma.staff.findFirst({
             where: { userId },
-            select: { id: true, userId: true },
+            select: {
+                id: true,
+                userId: true,
+                firstName: true,
+                email: true,
+            },
         });
         if (!staff) return [];
 
         const now = new Date();
         const cutoff = new Date(now);
-        cutoff.setDate(cutoff.getDate() + DOCUMENT_EXPIRY_WARNING_DAYS);
+        cutoff.setDate(cutoff.getDate() + DOCUMENT_EXPIRY_BANNER_DAYS);
 
         const expiring = await this.prisma.staffDocument.findMany({
             where: {
@@ -485,30 +521,78 @@ export class StaffDocumentService {
             orderBy: { expiresAt: "asc" },
         });
 
-        const triggers = getNotificationTriggerService(this.prisma);
         for (const doc of expiring) {
-            if (!doc.expiresAt) continue;
-            if (doc.expiryNotifiedAt) continue;
-            if (!staff.userId) continue;
+            if (!doc.expiresAt || !staff.userId) continue;
 
             const daysRemaining = Math.max(
                 0,
                 Math.ceil((doc.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
             );
 
-            await triggers.onTalentDocumentExpiring(staff.userId, {
-                requirementTitle: getRequirementTitle(doc.requirementTemplateId),
-                documentId: doc.id,
-                expiresAt: doc.expiresAt,
-                daysRemaining,
-            });
+            const bucket = getCurrentExpiryBucket(daysRemaining);
+            if (bucket === null) continue;
 
-            await this.prisma.staffDocument.update({
-                where: { id: doc.id },
-                data: { expiryNotifiedAt: new Date() },
+            const alreadyNotified = (doc.notifiedThresholds ?? []).includes(bucket);
+            if (alreadyNotified) continue;
+
+            // Fire-and-forget: don't block the dashboard response on notification/email work.
+            void this.notifyExpiry({
+                docId: doc.id,
+                bucket,
+                daysRemaining,
+                expiresAt: doc.expiresAt,
+                requirementTitle: getRequirementTitle(doc.requirementTemplateId),
+                staffUserId: staff.userId,
+                staffEmail: staff.email,
+                staffFirstName: staff.firstName,
             });
         }
 
         return expiring;
+    }
+
+    /**
+     * Internal: send the in-app notification + email for a single doc bucket and
+     * stamp the bucket onto `notifiedThresholds`. Errors are logged, never thrown.
+     */
+    private async notifyExpiry(args: {
+        docId: string;
+        bucket: number;
+        daysRemaining: number;
+        expiresAt: Date;
+        requirementTitle: string;
+        staffUserId: string;
+        staffEmail: string | null;
+        staffFirstName: string;
+    }) {
+        try {
+            // Record the bucket up-front so concurrent loads don't re-fire.
+            await this.prisma.staffDocument.update({
+                where: { id: args.docId },
+                data: { notifiedThresholds: { push: args.bucket } },
+            });
+
+            const triggers = getNotificationTriggerService(this.prisma);
+            await triggers.onTalentDocumentExpiring(args.staffUserId, {
+                requirementTitle: args.requirementTitle,
+                documentId: args.docId,
+                expiresAt: args.expiresAt,
+                daysRemaining: args.daysRemaining,
+            });
+
+            if (args.staffEmail) {
+                await emailService.sendDocumentExpiring(
+                    args.staffEmail,
+                    args.staffFirstName,
+                    {
+                        requirementTitle: args.requirementTitle,
+                        expiresAt: args.expiresAt,
+                        daysRemaining: args.daysRemaining,
+                    }
+                );
+            }
+        } catch (err) {
+            console.error("Error sending document expiry notification:", err);
+        }
     }
 }

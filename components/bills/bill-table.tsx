@@ -183,20 +183,6 @@ export function BillTable({
             ),
         },
         {
-            key: "billDate",
-            label: "Date",
-            sortable: true,
-            className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
-            render: (bill) => (
-                <div>
-                    <div>{format(new Date(bill.billDate), "MMM dd, yyyy")}</div>
-                    <div className="text-xs opacity-75">
-                        {format(new Date(bill.billDate), "h:mm a")}
-                    </div>
-                </div>
-            ),
-        },
-        {
             key: "billNo",
             label: "Bill No",
             sortable: true,
@@ -208,6 +194,20 @@ export function BillTable({
                 >
                     {bill.billNo}
                 </span>
+            ),
+        },
+        {
+            key: "billDate",
+            label: "Date",
+            sortable: true,
+            className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
+            render: (bill) => (
+                <div>
+                    <div>{format(new Date(bill.billDate), "MMM dd, yyyy")}</div>
+                    <div className="text-xs opacity-75">
+                        {format(new Date(bill.billDate), "h:mm a")}
+                    </div>
+                </div>
             ),
         },
         {

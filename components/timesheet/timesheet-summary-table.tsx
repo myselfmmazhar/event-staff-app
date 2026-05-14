@@ -101,8 +101,8 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
         align?: 'text-center' | 'text-right';
     }> = [
         { id: 'status', widthKey: 'status', label: 'Status', align: 'text-right' },
-        { id: 'startDate', widthKey: 'date', label: 'Date / Time' },
         { id: 'event', widthKey: 'task', label: 'Task' },
+        { id: 'startDate', widthKey: 'date', label: 'Date / Time' },
         { id: 'client', widthKey: 'client', label: subTab === 'bill' ? 'Talent' : 'Client' },
         { id: 'location', widthKey: 'location', label: 'Location' },
         { id: 'assignments', widthKey: 'assignments', label: subTab === 'invoice' ? 'Total Approve Shifts' : 'Assignments', align: 'text-center' },
@@ -244,6 +244,15 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                             )}
                                         </div>
                                     </td>
+                                    <td className="px-4 py-5 align-top truncate" style={{ width: 'var(--col-task)' }}>
+                                        <button
+                                            onClick={() => onEventClick(group.eventId)}
+                                            className="font-bold text-blue-600 hover:text-blue-700 hover:underline text-left text-sm"
+                                        >
+                                            {group.eventTitle}
+                                        </button>
+                                        <div className="text-[10px] text-slate-400 mt-0.5">#{group.eventDisplayId}</div>
+                                    </td>
                                     <td className="px-4 py-5 text-slate-900 whitespace-nowrap align-top truncate" style={{ width: 'var(--col-date)' }}>
                                         <div className="flex flex-col leading-tight">
                                             <span className="font-bold">
@@ -257,15 +266,6 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
                                                 </span>
                                             )}
                                         </div>
-                                    </td>
-                                    <td className="px-4 py-5 align-top truncate" style={{ width: 'var(--col-task)' }}>
-                                        <button
-                                            onClick={() => onEventClick(group.eventId)}
-                                            className="font-bold text-blue-600 hover:text-blue-700 hover:underline text-left text-sm"
-                                        >
-                                            {group.eventTitle}
-                                        </button>
-                                        <div className="text-[10px] text-slate-400 mt-0.5">#{group.eventDisplayId}</div>
                                     </td>
                                     <td className="px-4 py-5 text-slate-500 align-top font-medium truncate" style={{ width: 'var(--col-client)' }}>
                                         {subTab === 'bill'
