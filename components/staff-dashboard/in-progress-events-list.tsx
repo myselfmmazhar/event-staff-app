@@ -84,7 +84,7 @@ export function InProgressEventsList({
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
 
   const toggleExpand = (id: string) => {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+    setExpanded((prev) => ({ ...prev, [id]: prev[id] === false ? true : false }));
   };
 
   const formatDate = (date: Date | string | null) => {
@@ -207,7 +207,7 @@ export function InProgressEventsList({
           const sessions = invitation.shiftSessions ?? [];
           const isOpen = hasOpenSession(sessions);
           const totalMs = totalSessionsMs(sessions);
-          const isExpanded = !!expanded[invitation.id];
+          const isExpanded = expanded[invitation.id] !== false;
           const isProcessing = pendingActionId === invitation.id;
 
           return (
