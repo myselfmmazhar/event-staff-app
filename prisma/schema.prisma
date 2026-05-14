@@ -863,6 +863,7 @@ model StaffDocument {
   reviewedBy            String?
   expiresAt             DateTime?           @db.Date
   expiryNotifiedAt      DateTime?           @db.Timestamp(6)
+  notifiedThresholds    Int[]               @default([])
   createdAt             DateTime            @default(now()) @db.Timestamp(6)
   updatedAt             DateTime            @updatedAt @db.Timestamp(6)
 
@@ -1322,6 +1323,7 @@ enum EmailTemplateType {
   USER_INVITATION
   CALL_INVITATION_BATCH
   CALL_TIME_INVITATION_ACCEPTED
+  TALENT_DOCUMENT_EXPIRING
 }
 
 enum EventStatus {

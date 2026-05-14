@@ -15,7 +15,6 @@ import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 import { CategorySearch } from '@/components/catalog/categories/category-search';
 import { CategoryFilters } from '@/components/catalog/categories/category-filters';
 import { CategoryTable } from '@/components/catalog/categories/category-table';
-import { CategoryFormModal } from '@/components/catalog/categories/category-form-modal';
 import { DeleteCategoryModal } from '@/components/catalog/categories/delete-category-modal';
 import { CreateRequirementWizardModal } from '@/components/catalog/requirements/create-requirement-wizard-modal';
 import { useCategoriesFilters, type CategoryStatus, type CategorySortBy, type SortOrder } from '@/store/categories-filters.store';
@@ -56,24 +55,23 @@ function parseSortOrderParam(value: string | null): SortOrder {
 export default function CategoriesPage() {
   const searchParams = useSearchParams();
   const filters = useCategoriesFilters();
-  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions, handleSuccess, handleError } =
+  const { setBackendErrors, updateMutationOptions, deleteMutationOptions, handleSuccess, handleError } =
     useCrudMutations();
 
   const [modals, setModals] = useState({
-    form: false,
     delete: false,
-    requirementWizard: false,
+    wizard: false,
   });
 
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [pendingRequirementCategory, setPendingRequirementCategory] = useState<Category | null>(null);
+  const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   const handleCreate = () => {
-    setSelectedCategory(null);
+    setEditCategory(null);
     setBackendErrors([]);
-    setModals((prev) => ({ ...prev, form: true }));
+    setModals((prev) => ({ ...prev, wizard: true }));
   };
 
   useEffect(() => {
@@ -141,30 +139,6 @@ export default function CategoriesPage() {
   const selectedCategoriesList = categories.filter((c) => selectedIds.has(c.id));
   const totalPages = data?.meta.totalPages ?? 0;
 
-  const createMutation = trpc.category.create.useMutation(
-    createMutationOptions('Category created successfully', {
-      onSuccess: (created) => {
-        setModals((prev) => ({ ...prev, form: false }));
-        setSelectedCategory(null);
-        refetch();
-        if (created) {
-          setPendingRequirementCategory(created as Category);
-          setModals((prev) => ({ ...prev, requirementWizard: true }));
-        }
-      },
-    })
-  );
-
-  const updateMutation = trpc.category.update.useMutation(
-    updateMutationOptions('Category updated successfully', {
-      onSuccess: () => {
-        setModals((prev) => ({ ...prev, form: false }));
-        setSelectedCategory(null);
-        refetch();
-      },
-    })
-  );
-
   const deleteMutation = trpc.category.delete.useMutation(
     deleteMutationOptions('Category deleted successfully', {
       onSuccess: () => {
@@ -202,9 +176,9 @@ export default function CategoriesPage() {
   const handleEdit = (id: string) => {
     const category = getCategoryById(id);
     if (category) {
-      setSelectedCategory(category);
+      setEditCategory(category);
       setBackendErrors([]);
-      setModals((prev) => ({ ...prev, form: true }));
+      setModals((prev) => ({ ...prev, wizard: true }));
     }
   };
 
@@ -352,45 +326,18 @@ export default function CategoriesPage() {
         </div>
       </Card>
 
-      <CategoryFormModal
-        category={selectedCategory}
-        open={modals.form}
-        onClose={() => {
-          setModals((prev) => ({ ...prev, form: false }));
-          setSelectedCategory(null);
-          setBackendErrors([]);
-        }}
-        onSubmit={(formData) => {
-          if (selectedCategory) {
-            updateMutation.mutate({
-              id: selectedCategory.id,
-              name: formData.name,
-              description: formData.description,
-            });
-          } else {
-            createMutation.mutate({
-              ...formData,
-              requirementTemplateIds: [],
-              isRequired: false,
-            });
-          }
-        }}
-        isSubmitting={createMutation.isPending || updateMutation.isPending}
-        backendErrors={backendErrors}
-      />
-
       <CreateRequirementWizardModal
-        open={modals.requirementWizard}
+        open={modals.wizard}
         onClose={() => {
-          setModals((prev) => ({ ...prev, requirementWizard: false }));
-          setPendingRequirementCategory(null);
+          setModals((prev) => ({ ...prev, wizard: false }));
+          setEditCategory(null);
         }}
-        fixedCategory={
-          pendingRequirementCategory
+        editCategory={
+          editCategory
             ? {
-                id: pendingRequirementCategory.id,
-                name: pendingRequirementCategory.name,
-                categoryId: pendingRequirementCategory.categoryId,
+                id: editCategory.id,
+                name: editCategory.name,
+                description: editCategory.description ?? null,
               }
             : null
         }

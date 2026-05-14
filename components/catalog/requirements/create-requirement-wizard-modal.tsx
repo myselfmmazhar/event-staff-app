@@ -14,27 +14,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CloseIcon } from '@/components/ui/icons';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { RequirementTemplateCardGrid } from '@/components/common/requirement-template-card-grid';
 import {
   REQ_TEMPLATE_CARDS,
   isTalentSubmissionTemplateId,
-  formatRequirementTemplatesShort,
-  normalizeReqTemplateIds,
   type ReqTemplateId,
 } from '@/lib/requirement-templates';
-import { CATEGORY_REQUIREMENT_LABELS } from '@/lib/category-requirements';
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
 
 /** Mirrors Prisma `CatalogRequirementExpiration` — defined here so the wizard stays client-safe (no `@prisma/client` in the bundle). */
 const CATALOG_REQUIREMENT_EXPIRATION = [
@@ -82,7 +70,8 @@ type TemplateTab = 'all' | 'standard' | 'smart';
 export interface CreateRequirementWizardModalProps {
   open: boolean;
   onClose: () => void;
-  fixedCategory?: { id: string; name: string; categoryId: string } | null;
+  /** When set, the wizard opens in edit mode for this collection. */
+  editCategory?: { id: string; name: string; description: string | null } | null;
   onSaved?: () => void;
 }
 
@@ -117,75 +106,56 @@ const STEP_LABELS: Record<WizardStep, string> = {
 export function CreateRequirementWizardModal({
   open,
   onClose,
-  fixedCategory = null,
+  editCategory = null,
   onSaved,
 }: CreateRequirementWizardModalProps) {
+  const isEditMode = !!editCategory;
+
   const [step, setStep] = useState<WizardStep>(1);
   const [templateTab, setTemplateTab] = useState<TemplateTab>('all');
   const [selectedTemplate, setSelectedTemplate] = useState<ReqTemplateId | null>(null);
-  const [categoryId, setCategoryId] = useState<string>('');
+  const [editingRequirementId, setEditingRequirementId] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState<string>('');
   const [categoryDescription, setCategoryDescription] = useState<string>('');
   const [preview, setPreview] = useState<SettingsFormOutput | null>(null);
   const saveActionRef = useRef<'close' | 'new'>('close');
   const utils = trpc.useUtils();
 
-  const { data: activeCategories } = trpc.category.getAllActive.useQuery(undefined, {
-    enabled: open && !fixedCategory,
-  });
-
-  const effectiveCategoryIdForQuery = fixedCategory?.id ?? (categoryId && categoryId !== 'CREATE_NEW' ? categoryId : '');
+  // Existing requirements for the editing collection — used to mark templates as editable
+  // and to load settings when the user clicks one to edit.
   const { data: existingRequirements } = trpc.catalogRequirement.getAll.useQuery(
-    { serviceCategoryId: effectiveCategoryIdForQuery, limit: 100 },
-    { enabled: open && !!effectiveCategoryIdForQuery }
+    { serviceCategoryId: editCategory?.id ?? '', limit: 100 },
+    { enabled: open && isEditMode && !!editCategory?.id }
   );
 
-  const selectedCategory = !fixedCategory && categoryId && categoryId !== 'CREATE_NEW'
-    ? activeCategories?.find((c) => c.id === categoryId)
-    : undefined;
-  const selectedCategoryReqIds = normalizeReqTemplateIds(
-    (selectedCategory?.requirementTemplateIds as string[] | undefined) ?? []
-  );
-
-  const alreadyUsedTemplateIds = useMemo(() => {
-    // Primary source: category's requirementTemplateIds (always in sync via syncCategoryFromRequirements)
-    const ids = new Set<ReqTemplateId>(selectedCategoryReqIds);
-    // Secondary source: direct query results (covers fixedCategory and catches any discrepancy)
+  const requirementByTemplate = useMemo(() => {
+    const map = new Map<ReqTemplateId, string>();
     for (const req of existingRequirements?.data ?? []) {
-      if (req.templateId) ids.add(req.templateId as ReqTemplateId);
+      if (req.templateId) map.set(req.templateId as ReqTemplateId, req.id);
     }
-    return ids;
-  }, [selectedCategoryReqIds, existingRequirements]);
+    return map;
+  }, [existingRequirements]);
 
-  const createMutation = trpc.catalogRequirement.create.useMutation({
-    onSuccess: async () => {
-      onSaved?.();
-      if (saveActionRef.current === 'new') {
-        saveActionRef.current = 'close';
-        // Refresh the queries that drive the "already used" template list so the
-        // just-created requirement is reflected when the wizard returns to step 1.
-        await Promise.all([
-          utils.catalogRequirement.getAll.invalidate(),
-          utils.category.getAllActive.invalidate(),
-        ]);
-        // Stay open — go back to step 1 so user can pick a new template
-        setSelectedTemplate(null);
-        setTemplateTab('all');
-        setPreview(null);
-        reset(defaultSettings());
-        clearErrors();
-        setStep(1);
-      } else {
-        handleClose();
-      }
-    },
-  });
+  const editableTemplateIds = useMemo(
+    () => new Set<ReqTemplateId>(requirementByTemplate.keys()),
+    [requirementByTemplate]
+  );
 
+  // Fetch full settings for the requirement being edited
+  const { data: editingRequirementDetails } = trpc.catalogRequirement.getById.useQuery(
+    { id: editingRequirementId ?? '' },
+    { enabled: !!editingRequirementId }
+  );
+
+  const createRequirementMutation = trpc.catalogRequirement.create.useMutation();
+  const updateRequirementMutation = trpc.catalogRequirement.update.useMutation();
   const categoryCreateMutation = trpc.category.create.useMutation();
+  const categoryUpdateMutation = trpc.category.update.useMutation();
 
   const visibleTemplateIds = useMemo(() => templateTabFilter(templateTab), [templateTab]);
 
   const isUploadTemplate = selectedTemplate === 'upload';
+  const isEditingExistingRequirement = !!editingRequirementId;
 
   const {
     register,
@@ -206,40 +176,69 @@ export function CreateRequirementWizardModal({
     setStep(1);
     setTemplateTab('all');
     setSelectedTemplate(null);
-    setCategoryId(fixedCategory?.id ?? '');
-    setCategoryName('');
-    setCategoryDescription('');
+    setEditingRequirementId(null);
+    setCategoryName(editCategory?.name ?? '');
+    setCategoryDescription(editCategory?.description ?? '');
     setPreview(null);
     reset(defaultSettings());
     clearErrors();
-  }, [open, fixedCategory?.id, reset, clearErrors]);
+  }, [open, editCategory?.id, editCategory?.name, editCategory?.description, reset, clearErrors]);
+
+  // In edit mode, once existing requirements load, auto-select the first one's template card.
+  useEffect(() => {
+    if (!open || !isEditMode || selectedTemplate) return;
+    const first = existingRequirements?.data?.[0];
+    if (!first) return;
+    setSelectedTemplate(first.templateId as ReqTemplateId);
+    setEditingRequirementId(first.id);
+  }, [open, isEditMode, existingRequirements, selectedTemplate]);
 
   const handleClose = () => {
-    createMutation.reset();
+    createRequirementMutation.reset();
+    updateRequirementMutation.reset();
+    categoryCreateMutation.reset();
+    categoryUpdateMutation.reset();
     onClose();
   };
 
-  const effectiveCategoryId = fixedCategory?.id ?? categoryId;
-  const isNewCategory = categoryId === 'CREATE_NEW';
+  const canContinueStep1 = !!categoryName.trim() && !!selectedTemplate;
 
-  const selectedCategoryReqLabel = selectedCategoryReqIds.length > 0
-    ? formatRequirementTemplatesShort(selectedCategoryReqIds)
-    : selectedCategory?.requirementType
-      ? CATEGORY_REQUIREMENT_LABELS[selectedCategory.requirementType as keyof typeof CATEGORY_REQUIREMENT_LABELS]
-      : null;
-  const canContinueStep1 =
-    (!!fixedCategory ||
-      (!!categoryId && categoryId !== 'CREATE_NEW') ||
-      (isNewCategory && !!categoryName.trim())) &&
-    !!selectedTemplate;
+  const handleTemplateSelect = (templateId: ReqTemplateId | null) => {
+    setSelectedTemplate(templateId);
+    if (templateId && requirementByTemplate.has(templateId)) {
+      setEditingRequirementId(requirementByTemplate.get(templateId)!);
+    } else {
+      setEditingRequirementId(null);
+    }
+  };
 
   const goNextFromStep1 = () => {
     if (!canContinueStep1 || !selectedTemplate) return;
+
     const card = REQ_TEMPLATE_CARDS.find((c) => c.id === selectedTemplate);
-    reset({
-      ...defaultSettings(),
-      name: card?.title ?? selectedTemplate,
-    });
+
+    if (isEditingExistingRequirement && editingRequirementDetails) {
+      const d = editingRequirementDetails;
+      reset({
+        name: d.name,
+        instructions: d.instructions ?? undefined,
+        allowPdf: d.allowPdf,
+        allowImage: d.allowImage,
+        allowOther: d.allowOther,
+        expirationType: d.expirationType,
+        expirationDate: d.expirationDate
+          ? new Date(d.expirationDate).toISOString().split('T')[0]
+          : undefined,
+        allowEarlyRenewal: d.allowEarlyRenewal,
+        requiresApproval: d.requiresApproval,
+        isTalentRequired: d.isTalentRequired,
+      });
+    } else {
+      reset({
+        ...defaultSettings(),
+        name: card?.title ?? selectedTemplate,
+      });
+    }
     clearErrors();
     setStep(2);
   };
@@ -254,67 +253,131 @@ export function CreateRequirementWizardModal({
     setStep(3);
   };
 
-  const handleFinalCreate = async (action: 'close' | 'new' = 'close') => {
+  const collectionDirty =
+    isEditMode &&
+    ((categoryName.trim() !== (editCategory?.name ?? '').trim()) ||
+      ((categoryDescription.trim() || null) !== (editCategory?.description ?? null)));
+
+  const persistCollection = async (): Promise<string | null> => {
+    if (isEditMode) {
+      if (collectionDirty) {
+        await categoryUpdateMutation.mutateAsync({
+          id: editCategory!.id,
+          name: categoryName.trim(),
+          description: categoryDescription.trim() || null,
+        });
+      }
+      return editCategory!.id;
+    }
+    const newCat = await categoryCreateMutation.mutateAsync({
+      name: categoryName.trim(),
+      description: categoryDescription.trim() || null,
+      requirementTemplateIds: [],
+      isRequired: false,
+    });
+    return newCat ? (newCat as any).id : null;
+  };
+
+  const handleFinalSave = async (action: 'close' | 'new' = 'close') => {
     if (!canContinueStep1 || !selectedTemplate || !preview) return;
     saveActionRef.current = action;
 
-    let targetCategoryId = effectiveCategoryId;
-
-    if (isNewCategory) {
-      try {
-        const newCat = await categoryCreateMutation.mutateAsync({
-          name: categoryName.trim(),
-          description: categoryDescription.trim() || null,
-          requirementTemplateIds: [],
-          isRequired: false,
-        });
-        if (newCat) {
-          targetCategoryId = (newCat as any).id;
-        }
-      } catch (err) {
-        return;
-      }
+    let targetCategoryId: string | null;
+    try {
+      targetCategoryId = await persistCollection();
+    } catch {
+      return;
     }
-
     if (!targetCategoryId) return;
 
-    createMutation.mutate({
-      serviceCategoryId: targetCategoryId,
-      templateId: selectedTemplate,
-      name: preview.name,
-      instructions: preview.instructions ?? null,
-      allowPdf: isUploadTemplate ? preview.allowPdf : true,
-      allowImage: isUploadTemplate ? preview.allowImage : true,
-      allowOther: isUploadTemplate ? preview.allowOther : false,
-      expirationType: preview.expirationType,
-      expirationDate: preview.expirationType === 'CUSTOM_DATE' && preview.expirationDate
-        ? new Date(preview.expirationDate)
-        : null,
-      allowEarlyRenewal: preview.allowEarlyRenewal,
-      requiresApproval: preview.requiresApproval,
-      isTalentRequired: isTalentSubmissionTemplateId(selectedTemplate) ? preview.isTalentRequired : false,
-    });
+    try {
+      if (isEditingExistingRequirement && editingRequirementId) {
+        await updateRequirementMutation.mutateAsync({
+          id: editingRequirementId,
+          name: preview.name,
+          instructions: preview.instructions ?? null,
+          allowPdf: isUploadTemplate ? preview.allowPdf : true,
+          allowImage: isUploadTemplate ? preview.allowImage : true,
+          allowOther: isUploadTemplate ? preview.allowOther : false,
+          expirationType: preview.expirationType,
+          expirationDate:
+            preview.expirationType === 'CUSTOM_DATE' && preview.expirationDate
+              ? new Date(preview.expirationDate)
+              : null,
+          allowEarlyRenewal: preview.allowEarlyRenewal,
+          requiresApproval: preview.requiresApproval,
+          isTalentRequired: isTalentSubmissionTemplateId(selectedTemplate)
+            ? preview.isTalentRequired
+            : false,
+        });
+      } else {
+        await createRequirementMutation.mutateAsync({
+          serviceCategoryId: targetCategoryId,
+          templateId: selectedTemplate,
+          name: preview.name,
+          instructions: preview.instructions ?? null,
+          allowPdf: isUploadTemplate ? preview.allowPdf : true,
+          allowImage: isUploadTemplate ? preview.allowImage : true,
+          allowOther: isUploadTemplate ? preview.allowOther : false,
+          expirationType: preview.expirationType,
+          expirationDate:
+            preview.expirationType === 'CUSTOM_DATE' && preview.expirationDate
+              ? new Date(preview.expirationDate)
+              : null,
+          allowEarlyRenewal: preview.allowEarlyRenewal,
+          requiresApproval: preview.requiresApproval,
+          isTalentRequired: isTalentSubmissionTemplateId(selectedTemplate)
+            ? preview.isTalentRequired
+            : false,
+        });
+      }
+
+      onSaved?.();
+
+      if (action === 'new') {
+        await Promise.all([
+          utils.catalogRequirement.getAll.invalidate(),
+          utils.category.getAllActive.invalidate(),
+        ]);
+        setSelectedTemplate(null);
+        setEditingRequirementId(null);
+        setTemplateTab('all');
+        setPreview(null);
+        reset(defaultSettings());
+        clearErrors();
+        setStep(1);
+      } else {
+        handleClose();
+      }
+    } catch {
+      // mutation already surfaces error toast
+    }
   };
 
   const settingsValues = preview;
   const submissionTemplate = selectedTemplate && isTalentSubmissionTemplateId(selectedTemplate);
-  const isSaving = createMutation.isPending || categoryCreateMutation.isPending;
+  const isSaving =
+    createRequirementMutation.isPending ||
+    updateRequirementMutation.isPending ||
+    categoryCreateMutation.isPending ||
+    categoryUpdateMutation.isPending;
 
   const handleStepClick = (target: WizardStep) => {
     if (target === step) return;
     if (target < step) {
-      // going back — always allowed
       if (target === 2 && preview) reset(preview);
       setStep(target);
       return;
     }
-    // going forward — only if data is ready
     if (target === 2 && canContinueStep1) {
       goNextFromStep1();
     } else if (target === 3 && preview !== null) {
       setStep(3);
     }
   };
+
+  const collectionSectionLabel = isEditMode ? 'Collection Details' : 'New Collection Details';
+  const headerTitle = isEditMode ? 'Edit Collection' : 'Add Requirement';
 
   return (
     <Dialog
@@ -325,7 +388,7 @@ export function CreateRequirementWizardModal({
       {/* Header */}
       <div className="shrink-0 border-b border-slate-200 px-6 pb-0 pt-5 sm:px-8">
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Add Requirement</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">{headerTitle}</h2>
           <button
             type="button"
             onClick={handleClose}
@@ -373,93 +436,31 @@ export function CreateRequirementWizardModal({
       <DialogContent className="flex-1 overflow-y-auto min-h-0 px-6 py-6 sm:px-8">
         {step === 1 && (
           <div className="space-y-8">
-            <div className="space-y-6">
-              {!fixedCategory && (
-                <div className="space-y-4">
-                  <div>
-                    <Label required>Collection</Label>
-                    <Select value={categoryId || undefined} onValueChange={(v) => setCategoryId(v)}>
-                      <SelectTrigger className="mt-1.5 max-w-md">
-                        <SelectValue placeholder="Select a collection" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CREATE_NEW" className="font-semibold text-primary">
-                          + Create New Collection
-                        </SelectItem>
-                        {(activeCategories ?? []).map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name} ({c.categoryId})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {isNewCategory && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5"
-                    >
-                      <h3 className="text-sm font-bold text-primary uppercase tracking-wider">New Collection Details</h3>
-                      <div>
-                        <Label htmlFor="new-cat-name" required>Collection Name</Label>
-                        <Input
-                          id="new-cat-name"
-                          className="mt-1.5 bg-background"
-                          placeholder="e.g., Security, Catering..."
-                          value={categoryName}
-                          onChange={(e) => setCategoryName(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="new-cat-desc">Description (optional)</Label>
-                        <Textarea
-                          id="new-cat-desc"
-                          className="mt-1.5 bg-background"
-                          placeholder="What this collection is for..."
-                          value={categoryDescription}
-                          onChange={(e) => setCategoryDescription(e.target.value)}
-                          rows={2}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-              )}
-
-              {fixedCategory && (
-                <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground font-medium uppercase text-[10px] tracking-wider">Selected Collection</span>
-                    <Badge variant="outline" className="text-[10px] font-bold">Fixed</Badge>
-                  </div>
-                  <p className="text-base font-semibold text-slate-900">{fixedCategory.name}</p>
-                  <p className="text-xs text-muted-foreground">{fixedCategory.categoryId}</p>
-                </div>
-              )}
-
-              {selectedCategory && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="rounded-lg border border-border bg-slate-50 px-4 py-3 text-sm space-y-1"
-                >
-                  <span className="text-muted-foreground font-medium uppercase text-[10px] tracking-wider block mb-1">Collection Details</span>
-                  <p className="text-base font-semibold text-slate-900">{selectedCategory.name}</p>
-                  <p className="text-xs text-muted-foreground">{selectedCategory.categoryId}</p>
-                  {selectedCategoryReqLabel && (
-                    <p className="text-xs text-slate-600">
-                      <span className="text-muted-foreground">Requirement: </span>{selectedCategoryReqLabel}
-                    </p>
-                  )}
-                  {selectedCategory.description && (
-                    <p className="text-sm text-slate-600 mt-2 italic">
-                      &ldquo;{selectedCategory.description}&rdquo;
-                    </p>
-                  )}
-                </motion.div>
-              )}
+            <div className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5">
+              <h3 className="text-sm font-bold text-primary uppercase tracking-wider">
+                {collectionSectionLabel}
+              </h3>
+              <div>
+                <Label htmlFor="cat-name" required>Collection Name</Label>
+                <Input
+                  id="cat-name"
+                  className="mt-1.5 bg-background"
+                  placeholder="e.g., Security, Catering..."
+                  value={categoryName}
+                  onChange={(e) => setCategoryName(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cat-desc">Description (optional)</Label>
+                <Textarea
+                  id="cat-desc"
+                  className="mt-1.5 bg-background"
+                  placeholder="What this collection is for..."
+                  value={categoryDescription}
+                  onChange={(e) => setCategoryDescription(e.target.value)}
+                  rows={2}
+                />
+              </div>
             </div>
 
             <div className="space-y-6 pt-6 border-t border-border">
@@ -489,9 +490,9 @@ export function CreateRequirementWizardModal({
                 onToggle={() => {}}
                 selectionMode="single"
                 singleSelected={selectedTemplate}
-                onSingleChange={setSelectedTemplate}
+                onSingleChange={handleTemplateSelect}
                 visibleIds={visibleTemplateIds}
-                disabledIds={alreadyUsedTemplateIds}
+                editableIds={isEditMode ? editableTemplateIds : undefined}
               />
             </div>
           </div>
@@ -648,13 +649,16 @@ export function CreateRequirementWizardModal({
             <div className="rounded-lg border border-border p-4 space-y-2">
               <p>
                 <span className="text-muted-foreground">Collection: </span>
-                <span className="font-medium">
-                  {fixedCategory?.name ?? activeCategories?.find((c) => c.id === categoryId)?.name}
-                </span>
+                <span className="font-medium">{categoryName}</span>
               </p>
               <p>
                 <span className="text-muted-foreground">Template: </span>
                 {REQ_TEMPLATE_CARDS.find((c) => c.id === selectedTemplate)?.title}
+                {isEditingExistingRequirement && (
+                  <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                    Editing
+                  </span>
+                )}
               </p>
               <p>
                 <span className="text-muted-foreground">Name: </span>
@@ -729,7 +733,7 @@ export function CreateRequirementWizardModal({
             {step === 3 && (
               <Button
                 type="button"
-                onClick={() => handleFinalCreate('close')}
+                onClick={() => handleFinalSave('close')}
                 disabled={isSaving}
                 className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none sm:w-auto sm:min-w-[200px]"
               >
@@ -738,7 +742,7 @@ export function CreateRequirementWizardModal({
             )}
             <Button
               type="button"
-              onClick={() => handleFinalCreate('new')}
+              onClick={() => handleFinalSave('new')}
               disabled={step !== 3 || !preview || isSaving}
               className="h-14 w-full rounded-xl bg-blue-600 px-10 text-lg font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 hover:shadow-none sm:w-auto sm:min-w-[200px] disabled:opacity-40 disabled:cursor-not-allowed"
             >

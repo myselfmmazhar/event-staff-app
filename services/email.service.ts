@@ -584,6 +584,50 @@ export class EmailService {
   }
 
   /**
+   * Send talent document expiring email.
+   * Fired from the lazy bucket-based expiry check on dashboard/profile loads.
+   */
+  async sendDocumentExpiring(
+    email: string,
+    firstName: string,
+    details: {
+      requirementTitle: string;
+      expiresAt: Date;
+      daysRemaining: number;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const profileUrl = `${this.appUrl}/profile`;
+    const formattedExpiry = details.expiresAt.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'TALENT_DOCUMENT_EXPIRING',
+        {
+          firstName,
+          email,
+          requirementTitle: details.requirementTitle,
+          expiresAt: formattedExpiry,
+          daysRemaining: String(details.daysRemaining),
+          profileUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering document expiring template:', error);
+      return this.sendEmail(
+        email,
+        `Your ${details.requirementTitle} expires in ${details.daysRemaining} days`,
+        `<p>Hi ${firstName}, your <strong>${details.requirementTitle}</strong> expires on ${formattedExpiry} (${details.daysRemaining} day${details.daysRemaining === 1 ? '' : 's'}). Please upload an updated copy.</p><p><a href="${profileUrl}">Upload Updated Document</a></p>`
+      );
+    }
+  }
+
+  /**
    * Send call invitation batch email
    */
   async sendCallInvitationBatch(

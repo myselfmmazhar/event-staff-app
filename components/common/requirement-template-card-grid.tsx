@@ -22,6 +22,8 @@ export interface RequirementTemplateCardGridProps {
   readOnly?: boolean;
   /** Template IDs that are already in use — rendered as disabled with an "Already added" badge. */
   disabledIds?: ReadonlySet<ReqTemplateId>;
+  /** Template IDs that are already attached but should remain selectable so the user can edit them. */
+  editableIds?: ReadonlySet<ReqTemplateId>;
 }
 
 export function RequirementTemplateCardGrid({
@@ -36,6 +38,7 @@ export function RequirementTemplateCardGrid({
   visibleIds,
   readOnly = false,
   disabledIds,
+  editableIds,
 }: RequirementTemplateCardGridProps) {
   const visibleSet = visibleIds?.length ? new Set(visibleIds) : null;
   const cards = REQ_TEMPLATE_CARDS.filter((c) => !visibleSet || visibleSet.has(c.id));
@@ -43,7 +46,8 @@ export function RequirementTemplateCardGrid({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => {
-        const isAlreadyAdded = disabledIds?.has(card.id) ?? false;
+        const isEditable = editableIds?.has(card.id) ?? false;
+        const isAlreadyAdded = !isEditable && (disabledIds?.has(card.id) ?? false);
         const isSelected =
           selectionMode === 'single'
             ? singleSelected === card.id
@@ -85,6 +89,11 @@ export function RequirementTemplateCardGrid({
                 {isAlreadyAdded && (
                   <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                     Already added
+                  </span>
+                )}
+                {isEditable && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                    Edit
                   </span>
                 )}
                 <span

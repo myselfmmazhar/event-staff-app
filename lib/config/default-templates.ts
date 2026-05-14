@@ -68,6 +68,10 @@ export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{confirmationStatus}}': 'Confirmation status label (e.g., "Confirmed" or "Waitlisted")',
   '{{statusMessage}}': 'Long-form status message shown after accepting',
   '{{isWaitlisted}}': 'Set to "true" when the acceptance landed on the waitlist (otherwise empty)',
+  '{{requirementTitle}}': 'Title of the document requirement (e.g., "Driver\'s License")',
+  '{{expiresAt}}': 'Formatted expiry date of the document',
+  '{{daysRemaining}}': 'Number of days until the document expires',
+  '{{profileUrl}}': 'URL to the talent\'s profile page where they can upload an updated document',
 };
 
 export interface DefaultEmailTemplate {
@@ -302,6 +306,34 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
 
 {{button:Log In to View My Schedule|{{loginUrl}}}}`,
   },
+  {
+    type: 'TALENT_DOCUMENT_EXPIRING',
+    subject: 'Your {{requirementTitle}} expires in {{daysRemaining}} days',
+    headerTitle: 'Document Expiring Soon',
+    description: 'Sent to a talent when one of their approved documents is approaching its expiry date (30/15/7/5/2 day buckets)',
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      '{{requirementTitle}}',
+      '{{expiresAt}}',
+      '{{daysRemaining}}',
+      '{{profileUrl}}',
+    ],
+    bodyHtml: `<p>Hi {{firstName}},</p>
+
+<p>Your <strong>{{requirementTitle}}</strong> on file is approaching its expiry date.</p>
+
+<div class="info-box">
+  <p><strong>Document:</strong> {{requirementTitle}}</p>
+  <p><strong>Expires on:</strong> {{expiresAt}}</p>
+  <p><strong>Days remaining:</strong> {{daysRemaining}}</p>
+</div>
+
+<p>Please upload an updated copy before it expires so your records stay current.</p>
+
+{{button:Upload Updated Document|{{profileUrl}}}}
+
+<p class="note">If the button doesn't work, copy and paste this link into your browser: {{profileUrl}}</p>`,
+  },
 ];
 
 /**
@@ -389,6 +421,7 @@ export const TEMPLATE_TYPE_LABELS: Record<EmailTemplateType | SmsTemplateType, s
   USER_INVITATION: 'User Invitation',
   CALL_INVITATION_BATCH: 'Call Invitation Batch',
   CALL_TIME_INVITATION_ACCEPTED: 'Invitation Accepted Page',
+  TALENT_DOCUMENT_EXPIRING: 'Talent Document Expiring',
 };
 
 /**
@@ -419,6 +452,7 @@ export function getAllTemplateTypes(): (EmailTemplateType | SmsTemplateType)[] {
     'USER_INVITATION',
     'CALL_INVITATION_BATCH',
     'CALL_TIME_INVITATION_ACCEPTED',
+    'TALENT_DOCUMENT_EXPIRING',
   ];
 }
 
@@ -513,6 +547,14 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
         confirmationStatus: 'Confirmed',
         statusMessage: 'Great! You have been confirmed for this position.',
         isWaitlisted: '',
+      };
+    case 'TALENT_DOCUMENT_EXPIRING':
+      return {
+        ...common,
+        requirementTitle: "Driver's License",
+        expiresAt: 'June 14, 2026',
+        daysRemaining: '30',
+        profileUrl: 'https://example.com/profile',
       };
     default:
       return common;

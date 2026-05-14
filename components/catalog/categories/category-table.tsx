@@ -100,18 +100,18 @@ export function CategoryTable({
       render: (category) => {
         const actions: ActionItem[] = [
           {
-            label: 'Edit category',
+            label: 'Edit Collection',
             icon: <EditIcon className="h-3.5 w-3.5" />,
             onClick: () => onEdit(category.id),
           },
           {
-            label: 'Delete category',
+            label: 'Delete Collection',
             icon: <TrashIcon className="h-3.5 w-3.5" />,
             onClick: () => onDelete(category.id),
             variant: 'destructive',
           },
           {
-            label: category.isActive ? 'Deactivate category' : 'Activate category',
+            label: category.isActive ? 'Deactivate Collection' : 'Activate Collection',
             onClick: () => onToggleActive(category.id, !category.isActive),
           },
         ];

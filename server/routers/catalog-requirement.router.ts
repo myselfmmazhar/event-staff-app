@@ -10,11 +10,26 @@ export const catalogRequirementRouter = router({
       return await svc.findAll(input);
     }),
 
+  getById: protectedProcedure
+    .input(CatalogRequirementSchema.id)
+    .query(async ({ ctx, input }) => {
+      const svc = new CatalogRequirementService(ctx.prisma);
+      return await svc.findById(input.id);
+    }),
+
   create: adminProcedure
     .input(CatalogRequirementSchema.create)
     .mutation(async ({ ctx, input }) => {
       const svc = new CatalogRequirementService(ctx.prisma);
       return await svc.create(input, ctx.userId!);
+    }),
+
+  update: adminProcedure
+    .input(CatalogRequirementSchema.update)
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      const svc = new CatalogRequirementService(ctx.prisma);
+      return await svc.update(id, data);
     }),
 
   delete: adminProcedure

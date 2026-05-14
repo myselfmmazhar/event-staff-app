@@ -18,6 +18,7 @@ export const emailTemplateTypeSchema = z.enum([
   'USER_INVITATION',
   'CALL_INVITATION_BATCH',
   'CALL_TIME_INVITATION_ACCEPTED',
+  'TALENT_DOCUMENT_EXPIRING',
 ]);
 
 /**
