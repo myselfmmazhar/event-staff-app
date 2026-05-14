@@ -131,7 +131,7 @@ export function CategoryTable({
     },
     {
       key: 'name',
-      label: 'Name',
+      label: 'Collection',
       sortable: true,
       initialWidth: 180,
       className: 'py-4 px-4',

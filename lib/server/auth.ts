@@ -61,6 +61,18 @@ export const auth = betterAuth({
 
           return { data: session };
         },
+        after: async (session) => {
+          // Stamp the user's last login time whenever a new session is created.
+          // Failures here must not break the login flow.
+          try {
+            await prisma.user.update({
+              where: { id: session.userId },
+              data: { lastLoginAt: new Date() },
+            });
+          } catch {
+            // Swallow — login itself already succeeded.
+          }
+        },
       },
     },
   },

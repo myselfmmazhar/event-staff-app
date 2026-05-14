@@ -71,6 +71,12 @@ export class ClientService {
       },
       orderBy: { createdAt: 'asc' as const },
     },
+    users_clients_userIdTousers: {
+      select: {
+        isActive: true,
+        lastLoginAt: true,
+      },
+    },
   } as const;
 
   /**
@@ -568,7 +574,9 @@ export class ClientService {
       sortBy === 'businessName' ? { businessName: sortOrder } :
         sortBy === 'email' ? { email: sortOrder } :
           sortBy === 'createdAt' ? { createdAt: sortOrder } :
-            { createdAt: 'desc' };
+            sortBy === 'status' ? { users_clients_userIdTousers: { isActive: sortOrder } } :
+              sortBy === 'lastLoginAt' ? { users_clients_userIdTousers: { lastLoginAt: sortOrder } } :
+                { createdAt: 'desc' };
 
     const [data, total] = await Promise.all([
       this.prisma.client.findMany({

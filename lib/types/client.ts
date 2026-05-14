@@ -23,10 +23,18 @@ export type ClientTableRow = Pick<
   | 'lastName'
   | 'email'
   | 'cellPhone'
+  | 'businessAddress'
+  | 'businessAddressLine2'
   | 'city'
   | 'state'
+  | 'zipCode'
   | 'hasLoginAccess'
->;
+> & {
+  users_clients_userIdTousers: {
+    isActive: boolean;
+    lastLoginAt: Date | null;
+  } | null;
+};
 
 /**
  * Client fields used in delete confirmation dialog

@@ -343,17 +343,6 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
             render: (member) => getStatusBadge(member),
         },
         {
-            key: 'staffId',
-            label: columnLabels.staffId,
-            sortable: true,
-            className: 'py-4 px-4 whitespace-nowrap',
-            render: (member) => (
-                <span className="font-mono text-sm text-muted-foreground">
-                    {member.staffId}
-                </span>
-            ),
-        },
-        {
             key: 'firstName',
             label: columnLabels.name,
             sortable: true,
@@ -364,6 +353,17 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
                     onClick={() => onEdit(member)}
                 >
                     {member.firstName} {member.lastName}
+                </span>
+            ),
+        },
+        {
+            key: 'staffId',
+            label: columnLabels.staffId,
+            sortable: true,
+            className: 'py-4 px-4 whitespace-nowrap',
+            render: (member) => (
+                <span className="font-mono text-sm text-muted-foreground">
+                    {member.staffId}
                 </span>
             ),
         },

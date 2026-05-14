@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -58,9 +59,11 @@ export function ClientTable({
     contact: 'Contact Person',
     email: 'Email',
     phone: 'Cell Phone',
-    location: 'Location',
+    location: 'Billing Address',
     access: 'Access',
     actions: 'Actions',
+    status: 'Status',
+    lastLogin: 'Last Login',
   });
 
   // Selection handlers
@@ -146,6 +149,23 @@ export function ClientTable({
         return <ActionDropdown actions={actions} />;
       },
     },
+    {
+      key: 'status',
+      label: <span className="font-normal">{columnLabels.status}</span>,
+      sortable: true,
+      className: 'py-4 px-4 whitespace-nowrap',
+      render: (client) => {
+        const linkedUser = client.users_clients_userIdTousers;
+        if (!linkedUser) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        return (
+          <Badge variant={linkedUser.isActive ? 'success' : 'destructive'} asSpan>
+            {linkedUser.isActive ? 'Active' : 'Inactive'}
+          </Badge>
+        );
+      },
+    },
     /* {
       key: 'clientId',
       label: columnLabels.clientId,
@@ -193,7 +213,22 @@ export function ClientTable({
       key: 'location',
       label: columnLabels.location,
       className: 'py-4 px-4 text-sm text-muted-foreground',
-      render: (client) => `${client.city}, ${client.state}`,
+      render: (client) => {
+        const cityStateZip = [
+          [client.city, client.state].filter(Boolean).join(', '),
+          client.zipCode,
+        ]
+          .filter(Boolean)
+          .join(' ');
+        const fullAddress = [
+          client.businessAddress,
+          client.businessAddressLine2,
+          cityStateZip,
+        ]
+          .filter(Boolean)
+          .join(', ');
+        return fullAddress || '-';
+      },
     },
     {
       key: 'access',
@@ -205,9 +240,31 @@ export function ClientTable({
         </Badge>
       ),
     },
+    {
+      key: 'lastLoginAt',
+      label: columnLabels.lastLogin,
+      sortable: true,
+      className: 'py-4 px-4 text-sm text-muted-foreground whitespace-nowrap',
+      render: (client) => {
+        const lastLoginAt = client.users_clients_userIdTousers?.lastLoginAt;
+        if (!lastLoginAt) {
+          return <span className="text-muted-foreground">Never logged in</span>;
+        }
+        const date = new Date(lastLoginAt);
+        return (
+          <div>
+            <div>{format(date, 'MMM dd, yyyy')}</div>
+            <div className="text-xs text-muted-foreground">{format(date, 'h:mm a')}</div>
+          </div>
+        );
+      },
+    },
   ];
 
-  const renderMobileCard = (client: ClientTableRow) => (
+  const renderMobileCard = (client: ClientTableRow) => {
+    const linkedUser = client.users_clients_userIdTousers;
+    const lastLoginAt = linkedUser?.lastLoginAt;
+    return (
     <div
       key={client.id}
       className="bg-card rounded-lg border border-border p-4 space-y-3"
@@ -224,15 +281,45 @@ export function ClientTable({
             {client.firstName} {client.lastName}
           </div>
         </div>
-        <Badge variant={client.hasLoginAccess ? 'success' : 'secondary'} asSpan>
-          {client.hasLoginAccess ? 'Portal Access' : 'No Access'}
-        </Badge>
+        <div className="flex flex-col items-end gap-1">
+          <Badge variant={client.hasLoginAccess ? 'success' : 'secondary'} asSpan>
+            {client.hasLoginAccess ? 'Portal Access' : 'No Access'}
+          </Badge>
+          {linkedUser && (
+            <Badge variant={linkedUser.isActive ? 'success' : 'destructive'} asSpan>
+              {linkedUser.isActive ? 'Active' : 'Inactive'}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="space-y-1 text-sm text-muted-foreground">
         <div>{client.email}</div>
         <div>{client.cellPhone}</div>
-        <div>{client.city}, {client.state}</div>
+        <div>
+          {(() => {
+            const cityStateZip = [
+              [client.city, client.state].filter(Boolean).join(', '),
+              client.zipCode,
+            ]
+              .filter(Boolean)
+              .join(' ');
+            const fullAddress = [
+              client.businessAddress,
+              client.businessAddressLine2,
+              cityStateZip,
+            ]
+              .filter(Boolean)
+              .join(', ');
+            return fullAddress || '-';
+          })()}
+        </div>
+        <div>
+          Last login:{' '}
+          {lastLoginAt
+            ? format(new Date(lastLoginAt), 'MMM dd, yyyy h:mm a')
+            : 'Never logged in'}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 pt-2 border-t border-border">
@@ -264,7 +351,8 @@ export function ClientTable({
         </Button>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderExpandedContent = (client: ClientTableRow) => (
     <ClientExpandedRow clientId={client.id} />

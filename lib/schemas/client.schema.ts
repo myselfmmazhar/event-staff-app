@@ -169,6 +169,8 @@ export class ClientSchema {
         "lastName",
         "email",
         "city",
+        "status",
+        "lastLoginAt",
       ])
       .default("createdAt")
       .optional(),

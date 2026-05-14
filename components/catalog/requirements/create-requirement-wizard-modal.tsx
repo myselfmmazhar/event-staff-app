@@ -575,9 +575,6 @@ export function CreateRequirementWizardModal({
                   <RadioGroupItem value="PER_TALENT" id="exp-per-talent" />
                   <div>
                     <span>Document expiry date</span>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Each talent specifies their own expiry date when uploading the document.
-                    </p>
                   </div>
                 </label>
               </RadioGroup>

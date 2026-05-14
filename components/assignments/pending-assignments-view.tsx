@@ -267,6 +267,16 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
             ),
         },
         {
+            key: 'event',
+            label: 'Event',
+            render: (item) => (
+                <div className="text-sm">
+                    <p className="font-medium text-foreground">{item.eventTitle}</p>
+                    <p className="text-muted-foreground">{item.eventId}</p>
+                </div>
+            ),
+        },
+        {
             key: 'firstName',
             label: 'First Name',
             sortable: true,
@@ -310,16 +320,6 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
                     </div>
                 );
             },
-        },
-        {
-            key: 'event',
-            label: 'Event',
-            render: (item) => (
-                <div className="text-sm">
-                    <p className="font-medium text-foreground">{item.eventTitle}</p>
-                    <p className="text-muted-foreground">{item.eventId}</p>
-                </div>
-            ),
         },
         {
             key: 'phone',

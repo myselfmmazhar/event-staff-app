@@ -43,7 +43,7 @@ function parseLoginAccessParam(value: string | null): ClientLoginAccess {
   return 'all';
 }
 
-const CLIENT_SORT_FIELDS: ClientSortBy[] = ['clientId', 'businessName', 'createdAt'];
+const CLIENT_SORT_FIELDS: ClientSortBy[] = ['clientId', 'businessName', 'createdAt', 'status', 'lastLoginAt'];
 const CLIENT_SORT_FIELD_SET = new Set<ClientSortBy>(CLIENT_SORT_FIELDS);
 
 function parseSortByParam(value: string | null): ClientSortBy {
@@ -425,9 +425,11 @@ export default function ClientsPage() {
                   { key: 'contact', label: 'Contact Person', defaultLabel: 'Contact Person' },
                   { key: 'email', label: 'Email', defaultLabel: 'Email' },
                   { key: 'phone', label: 'Cell Phone', defaultLabel: 'Cell Phone' },
-                  { key: 'location', label: 'Location', defaultLabel: 'Location' },
+                  { key: 'location', label: 'Billing Address', defaultLabel: 'Billing Address' },
                   { key: 'access', label: 'Access', defaultLabel: 'Access' },
                   { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
+                  { key: 'status', label: 'Status', defaultLabel: 'Status' },
+                  { key: 'lastLogin', label: 'Last Login', defaultLabel: 'Last Login' },
                 ],
               },
             ]}
