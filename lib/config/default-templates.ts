@@ -169,7 +169,7 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
 
 <div style="text-align: center; margin: 30px 0;">
   {{action_button:Accept Offer|{{acceptUrl}}}}
-  {{danger_button:Reject Offer|{{rejectUrl}}}}
+  {{danger_button:Decline Offer|{{rejectUrl}}}}
   <a href="{{detailsUrl}}" style="background-color: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; margin: 5px;">View More Details</a>
 </div>
 
