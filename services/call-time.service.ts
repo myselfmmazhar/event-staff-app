@@ -2118,7 +2118,7 @@ export class CallTimeService {
 
     const invitation = await this.prisma.callTimeInvitation.findUnique({
       where: { id: invitationId },
-      select: { id: true, staffId: true, callTimeId: true, status: true, isConfirmed: true },
+      select: { id: true, staffId: true, callTimeId: true, status: true, isConfirmed: true, shiftEndedAt: true },
     });
     if (!invitation || invitation.staffId !== staff.id) {
       throw new Error('Invitation not found');
@@ -2126,13 +2126,16 @@ export class CallTimeService {
     if (invitation.status !== 'ACCEPTED' || !invitation.isConfirmed) {
       throw new Error('Cannot start a shift that is not accepted and confirmed');
     }
+    if (invitation.shiftEndedAt) {
+      throw new Error('This shift has been ended and can no longer be started.');
+    }
 
     const openSession = await this.prisma.shiftSession.findFirst({
       where: { invitationId, clockOut: null },
       select: { id: true },
     });
     if (openSession) {
-      throw new Error('You already have an active session for this shift. End it before starting a new one.');
+      throw new Error('You already have an active session for this shift. Pause it before starting a new one.');
     }
 
     const session = await this.prisma.shiftSession.create({
@@ -2155,10 +2158,11 @@ export class CallTimeService {
   }
 
   /**
-   * End a shift — closes the currently open ShiftSession (clockOut = now).
+   * Pause a shift — closes the currently open ShiftSession (clockOut = now).
+   * The talent can clock back in again with startShift afterwards.
    * Also syncs the aggregated state into TimeEntry.
    */
-  async endShift(invitationId: string, userId: string) {
+  async pauseShift(invitationId: string, userId: string) {
     const staff = await this.prisma.staff.findUnique({
       where: { userId },
       select: { id: true },
@@ -2173,7 +2177,7 @@ export class CallTimeService {
       select: { id: true, callTimeId: true },
     });
     if (!openSession) {
-      throw new Error('No active session to end. Click Start first.');
+      throw new Error('No active session to pause. Click Start first.');
     }
 
     const updated = await this.prisma.shiftSession.update({
@@ -2185,6 +2189,59 @@ export class CallTimeService {
       invitationId,
       staff.id,
       openSession.callTimeId,
+      userId
+    );
+
+    return updated;
+  }
+
+  /**
+   * End a shift permanently — closes any currently open ShiftSession and marks
+   * the invitation as shift-ended, so the talent cannot start a new session.
+   * Also syncs the aggregated state into TimeEntry.
+   */
+  async endShift(invitationId: string, userId: string) {
+    const staff = await this.prisma.staff.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!staff) {
+      throw new Error('Staff record not found for current user');
+    }
+
+    const invitation = await this.prisma.callTimeInvitation.findUnique({
+      where: { id: invitationId },
+      select: { id: true, staffId: true, callTimeId: true, shiftEndedAt: true },
+    });
+    if (!invitation || invitation.staffId !== staff.id) {
+      throw new Error('Invitation not found');
+    }
+    if (invitation.shiftEndedAt) {
+      throw new Error('This shift has already been ended.');
+    }
+
+    const openSession = await this.prisma.shiftSession.findFirst({
+      where: { invitationId, staffId: staff.id, clockOut: null },
+      orderBy: { clockIn: 'desc' },
+      select: { id: true },
+    });
+
+    if (openSession) {
+      await this.prisma.shiftSession.update({
+        where: { id: openSession.id },
+        data: { clockOut: new Date() },
+      });
+    }
+
+    const updated = await this.prisma.callTimeInvitation.update({
+      where: { id: invitationId },
+      data: { shiftEndedAt: new Date() },
+    });
+
+    await this.syncTimeEntryFromSessions(
+      invitationId,
+      staff.id,
+      invitation.callTimeId,
       userId
     );
 

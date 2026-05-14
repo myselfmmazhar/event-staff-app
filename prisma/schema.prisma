@@ -42,6 +42,7 @@ model CallTimeInvitation {
   reviewedBy           String?
   invitedAsTeam        Boolean                  @default(false)
   teamUnitId           String?                  @db.Uuid
+  shiftEndedAt         DateTime?                @db.Timestamp(6)
   callTime             CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
   reviewer             User?                    @relation("invitation_reviews", fields: [reviewedBy], references: [id])
   staff                Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)

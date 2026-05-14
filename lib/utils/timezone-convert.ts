@@ -122,6 +122,26 @@ export function convertWallClock(
 }
 
 /**
+ * Resolve a wall-clock (date-only + "HH:mm") in the given timezone to its
+ * absolute UTC instant. Returns null if the inputs are missing or invalid.
+ */
+export function resolveWallClockInstant(
+  date: Date | string | null,
+  time: string | null,
+  timeZone: string | null | undefined,
+): Date | null {
+  if (!date || !time) return null;
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(dateObj.getTime()) || isInvalidEpochDate(dateObj)) return null;
+  const [hStr = '0', miStr = '0'] = time.split(':');
+  const h = Number.parseInt(hStr, 10);
+  const mi = Number.parseInt(miStr, 10);
+  if (Number.isNaN(h) || Number.isNaN(mi)) return null;
+  const { y, m, d } = readDateParts(dateObj);
+  return wallClockToInstant(y, m, d, h, mi, timeZone || 'UTC');
+}
+
+/**
  * Short timezone label (e.g. "EST", "PDT", "GMT+5") at the given instant.
  * Falls back to the IANA name if Intl can't produce a short form.
  */
