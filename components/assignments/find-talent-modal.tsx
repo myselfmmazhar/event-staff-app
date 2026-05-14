@@ -15,10 +15,11 @@ import { trpc } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon, SendIcon, FilterIcon, XIcon, CheckCircleIcon } from '@/components/ui/icons';
 import { ConfirmModal } from '@/components/common/confirm-modal';
-import { MultiSelect } from '@/components/ui/multi-select';
+import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { SkillLevel, StaffRating } from '@prisma/client';
 import { formatDateTime } from '@/lib/utils/date-formatter';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 import type { AppRouter } from '@/server/routers/_app';
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
@@ -120,6 +121,34 @@ export function FindTalentModal({
     return Array.from(seen.values());
   }, [callTimes]);
 
+  // Earliest call time across the selected set — header shows the event name
+  // and this single date/time instead of one line per call time.
+  const earliestCallTime = useMemo(() => {
+    if (!callTimes?.length) return null;
+    const ts = (d: Date | string | null | undefined) =>
+      d ? new Date(d).getTime() : Number.POSITIVE_INFINITY;
+    return [...callTimes].sort((a, b) => {
+      const aTime = ts(a.startDate);
+      const bTime = ts(b.startDate);
+      if (aTime !== bTime) return aTime - bTime;
+      return (a.startTime ?? '').localeCompare(b.startTime ?? '');
+    })[0];
+  }, [callTimes]);
+
+  // Aggregate confirmed / required per service so each service card can show
+  // its own "x/y filled" badge alongside the modal-level total.
+  const filledByService = useMemo(() => {
+    const map = new Map<string, { confirmed: number; required: number }>();
+    callTimes?.forEach((ct) => {
+      if (!ct.service?.id) return;
+      const existing = map.get(ct.service.id) ?? { confirmed: 0, required: 0 };
+      existing.confirmed += ct.confirmedCount;
+      existing.required += ct.numberOfStaffRequired;
+      map.set(ct.service.id, existing);
+    });
+    return map;
+  }, [callTimes]);
+
   // Reset to "all selected" whenever the modal opens or the underlying
   // service set changes — closing + reopening should not preserve unchecks.
   const uniqueServiceKey = uniqueServices.map((s) => s.id).sort().join(',');
@@ -135,6 +164,36 @@ export function FindTalentModal({
       (ct) => !ct.invitations.some((inv) => inv.status === 'ACCEPTED')
     );
   }, [callTimes]);
+
+  // Precompute the MultiSelect options grouped by serviceId so each service
+  // card doesn't rebuild them (with fresh Badge JSX) on every render — that
+  // was defeating downstream memoization inside MultiSelect.
+  const shiftOptionsByService = useMemo(() => {
+    const map = new Map<string, MultiSelectOption[]>();
+    for (const ct of availableShifts) {
+      const sid = ct.service?.id;
+      if (!sid) continue;
+      const list = map.get(sid) ?? [];
+      list.push({
+        value: ct.id,
+        label: formatDateTime(ct.startDate, ct.startTime),
+        rightLabel: (
+          <Badge
+            variant={
+              ct.numberOfStaffRequired > 0 && ct.confirmedCount >= ct.numberOfStaffRequired
+                ? 'default'
+                : 'secondary'
+            }
+            size="sm"
+          >
+            {ct.confirmedCount}/{ct.numberOfStaffRequired} filled
+          </Badge>
+        ),
+      });
+      map.set(sid, list);
+    }
+    return map;
+  }, [availableShifts]);
 
 
   // Reset to "all available selected" on open or whenever the available set
@@ -170,19 +229,36 @@ export function FindTalentModal({
       ? selectedServiceIds
       : undefined;
 
+  // Debounce filter primitives so rapid dropdown changes don't queue
+  // overlapping searchStaff queries (which is what makes the modal feel
+  // "stuck" while a stale request resolves). Memoize the object so the
+  // debounce only resets when an actual value changes, not on every render.
+  const filterInputs = useMemo(
+    () => ({
+      maxDistance: maxDistance ? Number(maxDistance) : undefined,
+      skillLevels: skillLevel ? [skillLevel] : undefined,
+      ratings: rating ? [rating] : undefined,
+      userType: userType || undefined,
+      availableUnits: availableUnits ? Number(availableUnits) : undefined,
+    }),
+    [maxDistance, skillLevel, rating, userType, availableUnits]
+  );
+  const debouncedFilters = useDebounce(filterInputs, 250);
+
   const { data: staffData, isLoading: isLoadingStaff } =
     trpc.callTime.searchStaff.useQuery(
       {
         callTimeIds: effectiveShiftIds,
         includeAlreadyInvited,
-        maxDistance: maxDistance ? Number(maxDistance) : undefined,
-        skillLevels: skillLevel ? [skillLevel] : undefined,
-        ratings: rating ? [rating] : undefined,
-        userType: userType || undefined,
-        availableUnits: availableUnits ? Number(availableUnits) : undefined,
+        ...debouncedFilters,
         serviceIds: serviceIdsForQuery,
       },
-      { enabled: hasCallTimeIds && open && effectiveShiftIds.length > 0 }
+      {
+        // Gate on callTimes so we don't fire a wasted request with the raw
+        // callTimeIds before we know which shifts are actually available.
+        enabled:
+          hasCallTimeIds && open && !!callTimes && effectiveShiftIds.length > 0,
+      }
     );
 
   const rows = useMemo<SearchRow[]>(() => (staffData?.data as SearchRow[]) || [], [staffData]);
@@ -238,6 +314,31 @@ export function FindTalentModal({
       totalSelections: individualStaffIds.length + teamSelections.length,
     };
   }, [selectedRowIds, rows, selectionCounts, remainingSlots]);
+
+  // Precompute the per-service selection count once per render so each service
+  // card can do an O(1) Map lookup instead of re-scanning rows + selectedRowIds.
+  const selectionCountByService = useMemo(() => {
+    const rowById = new Map(rows.map((r) => [r.rowId, r]));
+    const counts = new Map<string, number>();
+    for (const rowId of selectedRowIds) {
+      const row = rowById.get(rowId);
+      if (!row) continue;
+      if (row.kind === 'TEAM' && row.serviceId) {
+        const cap =
+          remainingSlots > 0
+            ? Math.min(row.availableUnits, remainingSlots)
+            : row.availableUnits;
+        const requested = selectionCounts[rowId] ?? cap;
+        const units = Math.max(1, Math.min(requested, cap));
+        counts.set(row.serviceId, (counts.get(row.serviceId) ?? 0) + units);
+      } else if (row.kind === 'INDIVIDUAL') {
+        for (const s of row.services ?? []) {
+          counts.set(s.service.id, (counts.get(s.service.id) ?? 0) + 1);
+        }
+      }
+    }
+    return counts;
+  }, [rows, selectedRowIds, selectionCounts, remainingSlots]);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingOffers, setPendingOffers] = useState<{
@@ -429,19 +530,10 @@ export function FindTalentModal({
     setAvailableUnits('');
   };
 
-  if (isLoading || !callTimes) {
-    return (
-      <Dialog open={open} onClose={handleClose} className="max-w-6xl w-[90vw]">
-        <DialogContent>
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  const isFilled = totalConfirmed >= totalRequired;
+  // Paint the dialog shell immediately and let the table show its own loading
+  // state — the previous full-page "Loading..." gate forced a remount once
+  // callTimes resolved, which made the open feel sluggish.
+  const isFilled = totalRequired > 0 && totalConfirmed >= totalRequired;
 
   // Effective number of invitations that will be sent.
   // Individual: 1 each. Team: capped at remaining slots — UI shows "up to N".
@@ -452,23 +544,8 @@ export function FindTalentModal({
       Math.max(0, totalRequired - totalConfirmed - selection.individualStaffIds.length)
     );
 
-  const getSelectedCountForService = (serviceId: string) => {
-    let count = 0;
-    for (const rowId of selectedRowIds) {
-      const row = rows.find((r) => r.rowId === rowId);
-      if (!row) continue;
-      if (row.kind === 'TEAM' && row.serviceId === serviceId) {
-        const cap = remainingSlots > 0 ? Math.min(row.availableUnits, remainingSlots) : row.availableUnits;
-        const requested = selectionCounts[rowId] ?? cap;
-        count += Math.max(1, Math.min(requested, cap));
-      } else if (row.kind === 'INDIVIDUAL') {
-        if (row.services?.some((s) => s.service.id === serviceId)) {
-          count += 1;
-        }
-      }
-    }
-    return count;
-  };
+  const getSelectedCountForService = (serviceId: string) =>
+    selectionCountByService.get(serviceId) ?? 0;
 
   return (
     <Dialog open={open} onClose={handleClose} className="max-w-7xl w-[95vw]">
@@ -481,17 +558,15 @@ export function FindTalentModal({
                 {totalConfirmed}/{totalRequired} filled
               </Badge>
             </DialogTitle>
-            <div className="mt-2 space-y-1">
-              {callTimes.map((ct) => (
-                <p key={ct.id} className="text-xl font-medium text-muted-foreground">
-                  <span className="text-foreground">{ct.service?.title || 'No Position'}</span>
-                  <span className="mx-1.5">•</span>
-                  {ct.event.title}
-                  <span className="mx-1.5 opacity-50">•</span>
-                  <span className="text-base">{formatDateTime(ct.startDate, ct.startTime)}</span>
-                </p>
-              ))}
-            </div>
+            {earliestCallTime && (
+              <p className="mt-2 text-xl font-medium text-muted-foreground">
+                <span className="text-foreground">{earliestCallTime.event.title}</span>
+                <span className="mx-1.5 opacity-50">•</span>
+                <span className="text-base">
+                  {formatDateTime(earliestCallTime.startDate, earliestCallTime.startTime)}
+                </span>
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -530,10 +605,10 @@ export function FindTalentModal({
                   const isChecked = selectedServiceIds.includes(svc.id);
                   const shiftsForService = availableShifts.filter((s) => s.service?.id === svc.id);
                   const selectedCount = getSelectedCountForService(svc.id);
-                  const serviceShiftOptions = shiftsForService.map((ct) => ({
-                    value: ct.id,
-                    label: formatDateTime(ct.startDate, ct.startTime),
-                  }));
+                  const serviceFilled = filledByService.get(svc.id) ?? { confirmed: 0, required: 0 };
+                  const isServiceFilled =
+                    serviceFilled.required > 0 && serviceFilled.confirmed >= serviceFilled.required;
+                  const serviceShiftOptions = shiftOptionsByService.get(svc.id) ?? [];
 
                   // Current selected shifts for THIS service
                   const currentServiceShiftIds = selectedShiftIds.filter((id) =>
@@ -551,9 +626,9 @@ export function FindTalentModal({
                           : 'bg-background border-border'
                         }`}
                     >
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-3 gap-2">
                         <label
-                          className={`flex items-center gap-2 font-semibold ${disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+                          className={`flex items-center gap-2 font-semibold min-w-0 ${disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
                             }`}
                         >
                           <input
@@ -581,15 +656,20 @@ export function FindTalentModal({
                               }
                             }}
                           />
-                          <span className={isChecked ? 'text-foreground' : 'text-muted-foreground'}>
+                          <span className={`truncate ${isChecked ? 'text-foreground' : 'text-muted-foreground'}`}>
                             {svc.title}
                           </span>
                         </label>
-                        {selectedCount > 0 && (
-                          <Badge variant="default" className="bg-primary text-primary-foreground font-black px-2 py-0 h-5">
-                            {selectedCount}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge variant={isServiceFilled ? 'default' : 'secondary'} size="sm">
+                            {serviceFilled.confirmed}/{serviceFilled.required} filled
                           </Badge>
-                        )}
+                          {selectedCount > 0 && (
+                            <Badge variant="default" className="bg-primary text-primary-foreground font-black px-2 py-0 h-5">
+                              {selectedCount}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
 
                       {isChecked && (
@@ -747,7 +827,7 @@ export function FindTalentModal({
             selectionCounts={selectionCounts}
             onSelectionChange={handleSelectionChange}
             onCountChange={handleCountChange}
-            isLoading={isLoadingStaff}
+            isLoading={isLoading || isLoadingStaff}
             showInvitationStatus={includeAlreadyInvited}
             remainingSlots={remainingSlots}
           />

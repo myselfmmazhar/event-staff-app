@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from './checkbox';
 import { ChevronDownIcon } from './icons';
@@ -10,6 +10,8 @@ import { Popover, PopoverContent, PopoverTrigger } from './popover';
 export interface MultiSelectOption<T extends string = string> {
   value: T;
   label: string;
+  /** Optional content rendered right-aligned inside the option row */
+  rightLabel?: ReactNode;
 }
 
 export interface MultiSelectProps<T extends string = string> {
@@ -75,14 +77,17 @@ export function MultiSelect<T extends string = string>({
     }
   };
 
+  const selectedOption = value.length === 1
+    ? options.find((o) => o.value === value[0])
+    : undefined;
+
   const getDisplayText = () => {
     if (value.length === 0) {
       return placeholder;
     }
     if (value.length === 1) {
-      const option = options.find((o) => o.value === value[0]);
-      if (!option && options.length === 0) return 'Loading...';
-      return option?.label || value[0];
+      if (!selectedOption && options.length === 0) return 'Loading...';
+      return selectedOption?.label || value[0];
     }
     return `${value.length} selected`;
   };
@@ -104,7 +109,12 @@ export function MultiSelect<T extends string = string>({
             value.length === 0 ? 'text-muted-foreground' : 'text-foreground'
           )}
         >
-          <span className="truncate text-left">{getDisplayText()}</span>
+          <span className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="truncate text-left">{getDisplayText()}</span>
+            {selectedOption?.rightLabel !== undefined && (
+              <span className="flex-shrink-0">{selectedOption.rightLabel}</span>
+            )}
+          </span>
           <ChevronDownIcon
             className={cn(
               'h-4 w-4 shrink-0 opacity-50 transition-transform duration-200',
@@ -158,7 +168,10 @@ export function MultiSelect<T extends string = string>({
                   checked={value.includes(option.value)}
                   onChange={() => handleToggle(option.value)}
                 />
-                <span className="break-words">{option.label}</span>
+                <span className="break-words flex-1">{option.label}</span>
+                {option.rightLabel !== undefined && (
+                  <span className="ml-auto flex-shrink-0">{option.rightLabel}</span>
+                )}
               </label>
             ))
           )}
