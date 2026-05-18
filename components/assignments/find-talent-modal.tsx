@@ -87,11 +87,12 @@ export function FindTalentModal({
   const [rating, setRating] = useState<StaffRating | ''>('');
   const [userType, setUserType] = useState<'' | 'INDIVIDUAL' | 'TEAM'>('');
   const [availableUnits, setAvailableUnits] = useState<string>('');
-  // Service narrowing — start with all selected. Single-service case still
-  // renders a card but the checkbox is disabled (always on).
+  // Service narrowing — multi-service tasks start with every card unchecked.
+  // Single-service case still renders a card but the checkbox is disabled
+  // (always on), so its id is seeded as selected.
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-  // Shift narrowing — start with all available shifts selected. Shifts that
-  // already have an accepted invitation are excluded from the dropdown.
+  // Shift narrowing — start with all available shifts selected. A shift only
+  // drops out of the dropdown once it is fully filled (no open headcount).
   const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
 
   const utils = trpc.useUtils();
@@ -149,19 +150,27 @@ export function FindTalentModal({
     return map;
   }, [callTimes]);
 
-  // Reset to "all selected" whenever the modal opens or the underlying
-  // service set changes — closing + reopening should not preserve unchecks.
+  // Reset whenever the modal opens or the underlying service set changes —
+  // closing + reopening should not preserve checks. Multi-service tasks start
+  // fully unchecked; a lone service stays selected since its checkbox is
+  // locked on (disabled) and can't be toggled by the user.
   const uniqueServiceKey = uniqueServices.map((s) => s.id).sort().join(',');
   useEffect(() => {
     if (!open) return;
-    setSelectedServiceIds(uniqueServices.map((s) => s.id));
+    setSelectedServiceIds(
+      uniqueServices.length === 1 ? uniqueServices.map((s) => s.id) : []
+    );
   }, [open, uniqueServiceKey]);
 
-  // Available shifts (call times) for the dropdown. A shift drops out once any
-  // talent has accepted an invitation for it — there's nothing to fill anymore.
+  // Available shifts (call times) for the dropdown. A shift drops out only
+  // when it is fully filled (confirmed >= required). Shifts with a partial
+  // acceptance — including ones whose required headcount was just increased —
+  // stay in the picker so the remaining slots can still be filled.
   const availableShifts = useMemo(() => {
     return (callTimes ?? []).filter(
-      (ct) => !ct.invitations.some((inv) => inv.status === 'ACCEPTED')
+      (ct) =>
+        ct.numberOfStaffRequired <= 0 ||
+        ct.confirmedCount < ct.numberOfStaffRequired
     );
   }, [callTimes]);
 
