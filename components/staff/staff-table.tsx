@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit2Icon, Trash2Icon, MessageSquareIcon, EyeIcon } from 'lucide-react';
+import { Edit2Icon, Trash2Icon, MessageSquareIcon, EyeIcon, MailIcon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { AvailabilityStatus, AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating } from '@prisma/client';
 import { useStaffTerm, useTerminology } from '@/lib/hooks/use-terminology';
@@ -106,6 +106,7 @@ interface StaffTableProps {
     onDelete: (staff: StaffWithRelations) => void;
     onViewDetails?: (staff: StaffWithRelations) => void;
     onMessage?: (staff: StaffWithRelations) => void;
+    onResendInvitation?: (staff: StaffWithRelations) => void;
     onSort?: (field: string) => void;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
@@ -114,7 +115,7 @@ interface StaffTableProps {
     onSelectionChange?: (ids: Set<string>) => void;
 }
 
-export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, onSort, sortBy, sortOrder, selectedIds, onSelectionChange }: StaffTableProps) {
+export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, onResendInvitation, onSort, sortBy, sortOrder, selectedIds, onSelectionChange }: StaffTableProps) {
     const { toast } = useToast();
     const utils = trpc.useUtils();
     const updateStaffMutation = trpc.staff.update.useMutation({
@@ -323,6 +324,11 @@ export function StaffTable({ staff, onEdit, onDelete, onViewDetails, onMessage, 
                         label: `View ${staffTerm.lower} details`,
                         icon: <EyeIcon className="h-3.5 w-3.5" />,
                         onClick: () => onViewDetails(member),
+                    }] : []),
+                    ...(onResendInvitation && member.invitationToken && !member.hasLoginAccess && !member.userId ? [{
+                        label: 'Resend invitation',
+                        icon: <MailIcon className="h-3.5 w-3.5" />,
+                        onClick: () => onResendInvitation(member),
                     }] : []),
                     {
                         label: `Delete ${staffTerm.lower}`,

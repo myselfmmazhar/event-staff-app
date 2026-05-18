@@ -690,6 +690,7 @@ export default function StaffPage() {
                                 onDelete={handleDelete}
                                 onViewDetails={handleViewDetails}
                                 onMessage={handleMessage}
+                                onResendInvitation={(member) => handleResendInvitation(member.id)}
                                 onSort={handleSort}
                                 sortBy={sortBy}
                                 sortOrder={sortOrder}

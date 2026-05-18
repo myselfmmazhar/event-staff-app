@@ -87,6 +87,10 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
+  // Resend invitation state
+  const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
+  const [clientToResend, setClientToResend] = useState<Client | null>(null);
+
   // Reset key for Save & New (incremented to trigger form reset)
   const [clientFormResetKey, setClientFormResetKey] = useState(0);
 
@@ -217,6 +221,17 @@ export default function ClientsPage() {
     onError: handleError,
   });
 
+  // Resend invitation mutation
+  const resendInvitationMutation = trpc.clients.resendInvitation.useMutation({
+    onSuccess: () => {
+      handleSuccess('Invitation resent successfully');
+      setIsResendConfirmOpen(false);
+      setClientToResend(null);
+      refetch();
+    },
+    onError: handleError,
+  });
+
   // Mutation for creating locations after client creation
   const createLocationMutation = trpc.clientLocation.create.useMutation();
 
@@ -257,6 +272,20 @@ export default function ClientsPage() {
 
   const handleViewFromEdit = () => {
     setModals((prev) => ({ ...prev, form: false, view: true }));
+  };
+
+  const handleResendInvitation = (clientId: string) => {
+    const client = getClientById(clientId);
+    if (client) {
+      setClientToResend(client);
+      setIsResendConfirmOpen(true);
+    }
+  };
+
+  const handleResendConfirm = () => {
+    if (clientToResend) {
+      resendInvitationMutation.mutate({ id: clientToResend.id });
+    }
   };
 
   const handleFormSubmit = async (formData: CreateClientInputWithLocations | Omit<UpdateClientInput, 'id'>, saveAction?: 'close' | 'new' | 'update-continue') => {
@@ -498,6 +527,7 @@ export default function ClientsPage() {
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onResendInvitation={handleResendInvitation}
             onSort={handleSort}
             selectedIds={selectedIds}
             onSelectionChange={setSelectedIds}
@@ -548,6 +578,7 @@ export default function ClientsPage() {
           setModals((prev) => ({ ...prev, view: false, form: true }));
           setBackendErrors([]);
         }}
+        onResendInvitation={handleResendInvitation}
       />
 
       <DeleteClientModal
@@ -605,6 +636,25 @@ export default function ClientsPage() {
             </div>
           </div>
         )}
+      </ConfirmModal>
+
+      {/* Resend Invitation Confirmation Modal */}
+      <ConfirmModal
+        open={isResendConfirmOpen}
+        onClose={() => {
+          setIsResendConfirmOpen(false);
+          setClientToResend(null);
+        }}
+        onConfirm={handleResendConfirm}
+        isLoading={resendInvitationMutation.isPending}
+        title="Resend Invitation"
+        description={`Are you sure you want to resend the invitation to ${clientToResend ? `${clientToResend.firstName ?? ''} ${clientToResend.lastName ?? ''}`.trim() || clientToResend.email : ''}?`}
+        confirmText="Resend"
+        variant="default"
+      >
+        <p className="text-sm text-muted-foreground">
+          A new invitation email will be sent to <strong>{clientToResend?.email}</strong>.
+        </p>
       </ConfirmModal>
     </div>
   );

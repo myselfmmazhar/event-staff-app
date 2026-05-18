@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EditIcon, EyeIcon, TrashIcon } from '@/components/ui/icons';
+import { EditIcon, EyeIcon, TrashIcon, MailIcon } from '@/components/ui/icons';
 import type { ClientTableRow } from '@/lib/types/client';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useColumnLabels } from '@/lib/hooks/use-column-labels';
@@ -18,6 +18,7 @@ interface ClientTableProps {
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onResendInvitation?: (id: string) => void;
   onSort: (column: string) => void;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -32,6 +33,7 @@ export function ClientTable({
   onView,
   onEdit,
   onDelete,
+  onResendInvitation,
   onSort,
   sortBy,
   sortOrder,
@@ -145,6 +147,14 @@ export function ClientTable({
             variant: 'destructive',
           },
         ];
+
+        if (onResendInvitation && client.hasLoginAccess && !client.userId) {
+          actions.splice(2, 0, {
+            label: 'Resend invitation',
+            icon: <MailIcon className="h-3.5 w-3.5" />,
+            onClick: () => onResendInvitation(client.id),
+          });
+        }
 
         return <ActionDropdown actions={actions} />;
       },
@@ -341,6 +351,17 @@ export function ClientTable({
           <EditIcon className="h-4 w-4 mr-1" />
           Edit
         </Button>
+        {onResendInvitation && client.hasLoginAccess && !client.userId && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onResendInvitation(client.id)}
+            className="flex-1"
+          >
+            <MailIcon className="h-4 w-4 mr-1" />
+            Resend
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
