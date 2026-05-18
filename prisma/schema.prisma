@@ -497,6 +497,13 @@ model CatalogRequirement {
   allowEarlyRenewal  Boolean                      @default(false)
   requiresApproval   Boolean                      @default(false)
   isTalentRequired   Boolean                      @default(false)
+  // Custom card (templateId = 'custom'): admin-attached reference doc + link
+  customDocumentUrl  String?
+  customDocumentName String?                      @db.VarChar(300)
+  customDocumentType String?                      @db.VarChar(120)
+  customDocumentSize Int?
+  customLinkUrl      String?
+  customLinkLabel    String?                      @db.VarChar(200)
   createdBy          String
   createdAt          DateTime                     @default(now()) @db.Timestamp(6)
   updatedAt          DateTime                     @updatedAt @db.Timestamp(6)

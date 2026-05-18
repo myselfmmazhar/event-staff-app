@@ -111,7 +111,7 @@ export function ViewStaffModal({
                         <p className="text-base font-medium">{staff.staffId}</p>
                     </div>
 
-                    <Tabs defaultValue="details">
+                    <Tabs defaultValue="details" scrollToTopOnChange>
                         <TabsList className="mb-4 flex-wrap">
                             <TabsTrigger value="details">Details</TabsTrigger>
                             <TabsTrigger value="documents">Documents</TabsTrigger>

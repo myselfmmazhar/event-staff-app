@@ -109,6 +109,7 @@ export function AssignmentManagerTabs({
       value={activeTab}
       onValueChange={(value) => setActiveTab(value as AssignmentTab)}
       className="space-y-4"
+      scrollToTopOnChange
     >
       <TabsList>
         <TabsTrigger value="all" className="flex items-center gap-2">

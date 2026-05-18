@@ -13,15 +13,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/ui/spinner';
+import { FileText, Upload, X, Download } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { CloseIcon } from '@/components/ui/icons';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { RequirementTemplateCardGrid } from '@/components/common/requirement-template-card-grid';
 import {
   REQ_TEMPLATE_CARDS,
   isTalentSubmissionTemplateId,
+  formatRequirementTemplatesShort,
+  normalizeReqTemplateIds,
   type ReqTemplateId,
 } from '@/lib/requirement-templates';
+import { CATEGORY_REQUIREMENT_LABELS } from '@/lib/category-requirements';
 import { trpc } from '@/lib/client/trpc';
+import { useScrollToTopOnChange } from '@/hooks/use-scroll-to-top-on-change';
 import { cn } from '@/lib/utils';
 
 /** Mirrors Prisma `CatalogRequirementExpiration` — defined here so the wizard stays client-safe (no `@prisma/client` in the bundle). */
@@ -34,6 +49,24 @@ const CATALOG_REQUIREMENT_EXPIRATION = [
 type CatalogRequirementExpirationValue = (typeof CATALOG_REQUIREMENT_EXPIRATION)[number];
 
 const expirationTypeSchema = z.enum(CATALOG_REQUIREMENT_EXPIRATION);
+
+const customDocumentFormSchema = z
+  .object({
+    url: z.string().url(),
+    name: z.string().min(1).max(300),
+    type: z.string().max(120).optional().nullable(),
+    size: z.number().int().nonnegative().optional().nullable(),
+  })
+  .optional()
+  .nullable();
+
+const customLinkFormSchema = z
+  .object({
+    url: z.string().min(1, 'Link URL is required').url('Link must be a valid URL'),
+    label: z.string().max(200).optional().nullable(),
+  })
+  .optional()
+  .nullable();
 
 const settingsSchema = z
   .object({
@@ -51,6 +84,8 @@ const settingsSchema = z
     allowEarlyRenewal: z.boolean(),
     requiresApproval: z.boolean(),
     isTalentRequired: z.boolean(),
+    customDocument: customDocumentFormSchema,
+    customLink: customLinkFormSchema,
   })
   .superRefine((data, ctx) => {
     if (data.expirationType === 'CUSTOM_DATE' && !data.expirationDate) {
@@ -72,6 +107,8 @@ export interface CreateRequirementWizardModalProps {
   onClose: () => void;
   /** When set, the wizard opens in edit mode for this collection. */
   editCategory?: { id: string; name: string; description: string | null } | null;
+  /** When true, Step 1 lets the user pick an existing collection (or create a new one) instead of creating a new collection only. */
+  pickExistingCollection?: boolean;
   onSaved?: () => void;
 }
 
@@ -92,6 +129,8 @@ const defaultSettings = (): SettingsFormInput => ({
   allowEarlyRenewal: false,
   requiresApproval: false,
   isTalentRequired: false,
+  customDocument: null,
+  customLink: null,
 });
 
 const WIZARD_STEPS = [1, 2, 3] as const;
@@ -107,26 +146,74 @@ export function CreateRequirementWizardModal({
   open,
   onClose,
   editCategory = null,
+  pickExistingCollection = false,
   onSaved,
 }: CreateRequirementWizardModalProps) {
   const isEditMode = !!editCategory;
+  const isPickMode = pickExistingCollection && !isEditMode;
 
   const [step, setStep] = useState<WizardStep>(1);
+  const bodyScrollRef = useScrollToTopOnChange<HTMLDivElement>(step);
   const [templateTab, setTemplateTab] = useState<TemplateTab>('all');
   const [selectedTemplate, setSelectedTemplate] = useState<ReqTemplateId | null>(null);
   const [editingRequirementId, setEditingRequirementId] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState<string>('');
   const [categoryDescription, setCategoryDescription] = useState<string>('');
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [preview, setPreview] = useState<SettingsFormOutput | null>(null);
   const saveActionRef = useRef<'close' | 'new'>('close');
   const utils = trpc.useUtils();
 
-  // Existing requirements for the editing collection — used to mark templates as editable
-  // and to load settings when the user clicks one to edit.
+  const isNewCollection = isPickMode && selectedCollectionId === 'CREATE_NEW';
+  const hasPickedExistingCollection =
+    isPickMode && !!selectedCollectionId && selectedCollectionId !== 'CREATE_NEW';
+
+  // Active collections for the picker (pick mode only).
+  const { data: pickCollections } = trpc.category.getAllActive.useQuery(undefined, {
+    enabled: open && isPickMode,
+  });
+
+  const pickSelectedCategory = hasPickedExistingCollection
+    ? pickCollections?.find((c) => c.id === selectedCollectionId)
+    : undefined;
+
+  // The collection whose existing requirements we need to inspect:
+  // edit mode → the collection being edited; pick mode → the picked existing collection.
+  const requirementsQueryCategoryId = isEditMode
+    ? editCategory?.id ?? ''
+    : hasPickedExistingCollection
+      ? selectedCollectionId
+      : '';
+
+  // Existing requirements for the active collection — used in edit mode to mark templates as
+  // editable, and in pick mode to disable templates already attached to the collection.
   const { data: existingRequirements } = trpc.catalogRequirement.getAll.useQuery(
-    { serviceCategoryId: editCategory?.id ?? '', limit: 100 },
-    { enabled: open && isEditMode && !!editCategory?.id }
+    { serviceCategoryId: requirementsQueryCategoryId, limit: 100 },
+    { enabled: open && !!requirementsQueryCategoryId }
   );
+
+  const alreadyUsedTemplateIds = useMemo(() => {
+    const ids = new Set<ReqTemplateId>(
+      normalizeReqTemplateIds(
+        (pickSelectedCategory?.requirementTemplateIds as string[] | undefined) ?? []
+      )
+    );
+    for (const req of existingRequirements?.data ?? []) {
+      if (req.templateId) ids.add(req.templateId as ReqTemplateId);
+    }
+    return ids;
+  }, [pickSelectedCategory, existingRequirements]);
+
+  const selectedCategoryReqIds = normalizeReqTemplateIds(
+    (pickSelectedCategory?.requirementTemplateIds as string[] | undefined) ?? []
+  );
+  const selectedCategoryReqLabel = selectedCategoryReqIds.length > 0
+    ? formatRequirementTemplatesShort(selectedCategoryReqIds)
+    : pickSelectedCategory?.requirementType
+      ? CATEGORY_REQUIREMENT_LABELS[
+          pickSelectedCategory.requirementType as keyof typeof CATEGORY_REQUIREMENT_LABELS
+        ]
+      : null;
 
   const requirementByTemplate = useMemo(() => {
     const map = new Map<ReqTemplateId, string>();
@@ -155,7 +242,9 @@ export function CreateRequirementWizardModal({
   const visibleTemplateIds = useMemo(() => templateTabFilter(templateTab), [templateTab]);
 
   const isUploadTemplate = selectedTemplate === 'upload';
+  const isCustomTemplate = selectedTemplate === 'custom';
   const isEditingExistingRequirement = !!editingRequirementId;
+  const [isUploadingCustomDoc, setIsUploadingCustomDoc] = useState(false);
 
   const {
     register,
@@ -179,6 +268,7 @@ export function CreateRequirementWizardModal({
     setEditingRequirementId(null);
     setCategoryName(editCategory?.name ?? '');
     setCategoryDescription(editCategory?.description ?? '');
+    setSelectedCollectionId('');
     setPreview(null);
     reset(defaultSettings());
     clearErrors();
@@ -201,7 +291,10 @@ export function CreateRequirementWizardModal({
     onClose();
   };
 
-  const canContinueStep1 = !!categoryName.trim() && !!selectedTemplate;
+  const canContinueStep1 = isPickMode
+    ? (hasPickedExistingCollection || (isNewCollection && !!categoryName.trim())) &&
+      !!selectedTemplate
+    : !!categoryName.trim() && !!selectedTemplate;
 
   const handleTemplateSelect = (templateId: ReqTemplateId | null) => {
     setSelectedTemplate(templateId);
@@ -232,11 +325,22 @@ export function CreateRequirementWizardModal({
         allowEarlyRenewal: d.allowEarlyRenewal,
         requiresApproval: d.requiresApproval,
         isTalentRequired: d.isTalentRequired,
+        customDocument: d.customDocumentUrl
+          ? {
+              url: d.customDocumentUrl,
+              name: d.customDocumentName ?? 'Document',
+              type: d.customDocumentType ?? null,
+              size: d.customDocumentSize ?? null,
+            }
+          : null,
+        customLink: d.customLinkUrl
+          ? { url: d.customLinkUrl, label: d.customLinkLabel ?? null }
+          : null,
       });
     } else {
       reset({
         ...defaultSettings(),
-        name: card?.title ?? selectedTemplate,
+        name: selectedTemplate === 'custom' ? '' : card?.title ?? selectedTemplate,
       });
     }
     clearErrors();
@@ -259,6 +363,18 @@ export function CreateRequirementWizardModal({
       ((categoryDescription.trim() || null) !== (editCategory?.description ?? null)));
 
   const persistCollection = async (): Promise<string | null> => {
+    if (isPickMode) {
+      if (isNewCollection) {
+        const newCat = await categoryCreateMutation.mutateAsync({
+          name: categoryName.trim(),
+          description: categoryDescription.trim() || null,
+          requirementTemplateIds: [],
+          isRequired: false,
+        });
+        return newCat ? (newCat as any).id : null;
+      }
+      return selectedCollectionId || null;
+    }
     if (isEditMode) {
       if (collectionDirty) {
         await categoryUpdateMutation.mutateAsync({
@@ -291,6 +407,9 @@ export function CreateRequirementWizardModal({
     if (!targetCategoryId) return;
 
     try {
+      const customDocument = isCustomTemplate ? preview.customDocument ?? null : null;
+      const customLink = isCustomTemplate ? preview.customLink ?? null : null;
+
       if (isEditingExistingRequirement && editingRequirementId) {
         await updateRequirementMutation.mutateAsync({
           id: editingRequirementId,
@@ -309,6 +428,8 @@ export function CreateRequirementWizardModal({
           isTalentRequired: isTalentSubmissionTemplateId(selectedTemplate)
             ? preview.isTalentRequired
             : false,
+          customDocument,
+          customLink,
         });
       } else {
         await createRequirementMutation.mutateAsync({
@@ -329,6 +450,8 @@ export function CreateRequirementWizardModal({
           isTalentRequired: isTalentSubmissionTemplateId(selectedTemplate)
             ? preview.isTalentRequired
             : false,
+          customDocument,
+          customLink,
         });
       }
 
@@ -378,6 +501,11 @@ export function CreateRequirementWizardModal({
 
   const collectionSectionLabel = isEditMode ? 'Collection Details' : 'New Collection Details';
   const headerTitle = isEditMode ? 'Edit Collection' : 'Add Requirement';
+  const collectionDisplayName = isPickMode
+    ? isNewCollection
+      ? categoryName
+      : pickSelectedCategory?.name ?? ''
+    : categoryName;
 
   return (
     <Dialog
@@ -433,35 +561,111 @@ export function CreateRequirementWizardModal({
       </div>
 
       {/* Body */}
-      <DialogContent className="flex-1 overflow-y-auto min-h-0 px-6 py-6 sm:px-8">
+      <DialogContent ref={bodyScrollRef} className="flex-1 overflow-y-auto min-h-0 px-6 py-6 sm:px-8">
         {step === 1 && (
           <div className="space-y-8">
-            <div className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5">
-              <h3 className="text-sm font-bold text-primary uppercase tracking-wider">
-                {collectionSectionLabel}
-              </h3>
-              <div>
-                <Label htmlFor="cat-name" required>Collection Name</Label>
-                <Input
-                  id="cat-name"
-                  className="mt-1.5 bg-background"
-                  placeholder="e.g., Security, Catering..."
-                  value={categoryName}
-                  onChange={(e) => setCategoryName(e.target.value)}
-                />
+            {isPickMode ? (
+              <div className="space-y-4">
+                <div>
+                  <Label required>Collection</Label>
+                  <Select
+                    value={selectedCollectionId || undefined}
+                    onValueChange={setSelectedCollectionId}
+                  >
+                    <SelectTrigger className="mt-1.5 max-w-md">
+                      <SelectValue placeholder="Select a collection" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CREATE_NEW" className="font-semibold text-primary">
+                        + Create New Collection
+                      </SelectItem>
+                      {(pickCollections ?? []).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} ({c.categoryId})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {isNewCollection && (
+                  <div className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5">
+                    <h3 className="text-sm font-bold text-primary uppercase tracking-wider">
+                      New Collection Details
+                    </h3>
+                    <div>
+                      <Label htmlFor="new-cat-name" required>Collection Name</Label>
+                      <Input
+                        id="new-cat-name"
+                        className="mt-1.5 bg-background"
+                        placeholder="e.g., Security, Catering..."
+                        value={categoryName}
+                        onChange={(e) => setCategoryName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="new-cat-desc">Description (optional)</Label>
+                      <Textarea
+                        id="new-cat-desc"
+                        className="mt-1.5 bg-background"
+                        placeholder="What this collection is for..."
+                        value={categoryDescription}
+                        onChange={(e) => setCategoryDescription(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {pickSelectedCategory && (
+                  <div className="rounded-lg border border-border bg-slate-50 px-4 py-3 text-sm space-y-1">
+                    <span className="text-muted-foreground font-medium uppercase text-[10px] tracking-wider block mb-1">
+                      Collection Details
+                    </span>
+                    <p className="text-base font-semibold text-slate-900">{pickSelectedCategory.name}</p>
+                    <p className="text-xs text-muted-foreground">{pickSelectedCategory.categoryId}</p>
+                    {selectedCategoryReqLabel && (
+                      <p className="text-xs text-slate-600">
+                        <span className="text-muted-foreground">Requirement: </span>
+                        {selectedCategoryReqLabel}
+                      </p>
+                    )}
+                    {pickSelectedCategory.description && (
+                      <p className="text-sm text-slate-600 mt-2 italic">
+                        &ldquo;{pickSelectedCategory.description}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-              <div>
-                <Label htmlFor="cat-desc">Description (optional)</Label>
-                <Textarea
-                  id="cat-desc"
-                  className="mt-1.5 bg-background"
-                  placeholder="What this collection is for..."
-                  value={categoryDescription}
-                  onChange={(e) => setCategoryDescription(e.target.value)}
-                  rows={2}
-                />
+            ) : (
+              <div className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5">
+                <h3 className="text-sm font-bold text-primary uppercase tracking-wider">
+                  {collectionSectionLabel}
+                </h3>
+                <div>
+                  <Label htmlFor="cat-name" required>Collection Name</Label>
+                  <Input
+                    id="cat-name"
+                    className="mt-1.5 bg-background"
+                    placeholder="e.g., Security, Catering..."
+                    value={categoryName}
+                    onChange={(e) => setCategoryName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="cat-desc">Description (optional)</Label>
+                  <Textarea
+                    id="cat-desc"
+                    className="mt-1.5 bg-background"
+                    placeholder="What this collection is for..."
+                    value={categoryDescription}
+                    onChange={(e) => setCategoryDescription(e.target.value)}
+                    rows={2}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="space-y-6 pt-6 border-t border-border">
               <div>
@@ -493,6 +697,7 @@ export function CreateRequirementWizardModal({
                 onSingleChange={handleTemplateSelect}
                 visibleIds={visibleTemplateIds}
                 editableIds={isEditMode ? editableTemplateIds : undefined}
+                disabledIds={isPickMode ? alreadyUsedTemplateIds : undefined}
               />
             </div>
           </div>
@@ -514,6 +719,177 @@ export function CreateRequirementWizardModal({
                 </p>
               </div>
             </div>
+
+            {isCustomTemplate && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold">Custom card content</h3>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  The talent will see the card name and acknowledge each provided item before continuing.
+                </p>
+
+                <div>
+                  <Label>Reference document (optional)</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload a PDF, image, or document the talent must review.
+                  </p>
+                  <div className="mt-2">
+                    {watch('customDocument') ? (
+                      <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 p-3 max-w-lg">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {watch('customDocument')?.name}
+                            </p>
+                            {watch('customDocument')?.size ? (
+                              <p className="text-xs text-muted-foreground">
+                                {(() => {
+                                  const s = watch('customDocument')?.size ?? 0;
+                                  if (s < 1024) return `${s} B`;
+                                  if (s < 1024 * 1024) return `${(s / 1024).toFixed(1)} KB`;
+                                  return `${(s / (1024 * 1024)).toFixed(1)} MB`;
+                                })()}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                              const url = watch('customDocument')?.url;
+                              if (url) window.open(url, '_blank');
+                            }}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={() => setValue('customDocument', null)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label
+                        className={cn(
+                          'flex max-w-lg cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-sm font-medium text-muted-foreground hover:border-primary/50',
+                          isUploadingCustomDoc && 'opacity-50 cursor-not-allowed'
+                        )}
+                      >
+                        <Input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.gif"
+                          className="hidden"
+                          disabled={isUploadingCustomDoc}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = '';
+                            if (!file) return;
+                            setIsUploadingCustomDoc(true);
+                            try {
+                              const formData = new FormData();
+                              formData.append('file', file);
+                              formData.append('bucket', 'staff-documents');
+                              const response = await fetch('/api/upload', {
+                                method: 'POST',
+                                body: formData,
+                              });
+                              if (!response.ok) {
+                                const err = await response.json().catch(() => ({}));
+                                throw new Error(err?.error || `Failed to upload ${file.name}`);
+                              }
+                              const data = await response.json();
+                              setValue('customDocument', {
+                                url: data.url,
+                                name: data.name || file.name,
+                                type: data.type || file.type || null,
+                                size: data.size || file.size || null,
+                              });
+                              toast({ message: 'Document uploaded', type: 'success' });
+                            } catch (error: unknown) {
+                              const msg =
+                                error instanceof Error ? error.message : 'Failed to upload document';
+                              toast({ message: msg, type: 'error' });
+                            } finally {
+                              setIsUploadingCustomDoc(false);
+                            }
+                          }}
+                        />
+                        {isUploadingCustomDoc ? (
+                          <>
+                            <Spinner className="h-4 w-4 text-primary" />
+                            Uploading…
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            Choose file
+                          </>
+                        )}
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="custom-link-url">Link to acknowledge (optional)</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    The talent must open this link before they can continue.
+                  </p>
+                  <Input
+                    id="custom-link-url"
+                    type="url"
+                    className="mt-2 max-w-lg"
+                    placeholder="https://example.com/policy"
+                    value={watch('customLink')?.url ?? ''}
+                    onChange={(e) => {
+                      const url = e.target.value;
+                      const current = watch('customLink');
+                      if (!url) {
+                        setValue('customLink', null);
+                      } else {
+                        setValue('customLink', {
+                          url,
+                          label: current?.label ?? null,
+                        });
+                      }
+                    }}
+                  />
+                  <Input
+                    aria-label="Link display label"
+                    className="mt-2 max-w-lg"
+                    placeholder="Link label (optional)"
+                    value={watch('customLink')?.label ?? ''}
+                    onChange={(e) => {
+                      const label = e.target.value || null;
+                      const current = watch('customLink');
+                      if (!current?.url) return;
+                      setValue('customLink', { url: current.url, label });
+                    }}
+                    disabled={!watch('customLink')?.url}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="custom-instructions">Instructions to contractor (optional)</Label>
+                  <Textarea
+                    id="custom-instructions"
+                    rows={3}
+                    className="mt-1.5"
+                    {...register('instructions')}
+                    placeholder="Any extra context for the talent"
+                  />
+                </div>
+              </div>
+            )}
 
             {isUploadTemplate && (
               <div className="space-y-4">
@@ -552,6 +928,7 @@ export function CreateRequirementWizardModal({
               </div>
             )}
 
+            {!isCustomTemplate && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">Expiration</h3>
               <RadioGroup
@@ -606,7 +983,9 @@ export function CreateRequirementWizardModal({
                 </div>
               </label>
             </div>
+            )}
 
+            {!isCustomTemplate && (
             <div className="space-y-3 rounded-lg border border-border p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -625,6 +1004,7 @@ export function CreateRequirementWizardModal({
                 {watch('requiresApproval') ? 'Approvals on' : 'Approvals off'}
               </p>
             </div>
+            )}
 
             {submissionTemplate && (
               <label className="flex items-start gap-3 rounded-md border border-border p-3 bg-muted/20">
@@ -649,7 +1029,7 @@ export function CreateRequirementWizardModal({
             <div className="rounded-lg border border-border p-4 space-y-2">
               <p>
                 <span className="text-muted-foreground">Collection: </span>
-                <span className="font-medium">{categoryName}</span>
+                <span className="font-medium">{collectionDisplayName}</span>
               </p>
               <p>
                 <span className="text-muted-foreground">Template: </span>
@@ -682,20 +1062,47 @@ export function CreateRequirementWizardModal({
                     .join(', ')}
                 </p>
               )}
-              <p>
-                <span className="text-muted-foreground">Expiration: </span>
-                {settingsValues.expirationType === 'NEVER'
-                  ? 'Never expires'
-                  : settingsValues.expirationType === 'PER_TALENT'
-                    ? 'Document expiry date'
-                    : settingsValues.expirationDate
-                      ? `Expires on ${new Date(settingsValues.expirationDate).toLocaleDateString()}`
-                      : 'Custom date'}
-              </p>
-              <p>
-                <span className="text-muted-foreground">Approvals: </span>
-                {settingsValues.requiresApproval ? 'On' : 'Off'}
-              </p>
+              {isCustomTemplate && (
+                <>
+                  <p>
+                    <span className="text-muted-foreground">Document: </span>
+                    {settingsValues.customDocument?.name ?? '— none —'}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Link: </span>
+                    {settingsValues.customLink?.url ? (
+                      <a
+                        href={settingsValues.customLink.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline"
+                      >
+                        {settingsValues.customLink.label || settingsValues.customLink.url}
+                      </a>
+                    ) : (
+                      '— none —'
+                    )}
+                  </p>
+                </>
+              )}
+              {!isCustomTemplate && (
+                <p>
+                  <span className="text-muted-foreground">Expiration: </span>
+                  {settingsValues.expirationType === 'NEVER'
+                    ? 'Never expires'
+                    : settingsValues.expirationType === 'PER_TALENT'
+                      ? 'Document expiry date'
+                      : settingsValues.expirationDate
+                        ? `Expires on ${new Date(settingsValues.expirationDate).toLocaleDateString()}`
+                        : 'Custom date'}
+                </p>
+              )}
+              {!isCustomTemplate && (
+                <p>
+                  <span className="text-muted-foreground">Approvals: </span>
+                  {settingsValues.requiresApproval ? 'On' : 'Off'}
+                </p>
+              )}
               {submissionTemplate && (
                 <p>
                   <span className="text-muted-foreground">Talent required: </span>

@@ -14,7 +14,7 @@ import { BusinessStructure, TaxFilledBy, StaffType } from '@prisma/client';
 import { StaffTaxDetailsSchema, type UpsertStaffTaxDetailsInput } from '@/lib/schemas/staff-tax-details.schema';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2Icon } from 'lucide-react';
+import { Eye, EyeOff, Loader2Icon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Form schema - derived from the upsert schema but without staffId (passed as prop)
@@ -162,6 +162,8 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
 
     // TIN type toggle (SSN vs EIN)
     const [tinType, setTinType] = useState<'SSN' | 'EIN'>('SSN');
+    const [ssnVisible, setSsnVisible] = useState(false);
+    const [w4SsnVisible, setW4SsnVisible] = useState(false);
 
     const upsertMutation = trpc.staffTaxDetails.upsert.useMutation({
         onSuccess: () => {
@@ -506,15 +508,30 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                         <Label htmlFor="ssn" className="text-sm font-medium">
                                             Social Security Number
                                         </Label>
-                                        <Input
-                                            id="ssn"
-                                            type="password"
-                                            className="mt-2 h-10 bg-background"
-                                            {...register('ssn')}
-                                            disabled={isDisabled}
-                                            placeholder="XXX-XX-XXXX"
-                                            autoComplete="off"
-                                        />
+                                        <div className="relative mt-2">
+                                            <Input
+                                                id="ssn"
+                                                type={ssnVisible ? 'text' : 'password'}
+                                                className="h-10 bg-background pr-10"
+                                                {...register('ssn')}
+                                                disabled={isDisabled}
+                                                placeholder="XXX-XX-XXXX"
+                                                autoComplete="off"
+                                            />
+                                            <button
+                                                type="button"
+                                                tabIndex={-1}
+                                                onClick={() => setSsnVisible((v) => !v)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                                aria-label={ssnVisible ? 'Hide SSN' : 'Show SSN'}
+                                            >
+                                                {ssnVisible ? (
+                                                    <EyeOff className="h-4 w-4" />
+                                                ) : (
+                                                    <Eye className="h-4 w-4" />
+                                                )}
+                                            </button>
+                                        </div>
                                         {errors.ssn && (
                                             <p className="mt-1.5 text-sm text-destructive">{errors.ssn.message}</p>
                                         )}
@@ -735,15 +752,30 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 <Label htmlFor="w4ssn" className="text-sm font-bold">
                                     Social Security Number
                                 </Label>
-                                <Input
-                                    id="w4ssn"
-                                    type="password"
-                                    className="mt-2 h-10"
-                                    {...register('ssn')}
-                                    disabled={isDisabled}
-                                    placeholder="XXX-XX-XXXX"
-                                    autoComplete="off"
-                                />
+                                <div className="relative mt-2">
+                                    <Input
+                                        id="w4ssn"
+                                        type={w4SsnVisible ? 'text' : 'password'}
+                                        className="h-10 pr-10"
+                                        {...register('ssn')}
+                                        disabled={isDisabled}
+                                        placeholder="XXX-XX-XXXX"
+                                        autoComplete="off"
+                                    />
+                                    <button
+                                        type="button"
+                                        tabIndex={-1}
+                                        onClick={() => setW4SsnVisible((v) => !v)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        aria-label={w4SsnVisible ? 'Hide SSN' : 'Show SSN'}
+                                    >
+                                        {w4SsnVisible ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                    </button>
+                                </div>
                                 {errors.ssn && (
                                     <p className="mt-1.5 text-sm text-destructive">{errors.ssn.message}</p>
                                 )}

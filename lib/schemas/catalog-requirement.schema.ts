@@ -12,6 +12,31 @@ const CATALOG_REQUIREMENT_EXPIRATION = [
 
 const expirationSchema = z.enum(CATALOG_REQUIREMENT_EXPIRATION);
 
+/** Admin-uploaded reference document attached to a custom card (optional). */
+const customDocumentSchema = z
+  .object({
+    url: z.string().url('Document URL is invalid'),
+    name: z.string().min(1).max(300),
+    type: z.string().max(120).optional().nullable(),
+    size: z.number().int().nonnegative().optional().nullable(),
+  })
+  .optional()
+  .nullable();
+
+/** Admin-provided link to acknowledge on a custom card (optional). */
+const customLinkSchema = z
+  .object({
+    url: z.string().url('Link must be a valid URL'),
+    label: z
+      .string()
+      .max(200)
+      .transform((v) => v.trim())
+      .optional()
+      .nullable(),
+  })
+  .optional()
+  .nullable();
+
 export const CatalogRequirementSchema = {
   create: z
     .object({
@@ -36,6 +61,8 @@ export const CatalogRequirementSchema = {
       allowEarlyRenewal: z.boolean().default(false),
       requiresApproval: z.boolean().default(false),
       isTalentRequired: z.boolean().default(false),
+      customDocument: customDocumentSchema,
+      customLink: customLinkSchema,
     })
     .superRefine((data, ctx) => {
       if (data.templateId === 'upload' && !data.allowPdf && !data.allowImage && !data.allowOther) {
@@ -51,6 +78,22 @@ export const CatalogRequirementSchema = {
           message: 'Please select an expiration date',
           path: ['expirationDate'],
         });
+      }
+      if (data.templateId !== 'custom') {
+        if (data.customDocument) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Reference document is only allowed on a custom card',
+            path: ['customDocument'],
+          });
+        }
+        if (data.customLink) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Acknowledgement link is only allowed on a custom card',
+            path: ['customLink'],
+          });
+        }
       }
     }),
 
@@ -76,6 +119,8 @@ export const CatalogRequirementSchema = {
       allowEarlyRenewal: z.boolean(),
       requiresApproval: z.boolean(),
       isTalentRequired: z.boolean(),
+      customDocument: customDocumentSchema,
+      customLink: customLinkSchema,
     })
     .superRefine((data, ctx) => {
       if (data.expirationType === 'CUSTOM_DATE' && !data.expirationDate) {

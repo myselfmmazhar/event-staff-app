@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { CloseIcon, EditIcon, MapPinIcon } from '@/components/ui/icons';
+import { CloseIcon, EditIcon, MailIcon, MapPinIcon } from '@/components/ui/icons';
 import type { Client } from '@/lib/types/client';
 
 interface ViewClientModalProps {
@@ -12,6 +12,7 @@ interface ViewClientModalProps {
   open: boolean;
   onClose: () => void;
   onEdit: () => void;
+  onResendInvitation?: (clientId: string) => void;
 }
 
 function Field({ label, value }: { label: string; value?: string | null }) {
@@ -35,8 +36,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function ViewClientModal({ client, open, onClose, onEdit }: ViewClientModalProps) {
+export function ViewClientModal({ client, open, onClose, onEdit, onResendInvitation }: ViewClientModalProps) {
   if (!client) return null;
+
+  const canResendInvitation = client.hasLoginAccess && !client.userId;
 
   const hasBillingContact =
     client.billingFirstName || client.billingLastName || client.billingEmail || client.billingPhone;
@@ -178,6 +181,17 @@ export function ViewClientModal({ client, open, onClose, onEdit }: ViewClientMod
               <Button type="button" variant="outline" onClick={onClose} className="rounded-lg border-slate-200">
                 Close
               </Button>
+              {onResendInvitation && canResendInvitation && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onResendInvitation(client.id)}
+                  className="rounded-lg border-slate-200"
+                >
+                  <MailIcon className="mr-2 h-4 w-4" />
+                  Resend Invitation
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={onEdit}

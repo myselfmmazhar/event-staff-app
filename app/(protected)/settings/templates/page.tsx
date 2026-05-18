@@ -23,7 +23,7 @@ export default function TemplateSettingsPage() {
       </div>
 
       {/* Tabs for different sections */}
-      <Tabs defaultValue="email" className="space-y-6">
+      <Tabs defaultValue="email" className="space-y-6" scrollToTopOnChange>
         <TabsList>
           <TabsTrigger value="email" className="flex items-center gap-2">
             <svg

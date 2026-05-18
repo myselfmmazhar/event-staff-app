@@ -980,6 +980,79 @@ export default function TimeManagerPage() {
 
     const isTimesheetDrillDown = Boolean(selectedEventId || selectedClientId || selectedStaffId);
 
+    // When a sub-tab (e.g. Commission / Invoices / Bills) has no matching rows for the
+    // drilled-into entity, `viewAssignments` is empty so the grouped lists above produce
+    // nothing. We still want the detail page chrome (header, summary cards, advanced
+    // search) to render, so fall back to building a single group from the full,
+    // unfiltered `assignments` for the selected entity. Sub-tab filtering is still
+    // applied downstream by `shouldIncludeRowForSubTab`, so summary cards/table show
+    // zeros / "no records" correctly.
+    const drilldownFallbackRow = (inv: any): CallTimeRow => ({
+        ...inv.callTime,
+        id: inv.id,
+        staff: inv.staff,
+        teamUnit: inv.teamUnit ?? null,
+        timeEntry: inv.timeEntry,
+        shiftSessions: inv.shiftSessions ?? [],
+        invitations: [inv],
+    });
+
+    const selectedEventGroups = useMemo<EventGroup[]>(() => {
+        const normal = eventGroups.filter((g) => g.eventId === selectedEventId);
+        if (!selectedEventId || normal.length > 0) return normal;
+        const rows = (assignments as any[]).filter((inv) => inv.callTime.event.id === selectedEventId);
+        if (rows.length === 0) return normal;
+        const event = rows[0].callTime.event;
+        return [{
+            eventId: selectedEventId,
+            eventTitle: event.title,
+            eventDisplayId: event.eventId,
+            clientName: event.client?.businessName,
+            venueName: event.venueName,
+            city: event.city,
+            state: event.state,
+            callTimes: rows.map(drilldownFallbackRow),
+        }];
+    }, [eventGroups, selectedEventId, assignments]);
+
+    const selectedClientEventGroups = useMemo<EventGroup[]>(() => {
+        const normal = eventGroups.filter((g) => g.callTimes[0]?.event?.client?.id === selectedClientId);
+        if (!selectedClientId || normal.length > 0) return normal;
+        const rows = (assignments as any[]).filter((inv) => inv.callTime.event.client?.id === selectedClientId);
+        if (rows.length === 0) return normal;
+        const map = new Map<string, EventGroup>();
+        rows.forEach((inv) => {
+            const event = inv.callTime.event;
+            if (!map.has(event.id)) {
+                map.set(event.id, {
+                    eventId: event.id,
+                    eventTitle: event.title,
+                    eventDisplayId: event.eventId,
+                    clientName: event.client?.businessName,
+                    venueName: event.venueName,
+                    city: event.city,
+                    state: event.state,
+                    callTimes: [],
+                });
+            }
+            map.get(event.id)!.callTimes.push(drilldownFallbackRow(inv));
+        });
+        return Array.from(map.values());
+    }, [eventGroups, selectedClientId, assignments]);
+
+    const selectedTalentGroups = useMemo<TalentGroup[]>(() => {
+        const normal = talentGroups.filter((g) => g.staffId === selectedStaffId);
+        if (!selectedStaffId || normal.length > 0) return normal;
+        const rows = (assignments as any[]).filter((inv) => inv.staff?.id === selectedStaffId);
+        if (rows.length === 0) return normal;
+        const staff = rows[0].staff;
+        return [{
+            staffId: selectedStaffId,
+            staffName: `${staff.firstName} ${staff.lastName}`,
+            callTimes: rows.map(drilldownFallbackRow),
+        }];
+    }, [talentGroups, selectedStaffId, assignments]);
+
     const clearTimesheetDrillDown = () => {
         setSelectedEventId(null);
         setSelectedClientId(null);
@@ -1134,7 +1207,7 @@ export default function TimeManagerPage() {
                     <div className="h-48 flex items-center justify-center rounded-lg border border-dashed border-border bg-muted/20">
                         <span className="text-sm text-muted-foreground animate-pulse">Loading data...</span>
                     </div>
-                ) : viewAssignments.length === 0 ? (
+                ) : viewAssignments.length === 0 && !isTimesheetDrillDown ? (
                     <div className="h-48 flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 gap-2">
                         <span className="text-sm font-semibold text-foreground">No records found</span>
                         <p className="text-xs text-muted-foreground">
@@ -1177,11 +1250,7 @@ export default function TimeManagerPage() {
                     </>
                 ) : selectedClientId ? (
                     <div className="space-y-4">
-                        {eventGroups
-                            .filter(g => {
-                                const firstRow = g.callTimes[0];
-                                return firstRow?.event?.client?.id === selectedClientId;
-                            })
+                        {selectedClientEventGroups
                             .map((group, groupIndex) => (
                                 <div key={group.eventId} className="space-y-4">
                                     {shouldShowDetailHeaderSection(groupIndex) && (
@@ -1291,6 +1360,23 @@ export default function TimeManagerPage() {
                                                             const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
                                                             const filtered = applyDetailToolbarFilters(baseFiltered);
 
+                                                            if (filtered.length === 0) {
+                                                                return (
+                                                                    <tr>
+                                                                        <td colSpan={30} className="py-10 text-center">
+                                                                            <span className="block text-sm font-semibold text-foreground">No records found</span>
+                                                                            <span className="block text-xs text-muted-foreground mt-1">
+                                                                                {subTab === 'commission'
+                                                                                    ? 'No commission assignments for this selection.'
+                                                                                    : subTab === 'invoice' || subTab === 'bill'
+                                                                                        ? 'No approved assignments found to be invoiced or billed.'
+                                                                                        : 'No assignments match the current filters.'}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            }
+
                                                             if (subTab === 'invoice') {
                                                                 const serviceMap = new Map<string, CallTimeRow>();
                                                                 filtered.forEach(ct => {
@@ -1369,8 +1455,7 @@ export default function TimeManagerPage() {
                     </div>
                 ) : selectedStaffId ? (
                     <div className="space-y-4">
-                        {talentGroups
-                            .filter(g => g.staffId === selectedStaffId)
+                        {selectedTalentGroups
                             .map((group, groupIndex) => (
                                 <div key={group.staffId} className="space-y-4">
                                     {shouldShowDetailHeaderSection(groupIndex) && (
@@ -1476,6 +1561,23 @@ export default function TimeManagerPage() {
                                                             const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
                                                             const filtered = applyDetailToolbarFilters(baseFiltered);
 
+                                                            if (filtered.length === 0) {
+                                                                return (
+                                                                    <tr>
+                                                                        <td colSpan={30} className="py-10 text-center">
+                                                                            <span className="block text-sm font-semibold text-foreground">No records found</span>
+                                                                            <span className="block text-xs text-muted-foreground mt-1">
+                                                                                {subTab === 'commission'
+                                                                                    ? 'No commission assignments for this selection.'
+                                                                                    : subTab === 'invoice' || subTab === 'bill'
+                                                                                        ? 'No approved assignments found to be invoiced or billed.'
+                                                                                        : 'No assignments match the current filters.'}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            }
+
                                                             if (subTab === 'invoice') {
                                                                 const serviceMap = new Map<string, CallTimeRow>();
                                                                 filtered.forEach(ct => {
@@ -1554,8 +1656,7 @@ export default function TimeManagerPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {eventGroups
-                            .filter(g => g.eventId === selectedEventId)
+                        {selectedEventGroups
                             .map((group, groupIndex) => (
                                 <div key={group.eventId + (group.staffId ? '_' + group.staffId : '')} className="space-y-4">
                                     {(shouldShowDetailHeaderSection(groupIndex) || shouldShowDetailSummarySection(groupIndex)) && (
@@ -1670,6 +1771,23 @@ export default function TimeManagerPage() {
                                                         {(() => {
                                                             const baseFiltered = group.callTimes.filter(shouldIncludeRowForSubTab);
                                                             const filtered = applyDetailToolbarFilters(baseFiltered);
+
+                                                            if (filtered.length === 0) {
+                                                                return (
+                                                                    <tr>
+                                                                        <td colSpan={30} className="py-10 text-center">
+                                                                            <span className="block text-sm font-semibold text-foreground">No records found</span>
+                                                                            <span className="block text-xs text-muted-foreground mt-1">
+                                                                                {subTab === 'commission'
+                                                                                    ? 'No commission assignments for this selection.'
+                                                                                    : subTab === 'invoice' || subTab === 'bill'
+                                                                                        ? 'No approved assignments found to be invoiced or billed.'
+                                                                                        : 'No assignments match the current filters.'}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            }
 
                                                             if (subTab === 'invoice') {
                                                                 const serviceMap = new Map<string, CallTimeRow>();

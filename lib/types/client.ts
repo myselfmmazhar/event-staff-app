@@ -29,6 +29,8 @@ export type ClientTableRow = Pick<
   | 'state'
   | 'zipCode'
   | 'hasLoginAccess'
+  | 'userId'
+  | 'invitationToken'
 > & {
   users_clients_userIdTousers: {
     isActive: boolean;

@@ -52,14 +52,14 @@ type StatusFilter = EventRequestStatus | 'ALL';
 
 const STATUS_TABS: { label: string; value: StatusFilter }[] = [
     { label: 'Pending', value: 'PENDING' },
-    { label: 'Approved', value: 'APPROVED' },
-    { label: 'Rejected', value: 'REJECTED' },
+    { label: 'Accepted', value: 'APPROVED' },
+    { label: 'Declined', value: 'REJECTED' },
 ];
 
 const STATUS_BADGE: Record<EventRequestStatus, { label: string; variant: 'warning' | 'success' | 'destructive' }> = {
     PENDING: { label: 'Pending', variant: 'warning' },
-    APPROVED: { label: 'Approved', variant: 'success' },
-    REJECTED: { label: 'Rejected', variant: 'destructive' },
+    APPROVED: { label: 'Accepted', variant: 'success' },
+    REJECTED: { label: 'Declined', variant: 'destructive' },
 };
 
 function DetailField({ label, value }: { label: string; value: string | null | undefined }) {

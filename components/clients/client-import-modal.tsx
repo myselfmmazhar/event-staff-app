@@ -33,6 +33,7 @@ import {
   type RowValidationResult,
 } from '@/lib/utils/client-import';
 import { trpc } from '@/lib/client/trpc';
+import { useScrollToTopOnChange } from '@/hooks/use-scroll-to-top-on-change';
 import { toast } from '@/components/ui/use-toast';
 import { downloadSampleClientTemplate } from '@/lib/utils/client-export';
 
@@ -58,6 +59,7 @@ const REQUIRED_FIELD_VALUES = [
 
 export function ClientImportModal({ open, onClose, onSuccess }: ClientImportModalProps) {
   const [step, setStep] = useState<ImportStep>('upload');
+  const bodyScrollRef = useScrollToTopOnChange<HTMLDivElement>(step);
   const [file, setFile] = useState<File | null>(null);
 
   const [headers, setHeaders] = useState<string[]>([]);
@@ -221,7 +223,7 @@ export function ClientImportModal({ open, onClose, onSuccess }: ClientImportModa
         </DialogTitle>
       </DialogHeader>
 
-      <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
+      <DialogContent ref={bodyScrollRef} className="max-h-[calc(100vh-280px)] overflow-y-auto">
         {step === 'upload' && (
           <div
             className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"

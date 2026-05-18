@@ -33,6 +33,7 @@ import {
   type RowValidationResult,
 } from '@/lib/utils/event-import';
 import { trpc } from '@/lib/client/trpc';
+import { useScrollToTopOnChange } from '@/hooks/use-scroll-to-top-on-change';
 import { toast } from '@/components/ui/use-toast';
 import { downloadSampleEventTemplate } from '@/lib/utils/event-export';
 
@@ -65,6 +66,7 @@ export function EventImportModal({
 }: EventImportModalProps) {
   // Step state
   const [step, setStep] = useState<ImportStep>('upload');
+  const bodyScrollRef = useScrollToTopOnChange<HTMLDivElement>(step);
   const [file, setFile] = useState<File | null>(null);
 
   // Parse state
@@ -248,7 +250,7 @@ export function EventImportModal({
         </DialogTitle>
       </DialogHeader>
 
-      <DialogContent className="max-h-[calc(100vh-280px)] overflow-y-auto">
+      <DialogContent ref={bodyScrollRef} className="max-h-[calc(100vh-280px)] overflow-y-auto">
         {/* Step 1: Upload */}
         {step === 'upload' && (
           <div
