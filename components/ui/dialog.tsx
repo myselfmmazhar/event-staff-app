@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useId, useState } from 'react';
+import { forwardRef, useEffect, useRef, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
@@ -132,13 +132,16 @@ export function DialogDescription({ children, className }: { children: React.Rea
   );
 }
 
-export function DialogContent({ children, className }: { children: React.ReactNode; className?: string }) {
+export const DialogContent = forwardRef<
+  HTMLDivElement,
+  { children: React.ReactNode; className?: string }
+>(function DialogContent({ children, className }, ref) {
   return (
-    <div className={cn('px-6 py-4', className)}>
+    <div ref={ref} className={cn('px-6 py-4', className)}>
       {children}
     </div>
   );
-}
+});
 
 export function DialogFooter({ children, className }: { children: React.ReactNode; className?: string }) {
   return (

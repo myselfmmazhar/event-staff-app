@@ -1,7 +1,22 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+
+/** Walk up from `el` and scroll the first vertically-scrollable ancestor to top. */
+function scrollNearestScrollableToTop(el: HTMLElement | null) {
+  let node: HTMLElement | null = el?.parentElement ?? null;
+  while (node) {
+    const style = window.getComputedStyle(node);
+    const overflowY = style.overflowY;
+    if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+      node.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
+    node = node.parentElement;
+  }
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
 
 interface TabsContextValue {
   value: string;
@@ -31,6 +46,12 @@ interface TabsProps {
   value?: string;
   onValueChange?: (value: string) => void;
   className?: string;
+  /**
+   * When true, switching tabs scrolls the nearest scrollable ancestor (e.g.
+   * the page's <main> container) back to the top. Use for full-page tabbed
+   * views; leave off for small embedded tab widgets.
+   */
+  scrollToTopOnChange?: boolean;
 }
 
 export function Tabs({
@@ -39,15 +60,23 @@ export function Tabs({
   value: controlledValue,
   onValueChange,
   className,
+  scrollToTopOnChange,
 }: TabsProps) {
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue || '');
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const value = controlledValue !== undefined ? controlledValue : uncontrolledValue;
-  const setValue = onValueChange || setUncontrolledValue;
+  const baseSetValue = onValueChange || setUncontrolledValue;
+  const setValue = scrollToTopOnChange
+    ? (next: string) => {
+        baseSetValue(next);
+        scrollNearestScrollableToTop(rootRef.current);
+      }
+    : baseSetValue;
 
   return (
     <TabsContext.Provider value={{ value, onValueChange: setValue }}>
-      <div className={cn('w-full', className)}>{children}</div>
+      <div ref={rootRef} className={cn('w-full', className)}>{children}</div>
     </TabsContext.Provider>
   );
 }

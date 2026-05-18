@@ -33,6 +33,7 @@ import { toast } from '@/components/ui/use-toast';
 import { SignaturePad } from '@/components/ui/signature-pad';
 
 import { trpc } from '@/lib/client/trpc';
+import { useScrollToTopOnChange } from '@/hooks/use-scroll-to-top-on-change';
 import { cn } from '@/lib/utils';
 import { phoneValidation } from '@/lib/utils/validation';
 import { FieldErrors } from '@/lib/utils/error-messages';
@@ -165,6 +166,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
 
     // Wizard state
     const [wizardStep, setWizardStep] = useState<WizardStep>('personal');
+    const bodyScrollRef = useScrollToTopOnChange<HTMLDivElement>(wizardStep);
     const stepIndex = activeSteps.indexOf(wizardStep);
     const isLastStep = wizardStep === 'review';
 
@@ -528,7 +530,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                     </div>
 
                     {/* Body */}
-                    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+                    <div ref={bodyScrollRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
                         {wizardStep === 'personal' && (
                             <PersonalStep
                                 form={form}

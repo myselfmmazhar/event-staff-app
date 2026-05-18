@@ -22,6 +22,7 @@ import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import { EventDocumentUpload } from '@/components/events/event-document-upload';
 import { TIMEZONES } from '@/lib/schemas/event.schema';
 import { trpc } from '@/lib/client/trpc';
+import { useScrollToTopOnChange } from '@/hooks/use-scroll-to-top-on-change';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -299,6 +300,7 @@ export function EventRequestFormModal({
   const isEditMode = !!request;
 
   const [activeTab, setActiveTab] = useState<Tab>('basic');
+  const bodyScrollRef = useScrollToTopOnChange<HTMLFormElement>(activeTab);
   const [startDateTBD, setStartDateTBD] = useState(false);
   const [endDateTBD, setEndDateTBD] = useState(false);
   const [startTimeTBD, setStartTimeTBD] = useState(false);
@@ -498,6 +500,7 @@ export function EventRequestFormModal({
 
         {/* Body */}
         <form
+          ref={bodyScrollRef}
           id="event-request-form"
           onSubmit={handleSubmit(onSubmit)}
           className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8"

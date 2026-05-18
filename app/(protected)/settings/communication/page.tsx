@@ -324,7 +324,7 @@ export default function CommunicationSettingsPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="email" className="w-full">
+            <Tabs defaultValue="email" className="w-full" scrollToTopOnChange>
                 <TabsList className="grid w-full grid-cols-2 max-w-md">
                     <TabsTrigger value="email" className="flex items-center gap-2">
                         <Mail className="h-4 w-4" />

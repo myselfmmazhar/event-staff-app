@@ -209,7 +209,7 @@ export default function NotificationsPage() {
             </div>
 
             {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSelectedIds(new Set()); }}>
+            <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSelectedIds(new Set()); }} scrollToTopOnChange>
                 <div className="flex items-center justify-between">
                     <TabsList>
                         <TabsTrigger value="all" className="flex items-center gap-2">

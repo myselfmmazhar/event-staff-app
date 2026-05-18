@@ -33,6 +33,7 @@ import {
 } from '@/lib/requirement-templates';
 import { CATEGORY_REQUIREMENT_LABELS } from '@/lib/category-requirements';
 import { trpc } from '@/lib/client/trpc';
+import { useScrollToTopOnChange } from '@/hooks/use-scroll-to-top-on-change';
 import { cn } from '@/lib/utils';
 
 /** Mirrors Prisma `CatalogRequirementExpiration` — defined here so the wizard stays client-safe (no `@prisma/client` in the bundle). */
@@ -127,6 +128,7 @@ export function CreateRequirementWizardModal({
   const isPickMode = pickExistingCollection && !isEditMode;
 
   const [step, setStep] = useState<WizardStep>(1);
+  const bodyScrollRef = useScrollToTopOnChange<HTMLDivElement>(step);
   const [templateTab, setTemplateTab] = useState<TemplateTab>('all');
   const [selectedTemplate, setSelectedTemplate] = useState<ReqTemplateId | null>(null);
   const [editingRequirementId, setEditingRequirementId] = useState<string | null>(null);
@@ -514,7 +516,7 @@ export function CreateRequirementWizardModal({
       </div>
 
       {/* Body */}
-      <DialogContent className="flex-1 overflow-y-auto min-h-0 px-6 py-6 sm:px-8">
+      <DialogContent ref={bodyScrollRef} className="flex-1 overflow-y-auto min-h-0 px-6 py-6 sm:px-8">
         {step === 1 && (
           <div className="space-y-8">
             {isPickMode ? (

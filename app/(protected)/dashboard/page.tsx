@@ -138,7 +138,7 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
           <div className="lg:col-span-8">
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="border-b border-border px-6">
-                <Tabs defaultValue="pending" className="w-full">
+                <Tabs defaultValue="pending" className="w-full" scrollToTopOnChange>
                   <div className="flex items-center justify-between py-4">
                     <TabsList className="bg-muted p-1 rounded-lg h-9">
                       <TabsTrigger value="pending" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md px-4">

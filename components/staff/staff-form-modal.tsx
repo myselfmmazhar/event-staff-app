@@ -24,6 +24,7 @@ import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib
 import { AccountStatus, StaffType, StaffRole, SkillLevel, StaffRating, AvailabilityStatus, TaxFilledBy } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { useScrollToTopOnChange } from '@/hooks/use-scroll-to-top-on-change';
 import { useLabels } from '@/lib/hooks/use-labels';
 import type { LabelsConfig } from '@/lib/config/labels';
 import type { StaffWithRelations } from '@/components/staff/staff-table';
@@ -228,6 +229,7 @@ function StaffFormContent({
     const isEdit = !!staff;
     const taxFormRef = useRef<TaxDetailsFormRef>(null);
     const [wizardStep, setWizardStep] = useState<WizardStep>('basic');
+    const bodyScrollRef = useScrollToTopOnChange<HTMLDivElement>(wizardStep);
     const [selectedReqTemplates, setSelectedReqTemplates] = useState<Set<ReqTemplateId>>(
         () => new Set<ReqTemplateId>(['w9'])
     );
@@ -548,7 +550,7 @@ function StaffFormContent({
             </div>
 
             {/* Body */}
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+            <div ref={bodyScrollRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
                 {wizardStep === 'basic' && (
                     <div className="mx-auto max-w-6xl">
                         <h3 className="text-base font-bold text-slate-900">1. Basic invite information</h3>
