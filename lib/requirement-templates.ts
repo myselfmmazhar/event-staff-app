@@ -6,13 +6,19 @@ import {
   Smartphone,
   Search,
   Camera,
+  ClipboardList,
 } from 'lucide-react';
 import type { CategoryRequirementType } from '@/lib/category-requirements';
 import { CATEGORY_REQUIREMENT_TYPE } from '@/lib/category-requirements';
 
-export const REQ_TEMPLATE_IDS = ['w9', 'upload', 'esign', 'idv', 'bg', 'headshot'] as const;
+export const REQ_TEMPLATE_IDS = ['w9', 'upload', 'esign', 'idv', 'bg', 'headshot', 'custom'] as const;
 
 export type ReqTemplateId = (typeof REQ_TEMPLATE_IDS)[number];
+
+/** Custom card: admin defines name + optional reference doc/link; talent only acknowledges (no talent upload). */
+export function isCustomTemplateId(id: ReqTemplateId): boolean {
+  return id === 'custom';
+}
 
 const TALENT_SUBMISSION_TEMPLATE_IDS = new Set<ReqTemplateId>(['upload', 'esign', 'idv', 'headshot']);
 
@@ -23,11 +29,14 @@ export function isTalentSubmissionTemplateId(id: ReqTemplateId): boolean {
 
 /**
  * Templates whose fulfillment requires the talent to upload a document during onboarding.
- * `w9` is collected via the Tax step; `esign` is captured via the signature pad on Review.
+ * `w9` is collected via the Tax step; `esign` is captured via the signature pad on Review;
+ * `custom` is acknowledgement-only (admin attaches the doc, talent doesn't upload).
  */
-const DOCUMENT_TEMPLATE_IDS = new Set<ReqTemplateId>(['upload', 'idv', 'headshot', 'bg']);
+export const DOCUMENT_TEMPLATE_IDS_LIST = ['upload', 'idv', 'headshot', 'bg'] as const;
+export type DocumentReqTemplateId = (typeof DOCUMENT_TEMPLATE_IDS_LIST)[number];
+const DOCUMENT_TEMPLATE_IDS = new Set<ReqTemplateId>(DOCUMENT_TEMPLATE_IDS_LIST);
 
-export function isDocumentTemplateId(id: ReqTemplateId): boolean {
+export function isDocumentTemplateId(id: ReqTemplateId): id is DocumentReqTemplateId {
   return DOCUMENT_TEMPLATE_IDS.has(id);
 }
 
@@ -111,6 +120,14 @@ export const REQ_TEMPLATE_CARDS: {
     footer: 'Optional requirement',
     Icon: Camera,
   },
+  {
+    id: 'custom',
+    title: 'Custom card',
+    badge: 'Standard',
+    description: 'Define your own card with a name, an optional reference document, and an optional link the talent must acknowledge.',
+    footer: 'Acknowledgement only',
+    Icon: ClipboardList,
+  },
 ];
 
 /** Legacy categories (no template ids) infer cards from the old single-type field. */
@@ -164,10 +181,44 @@ export type ServiceCategoryTemplatesInput = {
   requirementType: CategoryRequirementType;
 };
 
+/** A single custom-card row (`CatalogRequirement` with templateId='custom') surfaced to onboarding. */
+export type CustomRequirementCard = {
+  id: string;
+  name: string;
+  instructions: string | null;
+  customDocumentUrl: string | null;
+  customDocumentName: string | null;
+  customDocumentType: string | null;
+  customDocumentSize: number | null;
+  customLinkUrl: string | null;
+  customLinkLabel: string | null;
+};
+
 export type ServiceForReqMerge = {
   id: string;
-  category?: ServiceCategoryTemplatesInput | null;
+  category?:
+    | (ServiceCategoryTemplatesInput & { catalogRequirements?: CustomRequirementCard[] | null })
+    | null;
 };
+
+/** Deduped union of custom-card rows from all selected services' categories (order-preserving). */
+export function computeCustomCardsFromServices(
+  serviceIds: readonly string[],
+  services: readonly ServiceForReqMerge[]
+): CustomRequirementCard[] {
+  const seen = new Set<string>();
+  const out: CustomRequirementCard[] = [];
+  for (const sid of serviceIds) {
+    const svc = services.find((s) => s.id === sid);
+    const cards = svc?.category?.catalogRequirements ?? [];
+    for (const c of cards) {
+      if (seen.has(c.id)) continue;
+      seen.add(c.id);
+      out.push(c);
+    }
+  }
+  return out;
+}
 
 /**
  * Union of requirement cards from all selected services’ categories.

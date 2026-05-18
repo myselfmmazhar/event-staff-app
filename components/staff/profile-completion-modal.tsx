@@ -47,9 +47,11 @@ import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import {
     REQ_TEMPLATE_CARDS,
     computeRequirementTemplatesFromServices,
+    computeCustomCardsFromServices,
     countDocumentTemplates,
     type ReqTemplateId,
     type ServiceForReqMerge,
+    type CustomRequirementCard,
 } from '@/lib/requirement-templates';
 
 /* ------------------------------------------------------------------ */
@@ -270,11 +272,46 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
         return new Set<ReqTemplateId>(['w9']);
     }, [myProfile, selectedServiceIds, availableServices]);
 
+    /** Distinct custom-card requirement rows for the talent's services. */
+    const requiredCustomCards = useMemo<CustomRequirementCard[]>(() => {
+        if (myProfile?.services?.length) {
+            const serviceIds = myProfile.services.map((s) => s.serviceId);
+            const services: ServiceForReqMerge[] = myProfile.services.map((s) => ({
+                id: s.serviceId,
+                category: s.service.category ?? null,
+            }));
+            return computeCustomCardsFromServices(serviceIds, services);
+        }
+        if (selectedServiceIds.length) {
+            const services: ServiceForReqMerge[] = selectedServiceIds.map((id) => {
+                const svc = availableServices.find((s) => s.id === id);
+                return { id, category: svc?.category ?? null };
+            });
+            return computeCustomCardsFromServices(selectedServiceIds, services);
+        }
+        return [];
+    }, [myProfile, selectedServiceIds, availableServices]);
+
     /** One document upload required per active card (excludes W-9 / e-signature, which have their own steps). */
     const requiredDocumentCount = useMemo(
         () => countDocumentTemplates(requiredTemplates),
         [requiredTemplates]
     );
+
+    /** Talent acknowledgements per custom card: doc/link checkboxes. */
+    const [customAcks, setCustomAcks] = useState<
+        Record<string, { doc?: boolean; link?: boolean }>
+    >({});
+
+    /** True when every present doc/link on every custom card has been acknowledged. */
+    const customAcksSatisfied = useMemo(() => {
+        for (const card of requiredCustomCards) {
+            const ack = customAcks[card.id];
+            if (card.customDocumentUrl && !ack?.doc) return false;
+            if (card.customLinkUrl && !ack?.link) return false;
+        }
+        return true;
+    }, [requiredCustomCards, customAcks]);
 
     /* -------------------- mutation -------------------- */
 
@@ -371,6 +408,14 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                 });
                 return;
             }
+            if (!customAcksSatisfied) {
+                toast({
+                    message:
+                        'Please review and acknowledge each item on the custom requirement cards to continue.',
+                    type: 'error',
+                });
+                return;
+            }
         }
 
         const next = activeSteps[stepIndex + 1];
@@ -434,7 +479,7 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
             setWizardStep('tax');
             return;
         }
-        if (documentsCount < requiredDocumentCount || !ackRecords) {
+        if (documentsCount < requiredDocumentCount || !ackRecords || !customAcksSatisfied) {
             setWizardStep('requirements');
             return;
         }
@@ -568,6 +613,9 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                 setDocuments={setDocuments}
                                 ackRecords={ackRecords}
                                 setAckRecords={setAckRecords}
+                                customCards={requiredCustomCards}
+                                customAcks={customAcks}
+                                setCustomAcks={setCustomAcks}
                                 disabled={isSubmitting}
                             />
                         )}
@@ -611,7 +659,9 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                                         disabled={
                                             isSubmitting ||
                                             (wizardStep === 'requirements' &&
-                                                (documentsCount < requiredDocumentCount || !ackRecords))
+                                                (documentsCount < requiredDocumentCount ||
+                                                    !ackRecords ||
+                                                    !customAcksSatisfied))
                                         }
                                         className="h-14 w-full rounded-xl bg-slate-900 px-10 text-lg font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-none disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none sm:w-auto sm:min-w-[280px]"
                                     >
@@ -1295,6 +1345,9 @@ function RequirementsStep({
     setDocuments,
     ackRecords,
     setAckRecords,
+    customCards,
+    customAcks,
+    setCustomAcks,
     disabled,
 }: {
     requiredTemplates: Set<ReqTemplateId>;
@@ -1304,9 +1357,18 @@ function RequirementsStep({
     setDocuments: (docs: Partial<Record<ReqTemplateId, CategorizedDocument>>) => void;
     ackRecords: boolean;
     setAckRecords: (v: boolean) => void;
+    customCards: CustomRequirementCard[];
+    customAcks: Record<string, { doc?: boolean; link?: boolean }>;
+    setCustomAcks: React.Dispatch<
+        React.SetStateAction<Record<string, { doc?: boolean; link?: boolean }>>
+    >;
     disabled: boolean;
 }) {
-    const templateCards = REQ_TEMPLATE_CARDS.filter((c) => requiredTemplates.has(c.id));
+    // Exclude the generic 'custom' static card from the read-only packet grid;
+    // each custom requirement renders below as its own per-row card.
+    const templateCards = REQ_TEMPLATE_CARDS.filter(
+        (c) => requiredTemplates.has(c.id) && c.id !== 'custom'
+    );
 
     return (
         <div className="mx-auto max-w-4xl">
@@ -1368,6 +1430,117 @@ function RequirementsStep({
                     />
                 </div>
             </div>
+
+            {/* Custom requirement cards (admin-defined: name + optional doc + optional link) */}
+            {customCards.length > 0 && (
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                        Additional Requirements
+                    </h4>
+                    <p className="mt-1 text-xs text-slate-500">
+                        Review the items below. You must acknowledge each provided document and
+                        link before continuing.
+                    </p>
+                    <div className="mt-4 space-y-3">
+                        {customCards.map((card) => {
+                            const ack = customAcks[card.id] ?? {};
+                            const hasDoc = !!card.customDocumentUrl;
+                            const hasLink = !!card.customLinkUrl;
+                            return (
+                                <div
+                                    key={card.id}
+                                    className="rounded-2xl border border-slate-200 bg-white p-4"
+                                >
+                                    <p className="text-sm font-bold text-slate-900">
+                                        {card.name}
+                                    </p>
+                                    {card.instructions && (
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            {card.instructions}
+                                        </p>
+                                    )}
+
+                                    {!hasDoc && !hasLink && (
+                                        <p className="mt-3 text-xs italic text-slate-400">
+                                            No items to acknowledge.
+                                        </p>
+                                    )}
+
+                                    {hasDoc && (
+                                        <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <a
+                                                    href={card.customDocumentUrl ?? '#'}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex min-w-0 items-center gap-2 text-sm font-medium text-primary hover:underline"
+                                                >
+                                                    <FileText className="h-4 w-4 shrink-0" />
+                                                    <span className="truncate">
+                                                        {card.customDocumentName ??
+                                                            'View document'}
+                                                    </span>
+                                                </a>
+                                            </div>
+                                            <label className="mt-3 flex cursor-pointer items-start gap-3">
+                                                <Checkbox
+                                                    checked={!!ack.doc}
+                                                    onChange={(e) =>
+                                                        setCustomAcks((prev) => ({
+                                                            ...prev,
+                                                            [card.id]: {
+                                                                ...prev[card.id],
+                                                                doc: e.target.checked,
+                                                            },
+                                                        }))
+                                                    }
+                                                    disabled={disabled}
+                                                    className="mt-0.5"
+                                                />
+                                                <span className="text-sm font-medium text-slate-700">
+                                                    I have reviewed the document.
+                                                </span>
+                                            </label>
+                                        </div>
+                                    )}
+
+                                    {hasLink && (
+                                        <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                                            <a
+                                                href={card.customLinkUrl ?? '#'}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline break-all"
+                                            >
+                                                {card.customLinkLabel || card.customLinkUrl}
+                                            </a>
+                                            <label className="mt-3 flex cursor-pointer items-start gap-3">
+                                                <Checkbox
+                                                    checked={!!ack.link}
+                                                    onChange={(e) =>
+                                                        setCustomAcks((prev) => ({
+                                                            ...prev,
+                                                            [card.id]: {
+                                                                ...prev[card.id],
+                                                                link: e.target.checked,
+                                                            },
+                                                        }))
+                                                    }
+                                                    disabled={disabled}
+                                                    className="mt-0.5"
+                                                />
+                                                <span className="text-sm font-medium text-slate-700">
+                                                    I have read the linked information.
+                                                </span>
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Acknowledgments */}
             <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200">

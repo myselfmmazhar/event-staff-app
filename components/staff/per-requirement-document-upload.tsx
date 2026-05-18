@@ -11,10 +11,11 @@ import {
     REQ_TEMPLATE_CARDS,
     isDocumentTemplateId,
     type ReqTemplateId,
+    type DocumentReqTemplateId,
 } from '@/lib/requirement-templates';
 
 export type CategorizedDocument = {
-    requirementTemplateId: ReqTemplateId;
+    requirementTemplateId: DocumentReqTemplateId;
     name: string;
     url: string;
     type?: string;

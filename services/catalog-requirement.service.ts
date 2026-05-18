@@ -88,6 +88,7 @@ export class CatalogRequirementService {
     try {
       // Avoid interactive `$transaction(async (tx) => …)` here: with PrismaPg + Prisma 7, `tx.catalogRequirement`
       // can be undefined in the transaction callback. Use the main client instead.
+      const isCustom = data.templateId === 'custom';
       const created = await this.prisma.catalogRequirement.create({
         data: {
           serviceCategoryId: data.serviceCategoryId,
@@ -102,6 +103,12 @@ export class CatalogRequirementService {
           allowEarlyRenewal: data.allowEarlyRenewal,
           requiresApproval: data.requiresApproval,
           isTalentRequired: data.isTalentRequired,
+          customDocumentUrl: isCustom ? data.customDocument?.url ?? null : null,
+          customDocumentName: isCustom ? data.customDocument?.name ?? null : null,
+          customDocumentType: isCustom ? data.customDocument?.type ?? null : null,
+          customDocumentSize: isCustom ? data.customDocument?.size ?? null : null,
+          customLinkUrl: isCustom ? data.customLink?.url ?? null : null,
+          customLinkLabel: isCustom ? data.customLink?.label ?? null : null,
           createdBy: createdByUserId,
         },
         select: this.listSelect,
@@ -141,6 +148,12 @@ export class CatalogRequirementService {
         allowEarlyRenewal: true,
         requiresApproval: true,
         isTalentRequired: true,
+        customDocumentUrl: true,
+        customDocumentName: true,
+        customDocumentType: true,
+        customDocumentSize: true,
+        customLinkUrl: true,
+        customLinkLabel: true,
       },
     });
     if (!requirement) {
@@ -160,6 +173,7 @@ export class CatalogRequirementService {
 
     try {
       const isUploadTemplate = existing.templateId === 'upload';
+      const isCustomTemplate = existing.templateId === 'custom';
       const updated = await this.prisma.catalogRequirement.update({
         where: { id },
         data: {
@@ -175,6 +189,12 @@ export class CatalogRequirementService {
           isTalentRequired: isTalentSubmissionTemplateId(existing.templateId as ReqTemplateId)
             ? data.isTalentRequired
             : false,
+          customDocumentUrl: isCustomTemplate ? data.customDocument?.url ?? null : null,
+          customDocumentName: isCustomTemplate ? data.customDocument?.name ?? null : null,
+          customDocumentType: isCustomTemplate ? data.customDocument?.type ?? null : null,
+          customDocumentSize: isCustomTemplate ? data.customDocument?.size ?? null : null,
+          customLinkUrl: isCustomTemplate ? data.customLink?.url ?? null : null,
+          customLinkLabel: isCustomTemplate ? data.customLink?.label ?? null : null,
         },
         select: this.listSelect,
       });

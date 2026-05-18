@@ -312,6 +312,20 @@ export const staffRouter = router({
                     select: {
                         requirementTemplateIds: true,
                         requirementType: true,
+                        catalogRequirements: {
+                            where: { templateId: "custom" },
+                            select: {
+                                id: true,
+                                name: true,
+                                instructions: true,
+                                customDocumentUrl: true,
+                                customDocumentName: true,
+                                customDocumentType: true,
+                                customDocumentSize: true,
+                                customLinkUrl: true,
+                                customLinkLabel: true,
+                            },
+                        },
                     },
                 },
             },
