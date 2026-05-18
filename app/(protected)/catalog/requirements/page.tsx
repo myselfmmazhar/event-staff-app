@@ -83,6 +83,7 @@ function CatalogRequirementsContent() {
   const [reqSearch, setReqSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardMode, setWizardMode] = useState<'collection' | 'addRequirement'>('collection');
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [reqDeleteId, setReqDeleteId] = useState<string | null>(null);
 
@@ -174,8 +175,16 @@ function CatalogRequirementsContent() {
   });
 
   // --- Handlers ---
-  const handleCreateCategory = () => {
+  const handleCreateCollection = () => {
     setEditCategory(null);
+    setWizardMode('collection');
+    setBackendErrors([]);
+    setWizardOpen(true);
+  };
+
+  const handleAddRequirement = () => {
+    setEditCategory(null);
+    setWizardMode('addRequirement');
     setBackendErrors([]);
     setWizardOpen(true);
   };
@@ -184,6 +193,7 @@ function CatalogRequirementsContent() {
     const category = (catData?.data as any[]).find((c) => c.id === id);
     if (category) {
       setEditCategory(category as Category);
+      setWizardMode('collection');
       setBackendErrors([]);
       setWizardOpen(true);
     }
@@ -267,8 +277,12 @@ function CatalogRequirementsContent() {
             All Requirements
           </button>
         </div>
-        <div className="pb-2">
-          <Button onClick={handleCreateCategory} size="sm" className="rounded-lg shadow-sm">
+        <div className="pb-2 flex items-center gap-2">
+          <Button onClick={handleCreateCollection} size="sm" className="rounded-lg shadow-sm">
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Collection
+          </Button>
+          <Button onClick={handleAddRequirement} size="sm" variant="outline" className="rounded-lg shadow-sm">
             <PlusIcon className="h-4 w-4 mr-2" />
             Add Requirement
           </Button>
@@ -419,6 +433,7 @@ function CatalogRequirementsContent() {
         open={wizardOpen}
         onClose={() => { setWizardOpen(false); setEditCategory(null); }}
         editCategory={editCategory ? { id: editCategory.id, name: editCategory.name, description: editCategory.description ?? null } : null}
+        pickExistingCollection={wizardMode === 'addRequirement' && !editCategory}
         onSaved={() => { refetchReqs(); refetchCats(); }}
       />
 

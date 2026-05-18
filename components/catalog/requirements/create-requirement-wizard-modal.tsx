@@ -13,14 +13,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { CloseIcon } from '@/components/ui/icons';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { RequirementTemplateCardGrid } from '@/components/common/requirement-template-card-grid';
 import {
   REQ_TEMPLATE_CARDS,
   isTalentSubmissionTemplateId,
+  formatRequirementTemplatesShort,
+  normalizeReqTemplateIds,
   type ReqTemplateId,
 } from '@/lib/requirement-templates';
+import { CATEGORY_REQUIREMENT_LABELS } from '@/lib/category-requirements';
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
 
@@ -72,6 +83,8 @@ export interface CreateRequirementWizardModalProps {
   onClose: () => void;
   /** When set, the wizard opens in edit mode for this collection. */
   editCategory?: { id: string; name: string; description: string | null } | null;
+  /** When true, Step 1 lets the user pick an existing collection (or create a new one) instead of creating a new collection only. */
+  pickExistingCollection?: boolean;
   onSaved?: () => void;
 }
 
@@ -107,9 +120,11 @@ export function CreateRequirementWizardModal({
   open,
   onClose,
   editCategory = null,
+  pickExistingCollection = false,
   onSaved,
 }: CreateRequirementWizardModalProps) {
   const isEditMode = !!editCategory;
+  const isPickMode = pickExistingCollection && !isEditMode;
 
   const [step, setStep] = useState<WizardStep>(1);
   const [templateTab, setTemplateTab] = useState<TemplateTab>('all');
@@ -117,16 +132,61 @@ export function CreateRequirementWizardModal({
   const [editingRequirementId, setEditingRequirementId] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState<string>('');
   const [categoryDescription, setCategoryDescription] = useState<string>('');
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [preview, setPreview] = useState<SettingsFormOutput | null>(null);
   const saveActionRef = useRef<'close' | 'new'>('close');
   const utils = trpc.useUtils();
 
-  // Existing requirements for the editing collection — used to mark templates as editable
-  // and to load settings when the user clicks one to edit.
+  const isNewCollection = isPickMode && selectedCollectionId === 'CREATE_NEW';
+  const hasPickedExistingCollection =
+    isPickMode && !!selectedCollectionId && selectedCollectionId !== 'CREATE_NEW';
+
+  // Active collections for the picker (pick mode only).
+  const { data: pickCollections } = trpc.category.getAllActive.useQuery(undefined, {
+    enabled: open && isPickMode,
+  });
+
+  const pickSelectedCategory = hasPickedExistingCollection
+    ? pickCollections?.find((c) => c.id === selectedCollectionId)
+    : undefined;
+
+  // The collection whose existing requirements we need to inspect:
+  // edit mode → the collection being edited; pick mode → the picked existing collection.
+  const requirementsQueryCategoryId = isEditMode
+    ? editCategory?.id ?? ''
+    : hasPickedExistingCollection
+      ? selectedCollectionId
+      : '';
+
+  // Existing requirements for the active collection — used in edit mode to mark templates as
+  // editable, and in pick mode to disable templates already attached to the collection.
   const { data: existingRequirements } = trpc.catalogRequirement.getAll.useQuery(
-    { serviceCategoryId: editCategory?.id ?? '', limit: 100 },
-    { enabled: open && isEditMode && !!editCategory?.id }
+    { serviceCategoryId: requirementsQueryCategoryId, limit: 100 },
+    { enabled: open && !!requirementsQueryCategoryId }
   );
+
+  const alreadyUsedTemplateIds = useMemo(() => {
+    const ids = new Set<ReqTemplateId>(
+      normalizeReqTemplateIds(
+        (pickSelectedCategory?.requirementTemplateIds as string[] | undefined) ?? []
+      )
+    );
+    for (const req of existingRequirements?.data ?? []) {
+      if (req.templateId) ids.add(req.templateId as ReqTemplateId);
+    }
+    return ids;
+  }, [pickSelectedCategory, existingRequirements]);
+
+  const selectedCategoryReqIds = normalizeReqTemplateIds(
+    (pickSelectedCategory?.requirementTemplateIds as string[] | undefined) ?? []
+  );
+  const selectedCategoryReqLabel = selectedCategoryReqIds.length > 0
+    ? formatRequirementTemplatesShort(selectedCategoryReqIds)
+    : pickSelectedCategory?.requirementType
+      ? CATEGORY_REQUIREMENT_LABELS[
+          pickSelectedCategory.requirementType as keyof typeof CATEGORY_REQUIREMENT_LABELS
+        ]
+      : null;
 
   const requirementByTemplate = useMemo(() => {
     const map = new Map<ReqTemplateId, string>();
@@ -179,6 +239,7 @@ export function CreateRequirementWizardModal({
     setEditingRequirementId(null);
     setCategoryName(editCategory?.name ?? '');
     setCategoryDescription(editCategory?.description ?? '');
+    setSelectedCollectionId('');
     setPreview(null);
     reset(defaultSettings());
     clearErrors();
@@ -201,7 +262,10 @@ export function CreateRequirementWizardModal({
     onClose();
   };
 
-  const canContinueStep1 = !!categoryName.trim() && !!selectedTemplate;
+  const canContinueStep1 = isPickMode
+    ? (hasPickedExistingCollection || (isNewCollection && !!categoryName.trim())) &&
+      !!selectedTemplate
+    : !!categoryName.trim() && !!selectedTemplate;
 
   const handleTemplateSelect = (templateId: ReqTemplateId | null) => {
     setSelectedTemplate(templateId);
@@ -259,6 +323,18 @@ export function CreateRequirementWizardModal({
       ((categoryDescription.trim() || null) !== (editCategory?.description ?? null)));
 
   const persistCollection = async (): Promise<string | null> => {
+    if (isPickMode) {
+      if (isNewCollection) {
+        const newCat = await categoryCreateMutation.mutateAsync({
+          name: categoryName.trim(),
+          description: categoryDescription.trim() || null,
+          requirementTemplateIds: [],
+          isRequired: false,
+        });
+        return newCat ? (newCat as any).id : null;
+      }
+      return selectedCollectionId || null;
+    }
     if (isEditMode) {
       if (collectionDirty) {
         await categoryUpdateMutation.mutateAsync({
@@ -378,6 +454,11 @@ export function CreateRequirementWizardModal({
 
   const collectionSectionLabel = isEditMode ? 'Collection Details' : 'New Collection Details';
   const headerTitle = isEditMode ? 'Edit Collection' : 'Add Requirement';
+  const collectionDisplayName = isPickMode
+    ? isNewCollection
+      ? categoryName
+      : pickSelectedCategory?.name ?? ''
+    : categoryName;
 
   return (
     <Dialog
@@ -436,32 +517,108 @@ export function CreateRequirementWizardModal({
       <DialogContent className="flex-1 overflow-y-auto min-h-0 px-6 py-6 sm:px-8">
         {step === 1 && (
           <div className="space-y-8">
-            <div className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5">
-              <h3 className="text-sm font-bold text-primary uppercase tracking-wider">
-                {collectionSectionLabel}
-              </h3>
-              <div>
-                <Label htmlFor="cat-name" required>Collection Name</Label>
-                <Input
-                  id="cat-name"
-                  className="mt-1.5 bg-background"
-                  placeholder="e.g., Security, Catering..."
-                  value={categoryName}
-                  onChange={(e) => setCategoryName(e.target.value)}
-                />
+            {isPickMode ? (
+              <div className="space-y-4">
+                <div>
+                  <Label required>Collection</Label>
+                  <Select
+                    value={selectedCollectionId || undefined}
+                    onValueChange={setSelectedCollectionId}
+                  >
+                    <SelectTrigger className="mt-1.5 max-w-md">
+                      <SelectValue placeholder="Select a collection" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CREATE_NEW" className="font-semibold text-primary">
+                        + Create New Collection
+                      </SelectItem>
+                      {(pickCollections ?? []).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} ({c.categoryId})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {isNewCollection && (
+                  <div className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5">
+                    <h3 className="text-sm font-bold text-primary uppercase tracking-wider">
+                      New Collection Details
+                    </h3>
+                    <div>
+                      <Label htmlFor="new-cat-name" required>Collection Name</Label>
+                      <Input
+                        id="new-cat-name"
+                        className="mt-1.5 bg-background"
+                        placeholder="e.g., Security, Catering..."
+                        value={categoryName}
+                        onChange={(e) => setCategoryName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="new-cat-desc">Description (optional)</Label>
+                      <Textarea
+                        id="new-cat-desc"
+                        className="mt-1.5 bg-background"
+                        placeholder="What this collection is for..."
+                        value={categoryDescription}
+                        onChange={(e) => setCategoryDescription(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {pickSelectedCategory && (
+                  <div className="rounded-lg border border-border bg-slate-50 px-4 py-3 text-sm space-y-1">
+                    <span className="text-muted-foreground font-medium uppercase text-[10px] tracking-wider block mb-1">
+                      Collection Details
+                    </span>
+                    <p className="text-base font-semibold text-slate-900">{pickSelectedCategory.name}</p>
+                    <p className="text-xs text-muted-foreground">{pickSelectedCategory.categoryId}</p>
+                    {selectedCategoryReqLabel && (
+                      <p className="text-xs text-slate-600">
+                        <span className="text-muted-foreground">Requirement: </span>
+                        {selectedCategoryReqLabel}
+                      </p>
+                    )}
+                    {pickSelectedCategory.description && (
+                      <p className="text-sm text-slate-600 mt-2 italic">
+                        &ldquo;{pickSelectedCategory.description}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-              <div>
-                <Label htmlFor="cat-desc">Description (optional)</Label>
-                <Textarea
-                  id="cat-desc"
-                  className="mt-1.5 bg-background"
-                  placeholder="What this collection is for..."
-                  value={categoryDescription}
-                  onChange={(e) => setCategoryDescription(e.target.value)}
-                  rows={2}
-                />
+            ) : (
+              <div className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5">
+                <h3 className="text-sm font-bold text-primary uppercase tracking-wider">
+                  {collectionSectionLabel}
+                </h3>
+                <div>
+                  <Label htmlFor="cat-name" required>Collection Name</Label>
+                  <Input
+                    id="cat-name"
+                    className="mt-1.5 bg-background"
+                    placeholder="e.g., Security, Catering..."
+                    value={categoryName}
+                    onChange={(e) => setCategoryName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="cat-desc">Description (optional)</Label>
+                  <Textarea
+                    id="cat-desc"
+                    className="mt-1.5 bg-background"
+                    placeholder="What this collection is for..."
+                    value={categoryDescription}
+                    onChange={(e) => setCategoryDescription(e.target.value)}
+                    rows={2}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="space-y-6 pt-6 border-t border-border">
               <div>
@@ -493,6 +650,7 @@ export function CreateRequirementWizardModal({
                 onSingleChange={handleTemplateSelect}
                 visibleIds={visibleTemplateIds}
                 editableIds={isEditMode ? editableTemplateIds : undefined}
+                disabledIds={isPickMode ? alreadyUsedTemplateIds : undefined}
               />
             </div>
           </div>
@@ -649,7 +807,7 @@ export function CreateRequirementWizardModal({
             <div className="rounded-lg border border-border p-4 space-y-2">
               <p>
                 <span className="text-muted-foreground">Collection: </span>
-                <span className="font-medium">{categoryName}</span>
+                <span className="font-medium">{collectionDisplayName}</span>
               </p>
               <p>
                 <span className="text-muted-foreground">Template: </span>
