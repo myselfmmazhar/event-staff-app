@@ -30,6 +30,30 @@ interface TaxDetailsViewProps {
         recordsAcknowledgedAt?: Date | string | null;
         createdAt: Date | string;
         updatedAt: Date | string;
+        // W-9 additions
+        otherClassificationDescription?: string | null;
+        hasForeignPartners?: boolean | null;
+        requesterNameAddress?: string | null;
+        w9SubjectToBackupWithholding?: boolean | null;
+        w9CertifiedAt?: Date | string | null;
+        // W-4 additions
+        w4FirstName?: string | null;
+        w4MiddleInitial?: string | null;
+        w4LastName?: string | null;
+        w4Status?: string | null;
+        w4EmployerName?: string | null;
+        w4EmployerAddress?: string | null;
+        w4EmploymentDate?: Date | string | null;
+        w4MultipleJobs?: boolean | null;
+        w4QualifyingChildren?: number | null;
+        w4OtherDependents?: number | null;
+        w4OtherCredits?: number | string | null;
+        w4DependentsTotal?: number | string | null;
+        w4OtherIncome?: number | string | null;
+        w4Deductions?: number | string | null;
+        w4ExtraWithholding?: number | string | null;
+        w4Exempt?: boolean | null;
+        w4PerjuryAckAt?: Date | string | null;
     } | null;
     onEdit?: () => void;
 }
@@ -121,6 +145,18 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
                             )}
                         </p>
                     </div>
+                    {taxDetails.otherClassificationDescription && (
+                        <div>
+                            <p className="text-sm text-muted-foreground">Other Classification Description</p>
+                            <p className="text-base">{taxDetails.otherClassificationDescription}</p>
+                        </div>
+                    )}
+                    {taxDetails.hasForeignPartners != null && (
+                        <div>
+                            <p className="text-sm text-muted-foreground">Line 3b — Foreign Partners/Owners/Beneficiaries</p>
+                            <p className="text-base">{taxDetails.hasForeignPartners ? 'Yes' : 'No'}</p>
+                        </div>
+                    )}
                     {(taxDetails.exemptPayeeCode || taxDetails.fatcaExemptionCode) && (
                         <div className="grid grid-cols-2 gap-4">
                             {taxDetails.exemptPayeeCode && (
@@ -135,6 +171,12 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
                                     <p className="text-base">{taxDetails.fatcaExemptionCode}</p>
                                 </div>
                             )}
+                        </div>
+                    )}
+                    {taxDetails.requesterNameAddress && (
+                        <div>
+                            <p className="text-sm text-muted-foreground">Requester&apos;s Name &amp; Address</p>
+                            <p className="text-base whitespace-pre-line">{taxDetails.requesterNameAddress}</p>
                         </div>
                     )}
                 </div>
@@ -203,8 +245,119 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
                 </div>
             )}
 
+            {/* W-4 Details (only when present) */}
+            {(taxDetails.w4FirstName ||
+                taxDetails.w4LastName ||
+                taxDetails.w4Status ||
+                taxDetails.w4EmployerName ||
+                taxDetails.w4EmploymentDate ||
+                taxDetails.w4QualifyingChildren != null ||
+                taxDetails.w4OtherDependents != null ||
+                taxDetails.w4OtherIncome != null ||
+                taxDetails.w4Deductions != null ||
+                taxDetails.w4ExtraWithholding != null ||
+                taxDetails.w4MultipleJobs ||
+                taxDetails.w4Exempt) && (
+                <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                    <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">W-4 Information</h3>
+                    <div className="space-y-3">
+                        {(taxDetails.w4FirstName || taxDetails.w4LastName) && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Name</p>
+                                <p className="text-base">
+                                    {[
+                                        taxDetails.w4FirstName,
+                                        taxDetails.w4MiddleInitial,
+                                        taxDetails.w4LastName,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' ')}
+                                </p>
+                            </div>
+                        )}
+                        {taxDetails.w4Status && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Filing Status</p>
+                                <p className="text-base">{taxDetails.w4Status}</p>
+                            </div>
+                        )}
+                        {taxDetails.w4EmployerName && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Employer&apos;s Name</p>
+                                <p className="text-base">{taxDetails.w4EmployerName}</p>
+                            </div>
+                        )}
+                        {taxDetails.w4EmployerAddress && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Employer&apos;s Address</p>
+                                <p className="text-base whitespace-pre-line">{taxDetails.w4EmployerAddress}</p>
+                            </div>
+                        )}
+                        {taxDetails.w4EmploymentDate && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">First Date of Employment</p>
+                                <p className="text-base">
+                                    {format(new Date(taxDetails.w4EmploymentDate), 'MMM dd, yyyy')}
+                                </p>
+                            </div>
+                        )}
+                        {taxDetails.w4MultipleJobs && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Step 2(c) — Two Jobs Total</p>
+                                <p className="text-base">Yes</p>
+                            </div>
+                        )}
+                        {(taxDetails.w4QualifyingChildren != null ||
+                            taxDetails.w4OtherDependents != null ||
+                            taxDetails.w4DependentsTotal != null) && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Step 3 — Dependents</p>
+                                <div className="text-base grid grid-cols-2 gap-2 mt-1">
+                                    <span>Qualifying children: {taxDetails.w4QualifyingChildren ?? 0}</span>
+                                    <span>Other dependents: {taxDetails.w4OtherDependents ?? 0}</span>
+                                    {taxDetails.w4OtherCredits != null && (
+                                        <span>Other credits: ${String(taxDetails.w4OtherCredits)}</span>
+                                    )}
+                                    {taxDetails.w4DependentsTotal != null && (
+                                        <span className="font-medium">Total: ${String(taxDetails.w4DependentsTotal)}</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {(taxDetails.w4OtherIncome != null ||
+                            taxDetails.w4Deductions != null ||
+                            taxDetails.w4ExtraWithholding != null) && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Step 4 — Other Adjustments</p>
+                                <div className="text-base grid grid-cols-3 gap-2 mt-1">
+                                    {taxDetails.w4OtherIncome != null && (
+                                        <span>4(a) Other income: ${String(taxDetails.w4OtherIncome)}</span>
+                                    )}
+                                    {taxDetails.w4Deductions != null && (
+                                        <span>4(b) Deductions: ${String(taxDetails.w4Deductions)}</span>
+                                    )}
+                                    {taxDetails.w4ExtraWithholding != null && (
+                                        <span>4(c) Extra withholding: ${String(taxDetails.w4ExtraWithholding)}</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {taxDetails.w4Exempt && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Withholding Status</p>
+                                <p className="text-base font-medium">Exempt from withholding</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Acknowledgments */}
-            {(taxDetails.policyAcknowledgedAt || taxDetails.recordsAcknowledgedAt) && (
+            {(taxDetails.policyAcknowledgedAt ||
+                taxDetails.recordsAcknowledgedAt ||
+                taxDetails.w9CertifiedAt ||
+                taxDetails.w9SubjectToBackupWithholding ||
+                taxDetails.w4PerjuryAckAt) && (
                 <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
                     <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Acknowledgments</h3>
                     <div className="space-y-3">
@@ -221,6 +374,28 @@ export function TaxDetailsView({ staffId, taxDetails, onEdit }: TaxDetailsViewPr
                                 <p className="text-sm text-muted-foreground">Incomplete Records Notice</p>
                                 <p className="text-base text-green-700 font-medium">
                                     Accepted on {format(new Date(taxDetails.recordsAcknowledgedAt), 'MMM dd, yyyy HH:mm')}
+                                </p>
+                            </div>
+                        )}
+                        {taxDetails.w9CertifiedAt && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">W-9 Part II — Perjury Certification</p>
+                                <p className="text-base text-green-700 font-medium">
+                                    Certified on {format(new Date(taxDetails.w9CertifiedAt), 'MMM dd, yyyy HH:mm')}
+                                </p>
+                            </div>
+                        )}
+                        {taxDetails.w9SubjectToBackupWithholding && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">W-9 — Backup Withholding</p>
+                                <p className="text-base">Subject to backup withholding (IRS-notified)</p>
+                            </div>
+                        )}
+                        {taxDetails.w4PerjuryAckAt && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">W-4 Step 5 — Perjury Acknowledgement</p>
+                                <p className="text-base text-green-700 font-medium">
+                                    Acknowledged on {format(new Date(taxDetails.w4PerjuryAckAt), 'MMM dd, yyyy HH:mm')}
                                 </p>
                             </div>
                         )}

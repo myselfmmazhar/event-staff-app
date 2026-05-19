@@ -27,6 +27,21 @@ const optionalStringField = () =>
         .optional()
         .nullable();
 
+/**
+ * Helper: number coercion that accepts strings (from <input type="number">), nulls, and undefined.
+ * Empty strings → null.
+ */
+const optionalNumberField = (opts?: { int?: boolean; min?: number }) => {
+    let base: z.ZodNumber = z.coerce.number();
+    if (opts?.int) base = base.int();
+    if (opts?.min != null) base = base.min(opts.min);
+    return z
+        .union([z.literal(''), z.null(), z.undefined(), base])
+        .transform((val) => (val === '' || val == null ? null : (val as number)))
+        .optional()
+        .nullable();
+};
+
 export class StaffTaxDetailsSchema {
     /**
      * Create/Update Tax Details Schema (admin upsert)
@@ -129,6 +144,51 @@ export class StaffTaxDetailsSchema {
         // W-9 Part II: Certification
         signatureUrl: optionalStringField(),
         certificationDate: z.date().optional().nullable(),
+
+        // W-9 Line 3a "Other" description
+        otherClassificationDescription: z
+            .string()
+            .max(200)
+            .transform(emptyToNull)
+            .optional()
+            .nullable(),
+        // W-9 Line 3b (IRS Mar-2024) — foreign partners/owners/beneficiaries
+        hasForeignPartners: z.boolean().optional().nullable(),
+        // W-9 Requester's name and address (optional)
+        requesterNameAddress: z
+            .string()
+            .max(500)
+            .transform(emptyToNull)
+            .optional()
+            .nullable(),
+        // W-9 Part II — backup-withholding notification
+        w9SubjectToBackupWithholding: z.boolean().optional().nullable(),
+        // W-9 Part II — perjury certification timestamp
+        w9CertifiedAt: z.date().optional().nullable(),
+
+        // W-4 Step 1(a) middle initial
+        w4MiddleInitial: z
+            .string()
+            .max(1)
+            .transform(emptyToNull)
+            .optional()
+            .nullable(),
+        // W-4 Step 2(c) — two jobs total
+        w4MultipleJobs: z.boolean().optional().nullable(),
+        // W-4 Step 3 — dependents
+        w4QualifyingChildren: optionalNumberField({ int: true, min: 0 }),
+        w4OtherDependents: optionalNumberField({ int: true, min: 0 }),
+        w4OtherCredits: optionalNumberField({ min: 0 }),
+        w4DependentsTotal: optionalNumberField({ min: 0 }),
+        // W-4 Step 4 — other adjustments
+        w4OtherIncome: optionalNumberField({ min: 0 }),
+        w4Deductions: optionalNumberField({ min: 0 }),
+        w4ExtraWithholding: optionalNumberField({ min: 0 }),
+        // W-4 Step 4(c) — exempt-from-withholding marker
+        w4Exempt: z.boolean().optional().nullable(),
+        // W-4 Step 5 — perjury acknowledgement timestamp
+        w4PerjuryAckAt: z.date().optional().nullable(),
+
         w4FirstName: z.string().max(100).transform(emptyToNull).optional().nullable(),
         w4LastName: z.string().max(100).transform(emptyToNull).optional().nullable(),
         w4Status: z.string().max(100).transform(emptyToNull).optional().nullable(),
@@ -210,6 +270,51 @@ export class StaffTaxDetailsSchema {
         // W-9 Part II: Certification
         signatureUrl: optionalStringField(),
         certificationDate: z.date().optional().nullable(),
+
+        // W-9 Line 3a "Other" description
+        otherClassificationDescription: z
+            .string()
+            .max(200)
+            .transform(emptyToNull)
+            .optional()
+            .nullable(),
+        // W-9 Line 3b (IRS Mar-2024) — foreign partners/owners/beneficiaries
+        hasForeignPartners: z.boolean().optional().nullable(),
+        // W-9 Requester's name and address (optional)
+        requesterNameAddress: z
+            .string()
+            .max(500)
+            .transform(emptyToNull)
+            .optional()
+            .nullable(),
+        // W-9 Part II — backup-withholding notification
+        w9SubjectToBackupWithholding: z.boolean().optional().nullable(),
+        // W-9 Part II — perjury certification timestamp
+        w9CertifiedAt: z.date().optional().nullable(),
+
+        // W-4 Step 1(a) middle initial
+        w4MiddleInitial: z
+            .string()
+            .max(1)
+            .transform(emptyToNull)
+            .optional()
+            .nullable(),
+        // W-4 Step 2(c) — two jobs total
+        w4MultipleJobs: z.boolean().optional().nullable(),
+        // W-4 Step 3 — dependents
+        w4QualifyingChildren: optionalNumberField({ int: true, min: 0 }),
+        w4OtherDependents: optionalNumberField({ int: true, min: 0 }),
+        w4OtherCredits: optionalNumberField({ min: 0 }),
+        w4DependentsTotal: optionalNumberField({ min: 0 }),
+        // W-4 Step 4 — other adjustments
+        w4OtherIncome: optionalNumberField({ min: 0 }),
+        w4Deductions: optionalNumberField({ min: 0 }),
+        w4ExtraWithholding: optionalNumberField({ min: 0 }),
+        // W-4 Step 4(c) — exempt-from-withholding marker
+        w4Exempt: z.boolean().optional().nullable(),
+        // W-4 Step 5 — perjury acknowledgement timestamp
+        w4PerjuryAckAt: z.date().optional().nullable(),
+
         w4FirstName: z.string().max(100).transform(emptyToNull).optional().nullable(),
         w4LastName: z.string().max(100).transform(emptyToNull).optional().nullable(),
         w4Status: z.string().max(100).transform(emptyToNull).optional().nullable(),

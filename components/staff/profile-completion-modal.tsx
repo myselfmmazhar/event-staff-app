@@ -20,6 +20,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -120,12 +121,20 @@ type TaxFields = {
     businessName: string;
     businessStructure: BusinessStructure;
     llcClassification: string;
+    exemptPayeeCode: string;
+    fatcaExemptionCode: string;
     taxAddress: string;
     taxCity: string;
     taxState: string;
     taxZip: string;
+    accountNumbers: string;
     ssn: string;
     ein: string;
+    // W-9 additions
+    otherClassificationDescription: string;
+    hasForeignPartners: boolean;
+    requesterNameAddress: string;
+    w9SubjectToBackupWithholding: boolean;
 };
 
 const emptyTaxFields: TaxFields = {
@@ -133,12 +142,19 @@ const emptyTaxFields: TaxFields = {
     businessName: '',
     businessStructure: BusinessStructure.INDIVIDUAL,
     llcClassification: '',
+    exemptPayeeCode: '',
+    fatcaExemptionCode: '',
     taxAddress: '',
     taxCity: '',
     taxState: '',
     taxZip: '',
+    accountNumbers: '',
     ssn: '',
     ein: '',
+    otherClassificationDescription: '',
+    hasForeignPartners: false,
+    requesterNameAddress: '',
+    w9SubjectToBackupWithholding: false,
 };
 
 interface ProfileCompletionModalProps {
@@ -240,12 +256,22 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
                     (myProfile.taxDetails.businessStructure as BusinessStructure) ||
                     BusinessStructure.INDIVIDUAL,
                 llcClassification: myProfile.taxDetails.llcClassification || '',
+                exemptPayeeCode: myProfile.taxDetails.exemptPayeeCode || '',
+                fatcaExemptionCode: myProfile.taxDetails.fatcaExemptionCode || '',
                 taxAddress: myProfile.taxDetails.taxAddress || '',
                 taxCity: myProfile.taxDetails.taxCity || '',
                 taxState: myProfile.taxDetails.taxState || '',
                 taxZip: myProfile.taxDetails.taxZip || '',
+                accountNumbers: myProfile.taxDetails.accountNumbers || '',
                 ssn: '',
                 ein: '',
+                otherClassificationDescription:
+                    (myProfile.taxDetails as any).otherClassificationDescription || '',
+                hasForeignPartners: (myProfile.taxDetails as any).hasForeignPartners ?? false,
+                requesterNameAddress:
+                    (myProfile.taxDetails as any).requesterNameAddress || '',
+                w9SubjectToBackupWithholding:
+                    (myProfile.taxDetails as any).w9SubjectToBackupWithholding ?? false,
             });
         }
 
@@ -513,14 +539,24 @@ export function ProfileCompletionModal({ isOpen }: ProfileCompletionModalProps) 
             businessName: taxFields.businessName || undefined,
             businessStructure: taxFields.businessStructure,
             llcClassification: taxFields.llcClassification || undefined,
+            exemptPayeeCode: taxFields.exemptPayeeCode || undefined,
+            fatcaExemptionCode: taxFields.fatcaExemptionCode || undefined,
             taxAddress: taxFields.taxAddress,
             taxCity: taxFields.taxCity,
             taxState: taxFields.taxState,
             taxZip: taxFields.taxZip,
+            accountNumbers: taxFields.accountNumbers || undefined,
             ssn: taxFields.ssn || undefined,
             ein: taxFields.ein || undefined,
             signatureUrl,
             ackRecords,
+            // W-9 additions
+            otherClassificationDescription:
+                taxFields.otherClassificationDescription || undefined,
+            hasForeignPartners: taxFields.hasForeignPartners,
+            requesterNameAddress: taxFields.requesterNameAddress || undefined,
+            w9SubjectToBackupWithholding: taxFields.w9SubjectToBackupWithholding,
+            w9CertifiedAt: ackCertification ? new Date() : undefined,
         });
     };
 
@@ -1120,6 +1156,97 @@ function TaxStep({
                     </div>
                 )}
 
+                {taxFields.businessStructure === BusinessStructure.OTHER && (
+                    <div>
+                        <Label
+                            htmlFor="otherClassificationDescription"
+                            className="text-sm font-bold text-slate-900"
+                        >
+                            Other classification description
+                        </Label>
+                        <Input
+                            id="otherClassificationDescription"
+                            placeholder="Describe your tax classification"
+                            disabled={disabled}
+                            value={taxFields.otherClassificationDescription}
+                            onChange={(e) =>
+                                setTaxFields((p) => ({
+                                    ...p,
+                                    otherClassificationDescription: e.target.value,
+                                }))
+                            }
+                            className="mt-2 rounded-lg border-slate-200"
+                        />
+                    </div>
+                )}
+
+                {(taxFields.businessStructure === BusinessStructure.PARTNERSHIP ||
+                    taxFields.businessStructure === BusinessStructure.TRUST_ESTATE ||
+                    (taxFields.businessStructure === BusinessStructure.LLC &&
+                        taxFields.llcClassification === 'P')) && (
+                    <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
+                        <Checkbox
+                            checked={taxFields.hasForeignPartners}
+                            onChange={(e) =>
+                                setTaxFields((p) => ({
+                                    ...p,
+                                    hasForeignPartners: e.target.checked,
+                                }))
+                            }
+                            disabled={disabled}
+                            className="mt-0.5"
+                        />
+                        <span className="text-sm leading-snug text-slate-900">
+                            <span className="font-bold">Line 3b — Foreign partners, owners, or beneficiaries</span>
+                            <span className="mt-1 block text-xs font-normal text-slate-500">
+                                Check this if you are providing this form to a partnership, trust, or estate
+                                in which you have an ownership interest and that partnership, trust, or estate
+                                has any foreign partners, owners, or beneficiaries.
+                            </span>
+                        </span>
+                    </label>
+                )}
+
+                {/* Line 4 — Exemptions */}
+                <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                    <div>
+                        <Label
+                            htmlFor="exemptPayeeCode"
+                            className="text-sm font-bold text-slate-900"
+                        >
+                            Exempt payee code <span className="font-normal text-slate-500">(if any)</span>
+                        </Label>
+                        <Input
+                            id="exemptPayeeCode"
+                            placeholder="Code (if applicable)"
+                            disabled={disabled}
+                            value={taxFields.exemptPayeeCode}
+                            onChange={(e) =>
+                                setTaxFields((p) => ({ ...p, exemptPayeeCode: e.target.value }))
+                            }
+                            className="mt-2 rounded-lg border-slate-200"
+                        />
+                    </div>
+                    <div>
+                        <Label
+                            htmlFor="fatcaExemptionCode"
+                            className="text-sm font-bold text-slate-900"
+                        >
+                            FATCA exemption code <span className="font-normal text-slate-500">(if any)</span>
+                        </Label>
+                        <Input
+                            id="fatcaExemptionCode"
+                            placeholder="Code (if applicable)"
+                            disabled={disabled}
+                            value={taxFields.fatcaExemptionCode}
+                            onChange={(e) =>
+                                setTaxFields((p) => ({ ...p, fatcaExemptionCode: e.target.value }))
+                            }
+                            className="mt-2 rounded-lg border-slate-200"
+                        />
+                    </div>
+                </div>
+
                 <div className="pt-4 border-t border-slate-100">
                     <div className="flex items-center space-x-2 pb-4">
                         <Checkbox
@@ -1254,6 +1381,25 @@ function TaxStep({
                     </div>
                 </div>
 
+                <div>
+                    <Label
+                        htmlFor="accountNumbers"
+                        className="text-sm font-bold text-slate-900"
+                    >
+                        Account number(s) <span className="font-normal text-slate-500">(optional)</span>
+                    </Label>
+                    <Input
+                        id="accountNumbers"
+                        placeholder="Optional account numbers"
+                        disabled={disabled}
+                        value={taxFields.accountNumbers}
+                        onChange={(e) =>
+                            setTaxFields((p) => ({ ...p, accountNumbers: e.target.value }))
+                        }
+                        className="mt-2 rounded-lg border-slate-200"
+                    />
+                </div>
+
                 <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
                     <div>
                         <p className="text-sm font-bold text-slate-900">
@@ -1328,6 +1474,50 @@ function TaxStep({
                         </div>
                     </div>
                 </div>
+
+                {/* Requester's name & address (optional) */}
+                <div>
+                    <Label
+                        htmlFor="requesterNameAddress"
+                        className="text-sm font-bold text-slate-900"
+                    >
+                        Requester&apos;s name and address (optional)
+                    </Label>
+                    <Textarea
+                        id="requesterNameAddress"
+                        placeholder="Name and address of the person/business requesting this Form W-9"
+                        disabled={disabled}
+                        value={taxFields.requesterNameAddress}
+                        onChange={(e) =>
+                            setTaxFields((p) => ({ ...p, requesterNameAddress: e.target.value }))
+                        }
+                        className="mt-2 min-h-[72px] rounded-lg border-slate-200"
+                    />
+                </div>
+
+                {/* Backup-withholding notification */}
+                <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
+                    <Checkbox
+                        checked={taxFields.w9SubjectToBackupWithholding}
+                        onChange={(e) =>
+                            setTaxFields((p) => ({
+                                ...p,
+                                w9SubjectToBackupWithholding: e.target.checked,
+                            }))
+                        }
+                        disabled={disabled}
+                        className="mt-0.5"
+                    />
+                    <span className="text-sm leading-snug text-slate-900">
+                        <span className="font-bold">
+                            I have been notified by the IRS that I am currently subject to backup withholding
+                        </span>
+                        <span className="mt-1 block text-xs font-normal text-slate-500">
+                            Only check if the IRS has notified you that you are currently subject to backup
+                            withholding because of underreporting interest or dividends on your tax return.
+                        </span>
+                    </span>
+                </label>
             </div>
         </div>
     );

@@ -453,6 +453,21 @@ export class StaffSchema {
                 .max(1)
                 .transform((val) => val?.trim() ?? "")
                 .optional(),
+            exemptPayeeCode: z
+                .string()
+                .max(10, "Exempt payee code must be 10 characters or less")
+                .transform((val) => val?.trim() ?? "")
+                .optional(),
+            fatcaExemptionCode: z
+                .string()
+                .max(10, "FATCA exemption code must be 10 characters or less")
+                .transform((val) => val?.trim() ?? "")
+                .optional(),
+            accountNumbers: z
+                .string()
+                .max(100, "Account numbers must be 100 characters or less")
+                .transform((val) => val?.trim() ?? "")
+                .optional(),
             taxAddress: z
                 .string()
                 .min(1, "Tax address is required")
@@ -492,6 +507,32 @@ export class StaffSchema {
                 .optional(),
             ackPolicy: z.boolean().optional(),
             ackRecords: z.boolean().optional(),
+
+            // W-9 additional optional fields
+            otherClassificationDescription: z.string().max(200).optional(),
+            hasForeignPartners: z.boolean().optional(),
+            requesterNameAddress: z.string().max(500).optional(),
+            w9SubjectToBackupWithholding: z.boolean().optional(),
+            w9CertifiedAt: z.date().optional(),
+
+            // W-4 additional optional fields (only sent when talent is EMPLOYEE)
+            w4FirstName: z.string().max(100).optional(),
+            w4MiddleInitial: z.string().max(1).optional(),
+            w4LastName: z.string().max(100).optional(),
+            w4Status: z.string().max(100).optional(),
+            w4EmployerName: z.string().max(200).optional(),
+            w4EmployerAddress: z.string().max(300).optional(),
+            w4EmploymentDate: z.date().optional(),
+            w4MultipleJobs: z.boolean().optional(),
+            w4QualifyingChildren: z.coerce.number().int().min(0).optional(),
+            w4OtherDependents: z.coerce.number().int().min(0).optional(),
+            w4OtherCredits: z.coerce.number().min(0).optional(),
+            w4DependentsTotal: z.coerce.number().min(0).optional(),
+            w4OtherIncome: z.coerce.number().min(0).optional(),
+            w4Deductions: z.coerce.number().min(0).optional(),
+            w4ExtraWithholding: z.coerce.number().min(0).optional(),
+            w4Exempt: z.boolean().optional(),
+            w4PerjuryAckAt: z.date().optional(),
         })
         .superRefine((data, ctx) => {
             const hasSsn = !!data.ssn && data.ssn.length > 0;
