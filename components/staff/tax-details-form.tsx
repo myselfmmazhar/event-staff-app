@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
@@ -59,10 +60,35 @@ interface TaxDetailsFormProps {
         w4EmployerName?: string | null;
         w4EmployerAddress?: string | null;
         w4EmploymentDate?: Date | string | null;
+        // W-9 additions
+        otherClassificationDescription?: string | null;
+        hasForeignPartners?: boolean | null;
+        requesterNameAddress?: string | null;
+        w9SubjectToBackupWithholding?: boolean | null;
+        w9CertifiedAt?: Date | string | null;
+        // W-4 additions
+        w4MiddleInitial?: string | null;
+        w4MultipleJobs?: boolean | null;
+        w4QualifyingChildren?: number | null;
+        w4OtherDependents?: number | null;
+        w4OtherCredits?: number | string | null;
+        w4DependentsTotal?: number | string | null;
+        w4OtherIncome?: number | string | null;
+        w4Deductions?: number | string | null;
+        w4ExtraWithholding?: number | string | null;
+        w4Exempt?: boolean | null;
+        w4PerjuryAckAt?: Date | string | null;
     } | null;
     onSuccess?: () => void;
     onCancel?: () => void;
 }
+
+// Coerce Prisma Decimal / number / string into a number-or-null suitable for form inputs.
+const toNumOrNull = (v: unknown): number | null => {
+    if (v == null || v === '') return null;
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? n : null;
+};
 
 const BUSINESS_STRUCTURE_LABELS: Record<BusinessStructure, string> = {
     INDIVIDUAL: 'Individual/Sole Proprietor',
@@ -124,6 +150,24 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
             w4EmployerName: initialData?.w4EmployerName ?? '',
             w4EmployerAddress: initialData?.w4EmployerAddress ?? '',
             w4EmploymentDate: initialData?.w4EmploymentDate ? new Date(initialData.w4EmploymentDate) : null,
+            // W-9 additions
+            otherClassificationDescription: initialData?.otherClassificationDescription ?? '',
+            hasForeignPartners: initialData?.hasForeignPartners ?? false,
+            requesterNameAddress: initialData?.requesterNameAddress ?? '',
+            w9SubjectToBackupWithholding: initialData?.w9SubjectToBackupWithholding ?? false,
+            w9CertifiedAt: initialData?.w9CertifiedAt ? new Date(initialData.w9CertifiedAt) : null,
+            // W-4 additions
+            w4MiddleInitial: initialData?.w4MiddleInitial ?? '',
+            w4MultipleJobs: initialData?.w4MultipleJobs ?? false,
+            w4QualifyingChildren: toNumOrNull(initialData?.w4QualifyingChildren),
+            w4OtherDependents: toNumOrNull(initialData?.w4OtherDependents),
+            w4OtherCredits: toNumOrNull(initialData?.w4OtherCredits),
+            w4DependentsTotal: toNumOrNull(initialData?.w4DependentsTotal),
+            w4OtherIncome: toNumOrNull(initialData?.w4OtherIncome),
+            w4Deductions: toNumOrNull(initialData?.w4Deductions),
+            w4ExtraWithholding: toNumOrNull(initialData?.w4ExtraWithholding),
+            w4Exempt: initialData?.w4Exempt ?? false,
+            w4PerjuryAckAt: initialData?.w4PerjuryAckAt ? new Date(initialData.w4PerjuryAckAt) : null,
         },
     });
 
@@ -153,12 +197,49 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                 w4EmployerName: fetchedTaxDetails.w4EmployerName ?? '',
                 w4EmployerAddress: fetchedTaxDetails.w4EmployerAddress ?? '',
                 w4EmploymentDate: fetchedTaxDetails.w4EmploymentDate ? new Date(fetchedTaxDetails.w4EmploymentDate) : null,
+                // W-9 additions
+                otherClassificationDescription: (fetchedTaxDetails as any).otherClassificationDescription ?? '',
+                hasForeignPartners: (fetchedTaxDetails as any).hasForeignPartners ?? false,
+                requesterNameAddress: (fetchedTaxDetails as any).requesterNameAddress ?? '',
+                w9SubjectToBackupWithholding: (fetchedTaxDetails as any).w9SubjectToBackupWithholding ?? false,
+                w9CertifiedAt: (fetchedTaxDetails as any).w9CertifiedAt ? new Date((fetchedTaxDetails as any).w9CertifiedAt) : null,
+                // W-4 additions
+                w4MiddleInitial: (fetchedTaxDetails as any).w4MiddleInitial ?? '',
+                w4MultipleJobs: (fetchedTaxDetails as any).w4MultipleJobs ?? false,
+                w4QualifyingChildren: toNumOrNull((fetchedTaxDetails as any).w4QualifyingChildren),
+                w4OtherDependents: toNumOrNull((fetchedTaxDetails as any).w4OtherDependents),
+                w4OtherCredits: toNumOrNull((fetchedTaxDetails as any).w4OtherCredits),
+                w4DependentsTotal: toNumOrNull((fetchedTaxDetails as any).w4DependentsTotal),
+                w4OtherIncome: toNumOrNull((fetchedTaxDetails as any).w4OtherIncome),
+                w4Deductions: toNumOrNull((fetchedTaxDetails as any).w4Deductions),
+                w4ExtraWithholding: toNumOrNull((fetchedTaxDetails as any).w4ExtraWithholding),
+                w4Exempt: (fetchedTaxDetails as any).w4Exempt ?? false,
+                w4PerjuryAckAt: (fetchedTaxDetails as any).w4PerjuryAckAt ? new Date((fetchedTaxDetails as any).w4PerjuryAckAt) : null,
             });
         }
     }, [fetchedTaxDetails, reset, isDirty]);
 
     const taxFilledBy = watch('taxFilledBy');
     const businessStructure = watch('businessStructure');
+
+    // W-9 Line 3b is only relevant for partnerships, trusts/estates, or LLCs taxed as partnerships
+    const w9LlcClassification = watch('llcClassification');
+    const showLine3b =
+        businessStructure === BusinessStructure.PARTNERSHIP ||
+        businessStructure === BusinessStructure.TRUST_ESTATE ||
+        (businessStructure === BusinessStructure.LLC && w9LlcClassification === 'P');
+
+    // Auto-compute W-4 Step 3 dependents total: children*2000 + others*500 + otherCredits
+    const w4QualifyingChildren = watch('w4QualifyingChildren');
+    const w4OtherDependents = watch('w4OtherDependents');
+    const w4OtherCredits = watch('w4OtherCredits');
+    useEffect(() => {
+        const children = Number(w4QualifyingChildren) || 0;
+        const others = Number(w4OtherDependents) || 0;
+        const credits = Number(w4OtherCredits) || 0;
+        const total = children * 2000 + others * 500 + credits;
+        setValue('w4DependentsTotal', total > 0 ? total : null, { shouldDirty: true });
+    }, [w4QualifyingChildren, w4OtherDependents, w4OtherCredits, setValue]);
 
     // TIN type toggle (SSN vs EIN)
     const [tinType, setTinType] = useState<'SSN' | 'EIN'>('SSN');
@@ -325,6 +406,21 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 />
                             </div>
 
+                            {businessStructure === BusinessStructure.OTHER && (
+                                <div className="min-w-0 md:col-span-2">
+                                    <Label htmlFor="otherClassificationDescription" className="text-sm leading-snug">
+                                        Other classification description
+                                    </Label>
+                                    <Input
+                                        id="otherClassificationDescription"
+                                        className="mt-2 h-10"
+                                        {...register('otherClassificationDescription')}
+                                        disabled={isDisabled}
+                                        placeholder="Describe your tax classification"
+                                    />
+                                </div>
+                            )}
+
                             {businessStructure === BusinessStructure.LLC && (
                                 <div className="min-w-0 md:col-span-2">
                                     <Label htmlFor="llcClassification" className="text-sm leading-snug">
@@ -381,6 +477,33 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                     placeholder="Code (if applicable)"
                                 />
                             </div>
+
+                            {showLine3b && (
+                                <div className="min-w-0 md:col-span-2">
+                                    <Controller
+                                        name="hasForeignPartners"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                                                <Checkbox
+                                                    checked={!!field.value}
+                                                    onChange={(e) => field.onChange(e.currentTarget.checked)}
+                                                    disabled={isDisabled}
+                                                    className="mt-0.5"
+                                                />
+                                                <span className="text-sm leading-snug text-foreground">
+                                                    <span className="font-medium">Line 3b — Foreign partners, owners, or beneficiaries</span>
+                                                    <span className="mt-1 block text-xs text-muted-foreground">
+                                                        Check this box if you are providing this form to a partnership, trust, or estate
+                                                        in which you have an ownership interest and that partnership, trust, or estate
+                                                        has any foreign partners, owners, or beneficiaries.
+                                                    </span>
+                                                </span>
+                                            </label>
+                                        )}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -450,6 +573,18 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                     {...register('accountNumbers')}
                                     disabled={isDisabled}
                                     placeholder="Optional account numbers"
+                                />
+                            </div>
+                            <div className="min-w-0 md:col-span-12">
+                                <Label htmlFor="requesterNameAddress" className="text-sm leading-snug">
+                                    Requester&apos;s name and address <span className="font-normal text-muted-foreground">(optional)</span>
+                                </Label>
+                                <Textarea
+                                    id="requesterNameAddress"
+                                    className="mt-2 min-h-[72px]"
+                                    {...register('requesterNameAddress')}
+                                    disabled={isDisabled}
+                                    placeholder="Name and address of the person/business requesting this Form W-9"
                                 />
                             </div>
                         </div>
@@ -556,6 +691,71 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                             </div>
                         </div>
                     </div>
+
+                    {/* Part II: Certification */}
+                    <div>
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-2">
+                            Part II — Certification
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-5">
+                            Under penalties of perjury, I certify that:
+                        </p>
+
+                        <div className="space-y-3">
+                            <Controller
+                                name="w9SubjectToBackupWithholding"
+                                control={control}
+                                render={({ field }) => (
+                                    <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                                        <Checkbox
+                                            checked={!!field.value}
+                                            onChange={(e) => field.onChange(e.currentTarget.checked)}
+                                            disabled={isDisabled}
+                                            className="mt-0.5"
+                                        />
+                                        <span className="text-sm leading-snug text-foreground">
+                                            <span className="font-medium">I have been notified by the IRS that I am currently subject to backup withholding</span>
+                                            <span className="mt-1 block text-xs text-muted-foreground">
+                                                Only check if the IRS has notified you that you are currently subject to backup
+                                                withholding because of underreporting interest or dividends on your tax return.
+                                            </span>
+                                        </span>
+                                    </label>
+                                )}
+                            />
+
+                            <Controller
+                                name="w9CertifiedAt"
+                                control={control}
+                                render={({ field }) => (
+                                    <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                                        <Checkbox
+                                            checked={!!field.value}
+                                            onChange={(e) => field.onChange(e.currentTarget.checked ? new Date() : null)}
+                                            disabled={isDisabled}
+                                            className="mt-0.5"
+                                        />
+                                        <span className="text-sm leading-snug text-foreground">
+                                            <span className="font-medium">
+                                                I certify under penalties of perjury that:
+                                            </span>
+                                            <span className="mt-2 block text-xs text-muted-foreground space-y-1">
+                                                <span className="block">1. The TIN shown on this form is my correct taxpayer identification number (or I am waiting for a number to be issued to me).</span>
+                                                <span className="block">2. I am not subject to backup withholding (unless I checked the box above).</span>
+                                                <span className="block">3. I am a U.S. citizen or other U.S. person.</span>
+                                                <span className="block">4. The FATCA code(s) entered on this form (if any) indicating that I am exempt from FATCA reporting is correct.</span>
+                                            </span>
+                                            {field.value && (
+                                                <span className="mt-2 block text-xs text-muted-foreground">
+                                                    Certified on {new Date(field.value as unknown as string).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </span>
+                                    </label>
+                                )}
+                            />
+                        </div>
+                    </div>
                 </>
             )}
 
@@ -572,8 +772,8 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                         </div>
 
                         {/* Design similar to W-9 */}
-                        <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
-                            <div className="min-w-0">
+                        <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-12">
+                            <div className="min-w-0 md:col-span-5">
                                 <Label htmlFor="w4FirstName" className="text-sm font-bold">
                                     First name
                                 </Label>
@@ -589,7 +789,21 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 )}
                             </div>
 
-                            <div className="min-w-0">
+                            <div className="min-w-0 md:col-span-2">
+                                <Label htmlFor="w4MiddleInitial" className="text-sm font-bold">
+                                    Middle initial
+                                </Label>
+                                <Input
+                                    id="w4MiddleInitial"
+                                    maxLength={1}
+                                    className="mt-2 h-10"
+                                    {...register('w4MiddleInitial')}
+                                    disabled={isDisabled}
+                                    placeholder="M"
+                                />
+                            </div>
+
+                            <div className="min-w-0 md:col-span-5">
                                 <Label htmlFor="w4LastName" className="text-sm font-bold">
                                     Last name
                                 </Label>
@@ -605,7 +819,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 )}
                             </div>
 
-                            <div className="min-w-0 md:col-span-2">
+                            <div className="min-w-0 md:col-span-12">
                                 <Label htmlFor="w4Status" className="text-sm font-bold">
                                     Filing Status
                                 </Label>
@@ -631,7 +845,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 />
                             </div>
 
-                            <div className="min-w-0 md:col-span-2">
+                            <div className="min-w-0 md:col-span-12">
                                 <Label htmlFor="w4EmployerName" className="text-sm font-bold">
                                     Employer’s name and address
                                 </Label>
@@ -643,7 +857,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                     placeholder="Employer Name"
                                 />
                             </div>
-                            <div className="min-w-0 md:col-span-2">
+                            <div className="min-w-0 md:col-span-12">
                                 <Textarea
                                     id="w4EmployerAddress"
                                     className="mt-2 min-h-[80px]"
@@ -653,7 +867,7 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 />
                             </div>
 
-                            <div className="min-w-0">
+                            <div className="min-w-0 md:col-span-6">
                                 <Label htmlFor="w4EmploymentDate" className="text-sm font-bold">
                                     First date of employment
                                 </Label>
@@ -796,6 +1010,223 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 )}
                             </div>
                         </div>
+                    </div>
+
+                    {/* Step 2 — Multiple Jobs or Spouse Works */}
+                    <div>
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-2">
+                            Step 2 — Multiple Jobs or Spouse Works
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Complete this step if you (1) hold more than one job at a time, or (2) are married
+                            filing jointly and your spouse also works.
+                        </p>
+                        <Controller
+                            name="w4MultipleJobs"
+                            control={control}
+                            render={({ field }) => (
+                                <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                                    <Checkbox
+                                        checked={!!field.value}
+                                        onChange={(e) => field.onChange(e.currentTarget.checked)}
+                                        disabled={isDisabled}
+                                        className="mt-0.5"
+                                    />
+                                    <span className="text-sm leading-snug text-foreground">
+                                        <span className="font-medium">Step 2(c) — Two jobs total</span>
+                                        <span className="mt-1 block text-xs text-muted-foreground">
+                                            Check this box if there are only two jobs total. Do the same on the W-4 for the other job.
+                                            This option is generally accurate when the pay at the two jobs is similar.
+                                        </span>
+                                    </span>
+                                </label>
+                            )}
+                        />
+                    </div>
+
+                    {/* Step 3 — Claim Dependents */}
+                    <div>
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-2">
+                            Step 3 — Claim Dependents
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-5">
+                            If your total income will be $200,000 or less ($400,000 or less if married filing jointly):
+                        </p>
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                            <div className="min-w-0">
+                                <Label htmlFor="w4QualifyingChildren" className="text-sm font-bold">
+                                    Qualifying children under age 17
+                                </Label>
+                                <Input
+                                    id="w4QualifyingChildren"
+                                    type="number"
+                                    min={0}
+                                    step={1}
+                                    className="mt-2 h-10"
+                                    {...register('w4QualifyingChildren')}
+                                    disabled={isDisabled}
+                                    placeholder="0"
+                                />
+                                <p className="mt-1.5 text-xs text-muted-foreground">Multiplied by $2,000</p>
+                            </div>
+                            <div className="min-w-0">
+                                <Label htmlFor="w4OtherDependents" className="text-sm font-bold">
+                                    Number of other dependents
+                                </Label>
+                                <Input
+                                    id="w4OtherDependents"
+                                    type="number"
+                                    min={0}
+                                    step={1}
+                                    className="mt-2 h-10"
+                                    {...register('w4OtherDependents')}
+                                    disabled={isDisabled}
+                                    placeholder="0"
+                                />
+                                <p className="mt-1.5 text-xs text-muted-foreground">Multiplied by $500</p>
+                            </div>
+                            <div className="min-w-0">
+                                <Label htmlFor="w4OtherCredits" className="text-sm font-bold">
+                                    Other credits
+                                </Label>
+                                <Input
+                                    id="w4OtherCredits"
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    className="mt-2 h-10"
+                                    {...register('w4OtherCredits')}
+                                    disabled={isDisabled}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div className="min-w-0">
+                                <Label htmlFor="w4DependentsTotal" className="text-sm font-bold">
+                                    Total <span className="font-normal text-muted-foreground">(auto-computed)</span>
+                                </Label>
+                                <Input
+                                    id="w4DependentsTotal"
+                                    type="number"
+                                    readOnly
+                                    className="mt-2 h-10 bg-muted/40"
+                                    value={(watch('w4DependentsTotal') as number | null) ?? ''}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Step 4 — Other Adjustments */}
+                    <div>
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-2">
+                            Step 4 (optional) — Other Adjustments
+                        </h3>
+                        <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-3">
+                            <div className="min-w-0">
+                                <Label htmlFor="w4OtherIncome" className="text-sm font-bold">
+                                    4(a) Other income
+                                </Label>
+                                <Input
+                                    id="w4OtherIncome"
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    className="mt-2 h-10"
+                                    {...register('w4OtherIncome')}
+                                    disabled={isDisabled}
+                                    placeholder="0.00"
+                                />
+                                <p className="mt-1.5 text-xs text-muted-foreground">Not from jobs (annual)</p>
+                            </div>
+                            <div className="min-w-0">
+                                <Label htmlFor="w4Deductions" className="text-sm font-bold">
+                                    4(b) Deductions
+                                </Label>
+                                <Input
+                                    id="w4Deductions"
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    className="mt-2 h-10"
+                                    {...register('w4Deductions')}
+                                    disabled={isDisabled}
+                                    placeholder="0.00"
+                                />
+                                <p className="mt-1.5 text-xs text-muted-foreground">Other than standard deduction</p>
+                            </div>
+                            <div className="min-w-0">
+                                <Label htmlFor="w4ExtraWithholding" className="text-sm font-bold">
+                                    4(c) Extra withholding
+                                </Label>
+                                <Input
+                                    id="w4ExtraWithholding"
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    className="mt-2 h-10"
+                                    {...register('w4ExtraWithholding')}
+                                    disabled={isDisabled}
+                                    placeholder="0.00"
+                                />
+                                <p className="mt-1.5 text-xs text-muted-foreground">Additional per pay period</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-5">
+                            <Controller
+                                name="w4Exempt"
+                                control={control}
+                                render={({ field }) => (
+                                    <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                                        <Checkbox
+                                            checked={!!field.value}
+                                            onChange={(e) => field.onChange(e.currentTarget.checked)}
+                                            disabled={isDisabled}
+                                            className="mt-0.5"
+                                        />
+                                        <span className="text-sm leading-snug text-foreground">
+                                            <span className="font-medium">Claim exemption from withholding</span>
+                                            <span className="mt-1 block text-xs text-muted-foreground">
+                                                Check only if both apply: (1) had no federal income tax liability last year,
+                                                AND (2) expect no federal income tax liability this year.
+                                            </span>
+                                        </span>
+                                    </label>
+                                )}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Step 5 — Certification */}
+                    <div>
+                        <h3 className="text-lg font-semibold border-b border-border pb-3 mb-2">
+                            Step 5 — Sign Here
+                        </h3>
+                        <Controller
+                            name="w4PerjuryAckAt"
+                            control={control}
+                            render={({ field }) => (
+                                <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                                    <Checkbox
+                                        checked={!!field.value}
+                                        onChange={(e) => field.onChange(e.currentTarget.checked ? new Date() : null)}
+                                        disabled={isDisabled}
+                                        className="mt-0.5"
+                                    />
+                                    <span className="text-sm leading-snug text-foreground">
+                                        <span className="font-medium">
+                                            Under penalties of perjury, I declare that this certificate, to the best of my
+                                            knowledge and belief, is true, correct, and complete.
+                                        </span>
+                                        {field.value && (
+                                            <span className="mt-2 block text-xs text-muted-foreground">
+                                                Acknowledged on {new Date(field.value as unknown as string).toLocaleDateString()}
+                                            </span>
+                                        )}
+                                    </span>
+                                </label>
+                            )}
+                        />
                     </div>
                 </>
             )}

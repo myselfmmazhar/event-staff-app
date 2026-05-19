@@ -1,0 +1,17 @@
+-- AlterTable
+ALTER TABLE "staff_tax_details" ADD COLUMN     "hasForeignPartners" BOOLEAN,
+ADD COLUMN     "otherClassificationDescription" TEXT,
+ADD COLUMN     "requesterNameAddress" TEXT,
+ADD COLUMN     "w4Deductions" DECIMAL(12,2),
+ADD COLUMN     "w4DependentsTotal" DECIMAL(12,2),
+ADD COLUMN     "w4Exempt" BOOLEAN,
+ADD COLUMN     "w4ExtraWithholding" DECIMAL(12,2),
+ADD COLUMN     "w4MiddleInitial" TEXT,
+ADD COLUMN     "w4MultipleJobs" BOOLEAN,
+ADD COLUMN     "w4OtherCredits" DECIMAL(12,2),
+ADD COLUMN     "w4OtherDependents" INTEGER,
+ADD COLUMN     "w4OtherIncome" DECIMAL(12,2),
+ADD COLUMN     "w4PerjuryAckAt" TIMESTAMP(6),
+ADD COLUMN     "w4QualifyingChildren" INTEGER,
+ADD COLUMN     "w9CertifiedAt" TIMESTAMP(6),
+ADD COLUMN     "w9SubjectToBackupWithholding" BOOLEAN;

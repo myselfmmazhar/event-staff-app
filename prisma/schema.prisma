@@ -930,6 +930,27 @@ model StaffTaxDetails {
   w4EmploymentDate         DateTime?         @db.Timestamp(6)
   policyAcknowledgedAt     DateTime?         @db.Timestamp(6)
   recordsAcknowledgedAt    DateTime?         @db.Timestamp(6)
+
+  // W-9 additional fields
+  otherClassificationDescription String?
+  hasForeignPartners             Boolean?
+  requesterNameAddress           String?
+  w9SubjectToBackupWithholding   Boolean?
+  w9CertifiedAt                  DateTime? @db.Timestamp(6)
+
+  // W-4 additional fields
+  w4MiddleInitial      String?
+  w4MultipleJobs       Boolean?
+  w4QualifyingChildren Int?
+  w4OtherDependents    Int?
+  w4OtherCredits       Decimal? @db.Decimal(12, 2)
+  w4DependentsTotal    Decimal? @db.Decimal(12, 2)
+  w4OtherIncome        Decimal? @db.Decimal(12, 2)
+  w4Deductions         Decimal? @db.Decimal(12, 2)
+  w4ExtraWithholding   Decimal? @db.Decimal(12, 2)
+  w4Exempt             Boolean?
+  w4PerjuryAckAt       DateTime? @db.Timestamp(6)
+
   staff              Staff             @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId])

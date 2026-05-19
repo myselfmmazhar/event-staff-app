@@ -207,6 +207,30 @@ export class StaffService {
                 recordsAcknowledgedAt: true,
                 createdAt: true,
                 updatedAt: true,
+                // W-9 additions
+                otherClassificationDescription: true,
+                hasForeignPartners: true,
+                requesterNameAddress: true,
+                w9SubjectToBackupWithholding: true,
+                w9CertifiedAt: true,
+                // W-4 additions
+                w4FirstName: true,
+                w4MiddleInitial: true,
+                w4LastName: true,
+                w4Status: true,
+                w4EmployerName: true,
+                w4EmployerAddress: true,
+                w4EmploymentDate: true,
+                w4MultipleJobs: true,
+                w4QualifyingChildren: true,
+                w4OtherDependents: true,
+                w4OtherCredits: true,
+                w4DependentsTotal: true,
+                w4OtherIncome: true,
+                w4Deductions: true,
+                w4ExtraWithholding: true,
+                w4Exempt: true,
+                w4PerjuryAckAt: true,
             },
         },
     } as const;
@@ -676,15 +700,42 @@ export class StaffService {
             businessName,
             businessStructure,
             llcClassification,
+            exemptPayeeCode,
+            fatcaExemptionCode,
             taxAddress,
             taxCity,
             taxState,
             taxZip,
+            accountNumbers,
             ssn,
             ein,
             signatureUrl,
             ackPolicy,
             ackRecords,
+            // W-9 additions
+            otherClassificationDescription,
+            hasForeignPartners,
+            requesterNameAddress,
+            w9SubjectToBackupWithholding,
+            w9CertifiedAt,
+            // W-4 additions
+            w4FirstName,
+            w4MiddleInitial,
+            w4LastName,
+            w4Status,
+            w4EmployerName,
+            w4EmployerAddress,
+            w4EmploymentDate,
+            w4MultipleJobs,
+            w4QualifyingChildren,
+            w4OtherDependents,
+            w4OtherCredits,
+            w4DependentsTotal,
+            w4OtherIncome,
+            w4Deductions,
+            w4ExtraWithholding,
+            w4Exempt,
+            w4PerjuryAckAt,
             ...profileData
         } = data;
 
@@ -701,16 +752,53 @@ export class StaffService {
             businessStructure,
             llcClassification:
                 llcClassification && llcClassification.length > 0 ? llcClassification : null,
+            exemptPayeeCode:
+                exemptPayeeCode && exemptPayeeCode.length > 0 ? exemptPayeeCode : null,
+            fatcaExemptionCode:
+                fatcaExemptionCode && fatcaExemptionCode.length > 0 ? fatcaExemptionCode : null,
             taxAddress,
             taxCity,
             taxState,
             taxZip,
+            accountNumbers:
+                accountNumbers && accountNumbers.length > 0 ? accountNumbers : null,
             ssn: ssn && ssn.length > 0 ? ssn : null,
             ein: ein && ein.length > 0 ? ein : null,
             signatureUrl: signatureUrl && signatureUrl.length > 0 ? signatureUrl : null,
             certificationDate: signatureUrl && signatureUrl.length > 0 ? new Date() : null,
             policyAcknowledgedAt: ackPolicy ? new Date() : null,
             recordsAcknowledgedAt: ackRecords ? new Date() : null,
+            // W-9 additions
+            otherClassificationDescription:
+                otherClassificationDescription && otherClassificationDescription.length > 0
+                    ? otherClassificationDescription
+                    : null,
+            hasForeignPartners: hasForeignPartners ?? null,
+            requesterNameAddress:
+                requesterNameAddress && requesterNameAddress.length > 0 ? requesterNameAddress : null,
+            w9SubjectToBackupWithholding: w9SubjectToBackupWithholding ?? null,
+            w9CertifiedAt: w9CertifiedAt ?? null,
+            // W-4 additions
+            w4FirstName: w4FirstName && w4FirstName.length > 0 ? w4FirstName : null,
+            w4MiddleInitial:
+                w4MiddleInitial && w4MiddleInitial.length > 0 ? w4MiddleInitial : null,
+            w4LastName: w4LastName && w4LastName.length > 0 ? w4LastName : null,
+            w4Status: w4Status && w4Status.length > 0 ? w4Status : null,
+            w4EmployerName:
+                w4EmployerName && w4EmployerName.length > 0 ? w4EmployerName : null,
+            w4EmployerAddress:
+                w4EmployerAddress && w4EmployerAddress.length > 0 ? w4EmployerAddress : null,
+            w4EmploymentDate: w4EmploymentDate ?? null,
+            w4MultipleJobs: w4MultipleJobs ?? null,
+            w4QualifyingChildren: w4QualifyingChildren ?? null,
+            w4OtherDependents: w4OtherDependents ?? null,
+            w4OtherCredits: w4OtherCredits ?? null,
+            w4DependentsTotal: w4DependentsTotal ?? null,
+            w4OtherIncome: w4OtherIncome ?? null,
+            w4Deductions: w4Deductions ?? null,
+            w4ExtraWithholding: w4ExtraWithholding ?? null,
+            w4Exempt: w4Exempt ?? null,
+            w4PerjuryAckAt: w4PerjuryAckAt ?? null,
         };
 
         try {
