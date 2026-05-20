@@ -651,7 +651,7 @@ export default function EventRequestsPage() {
                 <div className="flex items-center gap-0">
                     {([
                         { id: 'task-requests', label: 'Task Requests', count: counts?.PENDING ?? null },
-                        { id: 'update-requests', label: 'Update Requests', count: urCounts?.pending ?? null },
+                        { id: 'update-requests', label: 'Request Changes', count: urCounts?.pending ?? null },
                     ] as const).map((tab) => (
                         <button
                             key={tab.id}

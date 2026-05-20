@@ -650,7 +650,7 @@ export default function EventsPage() {
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          Event
+          Requests
         </button>
       </div>
 

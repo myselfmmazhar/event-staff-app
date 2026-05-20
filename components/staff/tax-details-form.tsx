@@ -244,7 +244,9 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
     // TIN type toggle (SSN vs EIN)
     const [tinType, setTinType] = useState<'SSN' | 'EIN'>('SSN');
     const [ssnVisible, setSsnVisible] = useState(false);
+    const [einVisible, setEinVisible] = useState(false);
     const [w4SsnVisible, setW4SsnVisible] = useState(false);
+    const [w4EinVisible, setW4EinVisible] = useState(false);
 
     const upsertMutation = trpc.staffTaxDetails.upsert.useMutation({
         onSuccess: () => {
@@ -676,13 +678,30 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                         <Label htmlFor="ein" className="text-sm font-medium">
                                             Employer Identification Number
                                         </Label>
-                                        <Input
-                                            id="ein"
-                                            className="mt-2 h-10 bg-background"
-                                            {...register('ein')}
-                                            disabled={isDisabled}
-                                            placeholder="XX-XXXXXXX"
-                                        />
+                                        <div className="relative mt-2">
+                                            <Input
+                                                id="ein"
+                                                type={einVisible ? 'text' : 'password'}
+                                                className="h-10 bg-background pr-10"
+                                                {...register('ein')}
+                                                disabled={isDisabled}
+                                                placeholder="XX-XXXXXXX"
+                                                autoComplete="off"
+                                            />
+                                            <button
+                                                type="button"
+                                                tabIndex={-1}
+                                                onClick={() => setEinVisible((v) => !v)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                                aria-label={einVisible ? 'Hide EIN' : 'Show EIN'}
+                                            >
+                                                {einVisible ? (
+                                                    <EyeOff className="h-4 w-4" />
+                                                ) : (
+                                                    <Eye className="h-4 w-4" />
+                                                )}
+                                            </button>
+                                        </div>
                                         {errors.ein && (
                                             <p className="mt-1.5 text-sm text-destructive">{errors.ein.message}</p>
                                         )}
@@ -998,13 +1017,30 @@ export const TaxDetailsForm = forwardRef<TaxDetailsFormRef, TaxDetailsFormProps>
                                 <Label htmlFor="w4ein" className="text-sm font-bold">
                                     Employer Identification Number (EIN)
                                 </Label>
-                                <Input
-                                    id="w4ein"
-                                    className="mt-2 h-10"
-                                    {...register('ein')}
-                                    disabled={isDisabled}
-                                    placeholder="XX-XXXXXXX"
-                                />
+                                <div className="relative mt-2">
+                                    <Input
+                                        id="w4ein"
+                                        type={w4EinVisible ? 'text' : 'password'}
+                                        className="h-10 pr-10"
+                                        {...register('ein')}
+                                        disabled={isDisabled}
+                                        placeholder="XX-XXXXXXX"
+                                        autoComplete="off"
+                                    />
+                                    <button
+                                        type="button"
+                                        tabIndex={-1}
+                                        onClick={() => setW4EinVisible((v) => !v)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        aria-label={w4EinVisible ? 'Hide EIN' : 'Show EIN'}
+                                    >
+                                        {w4EinVisible ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                    </button>
+                                </div>
                                 {errors.ein && (
                                     <p className="mt-1.5 text-sm text-destructive">{errors.ein.message}</p>
                                 )}
