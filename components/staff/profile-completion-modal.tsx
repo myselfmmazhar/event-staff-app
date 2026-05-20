@@ -1021,6 +1021,7 @@ function TaxStep({
 }) {
     const [usePersonalAddress, setUsePersonalAddress] = useState(false);
     const [ssnVisible, setSsnVisible] = useState(false);
+    const [einVisible, setEinVisible] = useState(false);
 
     const handleAutofill = (checked: boolean) => {
         setUsePersonalAddress(checked);
@@ -1457,17 +1458,34 @@ function TaxStep({
                             >
                                 Employer Identification Number
                             </Label>
-                            <Input
-                                id="ein"
-                                placeholder="XX-XXXXXXX"
-                                disabled={disabled}
-                                value={taxFields.ein}
-                                onChange={(e) =>
-                                    setTaxFields((p) => ({ ...p, ein: e.target.value }))
-                                }
-                                invalid={showError('ein')}
-                                className="mt-2 rounded-lg border-slate-200"
-                            />
+                            <div className="relative mt-2">
+                                <Input
+                                    id="ein"
+                                    type={einVisible ? 'text' : 'password'}
+                                    placeholder="XX-XXXXXXX"
+                                    disabled={disabled}
+                                    autoComplete="off"
+                                    value={taxFields.ein}
+                                    onChange={(e) =>
+                                        setTaxFields((p) => ({ ...p, ein: e.target.value }))
+                                    }
+                                    invalid={showError('ein')}
+                                    className="rounded-lg border-slate-200 pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    tabIndex={-1}
+                                    onClick={() => setEinVisible((v) => !v)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    aria-label={einVisible ? 'Hide EIN' : 'Show EIN'}
+                                >
+                                    {einVisible ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
+                            </div>
                             {showError('ein') && (
                                 <p className="mt-1 text-sm text-destructive">{taxErrors.ein}</p>
                             )}
