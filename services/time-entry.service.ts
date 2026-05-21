@@ -451,7 +451,7 @@ export class TimeEntryService {
                 id: { in: invitationIds },
                 status: 'ACCEPTED',
                 callTime: {
-                    event: { status: { in: ['IN_PROGRESS', 'COMPLETED'] } },
+                    event: { status: { in: ['PUBLISHED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'] } },
                 },
                 // Rejects should not be counted/invoiced
                 OR: [
@@ -647,7 +647,7 @@ export class TimeEntryService {
                 id: { in: invitationIds },
                 status: 'ACCEPTED',
                 callTime: {
-                    event: { status: { in: ['IN_PROGRESS', 'COMPLETED'] } },
+                    event: { status: { in: ['PUBLISHED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'] } },
                 },
                 OR: [
                     { internalReviewRating: null },
