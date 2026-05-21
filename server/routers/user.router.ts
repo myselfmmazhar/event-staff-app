@@ -178,4 +178,23 @@ export const userRouter = router({
     const userService = new UserService(ctx.prisma);
     return await userService.getStats();
   }),
+
+  /**
+   * Reset a user's 2FA enrollment.
+   * Use when a user loses access to their authenticator and backup codes.
+   * The user will be forced to enroll again on next login.
+   * Requires: Admin or higher
+   */
+  resetTwoFactor: adminProcedure
+    .input(UserSchema.id)
+    .mutation(async ({ ctx, input }) => {
+      await ctx.prisma.$transaction([
+        ctx.prisma.twoFactor.deleteMany({ where: { userId: input.id } }),
+        ctx.prisma.user.update({
+          where: { id: input.id },
+          data: { twoFactorEnabled: false },
+        }),
+      ]);
+      return { success: true };
+    }),
 });
