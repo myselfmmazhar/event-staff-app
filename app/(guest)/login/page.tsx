@@ -58,6 +58,13 @@ export default function LoginPage() {
         return;
       }
 
+      // If user has 2FA enabled, better-auth returns twoFactorRedirect=true
+      // and does NOT create a session yet — challenge them first.
+      if ((result.data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
+        router.push(`/verify-2fa?callbackUrl=${encodeURIComponent(redirectTo)}`);
+        return;
+      }
+
       // Success
       toast({
         message: 'Welcome back! Redirecting...',

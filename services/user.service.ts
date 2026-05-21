@@ -526,6 +526,7 @@ export class UserService {
         invitationToken: true,
         invitationExpiresAt: true,
         lastLoginAt: true,
+        twoFactorEnabled: true,
         createdAt: true,
         updatedAt: true,
         user_preferences: {

@@ -56,12 +56,12 @@ export default async function InvitationResultPage({
   if (isAccepted && !already) {
     const html = await renderAcceptedTemplate(params);
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex items-start justify-center p-4 sm:p-6">
         <iframe
           title="Invitation Accepted"
           srcDoc={html}
-          className="w-full max-w-2xl bg-white rounded-2xl shadow-xl border-0"
-          style={{ height: "min(90vh, 800px)" }}
+          className="w-full max-w-5xl rounded-2xl shadow-xl border-0 bg-transparent"
+          style={{ height: "min(95vh, 900px)" }}
         />
       </div>
     );

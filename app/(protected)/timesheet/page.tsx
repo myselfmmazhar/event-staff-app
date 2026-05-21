@@ -122,6 +122,14 @@ export default function TimeManagerPage() {
 
     const generateInvoicesMutation = trpc.timeEntry.generateInvoices.useMutation({
         onSuccess: (res) => {
+            if (res.count === 0) {
+                toast({
+                    title: 'No invoices generated',
+                    description: 'Selected rows could not be invoiced. Ensure the event is live (not draft/cancelled), the assignment is accepted and not rejected in review, and the event has a client.',
+                    variant: 'destructive',
+                });
+                return;
+            }
             toast({
                 title: 'Success',
                 description: `Generated ${res.count} draft invoice(s). Check the Invoices module.`
@@ -134,6 +142,14 @@ export default function TimeManagerPage() {
 
     const generateBillsMutation = trpc.timeEntry.generateBills.useMutation({
         onSuccess: (res) => {
+            if (res.count === 0) {
+                toast({
+                    title: 'No bills generated',
+                    description: 'Selected rows could not be billed. Ensure the event is live (not draft/cancelled), the assignment is accepted and not rejected in review, and the talent is assigned.',
+                    variant: 'destructive',
+                });
+                return;
+            }
             toast({
                 title: 'Success',
                 description: `Generated ${res.count} draft bill(s). Check the Bills module.`

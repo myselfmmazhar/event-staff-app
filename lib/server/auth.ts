@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { twoFactor } from "better-auth/plugins";
 import { prisma } from "./prisma";
 import { APIError } from "better-auth/api";
 
@@ -128,6 +129,19 @@ export const auth = betterAuth({
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.BETTER_AUTH_URL,
   ].filter(Boolean) as string[],
+  plugins: [
+    twoFactor({
+      issuer: "Event Staff App",
+      totpOptions: {
+        period: 30,
+        digits: 6,
+      },
+      backupCodeOptions: {
+        amount: 10,
+        length: 10,
+      },
+    }),
+  ],
 });
 
 export type Session = typeof auth.$Infer.Session;

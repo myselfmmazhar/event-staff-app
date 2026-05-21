@@ -15,7 +15,7 @@ export function GuestGuard({ children }: GuestGuardProps) {
 
   // Pages that should be accessible even when authenticated
   // (user just created account and needs to verify OTP before full access)
-  const publicAuthPages = ['/verify-otp'];
+  const publicAuthPages = ['/verify-otp', '/setup-2fa', '/verify-2fa'];
   const isPublicAuthPage = publicAuthPages.some(page => pathname.includes(page));
 
   useEffect(() => {
