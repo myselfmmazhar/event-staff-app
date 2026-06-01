@@ -20,7 +20,7 @@ export default function ProfileSettingsPage() {
         companyPhone: '',
         companyAddress: '',
         companyLogoUrl: '',
-        companyTimezone: 'UTC',
+        companyTimezone: '',
     });
     const [savedMessage, setSavedMessage] = useState<'success' | 'error' | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -103,7 +103,7 @@ export default function ProfileSettingsPage() {
                 companyPhone: orgProfile.companyPhone || '',
                 companyAddress: orgProfile.companyAddress || '',
                 companyLogoUrl: orgProfile.companyLogoUrl || '',
-                companyTimezone: orgProfile.companyTimezone || 'UTC',
+                companyTimezone: orgProfile.companyTimezone || '',
             });
             if (orgProfile.companyLogoUrl) {
                 setLogoPreview(orgProfile.companyLogoUrl);
@@ -164,7 +164,7 @@ export default function ProfileSettingsPage() {
                 companyPhone: formData.companyPhone || null,
                 companyAddress: formData.companyAddress || null,
                 companyLogoUrl: formData.companyLogoUrl || null,
-                companyTimezone: formData.companyTimezone || 'UTC',
+                companyTimezone: formData.companyTimezone || orgProfile?.companyTimezone || 'UTC',
             });
         }
     };
@@ -402,27 +402,34 @@ export default function ProfileSettingsPage() {
                                 <Label htmlFor="companyTimezone">Default Timezone</Label>
                                 <div className="flex items-center gap-2">
                                     <ClockIcon className="h-4 w-4 text-muted-foreground mr-1" />
-                                    <Select
-                                        value={formData.companyTimezone || 'UTC'}
-                                        onValueChange={(value) => !isReadOnly && setFormData(prev => ({ ...prev, companyTimezone: value }))}
-                                        disabled={isReadOnly}
-                                    >
-                                        <SelectTrigger id="companyTimezone" className={`flex-1${isReadOnly ? ' bg-muted cursor-default' : ''}`}>
-                                            <SelectValue placeholder="Select timezone..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {formData.companyTimezone && !TIMEZONES.includes(formData.companyTimezone) && (
-                                                <SelectItem value={formData.companyTimezone}>
-                                                    {formData.companyTimezone}
-                                                </SelectItem>
-                                            )}
-                                            {TIMEZONES.map((tz) => (
-                                                <SelectItem key={tz} value={tz}>
-                                                    {tz}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    {(() => {
+                                        const effectiveTimezone = formData.companyTimezone || orgProfile?.companyTimezone || 'UTC';
+                                        return (
+                                            <Select
+                                                value={effectiveTimezone}
+                                                onValueChange={(value) => !isReadOnly && setFormData(prev => ({ ...prev, companyTimezone: value }))}
+                                                disabled={isReadOnly}
+                                            >
+                                                <SelectTrigger id="companyTimezone" className={`flex-1${isReadOnly ? ' bg-muted cursor-default' : ''}`}>
+                                                    <SelectValue placeholder="Select timezone...">
+                                                        {effectiveTimezone}
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {effectiveTimezone && !TIMEZONES.includes(effectiveTimezone) && (
+                                                        <SelectItem value={effectiveTimezone}>
+                                                            {effectiveTimezone}
+                                                        </SelectItem>
+                                                    )}
+                                                    {TIMEZONES.map((tz) => (
+                                                        <SelectItem key={tz} value={tz}>
+                                                            {tz}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        );
+                                    })()}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                     This timezone will be used as the default for all new events and tasks.
