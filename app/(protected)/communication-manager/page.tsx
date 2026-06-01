@@ -442,11 +442,36 @@ export default function CommunicationManagerPage() {
         messagingConfigs?.find((c: any) => c.isDefault);
 
     useEffect(() => {
-        if (smtpConfigs && smtpConfigs.length > 0 && contactActionEmailConfigId === 'default') {
+        if (contactActionEmailConfigId !== 'default') return;
+        if (smtpConfigs && smtpConfigs.length > 0) {
             const def = smtpConfigs.find((c: any) => c.isDefault) || smtpConfigs[0];
             setContactActionEmailConfigId(def.id);
+            return;
         }
-    }, [smtpConfigs, contactActionEmailConfigId]);
+        const mailguns = messagingConfigs?.filter((c: any) => c.provider === 'MAILGUN') ?? [];
+        if (mailguns.length > 0) {
+            const def = mailguns.find((c: any) => c.isDefault) || mailguns[0];
+            setContactActionEmailConfigId(def.id);
+        }
+    }, [smtpConfigs, messagingConfigs, contactActionEmailConfigId]);
+
+    useEffect(() => {
+        if (emailForm.configId) return;
+        const smtpDef = smtpConfigs?.find((c: any) => c.isDefault) ?? smtpConfigs?.[0];
+        if (smtpDef) {
+            setEmailForm(f => ({ ...f, configId: smtpDef.id }));
+            return;
+        }
+        const mailguns = messagingConfigs?.filter((c: any) => c.provider === 'MAILGUN') ?? [];
+        const mgDef = mailguns.find((c: any) => c.isDefault) ?? mailguns[0];
+        if (mgDef) {
+            setEmailForm(f => ({
+                ...f,
+                configId: mgDef.id,
+                to: mgDef.workspaceId ? `test@${mgDef.workspaceId}` : f.to,
+            }));
+        }
+    }, [smtpConfigs, messagingConfigs, emailForm.configId]);
 
     useEffect(() => {
         if (messagingConfigs && messagingConfigs.length > 0 && contactActionMsgConfigId === 'default') {
@@ -790,7 +815,6 @@ export default function CommunicationManagerPage() {
                                                                             <SelectValue placeholder="Select Name" />
                                                                         </SelectTrigger>
                                                                         <SelectContent className="rounded-xl shadow-xl border-slate-100">
-                                                                            <SelectItem value="default" className="text-xs font-bold leading-none italic text-muted-foreground">Default (System Settings)</SelectItem>
                                                                             {smtpConfigs?.map((config: any) => (
                                                                                 <SelectItem key={config.id} value={config.id} className="text-xs font-bold leading-none">{config.name}</SelectItem>
                                                                             ))}
@@ -1232,7 +1256,6 @@ export default function CommunicationManagerPage() {
                                                                             <SelectValue placeholder="Select Name" />
                                                                         </SelectTrigger>
                                                                         <SelectContent className="rounded-xl shadow-xl border-slate-100">
-                                                                            <SelectItem value="default" className="text-xs font-bold leading-none italic text-muted-foreground">Default (System Settings)</SelectItem>
                                                                             {smtpConfigs?.map((config: any) => (
                                                                                 <SelectItem key={config.id} value={config.id} className="text-xs font-bold leading-none">{config.name}</SelectItem>
                                                                             ))}
@@ -1545,7 +1568,7 @@ export default function CommunicationManagerPage() {
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground transition-colors group-focus-within:text-primary">Sender Profile</Label>
                                         <Select
-                                            value={emailForm.configId || 'default'}
+                                            value={emailForm.configId}
                                             onValueChange={v => {
                                                 let newTo = emailForm.to;
                                                 const mailgunConfig = messagingConfigs?.find((c: any) => c.id === v && c.provider === 'MAILGUN');
@@ -1559,7 +1582,6 @@ export default function CommunicationManagerPage() {
                                                 <SelectValue placeholder="Use Default SMTP" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="default">Default System Config</SelectItem>
                                                 {smtpConfigs?.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                                                 {messagingConfigs?.filter((c: any) => c.provider === 'MAILGUN').map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                                             </SelectContent>
