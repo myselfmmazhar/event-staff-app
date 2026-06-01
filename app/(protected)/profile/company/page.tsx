@@ -403,16 +403,19 @@ export default function ProfileSettingsPage() {
                                 <div className="flex items-center gap-2">
                                     <ClockIcon className="h-4 w-4 text-muted-foreground mr-1" />
                                     <Select
-                                        value={formData.companyTimezone}
+                                        value={formData.companyTimezone || 'UTC'}
                                         onValueChange={(value) => !isReadOnly && setFormData(prev => ({ ...prev, companyTimezone: value }))}
                                         disabled={isReadOnly}
                                     >
                                         <SelectTrigger id="companyTimezone" className={`flex-1${isReadOnly ? ' bg-muted cursor-default' : ''}`}>
-                                            <SelectValue placeholder="Select timezone...">
-                                                {formData.companyTimezone || undefined}
-                                            </SelectValue>
+                                            <SelectValue placeholder="Select timezone..." />
                                         </SelectTrigger>
                                         <SelectContent>
+                                            {formData.companyTimezone && !TIMEZONES.includes(formData.companyTimezone) && (
+                                                <SelectItem value={formData.companyTimezone}>
+                                                    {formData.companyTimezone}
+                                                </SelectItem>
+                                            )}
                                             {TIMEZONES.map((tz) => (
                                                 <SelectItem key={tz} value={tz}>
                                                     {tz}
