@@ -408,7 +408,9 @@ export default function ProfileSettingsPage() {
                                         disabled={isReadOnly}
                                     >
                                         <SelectTrigger id="companyTimezone" className={`flex-1${isReadOnly ? ' bg-muted cursor-default' : ''}`}>
-                                            <SelectValue placeholder="Select timezone..." />
+                                            <SelectValue placeholder="Select timezone...">
+                                                {formData.companyTimezone || undefined}
+                                            </SelectValue>
                                         </SelectTrigger>
                                         <SelectContent>
                                             {TIMEZONES.map((tz) => (
