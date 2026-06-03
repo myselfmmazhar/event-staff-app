@@ -86,8 +86,15 @@ export function convertWallClock(
     return { date: dateObj, time: time ?? null };
   }
 
+  // Prisma @db.Date columns deserialize as midnight UTC. Downstream consumers
+  // (date-fns format/startOfDay/isSameDay) run in browser-local time, so a
+  // midnight-UTC Date renders as the previous day for any tz west of UTC.
+  // Rebuild as local-midnight so the calendar day matches in every timezone.
+  const toLocalMidnight = (d: Date): Date =>
+    new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+
   if (srcTz === dstTz || !time || !dateObj) {
-    return { date: dateObj, time: time ?? null };
+    return { date: dateObj ? toLocalMidnight(dateObj) : null, time: time ?? null };
   }
 
   const { y, m, d } = readDateParts(dateObj);
@@ -115,7 +122,7 @@ export function convertWallClock(
     if (p.type !== 'literal') map[p.type] = p.value;
   }
 
-  const convertedDate = new Date(`${map.year}-${map.month}-${map.day}T00:00:00.000Z`);
+  const convertedDate = new Date(Number(map.year), Number(map.month) - 1, Number(map.day));
   const convertedTime = `${map.hour}:${map.minute}`;
 
   return { date: convertedDate, time: convertedTime };
