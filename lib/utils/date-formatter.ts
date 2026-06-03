@@ -1,15 +1,41 @@
 import { format } from 'date-fns';
 
 /**
+ * Prisma `@db.Date` columns deserialize as midnight-UTC Date objects.
+ * Browser-local formatters (toLocaleDateString, date-fns format) then render
+ * the previous calendar day for any timezone west of UTC.
+ *
+ * For an exactly-midnight-UTC input, rebuild as local midnight so formatters
+ * render the intended calendar day. True instants (any non-zero UTC time
+ * component) pass through unchanged so timestamps still format in local time.
+ */
+function toDisplayDate(date: Date | string | null | undefined): Date | null {
+  if (date === null || date === undefined) return null;
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return null;
+  const isMidnightUTC =
+    d.getUTCHours() === 0 &&
+    d.getUTCMinutes() === 0 &&
+    d.getUTCSeconds() === 0 &&
+    d.getUTCMilliseconds() === 0;
+  if (isMidnightUTC) {
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  return d;
+}
+
+/**
  * Check if a date value should be treated as null/UBD.
  * superjson may deserialize null dates as epoch (1970-01-01) dates,
  * so we check for that case as well as actual null/undefined.
  */
 export function isDateNullOrUBD(date: Date | string | null | undefined): boolean {
   if (date === null || date === undefined) return true;
-  // Check if it's the epoch date (superjson bug workaround)
+  // Check if it's the epoch date (superjson bug workaround). Use UTC because
+  // @db.Date columns roundtrip as midnight UTC — getFullYear() would report
+  // 1969 in negative timezones and miss the epoch sentinel.
   const dateObj = new Date(date);
-  if (dateObj.getFullYear() === 1970) {
+  if (dateObj.getUTCFullYear() === 1970) {
     return true;
   }
   return false;
@@ -21,7 +47,7 @@ export function isDateNullOrUBD(date: Date | string | null | undefined): boolean
  */
 export function formatDateShort(date: Date | string | null | undefined): string {
   if (isDateNullOrUBD(date)) return 'UBD';
-  return new Date(date!).toLocaleDateString('en-US', {
+  return toDisplayDate(date)!.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -34,7 +60,7 @@ export function formatDateShort(date: Date | string | null | undefined): string 
  */
 export function formatDateWithWeekday(date: Date | string | null | undefined): string {
   if (isDateNullOrUBD(date)) return 'UBD';
-  return new Date(date!).toLocaleDateString('en-US', {
+  return toDisplayDate(date)!.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -48,7 +74,7 @@ export function formatDateWithWeekday(date: Date | string | null | undefined): s
  */
 export function formatDateLong(date: Date | string | null | undefined): string {
   if (isDateNullOrUBD(date)) return 'UBD';
-  return format(new Date(date!), 'EEEE, MMMM d, yyyy');
+  return format(toDisplayDate(date)!, 'EEEE, MMMM d, yyyy');
 }
 
 /**
@@ -209,7 +235,7 @@ export function formatTimeRange(
  */
 export function isSameDay(date1: Date | string | null | undefined, date2: Date | string | null | undefined): boolean {
   if (isDateNullOrUBD(date1) || isDateNullOrUBD(date2)) return false;
-  return new Date(date1!).toDateString() === new Date(date2!).toDateString();
+  return toDisplayDate(date1)!.toDateString() === toDisplayDate(date2)!.toDateString();
 }
 
 /**
