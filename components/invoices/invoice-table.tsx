@@ -253,15 +253,6 @@ export function InvoiceTable({
             ),
         },
         {
-            key: "dueDate",
-            label: "Due Date",
-            className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
-            render: (invoice) =>
-                invoice.dueDate
-                    ? format(toDisplayDate(invoice.dueDate)!, "MMM dd, yyyy")
-                    : <span className="opacity-60">—</span>,
-        },
-        {
             key: "client",
             label: "Client",
             sortable: true,
