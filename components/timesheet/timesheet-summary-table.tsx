@@ -4,6 +4,7 @@ import { useState, Fragment } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { format, parseISO } from 'date-fns';
+import { toDisplayDate } from '@/lib/utils/date-formatter';
 import type { EventGroup, SortField, SortOrder } from './types';
 import {
     calcOvertimeCost,
@@ -87,7 +88,8 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick, sortBy, sortO
 
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
-        const d = typeof date === 'string' ? parseISO(date) : date;
+        const d = toDisplayDate(date);
+        if (!d) return 'TBD';
         return format(d, 'MMM d, yyyy (EEE)');
     };
 

@@ -7,6 +7,7 @@ import { EstimateStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/common/data-table";
 import { format } from "date-fns";
+import { toDisplayDate } from "@/lib/utils/date-formatter";
 import { ActionDropdown, type ActionItem } from "@/components/common/action-dropdown";
 import { EditIcon, EyeIcon, ArchiveBoxIcon, RefreshCwIcon, TrashIcon } from "@/components/ui/icons";
 
@@ -214,9 +215,9 @@ export function EstimateTable({
             className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
             render: (estimate) => (
                 <div>
-                    <div>{format(new Date(estimate.estimateDate), "MMM dd, yyyy")}</div>
+                    <div>{format(toDisplayDate(estimate.estimateDate)!, "MMM dd, yyyy")}</div>
                     <div className="text-xs opacity-75">
-                        {format(new Date(estimate.estimateDate), "h:mm a")}
+                        {format(toDisplayDate(estimate.estimateDate)!, "h:mm a")}
                     </div>
                 </div>
             ),
@@ -264,7 +265,7 @@ export function EstimateTable({
             <div className="space-y-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                     <span className="font-medium">Date:</span>
-                    <span>{format(new Date(estimate.estimateDate), "MMM dd, yyyy")}</span>
+                    <span>{format(toDisplayDate(estimate.estimateDate)!, "MMM dd, yyyy")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="font-medium">Client:</span>

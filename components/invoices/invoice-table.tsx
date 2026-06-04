@@ -7,6 +7,7 @@ import { InvoiceStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/common/data-table";
 import { format } from "date-fns";
+import { toDisplayDate } from "@/lib/utils/date-formatter";
 import { ActionDropdown, type ActionItem } from "@/components/common/action-dropdown";
 import { EditIcon, EyeIcon, ArchiveBoxIcon, RefreshCwIcon, TrashIcon } from "@/components/ui/icons";
 
@@ -228,9 +229,9 @@ export function InvoiceTable({
             className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
             render: (invoice) => (
                 <div>
-                    <div>{format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}</div>
+                    <div>{format(toDisplayDate(invoice.invoiceDate)!, "MMM dd, yyyy")}</div>
                     <div className="text-xs opacity-75">
-                        {format(new Date(invoice.invoiceDate), "h:mm a")}
+                        {format(toDisplayDate(invoice.invoiceDate)!, "h:mm a")}
                     </div>
                 </div>
             ),
@@ -241,11 +242,11 @@ export function InvoiceTable({
             className: "py-4 px-4 text-sm whitespace-nowrap",
             render: (invoice) => invoice.dueDate ? (
                 <span className={`font-medium ${
-                    invoice.status !== "PAID" && new Date(invoice.dueDate) < new Date()
+                    invoice.status !== "PAID" && toDisplayDate(invoice.dueDate)! < new Date()
                         ? "text-destructive"
                         : "text-muted-foreground"
                 }`}>
-                    {format(new Date(invoice.dueDate), "MMM dd, yyyy")}
+                    {format(toDisplayDate(invoice.dueDate)!, "MMM dd, yyyy")}
                 </span>
             ) : (
                 <span className="text-muted-foreground/50 text-xs">—</span>
@@ -257,7 +258,7 @@ export function InvoiceTable({
             className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
             render: (invoice) =>
                 invoice.dueDate
-                    ? format(new Date(invoice.dueDate), "MMM dd, yyyy")
+                    ? format(toDisplayDate(invoice.dueDate)!, "MMM dd, yyyy")
                     : <span className="opacity-60">—</span>,
         },
         {
@@ -296,13 +297,13 @@ export function InvoiceTable({
             <div className="space-y-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                     <span className="font-medium">Date:</span>
-                    <span>{format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}</span>
+                    <span>{format(toDisplayDate(invoice.invoiceDate)!, "MMM dd, yyyy")}</span>
                 </div>
                 {invoice.dueDate && (
                     <div className="flex items-center gap-2">
                         <span className="font-medium">Due:</span>
-                        <span className={invoice.status !== "PAID" && new Date(invoice.dueDate) < new Date() ? "text-destructive font-medium" : ""}>
-                            {format(new Date(invoice.dueDate), "MMM dd, yyyy")}
+                        <span className={invoice.status !== "PAID" && toDisplayDate(invoice.dueDate)! < new Date() ? "text-destructive font-medium" : ""}>
+                            {format(toDisplayDate(invoice.dueDate)!, "MMM dd, yyyy")}
                         </span>
                     </div>
                 )}

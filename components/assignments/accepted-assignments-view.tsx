@@ -11,7 +11,7 @@ import { trpc } from '@/lib/client/trpc';
 import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
 import type { RateType } from '@prisma/client';
-import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 
 interface AcceptedStaffRow {
   id: string; // unique row id (invitation id)
@@ -217,9 +217,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
       sortable: true,
       render: (item) => {
         const dateIsUBD = isDateNullOrUBD(item.assignmentDate);
-        const date = dateIsUBD ? null : (typeof item.assignmentDate === 'string'
-          ? new Date(item.assignmentDate)
-          : item.assignmentDate);
+        const date = dateIsUBD ? null : toDisplayDate(item.assignmentDate);
         return (
           <div className="text-sm">
             <p className="font-medium text-foreground">
@@ -252,9 +250,7 @@ export function AcceptedAssignmentsView({ onViewAssignment }: AcceptedAssignment
 
   const mobileCard = (item: AcceptedStaffRow) => {
     const dateIsUBD = isDateNullOrUBD(item.assignmentDate);
-    const date = dateIsUBD ? null : (typeof item.assignmentDate === 'string'
-      ? new Date(item.assignmentDate)
-      : item.assignmentDate);
+    const date = dateIsUBD ? null : toDisplayDate(item.assignmentDate);
 
     return (
       <Card className="p-4">

@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { format, parseISO } from 'date-fns';
+import { toDisplayDate } from '@/lib/utils/date-formatter';
 import type { TalentGroup, SortField, SortOrder } from './types';
 import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon } from '@/components/ui/icons';
 import { useTableResize } from '@/hooks/use-table-resize';
@@ -29,7 +30,8 @@ export function TimesheetTalentSummaryTable({ talentGroups, onTalentClick, sortB
     const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-talent', TIMESHEET_TALENT_TABLE_RESIZE_DEFAULTS);
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
-        const d = typeof date === 'string' ? parseISO(date) : date;
+        const d = toDisplayDate(date);
+        if (!d) return 'TBD';
         return format(d, 'MMM d, yyyy');
     };
 

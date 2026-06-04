@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { toDisplayDate } from "@/lib/utils/date-formatter";
 import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image } from "lucide-react";
 
 export default function ViewEstimatePage() {
@@ -109,12 +110,12 @@ export default function ViewEstimatePage() {
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Estimate Date</p>
-                            <p className="font-medium">{format(new Date(estimate.estimateDate), "MMM dd, yyyy")}</p>
+                            <p className="font-medium">{format(toDisplayDate(estimate.estimateDate)!, "MMM dd, yyyy")}</p>
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Expiration Date</p>
                             <p className="font-medium">
-                                {estimate.expirationDate ? format(new Date(estimate.expirationDate), "MMM dd, yyyy") : "N/A"}
+                                {estimate.expirationDate ? format(toDisplayDate(estimate.expirationDate)!, "MMM dd, yyyy") : "N/A"}
                             </p>
                         </div>
                         <div>
@@ -131,7 +132,7 @@ export default function ViewEstimatePage() {
                         <div>
                             <p className="text-sm text-muted-foreground">Approved Date</p>
                             <p className="font-medium">
-                                {estimate.approvedDate ? format(new Date(estimate.approvedDate), "MMM dd, yyyy") : "N/A"}
+                                {estimate.approvedDate ? format(toDisplayDate(estimate.approvedDate)!, "MMM dd, yyyy") : "N/A"}
                             </p>
                         </div>
                     </div>
@@ -173,7 +174,7 @@ export default function ViewEstimatePage() {
                                 {estimate.items?.map((item, index) => (
                                     <tr key={index} className="border-b last:border-0">
                                         <td className="py-3 px-2">
-                                            {item.date ? format(new Date(item.date), "MMM dd, yyyy") : "-"}
+                                            {item.date ? format(toDisplayDate(item.date)!, "MMM dd, yyyy") : "-"}
                                         </td>
                                         <td className="py-3 px-2">{item.description}</td>
                                         <td className="py-3 px-2 text-right">{Number(item.quantity)}</td>

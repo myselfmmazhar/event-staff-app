@@ -17,7 +17,7 @@ import {
   ClockIcon,
 } from '@/components/ui/icons';
 import { formatRate } from '@/lib/utils/currency-formatter';
-import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import { format } from 'date-fns';
 import type { GroupedAssignment } from '@/lib/utils/call-time-grouping';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
@@ -64,9 +64,7 @@ export function GroupedAssignmentMobileCard({
 }: GroupedAssignmentMobileCardProps) {
   const staffTerm = useStaffTerm();
   const startDateUBD = isDateNullOrUBD(group.startDate);
-  const startDate = startDateUBD ? null : (typeof group.startDate === 'string'
-    ? new Date(group.startDate)
-    : group.startDate);
+  const startDate = startDateUBD ? null : toDisplayDate(group.startDate);
 
   // Group invitations by status
   const confirmedInvitations = group.invitations.filter(

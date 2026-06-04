@@ -2,13 +2,16 @@ import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import type { RateType } from '@prisma/client';
 import type { CallTimeRow } from './types';
+import { toDisplayDate } from '@/lib/utils/date-formatter';
 
 /* ──────────────────────────── Helpers ──────────────────────────── */
 
 export function formatDate(date: Date | string | null): string {
     if (!date) return '—';
     try {
-        return format(typeof date === 'string' ? parseISO(date) : date, 'MM/dd/yyyy');
+        const d = toDisplayDate(date);
+        if (!d) return '—';
+        return format(d, 'MM/dd/yyyy');
     } catch {
         return '—';
     }

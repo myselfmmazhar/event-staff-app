@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { BellIcon, CheckCircleIcon } from '@/components/ui/icons';
 import { format } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
-import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { formatDateShort, isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import type { AssignmentData } from './assignment-table';
 
 interface SendReminderModalProps {
@@ -37,9 +37,7 @@ export function SendReminderModal({
 
   const confirmedStaff = assignment.invitations.filter(inv => inv.isConfirmed);
   const dateIsUBD = isDateNullOrUBD(assignment.startDate);
-  const startDate = dateIsUBD ? null : (typeof assignment.startDate === 'string'
-    ? new Date(assignment.startDate)
-    : assignment.startDate);
+  const startDate = dateIsUBD ? null : toDisplayDate(assignment.startDate);
   const dateStr = dateIsUBD ? 'a date to be determined' : format(startDate!, 'EEEE, MMMM d, yyyy');
 
   const defaultMessage = `Reminder: You have an upcoming assignment for "${assignment.service?.title || 'Event Staff'}" at ${assignment.event.title} on ${dateStr}. Please ensure you arrive on time.`;
@@ -115,7 +113,7 @@ export function SendReminderModal({
               {assignment.service?.title || 'No Position'}
             </p>
             <p className="text-sm text-muted-foreground">
-              {assignment.event.title} - {dateIsUBD ? 'UBD' : format(startDate!, 'MMM d, yyyy')}
+              {assignment.event.title} - {formatDateShort(assignment.startDate)}
             </p>
           </div>
 

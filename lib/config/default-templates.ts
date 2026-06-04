@@ -48,7 +48,7 @@ export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{positionName}}': 'Position/role name for the call time',
   '{{eventTitle}}': 'Title of the event',
   '{{eventVenue}}': 'Venue name of the event',
-  '{{eventLocation}}': 'Location (city, state) of the event',
+  '{{eventLocation}}': 'Location (street, city, state) of the event',
   '{{startDate}}': 'Start date of the call time',
   '{{endDate}}': 'End date of the call time',
   '{{startTime}}': 'Start time of the call time',

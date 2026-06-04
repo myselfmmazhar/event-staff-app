@@ -8,6 +8,7 @@ import { useTableResize } from '@/hooks/use-table-resize';
 import { TableColumnResizeHandle } from '@/components/common/table-column-resize-handle';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
+import { toDisplayDate } from '@/lib/utils/date-formatter';
 import type { ClientGroup, SortField, SortOrder } from './types';
 import { TIMESHEET_CLIENT_TABLE_RESIZE_DEFAULTS } from '@/lib/timesheet/drilldown-column-order';
 import { 
@@ -33,7 +34,8 @@ export function TimesheetClientSummaryTable({ clientGroups, onClientClick, sortB
     const { columnWidths, onMouseDown, getTableStyle } = useTableResize('timesheet-clients', TIMESHEET_CLIENT_TABLE_RESIZE_DEFAULTS);
     const formatDate = (date: Date | string | null) => {
         if (!date) return 'TBD';
-        const d = typeof date === 'string' ? parseISO(date) : date;
+        const d = toDisplayDate(date);
+        if (!d) return 'TBD';
         return format(d, 'MMM d, yyyy');
     };
 

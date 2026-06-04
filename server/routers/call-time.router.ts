@@ -163,7 +163,7 @@ export const callTimeRouter = router({
               positionName: invitation.callTime.service?.title || 'Service',
               eventTitle: invitation.callTime.event.title,
               eventVenue: invitation.callTime.event.venueName,
-              eventLocation: `${invitation.callTime.event.city}, ${invitation.callTime.event.state}`,
+              eventLocation: [invitation.callTime.event.address, invitation.callTime.event.city, invitation.callTime.event.state].filter(Boolean).join(', '),
               startDate: invitation.callTime.startDate,
               startTime: invitation.callTime.startTime,
               endDate: invitation.callTime.endDate,
@@ -197,7 +197,7 @@ export const callTimeRouter = router({
             {
               eventTitle: first.callTime.event.title,
               eventVenue: first.callTime.event.venueName,
-              eventLocation: `${first.callTime.event.city}, ${first.callTime.event.state}`,
+              eventLocation: [first.callTime.event.address, first.callTime.event.city, first.callTime.event.state].filter(Boolean).join(', '),
               startDate: first.callTime.startDate,
               endDate: first.callTime.endDate,
             }
@@ -239,7 +239,7 @@ export const callTimeRouter = router({
                 positionName: inv.callTime.service?.title || 'Service',
                 eventTitle: inv.callTime.event.title,
                 eventVenue: inv.callTime.event.venueName ?? '',
-                eventLocation: `${inv.callTime.event.city}, ${inv.callTime.event.state}`,
+                eventLocation: [(inv.callTime.event as any).address, inv.callTime.event.city, inv.callTime.event.state].filter(Boolean).join(', '),
                 startDate: inv.callTime.startDate,
                 startTime: inv.callTime.startTime,
                 description: inv.callTime.event.description,
@@ -298,7 +298,7 @@ export const callTimeRouter = router({
               callTime: {
                 include: {
                   service: { select: { title: true } },
-                  event: { select: { title: true, venueName: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true } },
+                  event: { select: { title: true, venueName: true, address: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true } },
                 },
               },
             },
@@ -312,7 +312,7 @@ export const callTimeRouter = router({
                 positionName: staffRecord.callTime.service?.title || 'Service',
                 eventTitle: staffRecord.callTime.event.title,
                 eventVenue: staffRecord.callTime.event.venueName ?? '',
-                eventLocation: `${staffRecord.callTime.event.city}, ${staffRecord.callTime.event.state}`,
+                eventLocation: [staffRecord.callTime.event.address, staffRecord.callTime.event.city, staffRecord.callTime.event.state].filter(Boolean).join(', '),
                 startDate: staffRecord.callTime.startDate,
                 startTime: staffRecord.callTime.startTime,
                 description: staffRecord.callTime.event.description,
@@ -394,7 +394,7 @@ export const callTimeRouter = router({
             positionName: invitation.callTime.service?.title || 'Service',
             eventTitle: invitation.callTime.event.title,
             eventVenue: invitation.callTime.event.venueName,
-            eventLocation: `${invitation.callTime.event.city}, ${invitation.callTime.event.state}`,
+            eventLocation: [(invitation.callTime.event as any).address, invitation.callTime.event.city, invitation.callTime.event.state].filter(Boolean).join(', '),
             startDate: invitation.callTime.startDate,
             startTime: invitation.callTime.startTime,
             endDate: invitation.callTime.endDate,
