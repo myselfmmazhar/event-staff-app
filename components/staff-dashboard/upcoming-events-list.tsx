@@ -1,6 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { RateType } from '@prisma/client';
@@ -9,6 +10,7 @@ import {
   MapPinIcon,
   ClockIcon,
   CheckCircleIcon,
+  EyeIcon,
 } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
 import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
@@ -43,9 +45,10 @@ interface Invitation {
 
 interface UpcomingEventsListProps {
   invitations: Invitation[];
+  onViewDetails?: (invitationId: string) => void;
 }
 
-export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
+export function UpcomingEventsList({ invitations, onViewDetails }: UpcomingEventsListProps) {
   const eventTerm = useEventTerm();
   const { timezone: talentTz } = useTalentTimezone();
 
@@ -138,10 +141,25 @@ export function UpcomingEventsList({ invitations }: UpcomingEventsListProps) {
                       {invitation.callTime.event.title}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <Badge variant="default">Confirmed</Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default">Confirmed</Badge>
+                      {onViewDetails && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => onViewDetails(invitation.id)}
+                          title="View Details"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                          <span className="sr-only">View Details</span>
+                        </Button>
+                      )}
+                    </div>
                     {daysUntil !== null && daysUntil > 0 && daysUntil <= 7 && (
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground">
                         {daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`}
                       </p>
                     )}
