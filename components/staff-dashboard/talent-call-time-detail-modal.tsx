@@ -216,12 +216,14 @@ export function TalentCallTimeDetailModal({
           </div>
         </div>
 
-        {/* Event description */}
-        {event.description && (
-          <DetailSection icon={<DocumentTextIcon className="h-4 w-4" />} title={`${eventTerm.singular} Description`}>
+        {/* Event description — always visible */}
+        <DetailSection icon={<DocumentTextIcon className="h-4 w-4" />} title={`${eventTerm.singular} Details`}>
+          {event.description ? (
             <p className="text-sm whitespace-pre-wrap">{event.description}</p>
-          </DetailSection>
-        )}
+          ) : (
+            <p className="text-sm italic text-muted-foreground">No details provided.</p>
+          )}
+        </DetailSection>
 
         {/* Requirements */}
         {event.requirements && (
@@ -230,19 +232,27 @@ export function TalentCallTimeDetailModal({
           </DetailSection>
         )}
 
-        {/* Pre-event instructions */}
-        {event.preEventInstructions && (
-          <DetailSection icon={<DocumentTextIcon className="h-4 w-4" />} title="Pre-Event Instructions">
-            <p className="text-sm whitespace-pre-wrap">{event.preEventInstructions}</p>
-          </DetailSection>
-        )}
-
-        {/* Assignment-specific instructions */}
-        {callTime.instructions && (
-          <DetailSection icon={<DocumentTextIcon className="h-4 w-4" />} title="Assignment Instructions">
-            <p className="text-sm whitespace-pre-wrap">{callTime.instructions}</p>
-          </DetailSection>
-        )}
+        {/* Important notes / Instructions for the talent — always visible */}
+        <DetailSection icon={<DocumentTextIcon className="h-4 w-4" />} title="Important Notes">
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Pre-Event Instructions</p>
+              {event.preEventInstructions ? (
+                <p className="text-sm whitespace-pre-wrap">{event.preEventInstructions}</p>
+              ) : (
+                <p className="text-sm italic text-muted-foreground">No pre-event instructions provided.</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Assignment Instructions</p>
+              {callTime.instructions ? (
+                <p className="text-sm whitespace-pre-wrap">{callTime.instructions}</p>
+              ) : (
+                <p className="text-sm italic text-muted-foreground">No assignment instructions provided.</p>
+              )}
+            </div>
+          </div>
+        </DetailSection>
 
         {/* Logistics — meeting point + on-site contact */}
         {(event.meetingPoint || event.onsitePocName || event.onsitePocPhone || event.onsitePocEmail) && (
@@ -298,9 +308,9 @@ export function TalentCallTimeDetailModal({
           </DetailSection>
         )}
 
-        {/* Documents */}
-        {documents.length > 0 && (
-          <DetailSection icon={<EnvelopeIcon className="h-4 w-4" />} title="Documents">
+        {/* Documents / Attachments — always visible */}
+        <DetailSection icon={<EnvelopeIcon className="h-4 w-4" />} title="Attachments">
+          {documents.length > 0 ? (
             <ul className="space-y-2">
               {documents.map((doc) => (
                 <li key={doc.url}>
@@ -316,8 +326,10 @@ export function TalentCallTimeDetailModal({
                 </li>
               ))}
             </ul>
-          </DetailSection>
-        )}
+          ) : (
+            <p className="text-sm italic text-muted-foreground">No attachments provided.</p>
+          )}
+        </DetailSection>
 
         {/* Decline reason — only when this invitation was declined */}
         {invitation.status === 'DECLINED' && invitation.declineReason && (

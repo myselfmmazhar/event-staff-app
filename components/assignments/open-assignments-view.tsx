@@ -12,7 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
-import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import {
   SendIcon,
   UsersIcon,
@@ -266,9 +266,7 @@ export function OpenAssignmentsView() {
             {openAssignments.map((assignment) => {
               const isSelected = assignment.id === selectedAssignmentId;
               const dateIsUBD = isDateNullOrUBD(assignment.startDate);
-              const startDate = dateIsUBD ? null : (typeof assignment.startDate === 'string'
-                ? new Date(assignment.startDate)
-                : assignment.startDate);
+              const startDate = dateIsUBD ? null : toDisplayDate(assignment.startDate);
               const staffNeeded = assignment.numberOfStaffRequired - assignment.confirmedCount;
 
               return (

@@ -7,6 +7,7 @@ import { BillStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/common/data-table";
 import { format } from "date-fns";
+import { toDisplayDate } from "@/lib/utils/date-formatter";
 import { ActionDropdown, type ActionItem } from "@/components/common/action-dropdown";
 import { EditIcon, EyeIcon, ArchiveBoxIcon, RefreshCwIcon, TrashIcon } from "@/components/ui/icons";
 
@@ -203,9 +204,9 @@ export function BillTable({
             className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
             render: (bill) => (
                 <div>
-                    <div>{format(new Date(bill.billDate), "MMM dd, yyyy")}</div>
+                    <div>{format(toDisplayDate(bill.billDate)!, "MMM dd, yyyy")}</div>
                     <div className="text-xs opacity-75">
-                        {format(new Date(bill.billDate), "h:mm a")}
+                        {format(toDisplayDate(bill.billDate)!, "h:mm a")}
                     </div>
                 </div>
             ),
@@ -216,7 +217,7 @@ export function BillTable({
             className: "py-4 px-4 text-sm text-muted-foreground whitespace-nowrap",
             render: (bill) =>
                 bill.dueDate
-                    ? format(new Date(bill.dueDate), "MMM dd, yyyy")
+                    ? format(toDisplayDate(bill.dueDate)!, "MMM dd, yyyy")
                     : <span className="opacity-60">—</span>,
         },
         {
@@ -255,7 +256,7 @@ export function BillTable({
             <div className="space-y-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                     <span className="font-medium">Date:</span>
-                    <span>{format(new Date(bill.billDate), "MMM dd, yyyy")}</span>
+                    <span>{format(toDisplayDate(bill.billDate)!, "MMM dd, yyyy")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="font-medium">Talent:</span>

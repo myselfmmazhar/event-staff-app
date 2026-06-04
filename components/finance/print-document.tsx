@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import React from "react";
+import { toDisplayDate } from "@/lib/utils/date-formatter";
 
 const GOLD = "#d4a857";
 const GOLD_LIGHT = "#f5e6c8";
@@ -60,8 +61,10 @@ export type PrintDocumentProps = {
 };
 
 const formatCurrency = (n: number) => `$${n.toFixed(2)}`;
-const formatDate = (d?: Date | string | null) =>
-    d ? format(new Date(d), "MM/dd/yyyy") : "";
+const formatDate = (d?: Date | string | null) => {
+    const display = toDisplayDate(d);
+    return display ? format(display, "MM/dd/yyyy") : "";
+};
 
 
 export function PrintDocument(props: PrintDocumentProps) {

@@ -48,7 +48,7 @@ export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{positionName}}': 'Position/role name for the call time',
   '{{eventTitle}}': 'Title of the event',
   '{{eventVenue}}': 'Venue name of the event',
-  '{{eventLocation}}': 'Location (city, state) of the event',
+  '{{eventLocation}}': 'Location (street, city, state) of the event',
   '{{startDate}}': 'Start date of the call time',
   '{{endDate}}': 'End date of the call time',
   '{{startTime}}': 'Start time of the call time',
@@ -103,8 +103,8 @@ export interface DefaultSmsTemplate {
 export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
   {
     type: 'STAFF_INVITATION',
-    subject: "You've been invited to join as {{staffTermLabel}}",
-    headerTitle: 'Welcome, {{firstName}}!',
+    subject: "You've Been Invited to Join {{companyName}}'s Talent Network",
+    headerTitle: "You've Been Invited, {{firstName}}!",
     description: 'Sent when a new staff member is invited to create their account',
     availableVariables: [
       ...TEMPLATE_VARIABLES.common,
@@ -115,9 +115,13 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
       '{{privateNotes}}',
       '{{internalNotes}}',
     ],
-    bodyHtml: `<p>You've been invited to join the team as <strong>{{staffTermLabel}}</strong>. Click the button below to create your account and complete your profile.</p>
+    bodyHtml: `<p>You have been invited to join <strong>{{companyName}}</strong>'s Talent Network through the Tripod platform.</p>
 
-{{button:Accept Invitation|{{inviteUrl}}}}
+<p>As part of the Talent Network, you may receive opportunities for upcoming assignments, tasks, or service work based on your skills, availability, and preferences.</p>
+
+<p>Complete your profile and onboarding to begin receiving assignment opportunities.</p>
+
+{{button:Join Talent Network|{{inviteUrl}}}}
 
 <p class="note">This invitation link will expire in 7 days.</p>
 <p class="note">If you didn't expect this invitation, you can safely ignore this email.</p>
@@ -343,7 +347,7 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
 export const DEFAULT_SMS_TEMPLATES: DefaultSmsTemplate[] = [
   {
     type: 'STAFF_INVITATION',
-    body: "Hi {{firstName}}, you've been invited to join as {{staffTermLabel}}. Check your email for the full invitation or visit: {{inviteUrl}}",
+    body: "Hi {{firstName}}, you've been invited to join {{companyName}}'s Talent Network. Check your email or visit: {{inviteUrl}}",
     description: 'SMS notification for staff invitation',
     availableVariables: [
       ...TEMPLATE_VARIABLES.common,

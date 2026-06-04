@@ -19,7 +19,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PendingRequestsList, UpcomingEventsList, StaffCalendar } from "@/components/staff-dashboard";
+import { PendingRequestsList, UpcomingEventsList, StaffCalendar, TalentCallTimeDetailModal } from "@/components/staff-dashboard";
 import { useToast } from "@/components/ui/use-toast";
 import { getEventRoute } from "@/lib/utils/route-helpers";
 import { TeamLeadDashboard } from "@/components/team/team-lead-dashboard";
@@ -36,6 +36,7 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
   const [respondingTo, setRespondingTo] = useState<string | undefined>();
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [detailInvitationId, setDetailInvitationId] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
   const { toast } = useToast();
@@ -163,12 +164,16 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
                       invitations={pendingOffers as any}
                       onRespond={handleRespond}
                       onBatchRespond={handleBatchRespond}
+                      onViewDetails={(id) => setDetailInvitationId(id)}
                       isResponding={respondingTo}
                       isBatchResponding={batchRespondMutation.isPending}
                     />
                   </TabsContent>
                   <TabsContent value="accepted" className="px-0 pb-6 focus-visible:outline-none focus-visible:ring-0">
-                    <UpcomingEventsList invitations={acceptedOffers as any} />
+                    <UpcomingEventsList
+                      invitations={acceptedOffers as any}
+                      onViewDetails={(id) => setDetailInvitationId(id)}
+                    />
                   </TabsContent>
                   <TabsContent value="calendar" className="px-0 pb-6 focus-visible:outline-none focus-visible:ring-0">
                     <StaffCalendar onEventClick={handleViewEvent} />
@@ -273,6 +278,11 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
         eventId={selectedEventId}
         open={isViewOpen}
         onClose={handleCloseView}
+      />
+      <TalentCallTimeDetailModal
+        invitationId={detailInvitationId}
+        open={detailInvitationId !== null}
+        onClose={() => setDetailInvitationId(null)}
       />
     </div>
   );

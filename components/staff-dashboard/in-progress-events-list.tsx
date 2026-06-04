@@ -21,6 +21,7 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  EyeIcon,
   SpinnerIcon,
 } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
@@ -71,6 +72,7 @@ interface InProgressEventsListProps {
   onStart: (invitationId: string) => void;
   onPause: (invitationId: string) => void;
   onEnd: (invitationId: string) => void;
+  onViewDetails?: (invitationId: string) => void;
   pendingActionId?: string;
 }
 
@@ -85,6 +87,7 @@ export function InProgressEventsList({
   onStart,
   onPause,
   onEnd,
+  onViewDetails,
   pendingActionId,
 }: InProgressEventsListProps) {
   const eventTerm = useEventTerm();
@@ -271,6 +274,19 @@ export function InProgressEventsList({
                     >
                       {isShiftEnded ? 'Ended' : isOpen ? 'Active' : 'In Progress'}
                     </Badge>
+                    {onViewDetails && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => onViewDetails(invitation.id)}
+                        title="View Details"
+                      >
+                        <EyeIcon className="h-4 w-4" />
+                        <span className="sr-only">View Details</span>
+                      </Button>
+                    )}
                   </div>
                 </div>
 

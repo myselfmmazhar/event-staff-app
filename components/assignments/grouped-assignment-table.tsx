@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { SettingsIcon, TrashIcon, DocumentDuplicateIcon, BellIcon, SearchIcon } from '@/components/ui/icons';
 import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import type { GroupedAssignment } from '@/lib/utils/call-time-grouping';
 import { AssignmentExpandedRow } from './assignment-expanded-row';
 import { GroupedAssignmentMobileCard } from './grouped-assignment-mobile-card';
@@ -46,11 +47,8 @@ function formatTime(time: string | null): string {
 }
 
 function formatDateShort(date: Date | string | null | undefined): string {
-  if (!date) return 'UBD';
-  const d = typeof date === 'string' ? new Date(date) : date;
-  // Check for epoch date (superjson bug workaround for null dates)
-  if (d.getFullYear() === 1970) return 'UBD';
-  return format(d, 'EEE, MMM d');
+  if (isDateNullOrUBD(date)) return 'UBD';
+  return format(toDisplayDate(date)!, 'EEE, MMM d');
 }
 
 export function GroupedAssignmentTable({

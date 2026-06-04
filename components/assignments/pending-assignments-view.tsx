@@ -11,7 +11,7 @@ import { trpc } from '@/lib/client/trpc';
 import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
 import type { RateType } from '@prisma/client';
-import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import { useToast } from '@/components/ui/use-toast';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { CheckCircleIcon, XCircleIcon, XIcon } from '@/components/ui/icons';
@@ -306,9 +306,7 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
             sortable: true,
             render: (item) => {
                 const dateIsUBD = isDateNullOrUBD(item.assignmentDate);
-                const date = dateIsUBD ? null : (typeof item.assignmentDate === 'string'
-                    ? new Date(item.assignmentDate)
-                    : item.assignmentDate);
+                const date = dateIsUBD ? null : toDisplayDate(item.assignmentDate);
                 return (
                     <div className="text-sm">
                         <p className="font-medium text-foreground">
@@ -341,9 +339,7 @@ export function PendingAssignmentsView({ onViewAssignment }: PendingAssignmentsV
 
     const mobileCard = (item: PendingStaffRow) => {
         const dateIsUBD = isDateNullOrUBD(item.assignmentDate);
-        const date = dateIsUBD ? null : (typeof item.assignmentDate === 'string'
-            ? new Date(item.assignmentDate)
-            : item.assignmentDate);
+        const date = dateIsUBD ? null : toDisplayDate(item.assignmentDate);
 
         return (
             <Card className="p-4">

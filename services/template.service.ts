@@ -418,14 +418,17 @@ export class TemplateService {
     const template = await this.getEmailTemplate(type);
     const branding = await this.getBrandingSettings();
 
-    // Inject company name from org settings unless the caller already provided it
+    // Inject company name from org settings unless the caller already provided it.
+    // Falls back to "our team" so templates that reference {{companyName}} never
+    // render the raw placeholder when no organization name is configured.
     if (!variables.companyName) {
       const orgSettings = await this.prisma.organizationSettings.findFirst({
         select: { companyName: true },
       });
-      if (orgSettings?.companyName) {
-        variables = { ...variables, companyName: orgSettings.companyName };
-      }
+      variables = {
+        ...variables,
+        companyName: orgSettings?.companyName?.trim() || 'our team',
+      };
     }
 
     // Replace variables in subject and body
@@ -489,6 +492,17 @@ export class TemplateService {
     variables: Record<string, string>
   ): Promise<string> {
     const template = await this.getSmsTemplate(type);
+
+    if (!variables.companyName) {
+      const orgSettings = await this.prisma.organizationSettings.findFirst({
+        select: { companyName: true },
+      });
+      variables = {
+        ...variables,
+        companyName: orgSettings?.companyName?.trim() || 'our team',
+      };
+    }
+
     return this.replaceVariables(template.body, variables);
   }
 

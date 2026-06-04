@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { toDisplayDate } from "@/lib/utils/date-formatter";
 import { ArrowLeft, Pencil, Printer, Download, Paperclip, FileText, Image } from "lucide-react";
 import Link from "next/link";
 import { PrintDocument } from "@/components/finance/print-document";
@@ -169,12 +170,12 @@ export default function ViewInvoicePage() {
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Invoice Date</p>
-                            <p className="font-medium">{format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}</p>
+                            <p className="font-medium">{format(toDisplayDate(invoice.invoiceDate)!, "MMM dd, yyyy")}</p>
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Due Date</p>
                             <p className="font-medium">
-                                {invoice.dueDate ? format(new Date(invoice.dueDate), "MMM dd, yyyy") : "N/A"}
+                                {invoice.dueDate ? format(toDisplayDate(invoice.dueDate)!, "MMM dd, yyyy") : "N/A"}
                             </p>
                         </div>
                         <div>

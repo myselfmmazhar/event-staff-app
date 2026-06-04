@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SettingsIcon, MapPinIcon, CalendarIcon, TrashIcon, DocumentDuplicateIcon, BellIcon, SearchIcon } from '@/components/ui/icons';
 import { formatRate } from '@/lib/utils/currency-formatter';
-import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import { format } from 'date-fns';
 import type { AssignmentData } from './assignment-table';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
@@ -58,9 +58,7 @@ export function AssignmentMobileCard({
 }: AssignmentMobileCardProps) {
   const staffTerm = useStaffTerm();
   const startDateUBD = isDateNullOrUBD(assignment.startDate);
-  const startDate = startDateUBD ? null : (typeof assignment.startDate === 'string'
-    ? new Date(assignment.startDate)
-    : assignment.startDate);
+  const startDate = startDateUBD ? null : toDisplayDate(assignment.startDate);
 
   return (
     <Card className={`p-4 ${selected ? 'ring-2 ring-primary' : ''}`}>

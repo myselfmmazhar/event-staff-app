@@ -9,7 +9,7 @@ import { format } from 'date-fns';
  * render the intended calendar day. True instants (any non-zero UTC time
  * component) pass through unchanged so timestamps still format in local time.
  */
-function toDisplayDate(date: Date | string | null | undefined): Date | null {
+export function toDisplayDate(date: Date | string | null | undefined): Date | null {
   if (date === null || date === undefined) return null;
   const d = typeof date === 'string' ? new Date(date) : date;
   if (Number.isNaN(d.getTime())) return null;

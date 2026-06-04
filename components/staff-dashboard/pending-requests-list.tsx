@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { InvitationResponseForm } from './invitation-response-form';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { RateType } from '@prisma/client';
-import { CalendarIcon, MapPinIcon, ClockIcon, DollarSignIcon, CheckCircleIcon, XCircleIcon, XIcon } from '@/components/ui/icons';
+import { CalendarIcon, MapPinIcon, ClockIcon, DollarSignIcon, CheckCircleIcon, XCircleIcon, XIcon, EyeIcon } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
 import { ConfirmModal } from '@/components/common/confirm-modal';
 import { cn } from '@/lib/utils';
@@ -49,6 +49,7 @@ interface PendingRequestsListProps {
   invitations: Invitation[];
   onRespond: (invitationId: string, accept: boolean, declineReason?: string) => void;
   onBatchRespond?: (invitationIds: string[], accept: boolean) => void;
+  onViewDetails?: (invitationId: string) => void;
   isResponding?: string;
   isBatchResponding?: boolean;
   highlightedId?: string;
@@ -58,6 +59,7 @@ export function PendingRequestsList({
   invitations,
   onRespond,
   onBatchRespond,
+  onViewDetails,
   isResponding,
   isBatchResponding,
   highlightedId,
@@ -298,15 +300,30 @@ export function PendingRequestsList({
                           {invitation.callTime.event.title}
                         </p>
                       </div>
-                      {isClosed ? (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 font-black uppercase tracking-[0.1em] px-3 py-1">
-                          Offer Closed
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-400 font-bold uppercase tracking-wider text-[10px]">
-                          Pending Response
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {isClosed ? (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 font-black uppercase tracking-[0.1em] px-3 py-1">
+                            Offer Closed
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-400 font-bold uppercase tracking-wider text-[10px]">
+                            Pending Response
+                          </Badge>
+                        )}
+                        {onViewDetails && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => onViewDetails(invitation.id)}
+                            title="View Details"
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                            <span className="sr-only">View Details</span>
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     {isClosed && (

@@ -412,6 +412,7 @@ export default function MySchedulePage() {
                     onStart={handleStartShift}
                     onPause={handlePauseShift}
                     onEnd={handleEndShift}
+                    onViewDetails={(id) => setDetailInvitationId(id)}
                     pendingActionId={shiftActionId}
                   />
                 )}
@@ -431,6 +432,7 @@ export default function MySchedulePage() {
                     invitations={data?.pending || []}
                     onRespond={handleRespond}
                     onBatchRespond={handleBatchRespond}
+                    onViewDetails={(id) => setDetailInvitationId(id)}
                     isResponding={respondingTo}
                     isBatchResponding={batchRespondMutation.isPending}
                     highlightedId={highlightedInvitationId}

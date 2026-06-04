@@ -191,7 +191,7 @@ export class CallTimeService {
       },
       include: {
         service: true,
-        event: { select: { id: true, eventId: true, title: true, venueName: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true } },
+        event: { select: { id: true, eventId: true, title: true, venueName: true, address: true, city: true, state: true, description: true, requirements: true, preEventInstructions: true, privateComments: true } },
         _count: { select: { invitations: true } },
       },
     });
@@ -220,7 +220,7 @@ export class CallTimeService {
               positionName: result.service?.title || 'Staff',
               eventTitle: result.event.title,
               eventVenue: result.event.venueName || 'To Be Announced',
-              eventLocation: `${result.event.city || ''}, ${result.event.state || ''}`.trim() || 'TBD',
+              eventLocation: [result.event.address, result.event.city, result.event.state].filter(Boolean).join(', ') || 'TBD',
               startDate: result.startDate,
               startTime: result.startTime,
               endDate: result.endDate,
@@ -1084,6 +1084,7 @@ export class CallTimeService {
               id: true,
               title: true,
               venueName: true,
+              address: true,
               city: true,
               state: true,
               description: true,
@@ -1127,6 +1128,7 @@ export class CallTimeService {
                   id: true,
                   title: true,
                   venueName: true,
+                  address: true,
                   city: true,
                   state: true,
                   description: true,
@@ -1440,6 +1442,7 @@ export class CallTimeService {
               title: true,
               createdBy: true,
               venueName: true,
+              address: true,
               city: true,
               state: true,
               description: true,
@@ -1732,7 +1735,7 @@ export class CallTimeService {
           include: {
             service: true,
             event: {
-              select: { id: true, title: true, venueName: true, city: true, state: true },
+              select: { id: true, title: true, venueName: true, address: true, city: true, state: true },
             },
           },
         },
@@ -3266,6 +3269,7 @@ export class CallTimeService {
                 title: true,
                 createdBy: true,
                 venueName: true,
+                address: true,
                 city: true,
                 state: true,
               },
@@ -3284,7 +3288,7 @@ export class CallTimeService {
 
     const ev = invitation.callTime.event;
     const eventVenue = ev.venueName || '';
-    const eventLocation = [ev.city, ev.state].filter(Boolean).join(', ');
+    const eventLocation = [ev.address, ev.city, ev.state].filter(Boolean).join(', ');
     const formatDate = (d: Date | null | undefined) =>
       d && d.getFullYear() !== 1970
         ? d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
