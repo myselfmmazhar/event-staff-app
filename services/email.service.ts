@@ -370,12 +370,15 @@ export class EmailService {
       : dashboardUrl;
 
     const formatDate = (date: Date | null) => {
-      if (!date || date.getFullYear() === 1970) return 'UBD';
+      if (!date || date.getUTCFullYear() === 1970) return 'UBD';
+      // Use UTC so @db.Date midnight-UTC values render their stored calendar
+      // day regardless of the server's local timezone.
       return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
+        timeZone: 'UTC',
       });
     };
 
@@ -400,8 +403,10 @@ export class EmailService {
 
     const startD = callTimeDetails.startDate;
     const endD = callTimeDetails.endDate;
-    const isSameDay = startD && endD && startD.getFullYear() !== 1970 && endD.getFullYear() !== 1970 &&
-      startD.toDateString() === endD.toDateString();
+    const isSameDay = startD && endD && startD.getUTCFullYear() !== 1970 && endD.getUTCFullYear() !== 1970 &&
+      startD.getUTCFullYear() === endD.getUTCFullYear() &&
+      startD.getUTCMonth() === endD.getUTCMonth() &&
+      startD.getUTCDate() === endD.getUTCDate();
 
     try {
       const { subject, html } = await this.templateService.renderEmail(
@@ -496,12 +501,15 @@ export class EmailService {
     const dashboardUrl = `${this.appUrl}/my-schedule`;
 
     const formatDate = (date: Date | null) => {
-      if (!date || date.getFullYear() === 1970) return 'UBD';
+      if (!date || date.getUTCFullYear() === 1970) return 'UBD';
+      // Use UTC so @db.Date midnight-UTC values render their stored calendar
+      // day regardless of the server's local timezone.
       return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
+        timeZone: 'UTC',
       });
     };
 
@@ -644,12 +652,15 @@ export class EmailService {
     const dashboardUrl = `${this.appUrl}/my-schedule`;
 
     const formatDate = (date: Date | null) => {
-      if (!date || date.getFullYear() === 1970) return 'TBD';
+      if (!date || date.getUTCFullYear() === 1970) return 'TBD';
+      // Use UTC so @db.Date midnight-UTC values render their stored calendar
+      // day regardless of the server's local timezone.
       return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
+        timeZone: 'UTC',
       });
     };
 

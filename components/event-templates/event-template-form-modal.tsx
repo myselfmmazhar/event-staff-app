@@ -23,6 +23,7 @@ import { useTerminology } from '@/lib/hooks/use-terminology';
 import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import { EventDocumentUpload, type EventDocument } from '@/components/events/event-document-upload';
 import { RequestMethod, AmountType } from '@prisma/client';
+import { dateToInputValue } from '@/lib/utils/date-formatter';
 import { AMOUNT_TYPE_OPTIONS } from '@/lib/constants/enums';
 
 // Request method options
@@ -314,14 +315,10 @@ export function EventTemplateFormModal({
       const eventDocumentsData = template.eventDocuments as EventDocument[] | null;
       const customFieldsData = template.customFields as CustomField[] | null;
 
-      // Format dates to YYYY-MM-DD for date inputs
+      // Format dates to YYYY-MM-DD for date inputs (UTC-safe for @db.Date)
       const formatDateForInput = (date: Date | string | null | undefined) => {
-        if (!date) return undefined;
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        const v = dateToInputValue(date);
+        return v || undefined;
       };
 
       reset({

@@ -1,6 +1,47 @@
 import { format } from 'date-fns';
 
 /**
+ * Convert a `@db.Date` value (or anything we want to treat as a calendar
+ * date) into a `YYYY-MM-DD` string suitable for `<input type="date">`.
+ *
+ * `@db.Date` columns roundtrip as midnight-UTC Date objects. Using local
+ * accessors (`getDate()`, `getMonth()`, `getFullYear()`) on those objects
+ * silently shifts the day back by one in any timezone west of UTC, which
+ * corrupts the date when the form is saved again. This helper always reads
+ * the date portion in UTC to preserve the calendar day.
+ *
+ * Pass a plain `YYYY-MM-DD` string back through and it is returned as-is.
+ */
+export function dateToInputValue(date: Date | string | null | undefined): string {
+  if (date === null || date === undefined) return '';
+  if (typeof date === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}-${String(parsed.getUTCDate()).padStart(2, '0')}`;
+  }
+  if (Number.isNaN(date.getTime())) return '';
+  const isMidnightUTC =
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 &&
+    date.getUTCMilliseconds() === 0;
+  if (isMidnightUTC) {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+  }
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Returns today's calendar date as `YYYY-MM-DD` using the user's local
+ * timezone (intended for `<input type="date">` defaults).
+ */
+export function todayInputValue(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+
+/**
  * Prisma `@db.Date` columns deserialize as midnight-UTC Date objects.
  * Browser-local formatters (toLocaleDateString, date-fns format) then render
  * the previous calendar day for any timezone west of UTC.

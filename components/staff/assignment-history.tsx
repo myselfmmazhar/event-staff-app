@@ -15,6 +15,7 @@ import { ConfirmModal } from '@/components/common/confirm-modal';
 import { trpc as api } from '@/lib/client/trpc';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
+import { toDisplayDate } from '@/lib/utils/date-formatter';
 import { InternalReviewRating } from '@prisma/client';
 import { INTERNAL_REVIEW_LABELS } from '@/lib/schemas/call-time.schema';
 import { CalendarIcon, MapPinIcon, ClockIcon, CheckCircleIcon, AlertCircleIcon, EditIcon } from 'lucide-react';
@@ -184,9 +185,9 @@ export function AssignmentHistory({ staffId }: AssignmentHistoryProps) {
                                         {inv.callTime.startDate && (
                                             <div className="flex items-center gap-1">
                                                 <CalendarIcon className="h-4 w-4" />
-                                                {format(new Date(inv.callTime.startDate), 'MMM dd, yyyy')}
+                                                {format(toDisplayDate(inv.callTime.startDate)!, 'MMM dd, yyyy')}
                                                 {inv.callTime.endDate && inv.callTime.endDate !== inv.callTime.startDate && (
-                                                    <> - {format(new Date(inv.callTime.endDate), 'MMM dd, yyyy')}</>
+                                                    <> - {format(toDisplayDate(inv.callTime.endDate)!, 'MMM dd, yyyy')}</>
                                                 )}
                                             </div>
                                         )}

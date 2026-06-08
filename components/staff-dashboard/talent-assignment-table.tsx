@@ -13,6 +13,7 @@ import {
   SpinnerIcon,
 } from '@/components/ui/icons';
 import { format } from 'date-fns';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import type { RateType } from '@prisma/client';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { useTerminology } from '@/lib/hooks/use-terminology';
@@ -82,10 +83,8 @@ function formatTime(time: string | null): string {
 }
 
 function formatDateShort(date: Date | string | null): string {
-  if (!date) return 'UBD';
-  const d = typeof date === 'string' ? new Date(date) : date;
-  if (d.getFullYear() === 1970) return 'UBD';
-  return format(d, 'EEE, MMM d');
+  if (isDateNullOrUBD(date)) return 'UBD';
+  return format(toDisplayDate(date)!, 'EEE, MMM d');
 }
 
 function getPayRateValue(payRate: TalentInvitationData['callTime']['payRate']): number {

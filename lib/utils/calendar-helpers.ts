@@ -10,6 +10,7 @@ import {
   endOfDay,
 } from 'date-fns';
 import { EventStatus } from '@prisma/client';
+import { toDisplayDate } from './date-formatter';
 
 export type ViewMode = 'month' | 'week' | 'day' | 'list';
 
@@ -266,7 +267,7 @@ export function groupEventsByDate(events: CalendarEvent[]): Map<string, Calendar
   const grouped = new Map<string, CalendarEvent[]>();
 
   events.forEach((event) => {
-    const dateKey = format(new Date(event.startDate!), 'yyyy-MM-dd');
+    const dateKey = format(toDisplayDate(event.startDate)!, 'yyyy-MM-dd');
 
     if (!grouped.has(dateKey)) {
       grouped.set(dateKey, []);

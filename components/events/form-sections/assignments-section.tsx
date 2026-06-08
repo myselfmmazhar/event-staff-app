@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
 import type { Assignment, AssignmentSaveAction } from '@/lib/types/assignment.types';
 import { XIcon } from '@/components/ui/icons';
+import { dateToInputValue } from '@/lib/utils/date-formatter';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import type { EventFormData } from './types';
@@ -230,14 +231,8 @@ export function AssignmentsSection({
   const eventEndDate = eventWatch('endDate');
 
   const formatDateForInput = (date: any): string | null => {
-    if (!date) return null;
-    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) return date; // Already in correct format
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return null;
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const v = dateToInputValue(date);
+    return v || null;
   };
 
   const minDate = formatDateForInput(eventStartDate);

@@ -9,7 +9,7 @@ import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeftIcon, PlusIcon, PencilIcon, ChevronRightIcon, UsersIcon, MessageSquarePlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { formatDateShort } from '@/lib/utils/date-formatter';
+import { formatDateShort, isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { EventRequestFormModal, type EventRequestData } from '@/components/events/event-request-form-modal';
@@ -37,10 +37,8 @@ function formatTime(time: string | null | undefined): string {
 }
 
 function formatDateTime(date: Date | string | null | undefined, time: string | null | undefined): string {
-    if (!date) return 'TBD';
-    const d = typeof date === 'string' ? new Date(date) : date;
-    if (d.getFullYear() === 1970) return 'TBD';
-    const dateStr = format(d, 'MMM d, yyyy');
+    if (isDateNullOrUBD(date)) return 'TBD';
+    const dateStr = format(toDisplayDate(date)!, 'MMM d, yyyy');
     if (!time) return dateStr;
     const parts = time.split(':');
     const hour = parseInt(parts[0] ?? '0', 10);

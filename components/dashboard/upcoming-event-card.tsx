@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, ClockIcon, BriefcaseIcon } from "@/components/ui/icons";
 import { EventStatus } from "@prisma/client";
 import { format } from "date-fns";
-import { isDateNullOrUBD } from "@/lib/utils/date-formatter";
+import { isDateNullOrUBD, toDisplayDate } from "@/lib/utils/date-formatter";
 
 interface UpcomingEventCardProps {
   event: {
@@ -66,13 +66,15 @@ export function UpcomingEventCard({ event, onClick }: UpcomingEventCardProps) {
   const startIsUBD = isDateNullOrUBD(event.startDate);
   const endIsUBD = isDateNullOrUBD(event.endDate);
 
-  const dayOfMonth = startIsUBD ? "?" : format(new Date(event.startDate!), "d");
-  const monthAbbr = startIsUBD ? "UBD" : format(new Date(event.startDate!), "MMM");
-  const dateRange = startIsUBD
+  const displayStart = toDisplayDate(event.startDate);
+  const displayEnd = toDisplayDate(event.endDate);
+  const dayOfMonth = startIsUBD || !displayStart ? "?" : format(displayStart, "d");
+  const monthAbbr = startIsUBD || !displayStart ? "UBD" : format(displayStart, "MMM");
+  const dateRange = startIsUBD || !displayStart
     ? "Date UBD"
-    : endIsUBD
-      ? `${format(new Date(event.startDate!), "MMM d, yyyy")}`
-      : `${format(new Date(event.startDate!), "MMM d")} - ${format(new Date(event.endDate!), "MMM d, yyyy")}`;
+    : endIsUBD || !displayEnd
+      ? `${format(displayStart, "MMM d, yyyy")}`
+      : `${format(displayStart, "MMM d")} - ${format(displayEnd, "MMM d, yyyy")}`;
 
   // Format time range
   const timeRange = event.startTime && event.endTime

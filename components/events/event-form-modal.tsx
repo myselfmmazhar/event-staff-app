@@ -35,7 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EventFormFields, type EventFormTab } from './event-form-fields';
 import { BatchEntryList } from './batch-entry-list';
 import type { Assignment, ProductAssignment, ServiceAssignment, ProductAssignmentExtendedData } from '@/lib/types/assignment.types';
-import { isDateNullOrUBD } from '@/lib/utils/date-formatter';
+import { isDateNullOrUBD, dateToInputValue, todayInputValue } from '@/lib/utils/date-formatter';
 
 // Use the create schema directly for create mode
 const createFormSchema = EventSchema.create;
@@ -350,8 +350,7 @@ export function EventFormModal({
   });
 
   function getDefaultValues(): Partial<FormInput> {
-    const today = new Date();
-    const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayFormatted = todayInputValue();
 
     return {
       title: '',
@@ -392,11 +391,7 @@ export function EventFormModal({
   }
 
   function buildEventFormValues(e: Event): Partial<FormInput> {
-    const formatDateForInput = (date: Date | string | null) => {
-      if (!date) return '';
-      const dt = new Date(date);
-      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-    };
+    const formatDateForInput = (date: Date | string | null) => dateToInputValue(date);
     const startDateIsUBD = isDateNullOrUBD(e.startDate);
     const endDateIsUBD = isDateNullOrUBD(e.endDate);
     const fileLinksData = e.fileLinks as FileLink[] | null;
@@ -461,11 +456,7 @@ export function EventFormModal({
   // Reset form when event changes
   useEffect(() => {
     if (event) {
-      const formatDateForInput = (date: Date | string | null) => {
-        if (!date) return '';
-        const d = new Date(date);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      };
+      const formatDateForInput = (date: Date | string | null) => dateToInputValue(date);
 
       // Check for UBD dates (null or epoch date from superjson bug)
       const startDateIsUBD = isDateNullOrUBD(event.startDate);
@@ -619,13 +610,11 @@ export function EventFormModal({
     if (selectedTemplateData && !isEdit) {
       const template = selectedTemplateData;
       const formatDateForInput = (date: Date | string | null | undefined) => {
-        if (!date) return undefined;
-        const d = new Date(date);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const v = dateToInputValue(date);
+        return v || undefined;
       };
 
-      const today = new Date();
-      const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const todayFormatted = todayInputValue();
       const fileLinksData = template.fileLinks as FileLink[] | null;
       const templateDocsData = template.eventDocuments as EventDocument[] | null;
       const templateCustomFields = template.customFields as CustomField[] | null;
@@ -716,11 +705,12 @@ export function EventFormModal({
     if (isEdit && (existingCallTimes || existingProducts)) {
       // Map CallTimes to ServiceAssignments
       const serviceAssignments: Assignment[] = (existingCallTimes || []).map((ct) => {
-        // Format dates for the form (YYYY-MM-DD)
+        // Format dates for the form (YYYY-MM-DD). Use UTC so @db.Date values
+        // (midnight-UTC Date objects) do not get shifted by one day in
+        // negative-UTC timezones and corrupted on the next save.
         const formatDate = (date: Date | string | null): string | null => {
-          if (!date) return null;
-          const d = new Date(date);
-          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const v = dateToInputValue(date);
+          return v || null;
         };
 
         // Map SkillLevel to ExperienceRequirement

@@ -11,6 +11,7 @@ import { EventStatus } from '@prisma/client';
 import type { RowValidationResult } from '@/lib/utils/event-import';
 import type { ImportEventRow } from '@/lib/schemas/event-import.schema';
 import type { ClientOption, TerminologyConfig, EventFormData } from './form-sections';
+import { dateToInputValue, todayInputValue } from '@/lib/utils/date-formatter';
 
 interface BatchEntryItemProps {
   entry: RowValidationResult;
@@ -24,23 +25,9 @@ interface BatchEntryItemProps {
 function mapEntryToFormData(data: ImportEventRow | null): Partial<EventFormData> {
   if (!data) return {};
 
-  // Format date for HTML date input (YYYY-MM-DD string)
+  // Format date for HTML date input (YYYY-MM-DD string, UTC-safe for @db.Date)
   const formatDateForInput = (date: Date | string | null | undefined): string => {
-    const toDateString = (d: Date): string => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    if (!date) {
-      return toDateString(new Date());
-    }
-    const d = date instanceof Date ? date : new Date(date);
-    if (isNaN(d.getTime())) {
-      return toDateString(new Date());
-    }
-    return toDateString(d);
+    return dateToInputValue(date) || todayInputValue();
   };
 
   return {

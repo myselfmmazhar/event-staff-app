@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { CalendarIcon, SearchIcon, UsersIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { ViewEventModal } from '@/components/events/view-event-modal';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 
 // Type for shift data from API
 type ShiftData = {
@@ -58,9 +59,9 @@ export default function ShiftPage() {
         setPage(1); // Reset to first page on search
     };
 
-    const formatDate = (date: Date | string) => {
-        const d = typeof date === 'string' ? parseISO(date) : date;
-        return format(d, 'MMM d, yyyy');
+    const formatDate = (date: Date | string | null | undefined) => {
+        if (isDateNullOrUBD(date)) return 'UBD';
+        return format(toDisplayDate(date)!, 'MMM d, yyyy');
     };
 
     const formatPayRate = (rate: any, rateType: string) => {

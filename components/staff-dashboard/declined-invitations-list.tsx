@@ -8,6 +8,7 @@ import { useEventTerm } from '@/lib/hooks/use-terminology';
 import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
 import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
 import type { RateType } from '@prisma/client';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 
 interface Invitation {
   id: string;
@@ -40,11 +41,8 @@ interface DeclinedInvitationsListProps {
 }
 
 const formatDate = (date: Date | null) => {
-  if (!date) return 'UBD';
-  const d = new Date(date);
-  // Check for epoch date (superjson bug workaround for null dates)
-  if (d.getFullYear() === 1970) return 'UBD';
-  return d.toLocaleDateString('en-US', {
+  if (isDateNullOrUBD(date)) return 'UBD';
+  return toDisplayDate(date)!.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
