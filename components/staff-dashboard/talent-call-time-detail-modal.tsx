@@ -22,7 +22,7 @@ import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
 import { useTalentTimezone } from '@/lib/hooks/use-talent-timezone';
 import { convertWallClock, shortTzLabel } from '@/lib/utils/timezone-convert';
-import { isDateNullOrUBD, isSameDay as checkSameDay } from '@/lib/utils/date-formatter';
+import { isDateNullOrUBD, isSameDay as checkSameDay, toDisplayDate } from '@/lib/utils/date-formatter';
 import type { RateType, SkillLevel } from '@prisma/client';
 
 interface TalentCallTimeDetailModalProps {
@@ -45,10 +45,8 @@ interface EventDocumentLike {
 }
 
 function formatDate(date: Date | string | null | undefined) {
-  if (!date) return 'UBD';
-  const d = new Date(date);
-  if (d.getFullYear() === 1970) return 'UBD';
-  return d.toLocaleDateString('en-US', {
+  if (isDateNullOrUBD(date)) return 'UBD';
+  return toDisplayDate(date)!.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',

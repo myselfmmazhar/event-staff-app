@@ -19,7 +19,12 @@ import { useToast } from '@/components/ui/use-toast';
 import { CloseIcon, EditIcon } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
 import { CallTimeFormModal } from './call-time-form-modal';
-import { isDateNullOrUBD, isSameDay as checkSameDay } from '@/lib/utils/date-formatter';
+import {
+  isDateNullOrUBD,
+  isSameDay as checkSameDay,
+  formatDateLong,
+  formatTime,
+} from '@/lib/utils/date-formatter';
 import type { UpdateCallTimeInput } from '@/lib/schemas/call-time.schema';
 
 interface CallTimeDetailModalProps {
@@ -166,28 +171,6 @@ export function CallTimeDetailModal({
     }
   };
 
-  const formatDate = (date: Date | null | undefined) => {
-    // Check for null/undefined or epoch date (superjson bug workaround)
-    if (!date) return 'UBD';
-    const dateObj = new Date(date);
-    if (dateObj.getFullYear() === 1970) return 'UBD';
-    return dateObj.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const formatTime = (time: string | null) => {
-    if (!time) return 'TBD';
-    const [hours, minutes] = time.split(':');
-    if (!hours || !minutes) return 'TBD';
-    const hour = Number.parseInt(hours, 10);
-    if (Number.isNaN(hour)) return 'TBD';
-    return `${hour > 12 ? hour - 12 : hour}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
-  };
-
   if (isLoading || !callTime) {
     return (
       <Dialog open={open} onClose={onClose} className="max-w-5xl w-[90vw]">
@@ -262,12 +245,12 @@ export function CallTimeDetailModal({
           <div>
             <p className="text-sm text-muted-foreground">Date</p>
             <p className="font-medium">
-              {formatDate(callTime.startDate)}
+              {formatDateLong(callTime.startDate)}
               {!isSameDay && (
                 <>
                   <br />
                   <span className="text-muted-foreground">to </span>
-                  {formatDate(callTime.endDate)}
+                  {formatDateLong(callTime.endDate)}
                 </>
               )}
             </p>

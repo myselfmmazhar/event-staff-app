@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, ClockIcon } from "@/components/ui/icons";
 import { EventStatus } from "@prisma/client";
 import { format } from "date-fns";
+import { toDisplayDate } from "@/lib/utils/date-formatter";
 import {
   getMockCallTimesForEvent,
   getMockWorkShiftsForEvent,
@@ -55,8 +56,8 @@ export function EnhancedEventCard({ event, onClick }: EnhancedEventCardProps) {
   const workShifts = getMockWorkShiftsForEvent(event.id);
   const availability = getMockAvailabilityForEvent(event.id);
 
-  // Format dates
-  const dateRange = `${format(new Date(event.startDate), "MMM d")} - ${format(new Date(event.endDate), "MMM d, yyyy")}`;
+  // Format dates (toDisplayDate keeps @db.Date calendar day across timezones)
+  const dateRange = `${format(toDisplayDate(event.startDate)!, "MMM d")} - ${format(toDisplayDate(event.endDate)!, "MMM d, yyyy")}`;
   const timeRange = event.startTime && event.endTime
     ? `${event.startTime} - ${event.endTime}`
     : "Time TBD";

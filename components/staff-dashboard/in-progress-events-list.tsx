@@ -13,6 +13,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import { RateType } from '@prisma/client';
 import {
   CalendarIcon,
@@ -106,10 +107,8 @@ export function InProgressEventsList({
   };
 
   const formatDate = (date: Date | string | null) => {
-    if (!date) return 'TBD';
-    const d = new Date(date);
-    if (d.getFullYear() === 1970) return 'TBD';
-    return d.toLocaleDateString('en-US', {
+    if (isDateNullOrUBD(date)) return 'TBD';
+    return toDisplayDate(date)!.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',

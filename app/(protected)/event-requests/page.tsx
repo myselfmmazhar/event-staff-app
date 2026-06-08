@@ -10,7 +10,8 @@ import { ClipboardListIcon, SearchIcon, CheckIcon, XIcon, MapPinIcon, CalendarIc
 import { ActionDropdown, type ActionItem } from '@/components/common/action-dropdown';
 import { useToast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/client/trpc';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import type { EventRequestStatus } from '@prisma/client';
 
 type RequestData = {
@@ -82,9 +83,8 @@ function ExpandedRow({
     onReject: (id: string) => void;
 }) {
     const formatDate = (date: Date | string | null) => {
-        if (!date) return null;
-        const d = typeof date === 'string' ? parseISO(date) : date;
-        return format(d, 'MMM d, yyyy');
+        if (isDateNullOrUBD(date)) return null;
+        return format(toDisplayDate(date)!, 'MMM d, yyyy');
     };
 
     const dateRange = [formatDate(r.startDate), formatDate(r.endDate)].filter(Boolean).join(' → ');
@@ -244,9 +244,8 @@ function UpdateRequestExpandedRow({
     onDismiss: (id: string) => void;
 }) {
     const formatDate = (date: Date | string | null) => {
-        if (!date) return 'TBD';
-        const d = typeof date === 'string' ? parseISO(date) : date;
-        return format(d, 'MMM d, yyyy');
+        if (isDateNullOrUBD(date)) return 'TBD';
+        return format(toDisplayDate(date)!, 'MMM d, yyyy');
     };
 
     const clientName = r.client.businessName
@@ -469,9 +468,8 @@ export default function EventRequestsPage() {
     };
 
     const formatDate = (date: Date | string | null) => {
-        if (!date) return 'TBD';
-        const d = typeof date === 'string' ? parseISO(date) : date;
-        return format(d, 'MMM d, yyyy');
+        if (isDateNullOrUBD(date)) return 'TBD';
+        return format(toDisplayDate(date)!, 'MMM d, yyyy');
     };
 
     const getClientName = (client: RequestData['client']) =>
@@ -780,7 +778,7 @@ export default function EventRequestsPage() {
                                     label: 'Submitted',
                                     render: (r: UpdateRequestData) => (
                                         <span className="text-sm text-muted-foreground">
-                                            {format(typeof r.createdAt === 'string' ? parseISO(r.createdAt) : r.createdAt, 'MMM d, yyyy')}
+                                            {format(typeof r.createdAt === 'string' ? new Date(r.createdAt) : r.createdAt, 'MMM d, yyyy')}
                                         </span>
                                     ),
                                 },

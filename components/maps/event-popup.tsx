@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Eye, Pencil, X } from "lucide-react";
 import { format } from "date-fns";
-import { isDateNullOrUBD } from "@/lib/utils/date-formatter";
+import { isDateNullOrUBD, toDisplayDate } from "@/lib/utils/date-formatter";
 
 interface EventPopupProps {
   latitude: number;
@@ -104,7 +104,7 @@ export function EventPopup({
 
               <div className="flex items-center gap-2">
                 <Calendar size={14} className="shrink-0 text-primary" />
-                <span>{isDateNullOrUBD(event.startDate) ? 'UBD' : format(new Date(event.startDate!), "EEE, MMM d, yyyy")}</span>
+                <span>{isDateNullOrUBD(event.startDate) ? 'UBD' : format(toDisplayDate(event.startDate)!, "EEE, MMM d, yyyy")}</span>
               </div>
             </div>
 

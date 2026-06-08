@@ -6,7 +6,7 @@ import { EventStatus } from "@prisma/client";
 import { format } from "date-fns";
 import Link from "next/link";
 import { useTerminology } from "@/lib/hooks/use-terminology";
-import { isDateNullOrUBD } from "@/lib/utils/date-formatter";
+import { isDateNullOrUBD, toDisplayDate } from "@/lib/utils/date-formatter";
 import { getMockWorkShiftsForEvent } from "@/lib/mock-data/dashboard-mock";
 import { getEventRoute } from "@/lib/utils/route-helpers";
 
@@ -49,7 +49,7 @@ export function DashboardUpcomingList({ events, isLoading, onEventClick }: Props
 
   const formatDate = (date: Date | null) => {
     if (isDateNullOrUBD(date)) return "Date TBD";
-    return format(new Date(date!), "MMM d, yyyy");
+    return format(toDisplayDate(date)!, "MMM d, yyyy");
   };
 
   const formatTime = (start: string | null, end: string | null) => {

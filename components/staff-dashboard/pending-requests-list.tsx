@@ -10,6 +10,7 @@ import { RateType } from '@prisma/client';
 import { CalendarIcon, MapPinIcon, ClockIcon, DollarSignIcon, CheckCircleIcon, XCircleIcon, XIcon, EyeIcon } from '@/components/ui/icons';
 import { useEventTerm } from '@/lib/hooks/use-terminology';
 import { ConfirmModal } from '@/components/common/confirm-modal';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/client/trpc';
 import { Dialog } from '@/components/ui/dialog';
@@ -106,11 +107,8 @@ export function PendingRequestsList({
   }, [highlightedId, invitations]);
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'UBD';
-    const d = new Date(date);
-    // Check for epoch date (superjson bug workaround for null dates)
-    if (d.getFullYear() === 1970) return 'UBD';
-    return d.toLocaleDateString('en-US', {
+    if (isDateNullOrUBD(date)) return 'UBD';
+    return toDisplayDate(date)!.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',

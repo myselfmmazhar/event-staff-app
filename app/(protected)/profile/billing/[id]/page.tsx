@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { toDisplayDate } from "@/lib/utils/date-formatter";
 import { ArrowLeft, Printer, Download } from "lucide-react";
 import React from "react";
 
@@ -106,12 +107,12 @@ export default function ViewMyBillPage() {
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Bill Date</p>
-                            <p className="font-medium">{format(new Date(bill.billDate), "MMM dd, yyyy")}</p>
+                            <p className="font-medium">{format(toDisplayDate(bill.billDate)!, "MMM dd, yyyy")}</p>
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Due Date</p>
                             <p className="font-medium">
-                                {bill.dueDate ? format(new Date(bill.dueDate), "MMM dd, yyyy") : "N/A"}
+                                {bill.dueDate ? format(toDisplayDate(bill.dueDate)!, "MMM dd, yyyy") : "N/A"}
                             </p>
                         </div>
                         <div>

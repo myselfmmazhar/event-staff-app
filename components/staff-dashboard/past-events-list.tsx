@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RATE_TYPE_LABELS } from '@/lib/schemas/call-time.schema';
 import { RateType } from '@prisma/client';
+import { isDateNullOrUBD, toDisplayDate } from '@/lib/utils/date-formatter';
 import {
   CalendarIcon,
   MapPinIcon,
@@ -64,11 +65,8 @@ export function PastEventsList({ invitations }: PastEventsListProps) {
   };
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'UBD';
-    const d = new Date(date);
-    // Check for epoch date (superjson bug workaround for null dates)
-    if (d.getFullYear() === 1970) return 'UBD';
-    return d.toLocaleDateString('en-US', {
+    if (isDateNullOrUBD(date)) return 'UBD';
+    return toDisplayDate(date)!.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',

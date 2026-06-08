@@ -21,7 +21,7 @@ import { exportUpcomingEventsToCSV } from "@/lib/utils/export-upcoming-events-cs
 import { exportUpcomingEventsToExcel } from "@/lib/utils/export-upcoming-events-excel";
 import { exportUpcomingEventsToPDF } from "@/lib/utils/export-upcoming-events-pdf";
 import { useEventTerm } from "@/lib/hooks/use-terminology";
-import { isDateNullOrUBD } from "@/lib/utils/date-formatter";
+import { isDateNullOrUBD, toDisplayDate } from "@/lib/utils/date-formatter";
 
 interface UpcomingEvent {
   id: string;
@@ -194,7 +194,7 @@ export function UpcomingEventsTable({ events, isLoading, onEventClick }: Upcomin
     if (isDateNullOrUBD(date)) {
       return "Date UBD";
     }
-    const dateStr = format(new Date(date!), "MMM d, yyyy");
+    const dateStr = format(toDisplayDate(date)!, "MMM d, yyyy");
     if (!time) {
       return `${dateStr} - TBD`;
     }
