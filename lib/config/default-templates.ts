@@ -31,6 +31,7 @@ export const TEMPLATE_VARIABLES = {
     '{{rejectUrl}}',
     '{{detailsUrl}}',
   ],
+  change: ['{{changesList}}', '{{changesSummary}}'],
 } as const;
 
 /**
@@ -72,6 +73,8 @@ export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{expiresAt}}': 'Formatted expiry date of the document',
   '{{daysRemaining}}': 'Number of days until the document expires',
   '{{profileUrl}}': 'URL to the talent\'s profile page where they can upload an updated document',
+  '{{changesList}}': 'HTML list of fields that changed (e.g. <ul><li>start time</li><li>pay rate</li></ul>)',
+  '{{changesSummary}}': 'Comma-separated summary of changed fields (e.g. "start time, pay rate")',
 };
 
 export interface DefaultEmailTemplate {
@@ -338,6 +341,136 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
 
 <p class="note">If the button doesn't work, copy and paste this link into your browser: {{profileUrl}}</p>`,
   },
+  {
+    type: 'EVENT_UPDATE',
+    subject: 'Event Updated: {{eventTitle}}',
+    headerTitle: 'Event Details Updated',
+    description: 'Sent to assigned staff when the event they are working has been modified (title, date/time, location, requirements)',
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      '{{eventTitle}}',
+      '{{eventVenue}}',
+      '{{eventLocation}}',
+      '{{startDate}}',
+      '{{endDate}}',
+      '{{startTime}}',
+      '{{endTime}}',
+      '{{dashboardUrl}}',
+      '{{detailsUrl}}',
+      ...TEMPLATE_VARIABLES.change,
+    ],
+    bodyHtml: `<p>Hi {{firstName}},</p>
+
+<p>The event you are scheduled to work has been updated. Please review the changes below.</p>
+
+<div class="info-box">
+  <h3>{{eventTitle}}</h3>
+  <p><strong>Location:</strong> {{eventVenue}}, {{eventLocation}}</p>
+  <p><strong>Date:</strong> {{startDate}} - {{endDate}}</p>
+  <p><strong>Time:</strong> {{startTime}} - {{endTime}}</p>
+</div>
+
+<p><strong>What changed:</strong></p>
+{{changesList}}
+
+{{button:View Updated Details|{{detailsUrl}}}}
+
+<p class="note">If anything no longer works for you, please contact us as soon as possible.</p>
+<p class="note">If the button doesn't work, copy and paste this link into your browser: {{dashboardUrl}}</p>`,
+  },
+  {
+    type: 'EVENT_CANCELLED',
+    subject: 'Event Cancelled: {{eventTitle}}',
+    headerTitle: 'Event Cancelled',
+    description: 'Sent to assigned staff when an event they were scheduled to work is cancelled',
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      '{{eventTitle}}',
+      '{{eventVenue}}',
+      '{{eventLocation}}',
+      '{{startDate}}',
+      '{{endDate}}',
+      '{{dashboardUrl}}',
+    ],
+    bodyHtml: `<p>Hi {{firstName}},</p>
+
+<p class="warning">The following event has been cancelled. You no longer need to attend.</p>
+
+<div class="info-box">
+  <h3>{{eventTitle}}</h3>
+  <p><strong>Location:</strong> {{eventVenue}}, {{eventLocation}}</p>
+  <p><strong>Date:</strong> {{startDate}} - {{endDate}}</p>
+</div>
+
+{{button:View My Schedule|{{dashboardUrl}}}}
+
+<p class="note">If you have any questions about this cancellation, please contact us.</p>`,
+  },
+  {
+    type: 'CALL_TIME_UPDATE',
+    subject: 'Shift Updated: {{positionName}} at {{eventTitle}}',
+    headerTitle: 'Your Shift Has Changed',
+    description: 'Sent to staff with pending or accepted invitations when their assignment (call time) is modified — times, pay rate, instructions, etc.',
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      ...TEMPLATE_VARIABLES.callTime,
+      ...TEMPLATE_VARIABLES.change,
+    ],
+    bodyHtml: `<p>Hi {{firstName}},</p>
+
+<p>Your <strong>{{positionName}}</strong> assignment for <strong>{{eventTitle}}</strong> has been updated. Please review the latest details below.</p>
+
+<div class="info-box">
+  <h3>{{eventTitle}}</h3>
+  <p><strong>Position:</strong> {{positionName}}</p>
+  <p><strong>Location:</strong> {{eventVenue}}, {{eventLocation}}</p>
+  <p><strong>Date:</strong> {{startDate}} - {{endDate}}</p>
+  <p><strong>Time:</strong> {{startTime}} - {{endTime}}</p>
+  <p><strong>Pay Rate:</strong> {{payRate}} {{payRateType}}</p>
+  <p><strong>Instructions:</strong> {{assignmentInstructions}}</p>
+</div>
+
+<p><strong>What changed:</strong></p>
+{{changesList}}
+
+{{button:View Updated Shift|{{detailsUrl}}}}
+
+<p class="note">If these changes no longer work for you, please contact us as soon as possible.</p>
+<p class="note">If the button doesn't work, copy and paste this link into your browser: {{dashboardUrl}}</p>`,
+  },
+  {
+    type: 'CALL_TIME_CANCELLED',
+    subject: 'Shift Cancelled: {{positionName}} at {{eventTitle}}',
+    headerTitle: 'Your Shift Has Been Cancelled',
+    description: 'Sent to staff when their specific call time / assignment is cancelled (even if the event itself is not)',
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      '{{positionName}}',
+      '{{eventTitle}}',
+      '{{eventVenue}}',
+      '{{eventLocation}}',
+      '{{startDate}}',
+      '{{endDate}}',
+      '{{startTime}}',
+      '{{endTime}}',
+      '{{dashboardUrl}}',
+    ],
+    bodyHtml: `<p>Hi {{firstName}},</p>
+
+<p class="warning">Your <strong>{{positionName}}</strong> assignment for the following event has been cancelled.</p>
+
+<div class="info-box">
+  <h3>{{eventTitle}}</h3>
+  <p><strong>Position:</strong> {{positionName}}</p>
+  <p><strong>Location:</strong> {{eventVenue}}, {{eventLocation}}</p>
+  <p><strong>Date:</strong> {{startDate}} - {{endDate}}</p>
+  <p><strong>Time:</strong> {{startTime}} - {{endTime}}</p>
+</div>
+
+{{button:View My Schedule|{{dashboardUrl}}}}
+
+<p class="note">If you have any questions about this cancellation, please contact us.</p>`,
+  },
 ];
 
 /**
@@ -426,6 +559,10 @@ export const TEMPLATE_TYPE_LABELS: Record<EmailTemplateType | SmsTemplateType, s
   CALL_INVITATION_BATCH: 'Call Invitation Batch',
   CALL_TIME_INVITATION_ACCEPTED: 'Invitation Accepted Page',
   TALENT_DOCUMENT_EXPIRING: 'Talent Document Expiring',
+  EVENT_UPDATE: 'Event Updated',
+  EVENT_CANCELLED: 'Event Cancelled',
+  CALL_TIME_UPDATE: 'Shift Updated',
+  CALL_TIME_CANCELLED: 'Shift Cancelled',
 };
 
 /**
@@ -457,6 +594,10 @@ export function getAllTemplateTypes(): (EmailTemplateType | SmsTemplateType)[] {
     'CALL_INVITATION_BATCH',
     'CALL_TIME_INVITATION_ACCEPTED',
     'TALENT_DOCUMENT_EXPIRING',
+    'EVENT_UPDATE',
+    'EVENT_CANCELLED',
+    'CALL_TIME_UPDATE',
+    'CALL_TIME_CANCELLED',
   ];
 }
 
@@ -560,6 +701,24 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
         daysRemaining: '30',
         profileUrl: 'https://example.com/profile',
       };
+    case 'EVENT_UPDATE':
+      return {
+        ...callTimeCommon,
+        detailsUrl: 'https://example.com/my-schedule',
+        changesList: '<ul><li>start time</li><li>location</li></ul>',
+        changesSummary: 'start time, location',
+      };
+    case 'EVENT_CANCELLED':
+      return callTimeCommon;
+    case 'CALL_TIME_UPDATE':
+      return {
+        ...callTimeCommon,
+        detailsUrl: 'https://example.com/my-schedule',
+        changesList: '<ul><li>start time</li><li>pay rate</li></ul>',
+        changesSummary: 'start time, pay rate',
+      };
+    case 'CALL_TIME_CANCELLED':
+      return callTimeCommon;
     default:
       return common;
   }

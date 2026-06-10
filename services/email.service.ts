@@ -689,6 +689,279 @@ export class EmailService {
       );
     }
   }
+
+  /**
+   * Send event update email — fired when an event the recipient is assigned to
+   * has had its title, date/time, location, or requirements changed.
+   */
+  async sendEventUpdate(
+    email: string,
+    firstName: string,
+    eventDetails: {
+      eventTitle: string;
+      eventVenue: string;
+      eventLocation: string;
+      startDate: Date | null;
+      startTime?: string | null;
+      endDate: Date | null;
+      endTime?: string | null;
+      changes: string[];
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const dashboardUrl = `${this.appUrl}/my-schedule`;
+    const detailsUrl = dashboardUrl;
+
+    const formattedStartDate = formatEventDate(eventDetails.startDate);
+    const formattedEndDate = formatEventDate(eventDetails.endDate);
+    const formattedStartTime = formatEventTime(eventDetails.startTime);
+    const formattedEndTime = formatEventTime(eventDetails.endTime);
+    const changesList = eventDetails.changes.length > 0
+      ? `<ul>${eventDetails.changes.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}</ul>`
+      : '<p>Event details have been updated.</p>';
+    const changesSummary = eventDetails.changes.join(', ');
+
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'EVENT_UPDATE',
+        {
+          firstName,
+          email,
+          eventTitle: eventDetails.eventTitle,
+          eventVenue: eventDetails.eventVenue,
+          eventLocation: eventDetails.eventLocation,
+          startDate: formattedStartDate,
+          endDate: formattedEndDate,
+          startTime: formattedStartTime,
+          endTime: formattedEndTime,
+          dashboardUrl,
+          detailsUrl,
+          changesList,
+          changesSummary,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering event update template:', error);
+      return this.sendEmail(
+        email,
+        `Event Updated: ${eventDetails.eventTitle}`,
+        `<p>Hi ${firstName}, the event <strong>${escapeHtml(eventDetails.eventTitle)}</strong> has been updated.</p>${changesList}<p><a href="${dashboardUrl}">View Updated Details</a></p>`
+      );
+    }
+  }
+
+  /**
+   * Send event cancelled email — fired when an event the recipient is assigned
+   * to is cancelled.
+   */
+  async sendEventCancelled(
+    email: string,
+    firstName: string,
+    eventDetails: {
+      eventTitle: string;
+      eventVenue: string;
+      eventLocation: string;
+      startDate: Date | null;
+      endDate: Date | null;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const dashboardUrl = `${this.appUrl}/my-schedule`;
+    const formattedStartDate = formatEventDate(eventDetails.startDate);
+    const formattedEndDate = formatEventDate(eventDetails.endDate);
+
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'EVENT_CANCELLED',
+        {
+          firstName,
+          email,
+          eventTitle: eventDetails.eventTitle,
+          eventVenue: eventDetails.eventVenue,
+          eventLocation: eventDetails.eventLocation,
+          startDate: formattedStartDate,
+          endDate: formattedEndDate,
+          dashboardUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering event cancelled template:', error);
+      return this.sendEmail(
+        email,
+        `Event Cancelled: ${eventDetails.eventTitle}`,
+        `<p>Hi ${firstName}, the event <strong>${escapeHtml(eventDetails.eventTitle)}</strong> on ${formattedStartDate} has been cancelled.</p><p><a href="${dashboardUrl}">View My Schedule</a></p>`
+      );
+    }
+  }
+
+  /**
+   * Send call time update email — fired when a recipient's specific
+   * assignment (call time) has been modified.
+   */
+  async sendCallTimeUpdate(
+    email: string,
+    firstName: string,
+    callTimeDetails: {
+      positionName: string;
+      eventTitle: string;
+      eventVenue: string;
+      eventLocation: string;
+      startDate: Date | null;
+      startTime?: string | null;
+      endDate: Date | null;
+      endTime?: string | null;
+      payRate: number;
+      payRateType: string;
+      assignmentInstructions?: string | null;
+      changes: string[];
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const dashboardUrl = `${this.appUrl}/my-schedule`;
+    const detailsUrl = dashboardUrl;
+
+    const formattedStartDate = formatEventDate(callTimeDetails.startDate);
+    const formattedEndDate = formatEventDate(callTimeDetails.endDate);
+    const formattedStartTime = formatEventTime(callTimeDetails.startTime);
+    const formattedEndTime = formatEventTime(callTimeDetails.endTime);
+    const changesList = callTimeDetails.changes.length > 0
+      ? `<ul>${callTimeDetails.changes.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}</ul>`
+      : '<p>Shift details have been updated.</p>';
+    const changesSummary = callTimeDetails.changes.join(', ');
+
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'CALL_TIME_UPDATE',
+        {
+          firstName,
+          email,
+          positionName: callTimeDetails.positionName,
+          eventTitle: callTimeDetails.eventTitle,
+          eventVenue: callTimeDetails.eventVenue,
+          eventLocation: callTimeDetails.eventLocation,
+          startDate: formattedStartDate,
+          endDate: formattedEndDate,
+          startTime: formattedStartTime,
+          endTime: formattedEndTime,
+          payRate: `$${callTimeDetails.payRate.toFixed(2)}`,
+          payRateType: formatRateType(callTimeDetails.payRateType),
+          assignmentInstructions: callTimeDetails.assignmentInstructions || '',
+          dashboardUrl,
+          detailsUrl,
+          changesList,
+          changesSummary,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering call time update template:', error);
+      return this.sendEmail(
+        email,
+        `Shift Updated: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
+        `<p>Hi ${firstName}, your <strong>${escapeHtml(callTimeDetails.positionName)}</strong> assignment for <strong>${escapeHtml(callTimeDetails.eventTitle)}</strong> has been updated.</p>${changesList}<p><a href="${dashboardUrl}">View Updated Shift</a></p>`
+      );
+    }
+  }
+
+  /**
+   * Send call time cancelled email — fired when a recipient's specific
+   * assignment is cancelled (even if the parent event is not).
+   */
+  async sendCallTimeCancelled(
+    email: string,
+    firstName: string,
+    callTimeDetails: {
+      positionName: string;
+      eventTitle: string;
+      eventVenue: string;
+      eventLocation: string;
+      startDate: Date | null;
+      startTime?: string | null;
+      endDate: Date | null;
+      endTime?: string | null;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const dashboardUrl = `${this.appUrl}/my-schedule`;
+
+    const formattedStartDate = formatEventDate(callTimeDetails.startDate);
+    const formattedEndDate = formatEventDate(callTimeDetails.endDate);
+    const formattedStartTime = formatEventTime(callTimeDetails.startTime);
+    const formattedEndTime = formatEventTime(callTimeDetails.endTime);
+
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        'CALL_TIME_CANCELLED',
+        {
+          firstName,
+          email,
+          positionName: callTimeDetails.positionName,
+          eventTitle: callTimeDetails.eventTitle,
+          eventVenue: callTimeDetails.eventVenue,
+          eventLocation: callTimeDetails.eventLocation,
+          startDate: formattedStartDate,
+          endDate: formattedEndDate,
+          startTime: formattedStartTime,
+          endTime: formattedEndTime,
+          dashboardUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering call time cancelled template:', error);
+      return this.sendEmail(
+        email,
+        `Shift Cancelled: ${callTimeDetails.positionName} at ${callTimeDetails.eventTitle}`,
+        `<p>Hi ${firstName}, your <strong>${escapeHtml(callTimeDetails.positionName)}</strong> assignment for <strong>${escapeHtml(callTimeDetails.eventTitle)}</strong> on ${formattedStartDate} has been cancelled.</p><p><a href="${dashboardUrl}">View My Schedule</a></p>`
+      );
+    }
+  }
+}
+
+// Module-scope formatting helpers shared across send* methods. Hoisted so we
+// don't redefine them inside every method.
+function formatEventDate(date: Date | null | undefined): string {
+  if (!date) return 'TBD';
+  if (date.getUTCFullYear() === 1970) return 'UBD';
+  // Use UTC so @db.Date midnight-UTC values render their stored calendar
+  // day regardless of the server's local timezone.
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function formatEventTime(time: string | null | undefined): string {
+  if (!time) return 'TBD';
+  const [hours, minutes] = time.split(':');
+  if (!hours || !minutes) return 'TBD';
+  const hour = Number.parseInt(hours, 10);
+  if (Number.isNaN(hour)) return 'TBD';
+  return `${hour > 12 ? hour - 12 : hour}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
+function formatRateType(type: string): string {
+  const labels: Record<string, string> = {
+    PER_HOUR: 'per hour',
+    PER_SHIFT: 'per shift',
+    PER_DAY: 'per day',
+    PER_EVENT: 'per event',
+  };
+  return labels[type] || type.toLowerCase().replace('_', ' ');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Singleton instance
