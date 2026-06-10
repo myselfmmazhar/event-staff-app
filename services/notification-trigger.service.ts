@@ -1,5 +1,26 @@
 import { PrismaClient, NotificationType, NotificationPriority, CallTimeInvitationStatus } from "@prisma/client";
 import { NotificationService } from "./notification.service";
+import { emailService } from "./email.service";
+
+/**
+ * Recipient shape used by the email path. We fetch email/firstName off Staff
+ * and the user's notification preferences so opt-outs are honored before
+ * spending an outbound send.
+ */
+interface EmailRecipient {
+    userId: string | null;
+    email: string;
+    firstName: string;
+}
+
+/**
+ * Preference flag that gates an outbound email. Mirrors the columns on
+ * NotificationPreference so callers pick the right one for the trigger.
+ */
+type EmailPreferenceFlag =
+    | "emailCallTimeInvitations"
+    | "emailEventUpdates"
+    | "emailShiftReminders";
 
 /**
  * Notification Trigger Service
@@ -176,6 +197,34 @@ export class NotificationTriggerService {
                 batchKey, // Use same batch key logic for client
             });
         }
+
+        // 3. Email assigned staff (best-effort, independent of in-app notif)
+        try {
+            const [recipients, ctx] = await Promise.all([
+                this.getEventEmailRecipients(eventId, "emailEventUpdates"),
+                this.getEventEmailContext(eventId),
+            ]);
+
+            if (recipients.length > 0 && ctx) {
+                const location = this.formatEventLocation(ctx);
+                await Promise.allSettled(
+                    recipients.map((r) =>
+                        emailService.sendEventUpdate(r.email, r.firstName, {
+                            eventTitle,
+                            eventVenue: ctx.venueName,
+                            eventLocation: location,
+                            startDate: ctx.startDate,
+                            startTime: ctx.startTime,
+                            endDate: ctx.endDate,
+                            endTime: ctx.endTime,
+                            changes,
+                        })
+                    )
+                );
+            }
+        } catch (err) {
+            console.error("Failed to send event update emails:", err);
+        }
     }
 
     /**
@@ -187,16 +236,41 @@ export class NotificationTriggerService {
     ) {
         const assignedStaff = await this.getAssignedStaffUserIds(eventId);
 
-        if (assignedStaff.length === 0) return;
+        if (assignedStaff.length > 0) {
+            await this.notificationService.createBulk(assignedStaff, {
+                type: NotificationType.EVENT_CANCELLED,
+                priority: NotificationPriority.URGENT,
+                title: "Event Cancelled",
+                message: `The event "${eventTitle}" has been cancelled`,
+                relatedEntityType: "event",
+                relatedEntityId: eventId,
+            });
+        }
 
-        await this.notificationService.createBulk(assignedStaff, {
-            type: NotificationType.EVENT_CANCELLED,
-            priority: NotificationPriority.URGENT,
-            title: "Event Cancelled",
-            message: `The event "${eventTitle}" has been cancelled`,
-            relatedEntityType: "event",
-            relatedEntityId: eventId,
-        });
+        // Email assigned staff (best-effort, independent of in-app notif)
+        try {
+            const [recipients, ctx] = await Promise.all([
+                this.getEventEmailRecipients(eventId, "emailEventUpdates"),
+                this.getEventEmailContext(eventId),
+            ]);
+
+            if (recipients.length > 0 && ctx) {
+                const location = this.formatEventLocation(ctx);
+                await Promise.allSettled(
+                    recipients.map((r) =>
+                        emailService.sendEventCancelled(r.email, r.firstName, {
+                            eventTitle,
+                            eventVenue: ctx.venueName,
+                            eventLocation: location,
+                            startDate: ctx.startDate,
+                            endDate: ctx.endDate,
+                        })
+                    )
+                );
+            }
+        } catch (err) {
+            console.error("Failed to send event cancelled emails:", err);
+        }
     }
 
     /**
@@ -253,6 +327,49 @@ export class NotificationTriggerService {
             relatedEntityId: callTimeId,
             batchKey: `call_time_update_${callTimeId}`,
         });
+
+        // Email staff with pending/accepted invitations (best-effort)
+        try {
+            const [recipients, ctx] = await Promise.all([
+                this.getCallTimeEmailRecipients(
+                    callTimeId,
+                    [
+                        CallTimeInvitationStatus.PENDING,
+                        CallTimeInvitationStatus.ACCEPTED,
+                    ],
+                    "emailEventUpdates"
+                ),
+                this.getCallTimeEmailContext(callTimeId),
+            ]);
+
+            if (recipients.length > 0 && ctx) {
+                const location = this.formatEventLocation(ctx.event);
+                const payRateNumber = typeof ctx.payRate === "object"
+                    ? Number((ctx.payRate as { toString: () => string }).toString())
+                    : Number(ctx.payRate);
+
+                await Promise.allSettled(
+                    recipients.map((r) =>
+                        emailService.sendCallTimeUpdate(r.email, r.firstName, {
+                            positionName: callTimeDetails.positionName,
+                            eventTitle: callTimeDetails.eventTitle,
+                            eventVenue: ctx.event.venueName,
+                            eventLocation: location,
+                            startDate: ctx.startDate,
+                            startTime: ctx.startTime,
+                            endDate: ctx.endDate,
+                            endTime: ctx.endTime,
+                            payRate: Number.isFinite(payRateNumber) ? payRateNumber : 0,
+                            payRateType: ctx.payRateType,
+                            assignmentInstructions: ctx.instructions,
+                            changes: callTimeDetails.changes,
+                        })
+                    )
+                );
+            }
+        } catch (err) {
+            console.error("Failed to send call time update emails:", err);
+        }
     }
 
     /**
@@ -269,8 +386,6 @@ export class NotificationTriggerService {
     ) {
         const assignedStaff = await this.getAssignedStaffForCallTime(callTimeId);
 
-        if (assignedStaff.length === 0) return;
-
         const sd = callTimeDetails.startDate;
         const formattedDate = (!sd || sd.getFullYear() === 1970)
             ? 'TBD'
@@ -280,14 +395,49 @@ export class NotificationTriggerService {
                 day: 'numeric',
             });
 
-        await this.notificationService.createBulk(assignedStaff, {
-            type: NotificationType.EVENT_CANCELLED, // Reuse existing type
-            priority: NotificationPriority.URGENT,
-            title: "Assignment Cancelled",
-            message: `Your assignment as ${callTimeDetails.positionName} for "${callTimeDetails.eventTitle}" on ${formattedDate} has been cancelled`,
-            relatedEntityType: "event",
-            relatedEntityId: callTimeDetails.eventId,
-        });
+        if (assignedStaff.length > 0) {
+            await this.notificationService.createBulk(assignedStaff, {
+                type: NotificationType.EVENT_CANCELLED, // Reuse existing type
+                priority: NotificationPriority.URGENT,
+                title: "Assignment Cancelled",
+                message: `Your assignment as ${callTimeDetails.positionName} for "${callTimeDetails.eventTitle}" on ${formattedDate} has been cancelled`,
+                relatedEntityType: "event",
+                relatedEntityId: callTimeDetails.eventId,
+            });
+        }
+
+        // Email accepted staff (best-effort). Call site invokes this BEFORE
+        // the actual delete, so the call-time context is still in the DB.
+        try {
+            const [recipients, ctx] = await Promise.all([
+                this.getCallTimeEmailRecipients(
+                    callTimeId,
+                    [CallTimeInvitationStatus.ACCEPTED],
+                    "emailEventUpdates"
+                ),
+                this.getCallTimeEmailContext(callTimeId),
+            ]);
+
+            if (recipients.length > 0 && ctx) {
+                const location = this.formatEventLocation(ctx.event);
+                await Promise.allSettled(
+                    recipients.map((r) =>
+                        emailService.sendCallTimeCancelled(r.email, r.firstName, {
+                            positionName: callTimeDetails.positionName,
+                            eventTitle: callTimeDetails.eventTitle,
+                            eventVenue: ctx.event.venueName,
+                            eventLocation: location,
+                            startDate: ctx.startDate,
+                            startTime: ctx.startTime,
+                            endDate: ctx.endDate,
+                            endTime: ctx.endTime,
+                        })
+                    )
+                );
+            }
+        } catch (err) {
+            console.error("Failed to send call time cancelled emails:", err);
+        }
     }
 
     // ==========================================
@@ -611,6 +761,207 @@ export class NotificationTriggerService {
             .filter((userId): userId is string => userId !== null);
 
         return [...new Set(userIds)]; // Remove duplicates
+    }
+
+    // ==========================================
+    // Email recipient helpers
+    // ==========================================
+
+    /**
+     * Helper: Collect email recipients (staff with ACCEPTED+confirmed
+     * invitations) for an event, filtered by their notification preferences.
+     * Staff without a user account are still returned — we can still email
+     * them via staff.email; only the in-app channel needs a userId.
+     */
+    private async getEventEmailRecipients(
+        eventId: string,
+        preferenceFlag: EmailPreferenceFlag
+    ): Promise<EmailRecipient[]> {
+        const invitations = await this.prisma.callTimeInvitation.findMany({
+            where: {
+                callTime: { eventId },
+                status: "ACCEPTED",
+                isConfirmed: true,
+            },
+            include: {
+                staff: {
+                    select: {
+                        email: true,
+                        firstName: true,
+                        userId: true,
+                        users_staff_userIdTousers: {
+                            select: {
+                                notification_preferences: {
+                                    select: {
+                                        emailEnabled: true,
+                                        emailCallTimeInvitations: true,
+                                        emailEventUpdates: true,
+                                        emailShiftReminders: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        return this.filterEmailRecipients(
+            invitations.map((inv) => inv.staff),
+            preferenceFlag
+        );
+    }
+
+    /**
+     * Helper: Collect email recipients for a specific call time, filtered by
+     * invitation status and the user's notification preferences.
+     */
+    private async getCallTimeEmailRecipients(
+        callTimeId: string,
+        statuses: CallTimeInvitationStatus[],
+        preferenceFlag: EmailPreferenceFlag
+    ): Promise<EmailRecipient[]> {
+        const invitations = await this.prisma.callTimeInvitation.findMany({
+            where: {
+                callTimeId,
+                status: { in: statuses },
+            },
+            include: {
+                staff: {
+                    select: {
+                        email: true,
+                        firstName: true,
+                        userId: true,
+                        users_staff_userIdTousers: {
+                            select: {
+                                notification_preferences: {
+                                    select: {
+                                        emailEnabled: true,
+                                        emailCallTimeInvitations: true,
+                                        emailEventUpdates: true,
+                                        emailShiftReminders: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        return this.filterEmailRecipients(
+            invitations.map((inv) => inv.staff),
+            preferenceFlag
+        );
+    }
+
+    /**
+     * Helper: Dedupe by email, drop staff without email, and honor each
+     * recipient's notification preferences. Default is opt-in (matches the
+     * @default(true) on the model) — only opt them out if the row exists
+     * AND has the relevant flag explicitly false.
+     */
+    private filterEmailRecipients(
+        staffRows: Array<{
+            email: string | null;
+            firstName: string | null;
+            userId: string | null;
+            users_staff_userIdTousers: {
+                notification_preferences: {
+                    emailEnabled: boolean;
+                    emailCallTimeInvitations: boolean;
+                    emailEventUpdates: boolean;
+                    emailShiftReminders: boolean;
+                } | null;
+            } | null;
+        }>,
+        preferenceFlag: EmailPreferenceFlag
+    ): EmailRecipient[] {
+        const seen = new Set<string>();
+        const recipients: EmailRecipient[] = [];
+
+        for (const staff of staffRows) {
+            if (!staff.email) continue;
+            const emailKey = staff.email.toLowerCase();
+            if (seen.has(emailKey)) continue;
+
+            const pref = staff.users_staff_userIdTousers?.notification_preferences;
+            if (pref && (!pref.emailEnabled || !pref[preferenceFlag])) continue;
+
+            seen.add(emailKey);
+            recipients.push({
+                userId: staff.userId,
+                email: staff.email,
+                firstName: staff.firstName ?? "",
+            });
+        }
+
+        return recipients;
+    }
+
+    /**
+     * Helper: Fetch the event fields the email templates need (venue,
+     * location, dates/times). Returns null if the event is gone.
+     */
+    private async getEventEmailContext(eventId: string) {
+        return await this.prisma.event.findUnique({
+            where: { id: eventId },
+            select: {
+                title: true,
+                venueName: true,
+                address: true,
+                city: true,
+                state: true,
+                startDate: true,
+                endDate: true,
+                startTime: true,
+                endTime: true,
+            },
+        });
+    }
+
+    /**
+     * Helper: Fetch the call time + parent event fields the email templates
+     * need. Returns null if the call time is gone (deleted).
+     */
+    private async getCallTimeEmailContext(callTimeId: string) {
+        return await this.prisma.callTime.findUnique({
+            where: { id: callTimeId },
+            select: {
+                startDate: true,
+                startTime: true,
+                endDate: true,
+                endTime: true,
+                payRate: true,
+                payRateType: true,
+                instructions: true,
+                service: { select: { title: true } },
+                event: {
+                    select: {
+                        id: true,
+                        title: true,
+                        venueName: true,
+                        address: true,
+                        city: true,
+                        state: true,
+                    },
+                },
+            },
+        });
+    }
+
+    /**
+     * Helper: Compose a single human-readable location string from the
+     * event's address/city/state, used in email templates.
+     */
+    private formatEventLocation(event: {
+        address: string | null;
+        city: string | null;
+        state: string | null;
+    }): string {
+        return [event.address, event.city, event.state]
+            .filter((part): part is string => !!part && part.trim().length > 0)
+            .join(", ");
     }
 }
 
