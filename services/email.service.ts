@@ -918,6 +918,67 @@ export class EmailService {
       );
     }
   }
+
+  /**
+   * Send shift reminder email — the 2-day reminder or the 2-hour final
+   * check, depending on `templateType`.
+   */
+  async sendShiftReminder(
+    templateType: 'SHIFT_REMINDER_48H' | 'SHIFT_REMINDER_2H',
+    email: string,
+    firstName: string,
+    details: {
+      positionName: string;
+      eventTitle: string;
+      eventVenue: string;
+      eventLocation: string;
+      startDate: Date | null;
+      startTime?: string | null;
+      meetingPoint?: string | null;
+      pocName?: string | null;
+      pocPhone?: string | null;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const dashboardUrl = `${this.appUrl}/my-schedule`;
+    const formattedStartDate = formatEventDate(details.startDate);
+    const formattedStartTime = formatEventTime(details.startTime);
+
+    try {
+      const { subject, html } = await this.templateService.renderEmail(
+        templateType,
+        {
+          firstName,
+          email,
+          positionName: details.positionName,
+          eventTitle: details.eventTitle,
+          eventVenue: details.eventVenue,
+          eventLocation: details.eventLocation,
+          startDate: formattedStartDate,
+          startTime: formattedStartTime,
+          meetingPoint: details.meetingPoint || 'See your assignment details',
+          pocName: details.pocName || 'TBD',
+          pocPhone: details.pocPhone || 'TBD',
+          dashboardUrl,
+        }
+      );
+
+      return this.sendEmail(email, subject, html);
+    } catch (error) {
+      console.error('Error rendering shift reminder template:', error);
+      const isFinalCheck = templateType === 'SHIFT_REMINDER_2H';
+      const subject = isFinalCheck
+        ? `Final Check: ${details.positionName} at ${details.eventTitle} today at ${formattedStartTime}`
+        : `Reminder: ${details.positionName} at ${details.eventTitle} on ${formattedStartDate}`;
+      const pocLine = isFinalCheck
+        ? `<p><strong>POC:</strong> ${escapeHtml(details.pocName || 'TBD')} — ${escapeHtml(details.pocPhone || 'TBD')}</p>`
+        : '';
+      return this.sendEmail(
+        email,
+        subject,
+        `<p>Hi ${escapeHtml(firstName)}, this is a reminder for your upcoming <strong>${escapeHtml(details.positionName)}</strong> shift at <strong>${escapeHtml(details.eventTitle)}</strong> on ${formattedStartDate} at ${formattedStartTime}. Please check in with the POC at the designated meeting point at least 10 minutes before your call time.</p>${pocLine}<p><a href="${dashboardUrl}">View My Schedule</a></p>`
+      );
+    }
+  }
 }
 
 // Module-scope formatting helpers shared across send* methods. Hoisted so we

@@ -2,6 +2,7 @@ import { router, protectedProcedure } from '../trpc';
 import { CallTimeService } from '@/services/call-time.service';
 import { CallTimeSchema } from '@/lib/schemas/call-time.schema';
 import { emailService } from '@/services/email.service';
+import { getShiftReminderService } from '@/services/shift-reminder.service';
 
 /**
  * Call Time Router - All call time related tRPC procedures
@@ -466,6 +467,13 @@ export const callTimeRouter = router({
   getMyInvitations: protectedProcedure
     .input(CallTimeSchema.getMyInvitations)
     .query(async ({ ctx, input }) => {
+      // Lazy shift-reminder check: a talent opening their schedule flushes
+      // any due 2-hour final-check notifications for their upcoming call
+      // times (fire-and-forget, sends to the whole crew).
+      void getShiftReminderService(ctx.prisma)
+        .checkTwoHourDueForStaff(ctx.userId!)
+        .catch((err) => console.error('Shift reminder on-view check failed:', err));
+
       const service = new CallTimeService(ctx.prisma);
       return await service.getMyInvitations(ctx.userId!, input?.status);
     }),

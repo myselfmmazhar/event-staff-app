@@ -3,6 +3,7 @@ import { EventService } from "@/services/event.service";
 import { EventSchema } from "@/lib/schemas/event.schema";
 import { EventStatus, RequestMethod } from "@prisma/client";
 import { z } from "zod";
+import { getShiftReminderService } from "@/services/shift-reminder.service";
 
 /**
  * Event Router - All event-related tRPC procedures
@@ -29,6 +30,12 @@ export const eventRouter = router({
   getById: protectedProcedure
     .input(EventSchema.id)
     .query(async ({ ctx, input }) => {
+      // Lazy shift-reminder check: viewing an event flushes any due 2-hour
+      // final-check notifications for its call times (fire-and-forget).
+      void getShiftReminderService(ctx.prisma)
+        .checkTwoHourDueForEvent(input.id)
+        .catch((err) => console.error("Shift reminder on-view check failed:", err));
+
       const eventService = new EventService(ctx.prisma);
       return await eventService.findOne(input.id, ctx.userId!, ctx.userRole as string);
     }),
