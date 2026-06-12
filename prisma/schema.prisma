@@ -43,6 +43,8 @@ model CallTimeInvitation {
   invitedAsTeam        Boolean                  @default(false)
   teamUnitId           String?                  @db.Uuid
   shiftEndedAt         DateTime?                @db.Timestamp(6)
+  reminder48hSentAt    DateTime?                @db.Timestamp(6)
+  reminder2hSentAt     DateTime?                @db.Timestamp(6)
   callTime             CallTime                 @relation(fields: [callTimeId], references: [id], onDelete: Cascade)
   reviewer             User?                    @relation("invitation_reviews", fields: [reviewedBy], references: [id])
   staff                Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
@@ -1369,6 +1371,8 @@ enum EmailTemplateType {
   EVENT_CANCELLED
   CALL_TIME_UPDATE
   CALL_TIME_CANCELLED
+  SHIFT_REMINDER_48H
+  SHIFT_REMINDER_2H
 }
 
 enum EventStatus {

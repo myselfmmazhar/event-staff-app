@@ -32,6 +32,7 @@ export const TEMPLATE_VARIABLES = {
     '{{detailsUrl}}',
   ],
   change: ['{{changesList}}', '{{changesSummary}}'],
+  reminder: ['{{meetingPoint}}', '{{pocName}}', '{{pocPhone}}'],
 } as const;
 
 /**
@@ -75,6 +76,9 @@ export const VARIABLE_DESCRIPTIONS: Record<string, string> = {
   '{{profileUrl}}': 'URL to the talent\'s profile page where they can upload an updated document',
   '{{changesList}}': 'HTML list of fields that changed (e.g. <ul><li>start time</li><li>pay rate</li></ul>)',
   '{{changesSummary}}': 'Comma-separated summary of changed fields (e.g. "start time, pay rate")',
+  '{{meetingPoint}}': 'Designated meeting point at the venue (from the event)',
+  '{{pocName}}': 'On-site Point of Contact name (from the event)',
+  '{{pocPhone}}': 'On-site Point of Contact phone number (from the event)',
 };
 
 export interface DefaultEmailTemplate {
@@ -471,6 +475,75 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplate[] = [
 
 <p class="note">If you have any questions about this cancellation, please contact us.</p>`,
   },
+  {
+    type: 'SHIFT_REMINDER_48H',
+    subject: 'Reminder: {{positionName}} at {{eventTitle}} on {{startDate}}',
+    headerTitle: 'Upcoming Shift Reminder',
+    description: 'Sent to scheduled contractors 2 days before their call time',
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      '{{positionName}}',
+      '{{eventTitle}}',
+      '{{eventVenue}}',
+      '{{eventLocation}}',
+      '{{startDate}}',
+      '{{startTime}}',
+      '{{dashboardUrl}}',
+      ...TEMPLATE_VARIABLES.reminder,
+    ],
+    bodyHtml: `<p>Hi {{firstName}},</p>
+
+<p>This is a friendly reminder to arrive and check in with the POC at the venue meeting point at least 10 minutes before your scheduled call time (<strong>{{startDate}} at {{startTime}}</strong>). Punctuality is crucial to ensure a smooth start and proper coordination for the day&rsquo;s activities.</p>
+
+<div class="info-box">
+  <h3>{{eventTitle}}</h3>
+  <p><strong>Position:</strong> {{positionName}}</p>
+  <p><strong>Location:</strong> {{eventVenue}}, {{eventLocation}}</p>
+  <p><strong>Call Time:</strong> {{startDate}} at {{startTime}}</p>
+  <p><strong>Meeting Point:</strong> {{meetingPoint}}</p>
+</div>
+
+<p>Please also remember to clock in only once you are physically present at the designated meeting point. Early clock in or clocking in outside of the meeting point is not accepted.</p>
+
+<p>Your cooperation and professionalism are greatly appreciated.</p>
+
+<p>Thank you!</p>
+
+{{button:View My Schedule|{{dashboardUrl}}}}`,
+  },
+  {
+    type: 'SHIFT_REMINDER_2H',
+    subject: 'Final Check: {{positionName}} at {{eventTitle}} today at {{startTime}}',
+    headerTitle: 'Final Check-In Before Call Time',
+    description: 'Final check sent to scheduled contractors 2 hours before their call time',
+    availableVariables: [
+      ...TEMPLATE_VARIABLES.common,
+      '{{positionName}}',
+      '{{eventTitle}}',
+      '{{eventVenue}}',
+      '{{eventLocation}}',
+      '{{startDate}}',
+      '{{startTime}}',
+      '{{dashboardUrl}}',
+      ...TEMPLATE_VARIABLES.reminder,
+    ],
+    bodyHtml: `<p>Hi Team. Final check in before the Event call time (<strong>{{startDate}} at {{startTime}}</strong>). Please report to the Point of Contact (POC) at the designated sign-in/meeting location no later than ten (10) minutes before the shift starts for sign-in and assignments. Note that clock in time is only approved once you are physically present at the designated meeting point. If you are late, your pay will be switched to hourly and reflect the actual time worked.</p>
+
+<p>No response needed if there are no issues.</p>
+
+<div class="info-box">
+  <h3>{{eventTitle}}</h3>
+  <p><strong>Position:</strong> {{positionName}}</p>
+  <p><strong>Location:</strong> {{eventVenue}}, {{eventLocation}}</p>
+  <p><strong>Call Time:</strong> {{startDate}} at {{startTime}}</p>
+  <p><strong>Meeting Point:</strong> {{meetingPoint}}</p>
+  <p><strong>POC:</strong> {{pocName}} &mdash; {{pocPhone}}</p>
+</div>
+
+<p class="warning">For urgent matters, please reply or call 502-558-0339 for assistance.</p>
+
+{{button:View My Schedule|{{dashboardUrl}}}}`,
+  },
 ];
 
 /**
@@ -563,6 +636,8 @@ export const TEMPLATE_TYPE_LABELS: Record<EmailTemplateType | SmsTemplateType, s
   EVENT_CANCELLED: 'Event Cancelled',
   CALL_TIME_UPDATE: 'Shift Updated',
   CALL_TIME_CANCELLED: 'Shift Cancelled',
+  SHIFT_REMINDER_48H: 'Shift Reminder (2 Days Before)',
+  SHIFT_REMINDER_2H: 'Shift Final Check (2 Hours Before)',
 };
 
 /**
@@ -598,6 +673,8 @@ export function getAllTemplateTypes(): (EmailTemplateType | SmsTemplateType)[] {
     'EVENT_CANCELLED',
     'CALL_TIME_UPDATE',
     'CALL_TIME_CANCELLED',
+    'SHIFT_REMINDER_48H',
+    'SHIFT_REMINDER_2H',
   ];
 }
 
@@ -719,6 +796,14 @@ export function getSampleVariables(type: EmailTemplateType | SmsTemplateType): R
       };
     case 'CALL_TIME_CANCELLED':
       return callTimeCommon;
+    case 'SHIFT_REMINDER_48H':
+    case 'SHIFT_REMINDER_2H':
+      return {
+        ...callTimeCommon,
+        meetingPoint: 'Main lobby, front desk',
+        pocName: 'Jane Smith',
+        pocPhone: '(502) 555-0123',
+      };
     default:
       return common;
   }

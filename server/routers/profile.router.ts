@@ -1,6 +1,7 @@
 import { router, protectedProcedure } from "../trpc";
 import { UserService } from "@/services/user.service";
 import { z } from "zod";
+import { getShiftReminderService } from "@/services/shift-reminder.service";
 
 /**
  * Profile Router - Current user profile operations
@@ -76,6 +77,12 @@ export const profileRouter = router({
       return [];
     }
 
+    // Lazy shift-reminder check: a client viewing their events flushes any
+    // due 2-hour final-check notifications for those events (fire-and-forget).
+    void getShiftReminderService(ctx.prisma)
+      .checkTwoHourDueForClient(client.id)
+      .catch((err) => console.error("Shift reminder on-view check failed:", err));
+
     // Get events for this client
     const events = await ctx.prisma.event.findMany({
       where: { clientId: client.id },
@@ -145,6 +152,12 @@ export const profileRouter = router({
       if (!client) {
         return null;
       }
+
+      // Lazy shift-reminder check: viewing the event detail flushes any due
+      // 2-hour final-check notifications for its call times (fire-and-forget).
+      void getShiftReminderService(ctx.prisma)
+        .checkTwoHourDueForEvent(input.eventId)
+        .catch((err) => console.error("Shift reminder on-view check failed:", err));
 
       // Get the event - verify it belongs to this client
       const event = await ctx.prisma.event.findFirst({

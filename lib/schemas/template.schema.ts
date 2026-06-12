@@ -23,6 +23,8 @@ export const emailTemplateTypeSchema = z.enum([
   'EVENT_CANCELLED',
   'CALL_TIME_UPDATE',
   'CALL_TIME_CANCELLED',
+  'SHIFT_REMINDER_48H',
+  'SHIFT_REMINDER_2H',
 ]);
 
 /**
