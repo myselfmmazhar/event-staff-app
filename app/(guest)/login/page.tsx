@@ -58,12 +58,13 @@ export default function LoginPage() {
         return;
       }
 
+      // 2FA (Google Authenticator) functionality disabled — kept for reference.
       // If user has 2FA enabled, better-auth returns twoFactorRedirect=true
       // and does NOT create a session yet — challenge them first.
-      if ((result.data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
-        router.push(`/verify-2fa?callbackUrl=${encodeURIComponent(redirectTo)}`);
-        return;
-      }
+      // if ((result.data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
+      //   router.push(`/verify-2fa?callbackUrl=${encodeURIComponent(redirectTo)}`);
+      //   return;
+      // }
 
       // Success
       toast({
