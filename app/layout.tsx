@@ -13,6 +13,13 @@ export const metadata: Metadata = {
   description: "Comprehensive staff management and scheduling platform",
 };
 
+// Render every route on-demand instead of statically prerendering at build time.
+// The app is entirely auth-gated and client-data-driven, so static generation
+// provides no benefit and triggers a React prerender crash ("Cannot read
+// properties of null (reading 'useState')") in Amplify's Linux build environment.
+// Setting this on the root layout cascades to all routes in the app.
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: Readonly<{
