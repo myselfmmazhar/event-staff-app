@@ -7,7 +7,7 @@
     "dev": "next dev --webpack --port 3000",
     "dev:clean": "node scripts/clean-next.mjs && next dev --webpack --port 3000",
     "prebuild": "node scripts/clean-next.mjs",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",
