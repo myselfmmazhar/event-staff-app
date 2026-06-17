@@ -1,5 +1,19 @@
 'use client';
 
+// =============================================================================
+// 2FA (Google Authenticator) functionality disabled — kept for reference.
+// This component is no longer rendered (its usage in the profile page is
+// commented out). It now renders nothing. The original implementation is
+// preserved in the block comment below so it can be restored later if needed.
+// =============================================================================
+
+export function TwoFactorSection() {
+  return null;
+}
+
+/* ----------------------------------------------------------------------------
+// ORIGINAL 2FA PROFILE SECTION IMPLEMENTATION (disabled)
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -153,7 +167,7 @@ export function TwoFactorSection() {
           </div>
         )}
 
-        {/* Regenerate backup codes */}
+        // --- Regenerate backup codes ---
         <div className="space-y-3">
           <div>
             <h3 className="font-semibold">Backup codes</h3>
@@ -198,7 +212,7 @@ export function TwoFactorSection() {
           )}
         </div>
 
-        {/* Change device */}
+        // --- Change device ---
         <div className="space-y-3 border-t pt-6">
           <div>
             <h3 className="font-semibold">Authenticator device</h3>
@@ -246,3 +260,4 @@ export function TwoFactorSection() {
     </Card>
   );
 }
+---------------------------------------------------------------------------- */

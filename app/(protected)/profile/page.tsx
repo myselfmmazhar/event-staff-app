@@ -4,7 +4,8 @@ import { trpc } from '@/lib/client/trpc';
 import { ProfileHeader } from '@/components/profile/profile-header';
 import { ProfileForm } from '@/components/profile/profile-form';
 import { PasswordForm } from '@/components/profile/password-form';
-import { TwoFactorSection } from '@/components/profile/two-factor-section';
+// 2FA (Google Authenticator) functionality disabled — kept for reference.
+// import { TwoFactorSection } from '@/components/profile/two-factor-section';
 import { StaffProfileSection } from '@/components/profile/staff-profile-section';
 import { ClientProfileSection } from '@/components/profile/client-profile-section';
 import { TimezoneSettings } from '@/components/profile/timezone-settings';
@@ -61,9 +62,10 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            <div>
+            {/* 2FA (Google Authenticator) functionality disabled — kept for reference. */}
+            {/* <div>
                 <TwoFactorSection />
-            </div>
+            </div> */}
 
             {/* Timezone preference — talent and client only */}
             {(isStaff || isClient) && (

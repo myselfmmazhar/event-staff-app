@@ -1,5 +1,32 @@
 'use client';
 
+// =============================================================================
+// 2FA (Google Authenticator) functionality disabled — kept for reference.
+// This page is no longer reachable from the app flow. It now redirects to the
+// login page. The original implementation is preserved in the block comment
+// below so it can be restored later if needed.
+// =============================================================================
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function Verify2FAPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/login');
+  }, [router]);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+// ORIGINAL 2FA VERIFY IMPLEMENTATION (disabled)
+
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -125,3 +152,4 @@ export default function Verify2FAPage() {
     </div>
   );
 }
+---------------------------------------------------------------------------- */
