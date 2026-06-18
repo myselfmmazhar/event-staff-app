@@ -1,5 +1,24 @@
 import { PrismaClient } from '@prisma/client';
 
+/**
+ * Combine a `@db.Date` calendar day (midnight UTC) with a "HH:mm" wall-clock
+ * string into a DateTime instant whose UTC components match the wall clock.
+ * Storing as wall-clock-in-UTC means downstream readers can recover the typed
+ * time via `getUTCHours()`/`getUTCMinutes()` regardless of viewer timezone —
+ * we deliberately do NOT anchor to the event's IANA timezone because the
+ * bill/invoice editor displays these as plain wall-clock values, not absolute
+ * instants. Mirrors the clockIn/clockOut storage convention.
+ */
+function combineDateAndTimeAsUTC(date: Date | string, time: string): Date | null {
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return null;
+    const [hStr, mStr] = time.split(':');
+    const h = Number.parseInt(hStr ?? '0', 10);
+    const m = Number.parseInt(mStr ?? '0', 10);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), h, m, 0, 0));
+}
+
 export class TimeEntryService {
     constructor(private prisma: PrismaClient) { }
 
@@ -501,15 +520,9 @@ export class TimeEntryService {
                 // Calculate hours scheduled (replicate logic from helpers for service-side use)
                 let hours = 1;
                 if (inv.callTime.startDate && inv.callTime.startTime && inv.callTime.endTime) {
-                    const start = new Date(inv.callTime.startDate);
-                    const [sh, sm] = inv.callTime.startTime.split(':').map(Number);
-                    start.setHours(sh ?? 0, sm ?? 0, 0, 0);
-
-                    const end = new Date(inv.callTime.endDate || inv.callTime.startDate);
-                    const [eh, em] = inv.callTime.endTime.split(':').map(Number);
-                    end.setHours(eh ?? 0, em ?? 0, 0, 0);
-
-                    if (end > start) {
+                    const start = combineDateAndTimeAsUTC(inv.callTime.startDate, inv.callTime.startTime);
+                    const end = combineDateAndTimeAsUTC(inv.callTime.endDate || inv.callTime.startDate, inv.callTime.endTime);
+                    if (start && end && end > start) {
                         const diffMs = end.getTime() - start.getTime();
                         hours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
                     }
@@ -517,18 +530,16 @@ export class TimeEntryService {
 
                 const rate = Number(inv.callTime.billRate) || 0;
                 const isPerHour = inv.callTime.billRateType === 'PER_HOUR';
-                
-                // Raw Scheduled Start/End
-                let scheduledStart = null;
-                let scheduledEnd = null;
-                if (inv.callTime.startDate && inv.callTime.startTime) {
-                    scheduledStart = new Date(inv.callTime.startDate);
-                    const [sh, sm] = inv.callTime.startTime.split(':').map(Number);
-                    scheduledStart.setHours(sh ?? 0, sm ?? 0, 0, 0);
 
-                    scheduledEnd = new Date(inv.callTime.endDate || inv.callTime.startDate);
-                    const [eh, em] = inv.callTime.endTime?.split(':').map(Number) || [0, 0];
-                    scheduledEnd.setHours(eh ?? 0, em ?? 0, 0, 0);
+                // Raw Scheduled Start/End (stored as wall-clock-in-UTC instants)
+                let scheduledStart: Date | null = null;
+                let scheduledEnd: Date | null = null;
+                if (inv.callTime.startDate && inv.callTime.startTime) {
+                    scheduledStart = combineDateAndTimeAsUTC(inv.callTime.startDate, inv.callTime.startTime);
+                    scheduledEnd = combineDateAndTimeAsUTC(
+                        inv.callTime.endDate || inv.callTime.startDate,
+                        inv.callTime.endTime || inv.callTime.startTime,
+                    );
                 }
 
                 // Actual Hours calculation (if time entry exists)
@@ -539,9 +550,11 @@ export class TimeEntryService {
                     actualHours = Math.max(0, Math.round(((diffMs - breakMs) / (1000 * 60 * 60)) * 100) / 100);
                 }
 
-                // Format Details (Keep for reference or title use)
-                const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString();
-                const fmtTime = (d: Date | string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                // Format Details (Keep for reference or title use). Read UTC components
+                // so the rendered text matches the wall-clock the admin entered, regardless
+                // of the host server's timezone.
+                const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString('en-US', { timeZone: 'UTC' });
+                const fmtTime = (d: Date | string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 
                 const schedStartStr = scheduledStart ? `${fmtDate(scheduledStart)} ${fmtTime(scheduledStart)}` : '—';
                 const schedEndStr = scheduledEnd ? `${fmtDate(scheduledEnd)} ${fmtTime(scheduledEnd)}` : '—';
@@ -692,15 +705,9 @@ export class TimeEntryService {
 
                 let hours = 1;
                 if (inv.callTime.startDate && inv.callTime.startTime && inv.callTime.endTime) {
-                    const start = new Date(inv.callTime.startDate);
-                    const [sh, sm] = inv.callTime.startTime.split(':').map(Number);
-                    start.setHours(sh ?? 0, sm ?? 0, 0, 0);
-
-                    const end = new Date(inv.callTime.endDate || inv.callTime.startDate);
-                    const [eh, em] = inv.callTime.endTime.split(':').map(Number);
-                    end.setHours(eh ?? 0, em ?? 0, 0, 0);
-
-                    if (end > start) {
+                    const start = combineDateAndTimeAsUTC(inv.callTime.startDate, inv.callTime.startTime);
+                    const end = combineDateAndTimeAsUTC(inv.callTime.endDate || inv.callTime.startDate, inv.callTime.endTime);
+                    if (start && end && end > start) {
                         const diffMs = end.getTime() - start.getTime();
                         hours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
                     }
@@ -709,16 +716,14 @@ export class TimeEntryService {
                 const rate = Number(inv.callTime.payRate) || 0;
                 const isPerHour = inv.callTime.payRateType === 'PER_HOUR';
 
-                let scheduledStart = null;
-                let scheduledEnd = null;
+                let scheduledStart: Date | null = null;
+                let scheduledEnd: Date | null = null;
                 if (inv.callTime.startDate && inv.callTime.startTime) {
-                    scheduledStart = new Date(inv.callTime.startDate);
-                    const [sh, sm] = inv.callTime.startTime.split(':').map(Number);
-                    scheduledStart.setHours(sh ?? 0, sm ?? 0, 0, 0);
-
-                    scheduledEnd = new Date(inv.callTime.endDate || inv.callTime.startDate);
-                    const [eh, em] = inv.callTime.endTime?.split(':').map(Number) || [0, 0];
-                    scheduledEnd.setHours(eh ?? 0, em ?? 0, 0, 0);
+                    scheduledStart = combineDateAndTimeAsUTC(inv.callTime.startDate, inv.callTime.startTime);
+                    scheduledEnd = combineDateAndTimeAsUTC(
+                        inv.callTime.endDate || inv.callTime.startDate,
+                        inv.callTime.endTime || inv.callTime.startTime,
+                    );
                 }
 
                 let actualHours = 0;
@@ -728,8 +733,8 @@ export class TimeEntryService {
                     actualHours = Math.max(0, Math.round(((diffMs - breakMs) / (1000 * 60 * 60)) * 100) / 100);
                 }
 
-                const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString();
-                const fmtTime = (d: Date | string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString('en-US', { timeZone: 'UTC' });
+                const fmtTime = (d: Date | string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 
                 const schedStartStr = scheduledStart ? `${fmtDate(scheduledStart)} ${fmtTime(scheduledStart)}` : '—';
                 const schedEndStr = scheduledEnd ? `${fmtDate(scheduledEnd)} ${fmtTime(scheduledEnd)}` : '—';
