@@ -1,4 +1,4 @@
-
+// Trigger CI pipeline for the stagging branch.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/prisma';
 
