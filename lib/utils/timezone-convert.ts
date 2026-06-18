@@ -68,7 +68,12 @@ export interface ConvertedTime {
 /**
  * Convert a wall-clock (date + "HH:mm") from fromTz to toTz.
  * Returns date possibly shifted across midnight, and time as "HH:mm" (24h).
- * No-op when fromTz === toTz, when either tz is empty, or when both inputs are null.
+ * No-op when fromTz === toTz, when either tz is empty/null (treated as "no
+ * preference — show event-local time"), or when both inputs are null.
+ *
+ * The empty-tz path matters for talent who haven't picked a display timezone:
+ * we'd rather show them the event's wall-clock 1:00 PM than silently shift it
+ * into UTC (which is what defaulting to 'UTC' did previously).
  */
 export function convertWallClock(
   date: Date | string | null,
@@ -78,8 +83,8 @@ export function convertWallClock(
 ): ConvertedTime {
   if (!date && !time) return { date: null, time: null };
 
-  const srcTz = fromTz || 'UTC';
-  const dstTz = toTz || 'UTC';
+  const srcTz = fromTz || '';
+  const dstTz = toTz || '';
 
   const dateObj = date ? (typeof date === 'string' ? new Date(date) : date) : null;
   if (dateObj && isInvalidEpochDate(dateObj)) {
@@ -93,7 +98,7 @@ export function convertWallClock(
   const toLocalMidnight = (d: Date): Date =>
     new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 
-  if (srcTz === dstTz || !time || !dateObj) {
+  if (!srcTz || !dstTz || srcTz === dstTz || !time || !dateObj) {
     return { date: dateObj ? toLocalMidnight(dateObj) : null, time: time ?? null };
   }
 

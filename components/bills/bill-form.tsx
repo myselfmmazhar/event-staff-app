@@ -4,7 +4,7 @@ import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format, isValid } from "date-fns";
+import { isValid } from "date-fns";
 import { trpc } from "@/lib/client/trpc";
 import { BillSchema, type BillFormValues } from "@/lib/schemas/bill.schema";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,30 @@ import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
 import { EditableLabel } from "@/components/ui/editable-label";
 import { TaskDetailsCard } from "@/components/finance/task-details-card";
+
+/**
+ * Scheduled/actual shift instants are stored as wall-clock-in-UTC: the typed
+ * 1:00 PM lives as 13:00 UTC so every viewer sees the original wall-clock
+ * regardless of their browser timezone. Read/write `<input type="datetime-local">`
+ * via UTC components — never via local-time `format(d, "yyyy-MM-dd'T'HH:mm")`.
+ */
+function utcToDatetimeLocal(d: Date | string | null | undefined): string {
+    if (!d) return "";
+    const date = d instanceof Date ? d : new Date(d);
+    if (!isValid(date)) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+}
+
+function datetimeLocalToUtc(value: string): Date | null {
+    if (!value) return null;
+    const [datePart, timePart = "00:00"] = value.split("T");
+    if (!datePart) return null;
+    const [y, mo, d] = datePart.split("-").map(Number);
+    const [h, mi] = timePart.split(":").map(Number);
+    if ([y, mo, d, h, mi].some((n) => Number.isNaN(n))) return null;
+    return new Date(Date.UTC(y!, mo! - 1, d!, h!, mi!, 0, 0));
+}
 
 interface BillFormProps {
     bill?: any; // Bill data for editing
@@ -548,12 +572,9 @@ export function BillForm({ bill }: BillFormProps) {
                                                         <Input
                                                             type="datetime-local"
                                                             className="h-8 text-[10px] px-2 bg-white"
-                                                            value={form.watch(`items.${index}.scheduledStart`) && isValid(new Date(form.watch(`items.${index}.scheduledStart`)!))
-                                                                ? format(new Date(form.watch(`items.${index}.scheduledStart`)!), "yyyy-MM-dd'T'HH:mm")
-                                                                : ""}
+                                                            value={utcToDatetimeLocal(form.watch(`items.${index}.scheduledStart`))}
                                                             onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                form.setValue(`items.${index}.scheduledStart`, val ? new Date(val) : null);
+                                                                form.setValue(`items.${index}.scheduledStart`, datetimeLocalToUtc(e.target.value));
                                                             }}
                                                         />
                                                     </div>
@@ -562,12 +583,9 @@ export function BillForm({ bill }: BillFormProps) {
                                                         <Input
                                                             type="datetime-local"
                                                             className="h-8 text-[10px] px-2 bg-white"
-                                                            value={form.watch(`items.${index}.scheduledEnd`) && isValid(new Date(form.watch(`items.${index}.scheduledEnd`)!))
-                                                                ? format(new Date(form.watch(`items.${index}.scheduledEnd`)!), "yyyy-MM-dd'T'HH:mm")
-                                                                : ""}
+                                                            value={utcToDatetimeLocal(form.watch(`items.${index}.scheduledEnd`))}
                                                             onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                form.setValue(`items.${index}.scheduledEnd`, val ? new Date(val) : null);
+                                                                form.setValue(`items.${index}.scheduledEnd`, datetimeLocalToUtc(e.target.value));
                                                             }}
                                                         />
                                                     </div>
@@ -602,12 +620,9 @@ export function BillForm({ bill }: BillFormProps) {
                                                         <Input
                                                             type="datetime-local"
                                                             className="h-8 text-[10px] px-2 bg-white"
-                                                            value={form.watch(`items.${index}.actualStart`) && isValid(new Date(form.watch(`items.${index}.actualStart`)!))
-                                                                ? format(new Date(form.watch(`items.${index}.actualStart`)!), "yyyy-MM-dd'T'HH:mm")
-                                                                : ""}
+                                                            value={utcToDatetimeLocal(form.watch(`items.${index}.actualStart`))}
                                                             onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                form.setValue(`items.${index}.actualStart`, val ? new Date(val) : null);
+                                                                form.setValue(`items.${index}.actualStart`, datetimeLocalToUtc(e.target.value));
                                                             }}
                                                         />
                                                     </div>
@@ -616,12 +631,9 @@ export function BillForm({ bill }: BillFormProps) {
                                                         <Input
                                                             type="datetime-local"
                                                             className="h-8 text-[10px] px-2 bg-white"
-                                                            value={form.watch(`items.${index}.actualEnd`) && isValid(new Date(form.watch(`items.${index}.actualEnd`)!))
-                                                                ? format(new Date(form.watch(`items.${index}.actualEnd`)!), "yyyy-MM-dd'T'HH:mm")
-                                                                : ""}
+                                                            value={utcToDatetimeLocal(form.watch(`items.${index}.actualEnd`))}
                                                             onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                form.setValue(`items.${index}.actualEnd`, val ? new Date(val) : null);
+                                                                form.setValue(`items.${index}.actualEnd`, datetimeLocalToUtc(e.target.value));
                                                             }}
                                                         />
                                                     </div>
