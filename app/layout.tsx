@@ -34,8 +34,7 @@ export default function RootLayout({
               <PodContextProvider>
                 <LabelEditModeProvider>
                   {children}
-                  <EditLabelsSaveBar />
-                  <Toaster />
+                
                 </LabelEditModeProvider>
               </PodContextProvider>
             </LabelsProvider>

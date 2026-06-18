@@ -25,7 +25,12 @@ frontend:
         - echo "BETTER_AUTH_URL=https://dev.tripodapp.com" >> .env
         - echo "BETTER_AUTH_SECRET=dev-secret-32-chars-minimum-change-this-to-secure" >> .env
         - echo "JWT_SECRET=dev-jwt-secret-change-this-to-secure-too" >> .env
-        - echo "NODE_ENV=production" >> .env
+        # Do NOT set NODE_ENV here. `next build` already runs in production mode,
+        # and Next.js manages NODE_ENV itself. Defining it in .env makes the
+        # parallel static-generation workers load React in a conflicting mode,
+        # which nulls React's dispatcher and crashes the /_global-error prerender
+        # ("Cannot read properties of null (reading 'useContext')"). See
+        # vercel/next.js#87719.
         - echo "SEED_ADMIN_ON_BOOT=true" >> .env
         - echo "ADMIN_EMAIL=admin@eventstaffapp.com" >> .env
         - echo "ADMIN_PASSWORD=Admin@123!" >> .env
