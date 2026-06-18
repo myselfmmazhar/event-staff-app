@@ -8,14 +8,14 @@ export default function GlobalError({
   reset: () => void;
 }) {
   return (
-    <html>
-      <body>
+    // <html>
+    //   <body>
         <div style={{ padding: '20px', fontFamily: 'system-ui' }}>
           <h2>Something went wrong!</h2>
           <p>{error.message}</p>
           <button onClick={() => reset()}>Try again</button>
         </div>
-      </body>
-    </html>
+    //   </body>
+    // </html>
   );
 }
