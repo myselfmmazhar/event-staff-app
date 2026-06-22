@@ -15,6 +15,18 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
 
     if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+        // TEMPORARY DIAGNOSTIC — remove once the cron auth is confirmed working.
+        // Logs nothing sensitive: only presence/length and the header names that
+        // actually reached the route, so we can tell "app has no secret" apart
+        // from "Authorization header was stripped before the origin".
+        console.warn('Cron auth failed (diagnostic):', JSON.stringify({
+            hasCronSecret: !!cronSecret,
+            cronSecretLength: cronSecret?.length ?? 0,
+            hasAuthHeader: authHeader !== null,
+            authHeaderPrefix: authHeader ? authHeader.slice(0, 9) : null,
+            authHeaderLength: authHeader?.length ?? 0,
+            receivedHeaderNames: [...request.headers.keys()],
+        }));
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
