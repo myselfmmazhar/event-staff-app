@@ -81,9 +81,14 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days in seconds
     updateAge: 60 * 60 * 24, // 1 day
+    // Cookie cache is intentionally DISABLED. Behind Amplify/CloudFront the
+    // extra `session_data` cookie was not being reliably cleared on sign-out
+    // (multiple Set-Cookie headers get dropped/collapsed by the CDN), so the
+    // cached session survived for up to 5 minutes and the GuestGuard bounced
+    // the user back to /dashboard after logout. With the cache off there is a
+    // single session-token cookie and every check is validated against the DB.
     cookieCache: {
-      enabled: true,
-      maxAge: 60 * 5, // 5 minutes
+      enabled: false,
     },
   },
   user: {

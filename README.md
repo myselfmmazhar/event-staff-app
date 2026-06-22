@@ -1,3 +1,4 @@
+<!-- Trigger deploy: verify Amplify build from myselfmmazhar/event-staff-app -->
 # Event Staff Management Platform
 
 A modern, full-stack event staff management and scheduling platform built with Next.js 16, tRPC, Prisma, and better-auth.
