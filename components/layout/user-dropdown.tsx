@@ -41,8 +41,16 @@ export function UserDropdown() {
   }, [isOpen]);
 
   const handleLogout = async () => {
-    await signOut();
-    window.location.href = '/login';
+    try {
+      await signOut();
+    } catch {
+      // Sign-out request failed (network/server) — still force the user out
+      // client-side below so they aren't stranded on a protected page.
+    } finally {
+      // Hard navigation (not router.push) guarantees a full reload so the
+      // session cache is re-read from cookies and the guards re-evaluate.
+      window.location.href = '/login';
+    }
   };
 
   // Get role badge variant
