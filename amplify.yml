@@ -3,9 +3,18 @@ frontend:
   phases:
     preBuild:
       commands:
+        # Match the local build environment (Node 24). Amplify's default Node
+        # triggers a React 19.2 SSR crash when prerendering the isolated
+        # global-error page; Node 24 does not.
+        - nvm install 24
+        - nvm use 24
+        - node -v
         - npm ci
     build:
       commands:
+        # Ensure the build runs under Node 24 (in case the nvm selection from
+        # preBuild does not persist into this phase).
+        - nvm use 24
         # Inject all environment variables at build time
         - echo "DATABASE_URL=postgresql://postgres:IhPzc7yjEfWaD5enxJ3W@event-staff-dev.c3qagmoaqnko.eu-north-1.rds.amazonaws.com:5432/postgres?sslmode=require" >> .env
         - echo "DIRECT_URL=postgresql://postgres:IhPzc7yjEfWaD5enxJ3W@event-staff-dev.c3qagmoaqnko.eu-north-1.rds.amazonaws.com:5432/postgres?sslmode=require" >> .env

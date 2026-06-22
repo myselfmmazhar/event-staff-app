@@ -8,7 +8,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   return (
-    <html>
+    <html lang="en">
       <body>
         <div style={{ padding: '20px', fontFamily: 'system-ui' }}>
           <h2>Something went wrong!</h2>
