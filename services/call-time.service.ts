@@ -105,6 +105,51 @@ function diffCallTimeForNotification(
 }
 
 /**
+ * Convert an absolute UTC instant to wall-clock-in-UTC format.
+ * Given a timezone, determines what wall-clock time the instant represents in that timezone,
+ * then stores it as a Date whose UTC components match that wall-clock time.
+ */
+function convertAbsoluteUTCToWallClockInUTC(instantUTC: Date, timezone: string | null | undefined): Date {
+  if (!timezone) {
+    // No timezone info — store as-is (this preserves UTC instants, but won't match wall-clock display)
+    return instantUTC;
+  }
+
+  try {
+    // Format the UTC instant as it appears in the given timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(instantUTC);
+    const map: Record<string, string> = {};
+    for (const p of parts) {
+      if (p.type !== 'literal') map[p.type] = p.value;
+    }
+
+    const year = Number(map.year);
+    const month = Number(map.month) - 1; // JS months are 0-indexed
+    const day = Number(map.day);
+    const hour = Number(map.hour);
+    const minute = Number(map.minute);
+    const second = Number(map.second);
+
+    // Create a Date using UTC components that match the wall-clock time
+    return new Date(Date.UTC(year, month, day, hour, minute, second));
+  } catch {
+    // If timezone is invalid, store as-is
+    return instantUTC;
+  }
+}
+
+/**
  * Call Time Service - Business logic for call time operations
  */
 export class CallTimeService {
@@ -2141,12 +2186,22 @@ export class CallTimeService {
       throw new Error('You already have an active session for this shift. Pause it before starting a new one.');
     }
 
+    // Fetch user's timezone to convert absolute UTC to wall-clock-in-UTC
+    const userPreference = await this.prisma.userPreference.findUnique({
+      where: { userId },
+      select: { timezone: true },
+    });
+    const timezone = userPreference?.timezone;
+
+    const absoluteUTC = new Date();
+    const wallClockInUTC = convertAbsoluteUTCToWallClockInUTC(absoluteUTC, timezone);
+
     const session = await this.prisma.shiftSession.create({
       data: {
         invitationId,
         staffId: staff.id,
         callTimeId: invitation.callTimeId,
-        clockIn: new Date(),
+        clockIn: wallClockInUTC,
       },
     });
 
@@ -2183,9 +2238,19 @@ export class CallTimeService {
       throw new Error('No active session to pause. Click Start first.');
     }
 
+    // Fetch user's timezone to convert absolute UTC to wall-clock-in-UTC
+    const userPreference = await this.prisma.userPreference.findUnique({
+      where: { userId },
+      select: { timezone: true },
+    });
+    const timezone = userPreference?.timezone;
+
+    const absoluteUTC = new Date();
+    const wallClockInUTC = convertAbsoluteUTCToWallClockInUTC(absoluteUTC, timezone);
+
     const updated = await this.prisma.shiftSession.update({
       where: { id: openSession.id },
-      data: { clockOut: new Date() },
+      data: { clockOut: wallClockInUTC },
     });
 
     await this.syncTimeEntryFromSessions(
@@ -2223,6 +2288,16 @@ export class CallTimeService {
       throw new Error('This shift has already been ended.');
     }
 
+    // Fetch user's timezone to convert absolute UTC to wall-clock-in-UTC
+    const userPreference = await this.prisma.userPreference.findUnique({
+      where: { userId },
+      select: { timezone: true },
+    });
+    const timezone = userPreference?.timezone;
+
+    const absoluteUTC = new Date();
+    const wallClockInUTC = convertAbsoluteUTCToWallClockInUTC(absoluteUTC, timezone);
+
     const openSession = await this.prisma.shiftSession.findFirst({
       where: { invitationId, staffId: staff.id, clockOut: null },
       orderBy: { clockIn: 'desc' },
@@ -2232,13 +2307,13 @@ export class CallTimeService {
     if (openSession) {
       await this.prisma.shiftSession.update({
         where: { id: openSession.id },
-        data: { clockOut: new Date() },
+        data: { clockOut: wallClockInUTC },
       });
     }
 
     const updated = await this.prisma.callTimeInvitation.update({
       where: { id: invitationId },
-      data: { shiftEndedAt: new Date() },
+      data: { shiftEndedAt: absoluteUTC },
     });
 
     await this.syncTimeEntryFromSessions(
